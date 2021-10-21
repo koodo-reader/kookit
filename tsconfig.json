@@ -4,6 +4,15 @@
     "module": "esnext",
     "moduleResolution": "node",
     "strict": true,
-    "esModuleInterop": true
+    "skipLibCheck": true,
+    "declaration": true,
+    "allowJs": true,
+    "esModuleInterop": true,
+    "noImplicitAny": false,
+    "outDir": "dist"
+  },
+  "include": ["src"],
+  "paths": {
+    "*": ["./node_modules/@types", "./types"]
   }
 }
