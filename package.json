@@ -1,6 +1,6 @@
 {
   "name": "koodo-render",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "TypeScript library npm package boilerplate",
   "author": "Troye Guo <guo362429@gmail.com>",
   "homepage": "https://github.com/troyeguo/koodo-render",
