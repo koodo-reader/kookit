@@ -1,6 +1,6 @@
 {
-  "name": "koodo-render",
-  "version": "1.0.2",
+  "name": "koodo-parser",
+  "version": "1.0.4",
   "description": "TypeScript library npm package boilerplate",
   "author": "Troye Guo <guo362429@gmail.com>",
   "homepage": "https://github.com/troyeguo/koodo-render",
@@ -15,9 +15,9 @@
     "package",
     "boilerplate"
   ],
-  "main": "dist/typescript-npm-package.cjs.js",
-  "module": "dist/typescript-npm-package.esm.js",
-  "browser": "dist/typescript-npm-package.umd.js",
+  "main": "dist/koodo-parser.cjs.js",
+  "module": "dist/koodo-parser.esm.js",
+  "browser": "dist/koodo-parser.umd.js",
   "scripts": {
     "dev": "rollup -c -w",
     "build": "rollup -c",
@@ -34,9 +34,8 @@
     "@rollup/plugin-json": "^4.1.0",
     "@rollup/plugin-node-resolve": "^13.0.4",
     "@rollup/plugin-typescript": "^8.2.5",
-    "@types/marked": "^3.0.2",
-    "@types/iconv-lite": "^0.0.1",
     "@types/node": "^16.11.2",
+    "@types/underscore": "^1.11.3",
     "eslint": "^7.32.0",
     "rimraf": "^3.0.2",
     "rollup": "^2.56.3",
@@ -47,12 +46,7 @@
     "typescript": "^4.4.2"
   },
   "dependencies": {
-    "@iarna/rtf-to-html": "^1.1.0",
-    "chardet": "^1.4.0",
-    "iconv-lite": "^0.6.3",
-    "mammoth": "^1.4.19",
-    "marked": "^3.0.7",
-    "xml2js": "^0.4.23"
+    "underscore": "^1.13.1"
   },
   "bugs": {
     "url": "https://github.com/troyeguo/koodo-render/issues"

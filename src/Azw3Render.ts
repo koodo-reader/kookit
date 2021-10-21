@@ -8,5 +8,6 @@ class Azw3Render {
     let mobiDoc: Element = await new MobiParser(this.azw3Buffer).render();
     element.innerHTML = mobiDoc.outerHTML;
   }
+  getContent() {}
 }
 export default Azw3Render;

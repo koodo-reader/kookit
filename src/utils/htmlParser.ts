@@ -1,86 +1,54 @@
 import { isTitle } from "./titleUtil";
 
 class HtmlParser {
-  bookDoc: any;
-  contentList: HTMLElement[];
-  contentTitleList: any[];
-  content: string[];
-  format: string;
-  constructor(bookDoc: any, format: string, content: string[]) {
-    this.bookDoc = bookDoc;
+  bookStr: string;
+  contentList: any[];
+  contentDoc: any[];
+  constructor(bookStr: string) {
+    this.bookStr = bookStr;
     this.contentList = [];
-    this.contentTitleList = [];
-    this.content = content;
-    this.format = format;
-
-    this.getContent(bookDoc);
+    this.contentDoc = [];
   }
-  getContent(bookDoc: HTMLElement) {
-    this.contentList = Array.from(
+  getContent() {
+    let bookDoc = new DOMParser().parseFromString(this.bookStr, "text/html");
+    let contentElement = Array.from(
       bookDoc.querySelectorAll("h1,h2,h3,h4,h5,b,font")
-    );
-    if (this.content.length > 0) {
-      this.contentList = this.contentList.filter(
-        (item) => this.content.indexOf(item.innerText) > -1
-      );
-    } else {
-      this.contentList = this.contentList.filter((item) =>
-        isTitle(item.innerText.trim())
-      );
-    }
+    ).filter((item) => isTitle((item as HTMLElement).innerText.trim()));
 
     for (let i = 0; i < this.contentList.length; i++) {
       let random = Math.floor(Math.random() * 900000) + 100000;
-      this.contentTitleList.push({
-        label: this.contentList[i].innerText,
+      this.contentList.push({
+        label: (contentElement[i] as HTMLElement).innerText,
         id: "title" + random,
         href: "#title" + random,
         subitems: [],
       });
     }
-    for (let i = 0; i < this.contentList.length; i++) {
-      this.contentList[i].id = this.contentTitleList[i].id;
-    }
-  }
-
-  getAnchoredDoc() {
-    return this.bookDoc;
-  }
-  getContentList() {
-    return this.contentTitleList.filter((item, index) => {
+    return this.contentList.filter((item, index) => {
       if (index > 0) {
-        return item.label !== this.contentTitleList[index - 1].label;
+        return item.innerText !== this.contentList[index - 1].innerText;
       } else {
         return true;
       }
     });
   }
-  getChapterTitleList() {
-    return this.contentList
-      .filter((item, index) => {
-        if (index > 0) {
-          return item.innerText !== this.contentList[index - 1].innerText;
-        } else {
-          return true;
-        }
-      })
-      .map((item) => item.innerText);
-  }
-  getChapter(bookStr: string, contentList: any) {
-    if (contentList.length === 0) return [bookStr];
+
+  getChapterDoc(bookStr: string) {
+    let content = this.contentList.map((item) => item.label);
+    if (content.length === 0) return [bookStr];
     let chapterDoc: string[] = [];
     let chapterStr = "";
 
-    for (let i = 0; i < contentList.length; i++) {
+    for (let i = 0; i < content.length; i++) {
       if (!bookStr) return;
-      chapterStr = bookStr.split(contentList[i].id)[0];
+      chapterStr = bookStr.split(content[i].id)[0];
       bookStr =
         chapterStr.substring(chapterStr.lastIndexOf("<")) +
-        contentList[i].id +
-        bookStr.split(contentList[i].id)[1];
+        content[i].id +
+        bookStr.split(content[i].id)[1];
 
       chapterDoc.push(chapterStr.substring(0, chapterStr.lastIndexOf("<")));
-      if (i === contentList.length - 1) {
+      if (i === content.length - 1) {
         chapterDoc.push(bookStr);
       }
     }
