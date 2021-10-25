@@ -1,7 +1,7 @@
 {
-  "name": "koodo-parser",
+  "name": "kookit",
   "version": "1.0.4",
-  "description": "TypeScript library npm package boilerplate",
+  "description": "Ebook render for mobi, azw3, txt and more",
   "author": "Troye Guo <guo362429@gmail.com>",
   "homepage": "https://github.com/troyeguo/koodo-render",
   "repository": {

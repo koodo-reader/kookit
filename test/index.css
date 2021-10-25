@@ -1,0 +1,9 @@
+.ebook-viewer {
+  position: absolute;
+  left: 50px;
+  right: 50px;
+  top: 20px;
+  bottom: 20px;
+  overflow-y: scroll;
+  z-index: 5;
+}

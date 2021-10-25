@@ -8,7 +8,7 @@ export default [
   {
     input: "src/index.ts",
     output: {
-      name: "typescriptNpmPackage",
+      name: "Kookit",
       file: pkg.browser,
       format: "umd",
     },
