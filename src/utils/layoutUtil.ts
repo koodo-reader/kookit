@@ -1,4 +1,8 @@
 import _ from "underscore";
+import Chapter from "../model/chapter";
+import ChapterDoc from "../model/chapterDom";
+import StorageUtil from "./storageUtil";
+let lock = false;
 export const isScrolledIntoView = (el: HTMLElement) => {
   var rect = el.getBoundingClientRect();
   var elemTop = rect.top;
@@ -77,4 +81,128 @@ export const handleIframeHeight = () => {
       600 +
       (lastEle.nodeType === 3 ? nodeHeight : 0);
   }, 500);
+};
+export const createIframe = (element: HTMLElement) => {
+  var iframe = document.createElement("iframe");
+  iframe.style.width = "100%";
+  iframe.style.border = "0";
+  iframe.style.margin = "0";
+  iframe.style.padding = "0";
+  iframe.style.fontSize = "100%";
+  iframe.style.font = "inherit";
+  iframe.style.verticalAlign = "baseline";
+  element.appendChild(iframe);
+};
+export const bindEvent = (element: HTMLElement, chapterList: Chapter[]) => {
+  let iframe = document.getElementsByTagName("iframe")[0];
+  if (!iframe) return;
+  let doc = iframe.contentDocument;
+  if (!doc) return;
+  let isFirefox = navigator.userAgent.indexOf("Firefox") > -1;
+  if (isFirefox) {
+    doc.addEventListener(
+      "DOMMouseScroll",
+      () => {
+        handleRecord();
+        handleTurnChapter(element, chapterList);
+      },
+      false
+    );
+  } else {
+    doc.addEventListener(
+      "mousewheel",
+      (event) => {
+        handleRecord();
+        handleTurnChapter(element, chapterList);
+      },
+      false
+    );
+  }
+};
+export const handleTurnChapter = (
+  element: HTMLElement,
+  chapterList: Chapter[]
+) => {
+  if (
+    Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) <
+    10
+  ) {
+    let chapterTitle = StorageUtil.getReaderConfig("chapterTitle");
+    if (
+      _.findIndex(chapterList, {
+        label: chapterTitle,
+      }) ===
+      chapterList.length - 1
+    ) {
+      return;
+    }
+    StorageUtil.setReaderConfig(
+      "chapterTitle",
+      chapterList[
+        _.findIndex(chapterList, {
+          label: chapterTitle,
+        }) + 1
+      ].label
+    );
+  }
+};
+export const handleRecord = () => {
+  if (lock) return;
+  StorageUtil.setReaderConfig(
+    "text",
+    (Array.from(
+      window.frames[0].document.getElementsByTagName("p")
+    ).filter((s) => isScrolledIntoView(s as any))[0] as HTMLElement)
+      ? (Array.from(
+          window.frames[0].document.getElementsByTagName("p")
+        ).filter((s) => isScrolledIntoView(s as any))[0] as HTMLElement)
+          .innerText
+      : ""
+  );
+
+  lock = true;
+  setTimeout(() => {
+    lock = false;
+  }, 200);
+};
+export const handleImageSize = (element: HTMLElement) => {
+  let iframe = document.getElementsByTagName("iframe")[0];
+  if (!iframe) return;
+  let doc = iframe.contentDocument;
+  if (!doc) {
+    return;
+  }
+
+  let imgs = doc.getElementsByTagName("img") as any;
+  let maxHeight;
+  for (let item of imgs) {
+    if (item.width && item.height) {
+      let viewer = document.getElementsByClassName(
+        "ebook-viewer"
+      )[0] as HTMLElement;
+      if (!viewer) return;
+      maxHeight = (viewer.offsetWidth * item.height) / item.width;
+      console.log(maxHeight);
+    }
+
+    item.setAttribute("style", `max-width: 100%;max-height:${maxHeight}px`);
+  }
+};
+
+export const handleRenderChatper = (
+  label: string = "",
+  chapterDocList: ChapterDoc[]
+) => {
+  window.frames[0].document.body.innerHTML = "";
+
+  window.frames[0].document.body.innerHTML =
+    chapterDocList[
+      _.findIndex(chapterDocList, {
+        title: label,
+      }) === -1
+        ? 0
+        : _.findIndex(chapterDocList, {
+            title: label,
+          })
+    ].text;
 };

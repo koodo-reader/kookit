@@ -11,7 +11,7 @@ class TxtParser {
     this.chapterList = [];
     this.chapterDocList = [];
     this.bookDoc = new DOMParser().parseFromString(this.bookStr, "text/html");
-    console.log(this.bookStr, this.bookDoc);
+    // console.log(this.bookStr, this.bookDoc);
     this.chapterDomList = [];
   }
   getChapter() {
@@ -52,8 +52,9 @@ class TxtParser {
   }
 
   getChapterDoc() {
-    if (this.chapterList.length === 0) return [this.bookStr];
-    let chapterStrList: string[] = this.bookStr.split("<span>pagebreak</span>");
+    let chapterStrList: string[] = this.bookDoc.body.innerHTML.split(
+      "<span>pagebreak</span>"
+    );
     let chapterObj: { title: string; text: string }[] = [];
     for (let i = 0; i < chapterStrList.length; i++) {
       if (chapterStrList.length === this.chapterList.length) {

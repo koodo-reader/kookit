@@ -2,8 +2,28 @@
   position: absolute;
   left: 50px;
   right: 50px;
-  top: 20px;
+  top: 50px;
   bottom: 20px;
   overflow-y: scroll;
+  overflow-x: hidden;
   z-index: 5;
+}
+::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(75, 75, 75, 0.5);
+}
+::-webkit-scrollbar {
+  width: 5px;
+  height: 0.5rem;
+}
+
+::-webkit-scrollbar-track {
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 0;
+  transition: all 0.2s;
+  border-radius: 0.5rem;
+  opacity: 0.5;
 }

@@ -1,11 +1,11 @@
-import MobiParser from "./utils/mobiParser";
+import KindleParser from "./utils/kindleParser";
 class Azw3Render {
   azw3Buffer: ArrayBuffer;
   constructor(azw3Buffer: ArrayBuffer) {
     this.azw3Buffer = azw3Buffer;
   }
   async renderTo(element: HTMLElement) {
-    let mobiDoc: Element = await new MobiParser(this.azw3Buffer).render();
+    let mobiDoc: Element = await new KindleParser(this.azw3Buffer).render();
     element.innerHTML = mobiDoc.outerHTML;
   }
   getContent() {}

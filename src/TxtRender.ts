@@ -1,34 +1,37 @@
 import { txtToHtml } from "./utils/htmlUtil";
+import {
+  bindEvent,
+  createIframe,
+  handleIframeHeight,
+} from "./utils/layoutUtil";
 import txtParser from "./utils/txtParser";
 class TxtRender {
   txtBuffer: ArrayBuffer;
   encoding: string;
-  docStr: string;
+  bookStr: string;
   constructor(txtBuffer: ArrayBuffer, encoding: string = "utf-8") {
     this.txtBuffer = txtBuffer;
     this.encoding = encoding;
 
-    this.docStr = "";
+    this.bookStr = "";
     console.log(txtBuffer);
   }
   renderTo(element: HTMLElement) {
     let text = new TextDecoder(this.encoding).decode(this.txtBuffer);
-    let docStr = "";
-    docStr = txtToHtml(text);
-    console.log(element);
-    element.innerHTML = docStr;
-    // var ifrm = document.createElement("iframe");
-    // ifrm.style.width = "100%";
-    // let parser = new txtParser(this.docStr);
-    // ifrm.innerHTML = parser.getChapterDoc()[0].text;
-    // console.log(new txtParser(this.docStr).getChapter(this.docStr));
-    // console.log(ifrm);
-    // element.appendChild(ifrm);
+    let bookStr = txtToHtml(text);
+    this.bookStr = bookStr;
 
-    this.docStr = docStr;
+    let parser = new txtParser(this.bookStr);
+    console.log(parser.getChapter());
+    console.log(parser.getChapterDoc());
+
+    createIframe(element);
+    window.frames[0].document.body.innerHTML = parser.getChapterDoc()[1].text;
+    handleIframeHeight();
+    bindEvent(element, parser.getChapter());
   }
   getChapter() {
-    let parser = new txtParser(this.docStr);
+    let parser = new txtParser(this.bookStr);
     console.log(parser.getChapter(), parser.getChapterDoc());
   }
 }
