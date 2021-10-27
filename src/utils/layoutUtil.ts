@@ -140,20 +140,20 @@ export const handleTurnChapter = (
     ) {
       return;
     }
+    let chapterIndex =
+      _.findIndex(chapterList, {
+        label: chapterTitle,
+      }) === -1
+        ? 0
+        : _.findIndex(chapterList, {
+            label: chapterTitle,
+          });
     StorageUtil.setReaderConfig(
       "chapterTitle",
-      chapterList[
-        _.findIndex(chapterList, {
-          label: chapterTitle,
-        }) + 1
-      ].label
+      chapterList[chapterIndex + 1].label
     );
     handleRenderChatper(
-      chapterList[
-        _.findIndex(chapterList, {
-          label: chapterTitle,
-        }) + 1
-      ].label,
+      chapterList[chapterIndex + 1].label,
       chapterDocList,
       element
     );
@@ -163,12 +163,10 @@ export const handleTurnChapter = (
   }
 };
 export const handleRecord = () => {
-  console.log("test");
   if (lock) return;
   let visibleNode = Array.from(
     window.frames[0].document.getElementsByTagName("*")
   ).filter((s) => isScrolledIntoView(s as any));
-  console.log(visibleNode, "visibleNode");
   let firstVisibleNode = visibleNode[0] as HTMLElement;
   let count = 0;
   let nodeList = Array.from(
@@ -203,7 +201,6 @@ export const handleImageSize = () => {
 
   let imgs = doc.getElementsByTagName("img") as any;
   let maxHeight;
-  console.log(imgs);
   for (let item of imgs) {
     if (item.width && item.height) {
       let viewer = document.getElementsByClassName(
@@ -211,7 +208,6 @@ export const handleImageSize = () => {
       )[0] as HTMLElement;
       if (!viewer) return;
       maxHeight = (viewer.offsetWidth * item.height) / item.width;
-      console.log(maxHeight);
     }
 
     item.setAttribute("style", `max-width: 100%;max-height:${maxHeight}px`);
@@ -241,7 +237,6 @@ export const handleRenderChatper = (
 };
 export const handleScrollTop = (element: HTMLElement, _text: string = "") => {
   let text = _text || StorageUtil.getReaderConfig("text") || "";
-  console.log(text);
   if (text) {
     let nodeList = Array.from(
       window.frames[0].document.getElementsByTagName("*")

@@ -388,19 +388,19 @@ class MobiFile {
     return span.textContent || span.innerText;
   }
   render() {
-    this.load();
-    var content = this.read_text();
-    var bookDoc: Element = domParser.parseFromString(content, "text/html")
-      .documentElement;
-
-    const handleImage = async () => {
+    return new Promise<any>(async (resolve, reject) => {
+      this.load();
+      var content = this.read_text();
+      var bookDoc: Element = domParser.parseFromString(content, "text/html")
+        .documentElement;
       var imgDoms = bookDoc.getElementsByTagName("img");
       for (let i = 0; i < imgDoms.length; i++) {
         await this.render_image(imgDoms, i);
+        console.log("test1");
       }
-    };
-    handleImage();
-    return bookDoc;
+      console.log("test2");
+      resolve(bookDoc);
+    });
   }
   render_image = (imgDoms, i) => {
     return new Promise((resolve, reject) => {

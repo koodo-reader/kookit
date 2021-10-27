@@ -6,6 +6,7 @@ import {
   bindEvent,
   createIframe,
   handleIframeHeight,
+  handleImageSize,
   handleRenderChatper,
   handleScrollTop,
 } from "./utils/layoutUtil";
@@ -24,39 +25,41 @@ class Azw3Render {
     this.bookStr = "";
     this.element = "";
   }
-  renderTo(element: HTMLElement) {
-    let mobiDoc: Element = new KindleParser(this.azw3Buffer).render();
-    let bookStr = mobiDoc.outerHTML;
-    this.bookStr = bookStr;
-    this.element = element;
-    let parser = new StrParser(this.bookStr);
-    this.chapterList = parser.getChapter();
-    this.chapterDocList = parser.getChapterDoc();
+  async renderTo(element: HTMLElement) {
+    return new Promise<void>(async (resolve, reject) => {
+      let mobiDoc: Element = await new KindleParser(this.azw3Buffer).render();
+      let bookStr = mobiDoc.outerHTML;
+      this.bookStr = bookStr;
+      this.element = element;
+      let parser = new StrParser(this.bookStr);
+      this.chapterList = parser.getChapter();
+      this.chapterDocList = parser.getChapterDoc();
 
-    let chapterTitle =
-      StorageUtil.getReaderConfig("chapterTitle") ||
-      this.chapterDocList[0].title;
-    let chapterIndex =
-      _.findIndex(this.chapterDocList, {
-        title: chapterTitle,
-      }) === -1
-        ? 0
-        : _.findIndex(this.chapterDocList, {
-            title: chapterTitle,
-          });
-    // console.log(chapterTitle, "chapterTitle");
+      let chapterTitle =
+        StorageUtil.getReaderConfig("chapterTitle") ||
+        this.chapterDocList[0].title;
+      let chapterIndex =
+        _.findIndex(this.chapterDocList, {
+          title: chapterTitle,
+        }) === -1
+          ? 0
+          : _.findIndex(this.chapterDocList, {
+              title: chapterTitle,
+            });
 
-    createIframe(element);
-    window.frames[0].document.body.innerHTML = this.chapterDocList[
-      chapterIndex
-    ].text;
-    StorageUtil.setReaderConfig("chapterTitle", chapterTitle);
-    handleIframeHeight();
-    handleScrollTop(element);
-    bindEvent(element, this.chapterList, this.chapterDocList);
+      createIframe(element);
+      window.frames[0].document.body.innerHTML = this.chapterDocList[
+        chapterIndex
+      ].text;
+      StorageUtil.setReaderConfig("chapterTitle", chapterTitle);
+      handleIframeHeight();
+      handleImageSize();
+      handleScrollTop(element);
+      bindEvent(element, this.chapterList, this.chapterDocList);
+      resolve();
+    });
   }
   getChapter() {
-    console.log(this.chapterDocList, this.chapterList);
     return this.chapterList;
   }
 

@@ -27,34 +27,36 @@ class TxtRender {
     this.element = "";
   }
   renderTo(element: HTMLElement) {
-    let text = new TextDecoder(this.encoding).decode(this.txtBuffer);
-    let bookStr = txtToHtml(text);
-    this.bookStr = bookStr;
-    this.element = element;
-    let parser = new txtParser(this.bookStr);
-    this.chapterList = parser.getChapter();
-    this.chapterDocList = parser.getChapterDoc();
-    let chapterTitle =
-      StorageUtil.getReaderConfig("chapterTitle") ||
-      this.chapterDocList[0].title;
-    let chapterIndex =
-      _.findIndex(this.chapterDocList, {
-        title: chapterTitle,
-      }) === -1
-        ? 0
-        : _.findIndex(this.chapterDocList, {
-            title: chapterTitle,
-          });
-    // console.log(chapterTitle, "chapterTitle");
+    return new Promise<void>(async (resolve, reject) => {
+      let text = new TextDecoder(this.encoding).decode(this.txtBuffer);
+      let bookStr = txtToHtml(text);
+      this.bookStr = bookStr;
+      this.element = element;
+      let parser = new txtParser(this.bookStr);
+      this.chapterList = parser.getChapter();
+      this.chapterDocList = parser.getChapterDoc();
+      let chapterTitle =
+        StorageUtil.getReaderConfig("chapterTitle") ||
+        this.chapterDocList[0].title;
+      let chapterIndex =
+        _.findIndex(this.chapterDocList, {
+          title: chapterTitle,
+        }) === -1
+          ? 0
+          : _.findIndex(this.chapterDocList, {
+              title: chapterTitle,
+            });
 
-    createIframe(element);
-    window.frames[0].document.body.innerHTML = this.chapterDocList[
-      chapterIndex
-    ].text;
-    StorageUtil.setReaderConfig("chapterTitle", chapterTitle);
-    handleIframeHeight();
-    handleScrollTop(element);
-    bindEvent(element, this.chapterList, this.chapterDocList);
+      createIframe(element);
+      window.frames[0].document.body.innerHTML = this.chapterDocList[
+        chapterIndex
+      ].text;
+      StorageUtil.setReaderConfig("chapterTitle", chapterTitle);
+      handleIframeHeight();
+      handleScrollTop(element);
+      bindEvent(element, this.chapterList, this.chapterDocList);
+      resolve();
+    });
   }
   getChapter() {
     return this.chapterList;

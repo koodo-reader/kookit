@@ -16,7 +16,6 @@ class TxtParser {
     this.chapterDomList = Array.from(
       this.bookDoc.querySelectorAll("h1")
     ) as HTMLElement[];
-    console.log(this.chapterDomList);
     for (let i = 0; i < this.chapterDomList.length; i++) {
       let random = Math.floor(Math.random() * 900000) + 100000;
       this.chapterList.push({
@@ -25,7 +24,9 @@ class TxtParser {
             ? this.chapterDomList[i].innerText
             : titleList[
                 titleList.lastIndexOf(this.chapterDomList[i].innerText)
-              ] + "-1"
+              ] +
+              "#" +
+              i
           : "Forword",
 
         id: "title" + random,

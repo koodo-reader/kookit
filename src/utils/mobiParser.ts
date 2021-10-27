@@ -1,3 +1,5 @@
+import { isNodeTitle } from "./titleUtil";
+
 class MobiParser {
   bookStr: string;
   chapterList: any[];
@@ -8,68 +10,57 @@ class MobiParser {
     this.chapterDocList = [];
   }
   getChapterDoc() {
-    let chapterList = this.bookStr.split("<mbp:pagebreak>");
-    let chapterObj: { title: string; text: string }[] = [];
+    let tempChapterList =
+      this.bookStr.indexOf("<mbp:pagebreak>") > -1
+        ? this.bookStr.split("<mbp:pagebreak>")
+        : this.bookStr.split("<address> </address>");
+    let chapterList: string[] = [];
     let titleList: string[] = [];
-    let count = 0;
+    for (let i = 0; i < tempChapterList.length; i++) {
+      let chapterDoc = new DOMParser().parseFromString(
+        tempChapterList[i],
+        "text/html"
+      );
+
+      if (isNodeTitle(chapterDoc)) {
+        chapterList.push(tempChapterList[i]);
+      } else {
+        if (chapterList.length === 0) {
+          chapterList.push(tempChapterList[i]);
+        } else {
+          chapterList[chapterList.length - 1] += tempChapterList[i];
+        }
+      }
+    }
+
     for (let i = 0; i < chapterList.length; i++) {
-      let random = Math.floor(Math.random() * 900000) + 100000;
       let chapterDoc = new DOMParser().parseFromString(
         chapterList[i],
         "text/html"
       );
-      if (
-        chapterDoc.body.innerText.trim() ||
-        chapterDoc.getElementsByTagName("img").length > 0
-      ) {
-        let firstValidTitle;
-        let firstValidText;
-        let validTitleNodeList = chapterDoc.querySelectorAll(
-          "h1,h2,h3,h4,blockquote,font,b"
-        );
-        let validTextNodeList = chapterDoc.querySelectorAll("p");
-        for (let i = 0; i < validTitleNodeList.length; i++) {
-          if ((validTitleNodeList[i] as HTMLElement).innerText.trim()) {
-            if (
-              titleList.indexOf(
-                (validTitleNodeList[i] as HTMLElement).innerText
-              ) === -1
-            ) {
-              firstValidTitle = (validTitleNodeList[i] as HTMLElement)
-                .innerText;
-            } else {
-              firstValidTitle =
-                (validTitleNodeList[i] as HTMLElement).innerText + "-" + count;
-              count++;
-            }
-            break;
-          }
-        }
-        for (let i = 0; i < validTextNodeList.length; i++) {
-          if ((validTextNodeList[i] as HTMLElement).innerText.trim()) {
-            firstValidText = (validTextNodeList[i] as HTMLElement).innerText;
+      let titleNodeList = chapterDoc.querySelectorAll(
+        "h1,h2,h3,h4,blockquote,font,b"
+      );
 
-            break;
-          }
+      let firstValidTitle: any;
+      for (let i = 0; i < titleNodeList.length; i++) {
+        if ((titleNodeList[i] as HTMLElement).innerText.trim()) {
+          firstValidTitle = titleNodeList[i] as HTMLElement;
+          break;
         }
-
-        chapterObj.push({
-          title: firstValidTitle
-            ? firstValidTitle
-            : firstValidText
-            ? firstValidText
-            : (chapterDoc.getElementsByTagName("img")[0] as any)
-            ? "image" +
-              (chapterDoc.getElementsByTagName("img")[0] as any).getAttribute(
-                "recindex"
-              )
-            : "Chapter" + random,
-          text: chapterList[i],
-        });
-        titleList.push(chapterObj[i].title);
       }
+
+      this.chapterDocList.push({
+        title: firstValidTitle
+          ? titleList.indexOf(firstValidTitle.innerText) === -1
+            ? firstValidTitle.innerText
+            : firstValidTitle.innerText + "#" + i
+          : "Forword",
+        text: chapterList[i],
+      });
+      firstValidTitle && titleList.push(firstValidTitle.innerText);
     }
-    this.chapterDocList = chapterObj;
+
     return this.chapterDocList;
   }
 
@@ -83,7 +74,6 @@ class MobiParser {
         subitems: [],
       });
     }
-    // console.log(object)
     return this.chapterList;
   }
 }

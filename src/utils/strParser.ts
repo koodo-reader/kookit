@@ -1,3 +1,4 @@
+import MobiParser from "./mobiParser";
 import { isTitle, startWithDI } from "./titleUtil";
 
 class StrParser {
@@ -17,10 +18,67 @@ class StrParser {
     this.chapterDomList = Array.from(
       this.bookDoc.querySelectorAll("h1,h2,h3,h4,font,b")
     ) as HTMLElement[];
-    let isStartWithKeyword = false;
+    if (this.chapterDomList.length > 0) {
+      this.insertPageBreak();
+      let parser = new MobiParser(this.bookDoc.body.innerHTML);
+      this.chapterDocList = parser.getChapterDoc();
+      this.chapterList = parser.getChapter();
+    } else {
+      this.getExtraTitle();
+      this.generateChapterList();
+      this.insertPageBreak();
+    }
+
+    return this.chapterList;
+  }
+  insertPageBreak() {
+    for (let i = 0; i < this.chapterDomList.length; i++) {
+      // this.chapterDomList[i].id = this.chapterList[i].id;
+      var newItem = document.createElement("address");
+      var textnode = document.createTextNode(" ");
+      newItem.appendChild(textnode);
+
+      this.chapterDomList[i].parentNode &&
+        this.chapterDomList[i].parentNode.insertBefore(
+          newItem,
+          this.chapterDomList[i]
+        );
+    }
+  }
+  generateChapterList() {
+    if (this.chapterDomList.length === 0) {
+      let random = Math.floor(Math.random() * 900000) + 100000;
+      this.chapterList.push({
+        label: "Forword",
+        id: "title" + random,
+        href: "#title" + random,
+        subitems: [],
+      });
+    }
     let titleList: string[] = [];
-    let count = 0;
-    console.log(this.chapterDomList);
+    for (let i = 0; i < this.chapterDomList.length; i++) {
+      let random = Math.floor(Math.random() * 900000) + 100000;
+      this.chapterList.push({
+        label: this.chapterDomList[i]
+          ? titleList.lastIndexOf(this.chapterDomList[i].innerText) === -1
+            ? this.chapterDomList[i].innerText
+            : titleList[
+                titleList.lastIndexOf(this.chapterDomList[i].innerText)
+              ] +
+              "#" +
+              i
+          : "Forword",
+
+        id: "title" + random,
+        href: "#title" + random,
+        subitems: [],
+      });
+      titleList.push(this.chapterList[i].label);
+    }
+  }
+  getExtraTitle() {
+    let isStartWithKeyword = false;
+
     if (this.chapterDomList.length === 0) {
       this.chapterDomList = Array.from(
         this.bookDoc.querySelectorAll("p")
@@ -37,78 +95,36 @@ class StrParser {
         return isTitle(item.innerText.trim(), isStartWithKeyword);
       });
     }
-    console.log(this.bookDoc);
-    if (this.chapterDomList.length === 0) {
-      let random = Math.floor(Math.random() * 900000) + 100000;
-      this.chapterList.push({
-        label: "Forword",
-
-        id: "title" + random,
-        href: "#title" + random,
-        subitems: [],
-      });
-    }
-    for (let i = 0; i < this.chapterDomList.length; i++) {
-      let random = Math.floor(Math.random() * 900000) + 100000;
-      this.chapterList.push({
-        label: this.chapterDomList[i]
-          ? titleList.lastIndexOf(this.chapterDomList[i].innerText) === -1
-            ? this.chapterDomList[i].innerText
-            : titleList[
-                titleList.lastIndexOf(this.chapterDomList[i].innerText)
-              ] + "-1"
-          : "Forword",
-
-        id: "title" + random,
-        href: "#title" + random,
-        subitems: [],
-      });
-      titleList.push(this.chapterList[i].label);
-    }
-    for (let i = 0; i < this.chapterDomList.length; i++) {
-      this.chapterDomList[i].id = this.chapterList[i].id;
-      var newItem = document.createElement("span");
-      var textnode = document.createTextNode("pagebreak");
-      newItem.appendChild(textnode);
-
-      this.chapterDomList[i].parentNode &&
-        this.chapterDomList[i].parentNode.insertBefore(
-          newItem,
-          this.chapterDomList[i]
-        );
-    }
-
-    return this.chapterList;
   }
-
   getChapterDoc() {
+    if (this.chapterDocList.length > 0) {
+      return this.chapterDocList;
+    }
     let chapterStrList: string[] = this.bookDoc.body.innerHTML.split(
-      "<span>pagebreak</span>"
+      "<address> </address>"
     );
-    console.log(chapterStrList, "chapterStrList");
-    let chapterObj: { title: string; text: string }[] = [];
+
     for (let i = 0; i < chapterStrList.length; i++) {
       if (chapterStrList.length === this.chapterList.length) {
-        chapterObj.push({
+        this.chapterDocList.push({
           title: this.chapterList[i].label,
           text: chapterStrList[i] || this.bookStr,
         });
       } else {
         if (i === 0) {
-          console.log(this.bookStr);
-          chapterObj.push({
+          this.chapterDocList.push({
             title: "Forword",
             text: chapterStrList[i] || this.bookStr,
           });
         } else {
-          chapterObj.push({
+          this.chapterDocList.push({
             title: this.chapterList[i - 1].label,
             text: chapterStrList[i],
           });
         }
       }
     }
-    return chapterObj;
+    return this.chapterDocList;
   }
 }
 

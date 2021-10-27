@@ -57,29 +57,6 @@ export const isTitle = (line: string, isStartWithKeyword: boolean = false) => {
       (!isStartWithKeyword && line.indexOf(":") && startWithNumAndColon(line)))
   );
 };
-export const isTitleLite = (line: string) => {
-  return (
-    line.length < 30 &&
-    line.indexOf("[") === -1 &&
-    line.indexOf("(") === -1 &&
-    line.indexOf("。") === -1 &&
-    (line.startsWith("CHAPTER") ||
-      line.startsWith("Chapter") ||
-      line.startsWith("序章") ||
-      line.startsWith("前言") ||
-      line.startsWith("声明") ||
-      line.startsWith("聲明") ||
-      line.startsWith("写在前面的话") ||
-      line.startsWith("后记") ||
-      line.startsWith("楔子") ||
-      line.startsWith("后序") ||
-      line.startsWith("寫在前面的話") ||
-      line.startsWith("後記") ||
-      line.startsWith("後序") ||
-      line.startsWith("第") ||
-      line.startsWith("卷"))
-  );
-};
 export const startWithDI = (line: string) => {
   let flag = false;
   for (let i = 0; i < keywords.length; i++) {
@@ -176,4 +153,63 @@ const startWithNumAndPause = (line: string) => {
 
   if (/^\d+$/.test(line.substring(0, line.indexOf("、")))) return true;
   return false;
+};
+export const isNodeTitle = (chapterDoc: Document) => {
+  let isTitleNodeExist =
+    chapterDoc.querySelectorAll("h1,h2,h3,h4,blockquote,font,b").length > 0;
+  let titleNodeExceedLength =
+    (chapterDoc.querySelectorAll(
+      "h1,h2,h3,h4,blockquote,font,b"
+    )[0] as HTMLElement) &&
+    (chapterDoc.querySelectorAll(
+      "h1,h2,h3,h4,blockquote,font,b"
+    )[0] as HTMLElement).innerText.trim().length > 30;
+  let titleNodeList = chapterDoc.querySelectorAll(
+    "h1,h2,h3,h4,blockquote,font,b"
+  );
+  let textNodeList = chapterDoc.querySelectorAll("img,p");
+  let firstValidTitle;
+  let firstValidText;
+  for (let i = 0; i < titleNodeList.length; i++) {
+    if ((titleNodeList[i] as HTMLElement).innerText.trim()) {
+      firstValidTitle = titleNodeList[i] as HTMLElement;
+      break;
+    }
+  }
+  for (let i = 0; i < textNodeList.length; i++) {
+    if (
+      (textNodeList[i] as HTMLElement).innerText.trim() ||
+      textNodeList[i].tagName === "IMG"
+    ) {
+      firstValidText = textNodeList[i] as HTMLElement;
+      break;
+    }
+  }
+  let isTitleFirst = true;
+  if (firstValidTitle && firstValidText) {
+    let nodeList = chapterDoc.querySelectorAll("*");
+    console.log(nodeList);
+    let textList: string[] = [];
+    for (let i = 0; i < nodeList.length; i++) {
+      if (nodeList[i].tagName === "IMG") {
+        textList.push(nodeList[i].tagName);
+      } else {
+        (nodeList[i] as HTMLElement).innerText &&
+          textList.push((nodeList[i] as HTMLElement).innerText);
+      }
+    }
+    if (
+      textList.indexOf(firstValidText.innerText || "IMG") <
+      textList.indexOf(firstValidTitle.innerText)
+    ) {
+      isTitleFirst = false;
+    }
+  }
+  let isTextLengthLarge = (chapterDoc as any).body.innerText.length > 50;
+  return (
+    isTitleNodeExist &&
+    !titleNodeExceedLength &&
+    isTitleFirst &&
+    isTextLengthLarge
+  );
 };
