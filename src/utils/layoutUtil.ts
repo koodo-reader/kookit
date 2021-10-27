@@ -7,10 +7,9 @@ export const isScrolledIntoView = (el: HTMLElement) => {
   var rect = el.getBoundingClientRect();
   var elemTop = rect.top;
   var viewer = document.getElementsByClassName("ebook-viewer")[0];
-  var screen = document.getElementsByClassName("viewer")[0];
   var isVisible =
     elemTop >= viewer.scrollTop &&
-    elemTop <= viewer.scrollTop + (screen as HTMLElement).offsetHeight;
+    elemTop <= viewer.scrollTop + (viewer as any).offsetHeight;
 
   return isVisible;
 };
@@ -93,7 +92,11 @@ export const createIframe = (element: HTMLElement) => {
   iframe.style.verticalAlign = "baseline";
   element.appendChild(iframe);
 };
-export const bindEvent = (element: HTMLElement, chapterList: Chapter[]) => {
+export const bindEvent = (
+  element: HTMLElement,
+  chapterList: Chapter[],
+  chapterDocList: ChapterDoc[]
+) => {
   let iframe = document.getElementsByTagName("iframe")[0];
   if (!iframe) return;
   let doc = iframe.contentDocument;
@@ -104,7 +107,7 @@ export const bindEvent = (element: HTMLElement, chapterList: Chapter[]) => {
       "DOMMouseScroll",
       () => {
         handleRecord();
-        handleTurnChapter(element, chapterList);
+        handleTurnChapter(element, chapterList, chapterDocList);
       },
       false
     );
@@ -113,7 +116,7 @@ export const bindEvent = (element: HTMLElement, chapterList: Chapter[]) => {
       "mousewheel",
       (event) => {
         handleRecord();
-        handleTurnChapter(element, chapterList);
+        handleTurnChapter(element, chapterList, chapterDocList);
       },
       false
     );
@@ -121,7 +124,8 @@ export const bindEvent = (element: HTMLElement, chapterList: Chapter[]) => {
 };
 export const handleTurnChapter = (
   element: HTMLElement,
-  chapterList: Chapter[]
+  chapterList: Chapter[],
+  chapterDocList: ChapterDoc[]
 ) => {
   if (
     Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) <
@@ -144,28 +148,52 @@ export const handleTurnChapter = (
         }) + 1
       ].label
     );
+    handleRenderChatper(
+      chapterList[
+        _.findIndex(chapterList, {
+          label: chapterTitle,
+        }) + 1
+      ].label,
+      chapterDocList,
+      element
+    );
+    handleIframeHeight();
+    handleScrollTop(element);
+    handleImageSize();
   }
 };
 export const handleRecord = () => {
+  console.log("test");
   if (lock) return;
+  let visibleNode = Array.from(
+    window.frames[0].document.getElementsByTagName("*")
+  ).filter((s) => isScrolledIntoView(s as any));
+  console.log(visibleNode, "visibleNode");
+  let firstVisibleNode = visibleNode[0] as HTMLElement;
+  let count = 0;
+  let nodeList = Array.from(
+    window.frames[0].document.getElementsByTagName("*")
+  ) as HTMLElement[];
+  for (let i = 0; i < nodeList.length; i++) {
+    if (
+      isScrolledIntoView(nodeList[i]) &&
+      nodeList[i].innerHTML === firstVisibleNode.innerHTML
+    ) {
+      count = i;
+      break;
+    }
+  }
   StorageUtil.setReaderConfig(
     "text",
-    (Array.from(
-      window.frames[0].document.getElementsByTagName("p")
-    ).filter((s) => isScrolledIntoView(s as any))[0] as HTMLElement)
-      ? (Array.from(
-          window.frames[0].document.getElementsByTagName("p")
-        ).filter((s) => isScrolledIntoView(s as any))[0] as HTMLElement)
-          .innerText
-      : ""
+    firstVisibleNode ? firstVisibleNode.innerText : ""
   );
-
+  StorageUtil.setReaderConfig("count", count + "");
   lock = true;
   setTimeout(() => {
     lock = false;
   }, 200);
 };
-export const handleImageSize = (element: HTMLElement) => {
+export const handleImageSize = () => {
   let iframe = document.getElementsByTagName("iframe")[0];
   if (!iframe) return;
   let doc = iframe.contentDocument;
@@ -175,6 +203,7 @@ export const handleImageSize = (element: HTMLElement) => {
 
   let imgs = doc.getElementsByTagName("img") as any;
   let maxHeight;
+  console.log(imgs);
   for (let item of imgs) {
     if (item.width && item.height) {
       let viewer = document.getElementsByClassName(
@@ -191,7 +220,8 @@ export const handleImageSize = (element: HTMLElement) => {
 
 export const handleRenderChatper = (
   label: string = "",
-  chapterDocList: ChapterDoc[]
+  chapterDocList: ChapterDoc[],
+  element: HTMLElement
 ) => {
   window.frames[0].document.body.innerHTML = "";
 
@@ -205,4 +235,30 @@ export const handleRenderChatper = (
             title: label,
           })
     ].text;
+  handleIframeHeight();
+  handleImageSize();
+  handleScrollTop(element);
+};
+export const handleScrollTop = (element: HTMLElement, _text: string = "") => {
+  let text = _text || StorageUtil.getReaderConfig("text") || "";
+  console.log(text);
+  if (text) {
+    let nodeList = Array.from(
+      window.frames[0].document.getElementsByTagName("*")
+    ) as HTMLElement[];
+    let targetNodeList = nodeList.filter(
+      (s) => (s as HTMLElement).innerText === text
+    );
+    let targetNode = targetNodeList[0];
+    if (targetNodeList.length > 1) {
+      targetNode =
+        nodeList[parseInt(StorageUtil.getReaderConfig("count") || "0")];
+    }
+
+    document
+      .getElementsByClassName("ebook-viewer")[0]
+      .scrollTo(0, text && targetNode ? targetNode.offsetTop : 0);
+  } else {
+    element.scrollTo(0, 0);
+  }
 };

@@ -80,7 +80,7 @@ export const isTitleLite = (line: string) => {
       line.startsWith("卷"))
   );
 };
-const startWithDI = (line: string) => {
+export const startWithDI = (line: string) => {
   let flag = false;
   for (let i = 0; i < keywords.length; i++) {
     if (
