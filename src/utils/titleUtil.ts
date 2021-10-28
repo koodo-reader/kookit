@@ -15,7 +15,6 @@ let keywords = [
 export const isTitle = (line: string, isStartWithKeyword: boolean = false) => {
   return (
     line &&
-    line.length < 30 &&
     line.indexOf("[") === -1 &&
     line.indexOf("(") === -1 &&
     line.indexOf("。") === -1 &&
@@ -157,29 +156,30 @@ const startWithNumAndPause = (line: string) => {
 export const isNodeTitle = (chapterDoc: Document) => {
   let isTitleNodeExist =
     chapterDoc.querySelectorAll("h1,h2,h3,h4,blockquote,font,b").length > 0;
-  let titleNodeExceedLength =
-    (chapterDoc.querySelectorAll(
-      "h1,h2,h3,h4,blockquote,font,b"
-    )[0] as HTMLElement) &&
-    (chapterDoc.querySelectorAll(
-      "h1,h2,h3,h4,blockquote,font,b"
-    )[0] as HTMLElement).innerText.trim().length > 30;
+
   let titleNodeList = chapterDoc.querySelectorAll(
     "h1,h2,h3,h4,blockquote,font,b"
   );
-  let textNodeList = chapterDoc.querySelectorAll("img,p");
+  let textNodeList = chapterDoc.querySelectorAll("p");
   let firstValidTitle;
   let firstValidText;
+
   for (let i = 0; i < titleNodeList.length; i++) {
-    if ((titleNodeList[i] as HTMLElement).innerText.trim()) {
+    let isSpecialChar =
+      firstValidTitle &&
+      ((titleNodeList[i] as HTMLElement).innerText.trim() === "♦" ||
+        (titleNodeList[i] as HTMLElement).innerText.trim() === "♣" ||
+        (titleNodeList[i] as HTMLElement).innerText.trim() === "♥" ||
+        (titleNodeList[i] as HTMLElement).innerText.trim() === "♦");
+    if ((titleNodeList[i] as HTMLElement).innerText.trim() && !isSpecialChar) {
       firstValidTitle = titleNodeList[i] as HTMLElement;
       break;
     }
   }
   for (let i = 0; i < textNodeList.length; i++) {
     if (
-      (textNodeList[i] as HTMLElement).innerText.trim() ||
-      textNodeList[i].tagName === "IMG"
+      (textNodeList[i] as HTMLElement).innerText.trim() &&
+      (textNodeList[i] as HTMLElement).innerHTML.indexOf("<") === -1
     ) {
       firstValidText = textNodeList[i] as HTMLElement;
       break;
@@ -188,27 +188,30 @@ export const isNodeTitle = (chapterDoc: Document) => {
   let isTitleFirst = true;
   if (firstValidTitle && firstValidText) {
     let nodeList = chapterDoc.querySelectorAll("*");
-    console.log(nodeList);
     let textList: string[] = [];
     for (let i = 0; i < nodeList.length; i++) {
-      if (nodeList[i].tagName === "IMG") {
-        textList.push(nodeList[i].tagName);
-      } else {
-        (nodeList[i] as HTMLElement).innerText &&
-          textList.push((nodeList[i] as HTMLElement).innerText);
-      }
+      (nodeList[i] as HTMLElement).innerText &&
+        textList.push((nodeList[i] as HTMLElement).innerText);
     }
     if (
-      textList.indexOf(firstValidText.innerText || "IMG") <
+      textList.indexOf(firstValidText.innerText) <
       textList.indexOf(firstValidTitle.innerText)
     ) {
       isTitleFirst = false;
     }
   }
+  if (firstValidTitle)
+    console.log(
+      firstValidTitle.innerText.trim(),
+      firstValidTitle.innerText.trim().length > 30 ||
+        isTitle(firstValidTitle.innerText.trim())
+    );
+  let titleNodeExceedLength =
+    firstValidTitle && firstValidTitle.innerText.trim().length > 30;
   let isTextLengthLarge = (chapterDoc as any).body.innerText.length > 50;
   return (
     isTitleNodeExist &&
-    !titleNodeExceedLength &&
+    (!titleNodeExceedLength || isTitle(firstValidTitle.innerText.trim())) &&
     isTitleFirst &&
     isTextLengthLarge
   );

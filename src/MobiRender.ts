@@ -12,6 +12,7 @@ import {
 } from "./utils/layoutUtil";
 import StorageUtil from "./utils/storageUtil";
 import MobiParser from "./utils/mobiParser";
+import { excuteCode } from "./utils/htmlUtil";
 class MobiRender {
   mobiBuffer: ArrayBuffer;
   bookStr: string;
@@ -27,7 +28,10 @@ class MobiRender {
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
+      excuteCode();
       let mobiDoc: Element = await new KindleParser(this.mobiBuffer).render();
+      console.log(mobiDoc);
+
       let bookStr = mobiDoc.outerHTML;
       this.bookStr = bookStr;
       this.element = element;

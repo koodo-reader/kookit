@@ -201,16 +201,21 @@ export const handleImageSize = () => {
 
   let imgs = doc.getElementsByTagName("img") as any;
   let maxHeight;
+  let maxWidth;
+  let viewer = document.getElementsByClassName(
+    "ebook-viewer"
+  )[0] as HTMLElement;
+  if (!viewer) return;
   for (let item of imgs) {
     if (item.width && item.height) {
-      let viewer = document.getElementsByClassName(
-        "ebook-viewer"
-      )[0] as HTMLElement;
-      if (!viewer) return;
-      maxHeight = (viewer.offsetWidth * item.height) / item.width;
+      maxWidth = viewer.offsetWidth - 17;
+      maxHeight = ((viewer.offsetWidth - 17) * item.height) / item.width;
     }
 
-    item.setAttribute("style", `max-width: 100%;max-height:${maxHeight}px`);
+    item.setAttribute(
+      "style",
+      `max-width: ${maxWidth}px;max-height:${maxHeight}px`
+    );
   }
 };
 

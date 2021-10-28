@@ -1,6 +1,7 @@
 import _ from "underscore";
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDom";
+import { excuteCode } from "./utils/htmlUtil";
 import {
   bindEvent,
   createIframe,
@@ -24,6 +25,7 @@ class StrRender {
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
+      excuteCode();
       this.element = element;
       let parser = new StrParser(this.bookStr);
       this.chapterList = parser.getChapter();

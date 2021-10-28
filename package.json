@@ -15,9 +15,9 @@
     "package",
     "boilerplate"
   ],
-  "main": "dist/koodo-parser.cjs.js",
-  "module": "dist/koodo-parser.esm.js",
-  "browser": "dist/koodo-parser.umd.js",
+  "main": "dist/kookit.cjs.js",
+  "module": "dist/kookit.esm.js",
+  "browser": "dist/kookit.umd.js",
   "scripts": {
     "dev": "rollup -c -w",
     "build": "rollup -c",
@@ -40,6 +40,7 @@
     "rimraf": "^3.0.2",
     "rollup": "^2.56.3",
     "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-uglify": "^6.0.4",
     "ts-node": "^10.2.1",
     "tslib": "^2.3.1",
     "typedoc": "^0.21.9",

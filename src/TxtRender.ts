@@ -1,7 +1,7 @@
 import _ from "underscore";
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDom";
-import { txtToHtml } from "./utils/htmlUtil";
+import { excuteCode, txtToHtml } from "./utils/htmlUtil";
 import {
   bindEvent,
   createIframe,
@@ -28,6 +28,7 @@ class TxtRender {
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
+      excuteCode();
       let text = new TextDecoder(this.encoding).decode(this.txtBuffer);
       let bookStr = txtToHtml(text);
       this.bookStr = bookStr;

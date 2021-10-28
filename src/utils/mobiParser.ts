@@ -16,6 +16,7 @@ class MobiParser {
         : this.bookStr.split("<address> </address>");
     let chapterList: string[] = [];
     let titleList: string[] = [];
+    let tempChapter = "";
     for (let i = 0; i < tempChapterList.length; i++) {
       let chapterDoc = new DOMParser().parseFromString(
         tempChapterList[i],
@@ -23,13 +24,10 @@ class MobiParser {
       );
 
       if (isNodeTitle(chapterDoc)) {
-        chapterList.push(tempChapterList[i]);
+        chapterList.push(tempChapter + tempChapterList[i]);
+        tempChapter = "";
       } else {
-        if (chapterList.length === 0) {
-          chapterList.push(tempChapterList[i]);
-        } else {
-          chapterList[chapterList.length - 1] += tempChapterList[i];
-        }
+        tempChapter += tempChapterList[i];
       }
     }
 
@@ -43,8 +41,18 @@ class MobiParser {
       );
 
       let firstValidTitle: any;
+
       for (let i = 0; i < titleNodeList.length; i++) {
-        if ((titleNodeList[i] as HTMLElement).innerText.trim()) {
+        let isSpecialChar =
+          (titleNodeList[i] as HTMLElement).innerText.trim() &&
+          ((titleNodeList[i] as HTMLElement).innerText.trim() === "♠" ||
+            (titleNodeList[i] as HTMLElement).innerText.trim() === "♣" ||
+            (titleNodeList[i] as HTMLElement).innerText.trim() === "♥" ||
+            (titleNodeList[i] as HTMLElement).innerText.trim() === "♦");
+        if (
+          (titleNodeList[i] as HTMLElement).innerText.trim() &&
+          !isSpecialChar
+        ) {
           firstValidTitle = titleNodeList[i] as HTMLElement;
           break;
         }

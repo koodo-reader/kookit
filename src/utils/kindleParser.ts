@@ -396,9 +396,7 @@ class MobiFile {
       var imgDoms = bookDoc.getElementsByTagName("img");
       for (let i = 0; i < imgDoms.length; i++) {
         await this.render_image(imgDoms, i);
-        console.log("test1");
       }
-      console.log("test2");
       resolve(bookDoc);
     });
   }
