@@ -200,12 +200,7 @@ export const isNodeTitle = (chapterDoc: Document) => {
       isTitleFirst = false;
     }
   }
-  if (firstValidTitle)
-    console.log(
-      firstValidTitle.innerText.trim(),
-      firstValidTitle.innerText.trim().length > 30 ||
-        isTitle(firstValidTitle.innerText.trim())
-    );
+
   let titleNodeExceedLength =
     firstValidTitle && firstValidTitle.innerText.trim().length > 30;
   let isTextLengthLarge = (chapterDoc as any).body.innerText.length > 50;

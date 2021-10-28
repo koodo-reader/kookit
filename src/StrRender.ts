@@ -14,11 +14,13 @@ import StorageUtil from "./utils/storageUtil";
 import StrParser from "./utils/strParser";
 class StrRender {
   bookStr: string;
+  mode: string;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(bookStr: string) {
+  constructor(bookStr: string, mode: string) {
     this.bookStr = bookStr;
+    this.mode = mode;
     this.chapterList = [];
     this.chapterDocList = [];
     this.element = "";
@@ -48,10 +50,10 @@ class StrRender {
         chapterIndex
       ].text;
       StorageUtil.setReaderConfig("chapterTitle", chapterTitle);
-      handleIframeHeight();
-      handleImageSize();
+      handleIframeHeight(element, this.mode);
+      handleImageSize(this.mode);
       handleScrollTop(element);
-      bindEvent(element, this.chapterList, this.chapterDocList);
+      bindEvent(element, this.chapterList, this.chapterDocList, this.mode);
       resolve();
     });
   }
@@ -60,7 +62,7 @@ class StrRender {
   }
 
   goToChapter(title: string) {
-    handleRenderChatper(title, this.chapterDocList, this.element);
+    handleRenderChatper(title, this.chapterDocList, this.element, this.mode);
   }
 }
 export default StrRender;

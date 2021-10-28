@@ -13,8 +13,14 @@ export const isScrolledIntoView = (el: HTMLElement) => {
 
   return isVisible;
 };
-export const handleIframeHeight = () => {
+export const handleIframeHeight = (element: HTMLElement, mode: string) => {
   let iFrame: any = document.getElementsByTagName("iframe")[0];
+  console.log(mode, "mode");
+  if (mode === "double") {
+    console.log(element.offsetHeight);
+    iFrame.height = element.offsetHeight - 30;
+    return;
+  }
   var body = iFrame.contentWindow.document.body,
     html = iFrame.contentWindow.document.documentElement;
   iFrame.height =
@@ -28,15 +34,18 @@ export const handleIframeHeight = () => {
 
   setTimeout(() => {
     let iFrame: any = document.getElementsByTagName("iframe")[0];
+
     let body = iFrame.contentWindow.document.body;
     let lastchild = body.lastElementChild;
     let lastEle = body.lastChild;
     let itemAs = body.querySelectorAll("a");
     let itemPs = body.querySelectorAll("p");
+    let itemIs = body.querySelectorAll("img");
     let lastItemA = itemAs[itemAs.length - 1];
     let lastItemP = itemPs[itemPs.length - 1];
+    let lastItemI = itemPs[itemIs.length - 1];
 
-    let lastItem = lastItemP || lastItemA;
+    let lastItem = lastItemP || lastItemA || lastItemI;
     if (_.isElement(lastItemA) && _.isElement(lastItemP)) {
       if (
         lastItemA.clientHeight + (lastItemA as any).offsetTop >
@@ -45,6 +54,14 @@ export const handleIframeHeight = () => {
         lastItem = lastItemA;
       } else {
         lastItem = lastItemP;
+      }
+    }
+    if (_.isElement(lastItemI)) {
+      if (
+        lastItemI.clientHeight + (lastItemI as any).offsetTop >
+        lastItem.clientHeight + (lastItem as any).offsetTop
+      ) {
+        lastItem = lastItemI;
       }
     }
     let nodeHeight = 0;
@@ -95,7 +112,8 @@ export const createIframe = (element: HTMLElement) => {
 export const bindEvent = (
   element: HTMLElement,
   chapterList: Chapter[],
-  chapterDocList: ChapterDoc[]
+  chapterDocList: ChapterDoc[],
+  mode: string
 ) => {
   let iframe = document.getElementsByTagName("iframe")[0];
   if (!iframe) return;
@@ -105,9 +123,12 @@ export const bindEvent = (
   if (isFirefox) {
     doc.addEventListener(
       "DOMMouseScroll",
-      () => {
+      (event) => {
+        if (mode !== "scroll") {
+          handleScrollPage(element, (event as any).detail);
+        }
         handleRecord();
-        handleTurnChapter(element, chapterList, chapterDocList);
+        handleTurnChapter(element, chapterList, chapterDocList, mode);
       },
       false
     );
@@ -115,8 +136,12 @@ export const bindEvent = (
     doc.addEventListener(
       "mousewheel",
       (event) => {
+        console.log("testsa");
+        if (mode !== "scroll") {
+          handleScrollPage(element, (event as any).wheelDelta);
+        }
         handleRecord();
-        handleTurnChapter(element, chapterList, chapterDocList);
+        handleTurnChapter(element, chapterList, chapterDocList, mode);
       },
       false
     );
@@ -125,11 +150,13 @@ export const bindEvent = (
 export const handleTurnChapter = (
   element: HTMLElement,
   chapterList: Chapter[],
-  chapterDocList: ChapterDoc[]
+  chapterDocList: ChapterDoc[],
+  mode: string
 ) => {
   if (
     Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) <
-    10
+      10 &&
+    mode === "scroll"
   ) {
     let chapterTitle = StorageUtil.getReaderConfig("chapterTitle");
     if (
@@ -155,11 +182,12 @@ export const handleTurnChapter = (
     handleRenderChatper(
       chapterList[chapterIndex + 1].label,
       chapterDocList,
-      element
+      element,
+      mode
     );
-    handleIframeHeight();
+    handleIframeHeight(element, mode);
     handleScrollTop(element);
-    handleImageSize();
+    handleImageSize(mode);
   }
 };
 export const handleRecord = () => {
@@ -191,7 +219,7 @@ export const handleRecord = () => {
     lock = false;
   }, 200);
 };
-export const handleImageSize = () => {
+export const handleImageSize = (mode: string) => {
   let iframe = document.getElementsByTagName("iframe")[0];
   if (!iframe) return;
   let doc = iframe.contentDocument;
@@ -202,14 +230,16 @@ export const handleImageSize = () => {
   let imgs = doc.getElementsByTagName("img") as any;
   let maxHeight;
   let maxWidth;
+  let scale = mode === "double" ? 2 : 1;
   let viewer = document.getElementsByClassName(
     "ebook-viewer"
   )[0] as HTMLElement;
   if (!viewer) return;
   for (let item of imgs) {
     if (item.width && item.height) {
-      maxWidth = viewer.offsetWidth - 17;
-      maxHeight = ((viewer.offsetWidth - 17) * item.height) / item.width;
+      maxWidth = (viewer.offsetWidth - 17) / scale;
+      maxHeight =
+        (((viewer.offsetWidth - 17) / scale) * item.height) / item.width;
     }
 
     item.setAttribute(
@@ -222,7 +252,8 @@ export const handleImageSize = () => {
 export const handleRenderChatper = (
   label: string = "",
   chapterDocList: ChapterDoc[],
-  element: HTMLElement
+  element: HTMLElement,
+  mode: string
 ) => {
   window.frames[0].document.body.innerHTML = "";
 
@@ -236,8 +267,8 @@ export const handleRenderChatper = (
             title: label,
           })
     ].text;
-  handleIframeHeight();
-  handleImageSize();
+  handleIframeHeight(element, mode);
+  handleImageSize(mode);
   handleScrollTop(element);
 };
 export const handleScrollTop = (element: HTMLElement, _text: string = "") => {
@@ -260,5 +291,36 @@ export const handleScrollTop = (element: HTMLElement, _text: string = "") => {
       .scrollTo(0, text && targetNode ? targetNode.offsetTop : 0);
   } else {
     element.scrollTo(0, 0);
+  }
+};
+export const handleLayout = (element: HTMLElement, mode: string) => {
+  if (mode === "scroll") return;
+  window.frames[0].document.body.setAttribute(
+    "style",
+    `width: auto;
+    height: ${element.offsetHeight - 48}px;
+    overflow-y: hide;
+    margin: 0px !important;
+    padding-left: 44px;
+    padding-left: 44px;
+    box-sizing: border-box;
+    max-width: inherit;
+    column-fill: auto;
+    column-gap: 88px;
+    column-width: ${element.offsetHeight / 2 - 88}px;`
+  );
+
+  // window.frames[0].document.querySelectorAll("p").forEach((item) => {
+  //   console.log(item);
+  //   item.style.display = "inline-block";
+  //   item.style.width = "200px !important";
+  // });
+};
+export const handleScrollPage = (element: HTMLElement, delta: number) => {
+  console.log(element.scrollLeft, delta);
+  if (delta > 0) {
+    window.frames[0].document.body.scrollLeft += element.offsetWidth;
+  } else if (delta < 0 && window.frames[0].document.body.scrollLeft > 0) {
+    window.frames[0].document.body.scrollLeft -= element.offsetWidth;
   }
 };

@@ -7,6 +7,7 @@ import {
   createIframe,
   handleIframeHeight,
   handleImageSize,
+  handleLayout,
   handleRenderChatper,
   handleScrollTop,
 } from "./utils/layoutUtil";
@@ -15,12 +16,14 @@ import MobiParser from "./utils/mobiParser";
 import { excuteCode } from "./utils/htmlUtil";
 class MobiRender {
   mobiBuffer: ArrayBuffer;
+  mode: string;
   bookStr: string;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(mobiBuffer: ArrayBuffer) {
+  constructor(mobiBuffer: ArrayBuffer, mode: string) {
     this.mobiBuffer = mobiBuffer;
+    this.mode = mode;
     this.chapterList = [];
     this.chapterDocList = [];
     this.bookStr = "";
@@ -30,7 +33,6 @@ class MobiRender {
     return new Promise<void>(async (resolve, reject) => {
       excuteCode();
       let mobiDoc: Element = await new KindleParser(this.mobiBuffer).render();
-      console.log(mobiDoc);
 
       let bookStr = mobiDoc.outerHTML;
       this.bookStr = bookStr;
@@ -55,10 +57,12 @@ class MobiRender {
         chapterIndex
       ].text;
       StorageUtil.setReaderConfig("chapterTitle", chapterTitle);
-      handleIframeHeight();
-      handleImageSize();
+      handleLayout(element, this.mode);
+      handleIframeHeight(element, this.mode);
+
+      handleImageSize(this.mode);
       handleScrollTop(element);
-      bindEvent(element, this.chapterList, this.chapterDocList);
+      bindEvent(element, this.chapterList, this.chapterDocList, this.mode);
       resolve();
     });
   }
@@ -66,10 +70,10 @@ class MobiRender {
     return this.chapterList;
   }
   goToChapter(title: string) {
-    handleRenderChatper(title, this.chapterDocList, this.element);
+    handleRenderChatper(title, this.chapterDocList, this.element, this.mode);
   }
   goToPosition(title: string, text: string) {
-    handleRenderChatper(title, this.chapterDocList, this.element);
+    handleRenderChatper(title, this.chapterDocList, this.element, this.mode);
     handleScrollTop(this.element, text);
   }
 }

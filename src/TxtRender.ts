@@ -6,6 +6,7 @@ import {
   bindEvent,
   createIframe,
   handleIframeHeight,
+  handleLayout,
   handleRenderChatper,
   handleScrollTop,
 } from "./utils/layoutUtil";
@@ -15,12 +16,18 @@ class TxtRender {
   txtBuffer: ArrayBuffer;
   encoding: string;
   bookStr: string;
+  mode: string;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(txtBuffer: ArrayBuffer, encoding: string = "utf-8") {
+  constructor(
+    txtBuffer: ArrayBuffer,
+    mode: string,
+    encoding: string = "utf-8"
+  ) {
     this.txtBuffer = txtBuffer;
     this.encoding = encoding;
+    this.mode = mode;
     this.chapterList = [];
     this.chapterDocList = [];
     this.bookStr = "";
@@ -53,9 +60,10 @@ class TxtRender {
         chapterIndex
       ].text;
       StorageUtil.setReaderConfig("chapterTitle", chapterTitle);
-      handleIframeHeight();
+      handleLayout(element, this.mode);
+      handleIframeHeight(element, this.mode);
       handleScrollTop(element);
-      bindEvent(element, this.chapterList, this.chapterDocList);
+      bindEvent(element, this.chapterList, this.chapterDocList, this.mode);
       resolve();
     });
   }
@@ -63,7 +71,7 @@ class TxtRender {
     return this.chapterList;
   }
   goToChapter(title: string) {
-    handleRenderChatper(title, this.chapterDocList, this.element);
+    handleRenderChatper(title, this.chapterDocList, this.element, this.mode);
   }
 }
 
