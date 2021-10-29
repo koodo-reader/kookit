@@ -8,19 +8,21 @@ import {
   handleIframeHeight,
   handleImageSize,
   handleRenderChatper,
-  handleScrollTop,
+  handleScrollPosition,
 } from "./utils/layoutUtil";
 import StorageUtil from "./utils/storageUtil";
 import StrParser from "./utils/strParser";
 import { excuteCode } from "./utils/htmlUtil";
 class Azw3Render {
   azw3Buffer: ArrayBuffer;
+  mode: string;
   bookStr: string;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(azw3Buffer: ArrayBuffer) {
+  constructor(azw3Buffer: ArrayBuffer, mode: string) {
     this.azw3Buffer = azw3Buffer;
+    this.mode = mode;
     this.chapterList = [];
     this.chapterDocList = [];
     this.bookStr = "";
@@ -38,7 +40,7 @@ class Azw3Render {
       this.chapterDocList = parser.getChapterDoc();
 
       let chapterTitle =
-        StorageUtil.getReaderConfig("chapterTitle") ||
+        StorageUtil.getKookitConfig("chapterTitle") ||
         this.chapterDocList[0].title;
       let chapterIndex =
         _.findIndex(this.chapterDocList, {
@@ -53,11 +55,12 @@ class Azw3Render {
       window.frames[0].document.body.innerHTML = this.chapterDocList[
         chapterIndex
       ].text;
-      StorageUtil.setReaderConfig("chapterTitle", chapterTitle);
-      handleIframeHeight();
-      handleImageSize();
-      handleScrollTop(element);
-      bindEvent(element, this.chapterList, this.chapterDocList);
+      StorageUtil.setKookitConfig("chapterTitle", chapterTitle);
+      handleIframeHeight(element, this.mode);
+
+      handleImageSize(this.element, this.mode);
+      handleScrollPosition(element, this.mode);
+      bindEvent(element, this.chapterList, this.chapterDocList, this.mode);
       resolve();
     });
   }
@@ -66,7 +69,16 @@ class Azw3Render {
   }
 
   goToChapter(title: string) {
-    handleRenderChatper(title, this.chapterDocList, this.element);
+    handleRenderChatper(title, this.chapterDocList, this.element, this.mode);
+  }
+  goToPosition(text: string, chapterTitle: string, count: string) {
+    handleRenderChatper(
+      chapterTitle,
+      this.chapterDocList,
+      this.element,
+      this.mode
+    );
+    handleScrollPosition(this.element, this.mode, text, count);
   }
 }
 export default Azw3Render;

@@ -9,7 +9,7 @@ import {
   handleImageSize,
   handleLayout,
   handleRenderChatper,
-  handleScrollTop,
+  handleScrollPosition,
 } from "./utils/layoutUtil";
 import StorageUtil from "./utils/storageUtil";
 import MobiParser from "./utils/mobiParser";
@@ -41,7 +41,7 @@ class MobiRender {
       this.chapterDocList = parser.getChapterDoc();
       this.chapterList = parser.getChapter();
       let chapterTitle =
-        StorageUtil.getReaderConfig("chapterTitle") ||
+        StorageUtil.getKookitConfig("chapterTitle") ||
         this.chapterDocList[0].title;
       let chapterIndex =
         _.findIndex(this.chapterDocList, {
@@ -56,12 +56,12 @@ class MobiRender {
       window.frames[0].document.body.innerHTML = this.chapterDocList[
         chapterIndex
       ].text;
-      StorageUtil.setReaderConfig("chapterTitle", chapterTitle);
+      StorageUtil.setKookitConfig("chapterTitle", chapterTitle);
       handleLayout(element, this.mode);
       handleIframeHeight(element, this.mode);
 
-      handleImageSize(this.mode);
-      handleScrollTop(element);
+      handleImageSize(this.element, this.mode);
+      handleScrollPosition(element, this.mode);
       bindEvent(element, this.chapterList, this.chapterDocList, this.mode);
       resolve();
     });
@@ -72,9 +72,14 @@ class MobiRender {
   goToChapter(title: string) {
     handleRenderChatper(title, this.chapterDocList, this.element, this.mode);
   }
-  goToPosition(title: string, text: string) {
-    handleRenderChatper(title, this.chapterDocList, this.element, this.mode);
-    handleScrollTop(this.element, text);
+  goToPosition(text: string, chapterTitle: string, count: string) {
+    handleRenderChatper(
+      chapterTitle,
+      this.chapterDocList,
+      this.element,
+      this.mode
+    );
+    handleScrollPosition(this.element, this.mode, text, count);
   }
 }
 export default MobiRender;

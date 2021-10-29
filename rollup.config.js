@@ -20,7 +20,7 @@ export default [
       }),
       json(),
       typescript({ tsconfig: "./tsconfig.json" }),
-      // uglify(),
+      uglify(),
     ],
   },
 

@@ -31,7 +31,7 @@
       );
       localforage.getItem("book").then(async (result) => {
         const { MobiRender } = Kookit;
-        let rendition = new MobiRender(result, "double");
+        let rendition = new MobiRender(result, "single");
         await rendition.renderTo(
           document.getElementsByClassName("ebook-viewer")[0]
         );

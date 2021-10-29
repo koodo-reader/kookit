@@ -168,9 +168,11 @@ export const isNodeTitle = (chapterDoc: Document) => {
     let isSpecialChar =
       firstValidTitle &&
       ((titleNodeList[i] as HTMLElement).innerText.trim() === "♦" ||
-        (titleNodeList[i] as HTMLElement).innerText.trim() === "♣" ||
-        (titleNodeList[i] as HTMLElement).innerText.trim() === "♥" ||
-        (titleNodeList[i] as HTMLElement).innerText.trim() === "♦");
+        (titleNodeList[i] as HTMLElement).innerText.trim() === "●" ||
+        (titleNodeList[i] as HTMLElement).innerText.trim() === "◾" ||
+        (titleNodeList[i] as HTMLElement).innerText.trim() === "◀" ||
+        (titleNodeList[i] as HTMLElement).innerText.trim() === "◼" ||
+        (titleNodeList[i] as HTMLElement).innerText.trim() === "■");
     if ((titleNodeList[i] as HTMLElement).innerText.trim() && !isSpecialChar) {
       firstValidTitle = titleNodeList[i] as HTMLElement;
       break;

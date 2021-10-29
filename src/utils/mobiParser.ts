@@ -44,11 +44,12 @@ class MobiParser {
 
       for (let i = 0; i < titleNodeList.length; i++) {
         let isSpecialChar =
-          (titleNodeList[i] as HTMLElement).innerText.trim() &&
-          ((titleNodeList[i] as HTMLElement).innerText.trim() === "♠" ||
-            (titleNodeList[i] as HTMLElement).innerText.trim() === "♣" ||
-            (titleNodeList[i] as HTMLElement).innerText.trim() === "♥" ||
-            (titleNodeList[i] as HTMLElement).innerText.trim() === "♦");
+          (titleNodeList[i] as HTMLElement).innerText.trim() === "♦" ||
+          (titleNodeList[i] as HTMLElement).innerText.trim() === "●" ||
+          (titleNodeList[i] as HTMLElement).innerText.trim() === "◾" ||
+          (titleNodeList[i] as HTMLElement).innerText.trim() === "◀" ||
+          (titleNodeList[i] as HTMLElement).innerText.trim() === "◼" ||
+          (titleNodeList[i] as HTMLElement).innerText.trim() === "■";
         if (
           (titleNodeList[i] as HTMLElement).innerText.trim() &&
           !isSpecialChar

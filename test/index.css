@@ -4,8 +4,6 @@
   right: 50px;
   top: 50px;
   bottom: 20px;
-  overflow-y: scroll;
-  overflow-x: hidden;
   z-index: 5;
 }
 ::-webkit-scrollbar-thumb,

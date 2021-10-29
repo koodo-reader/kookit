@@ -8,7 +8,7 @@ import {
   handleIframeHeight,
   handleImageSize,
   handleRenderChatper,
-  handleScrollTop,
+  handleScrollPosition,
 } from "./utils/layoutUtil";
 import StorageUtil from "./utils/storageUtil";
 import StrParser from "./utils/strParser";
@@ -34,7 +34,7 @@ class StrRender {
       this.chapterDocList = parser.getChapterDoc();
 
       let chapterTitle =
-        StorageUtil.getReaderConfig("chapterTitle") ||
+        StorageUtil.getKookitConfig("chapterTitle") ||
         this.chapterDocList[0].title;
       let chapterIndex =
         _.findIndex(this.chapterDocList, {
@@ -49,10 +49,10 @@ class StrRender {
       window.frames[0].document.body.innerHTML = this.chapterDocList[
         chapterIndex
       ].text;
-      StorageUtil.setReaderConfig("chapterTitle", chapterTitle);
+      StorageUtil.setKookitConfig("chapterTitle", chapterTitle);
       handleIframeHeight(element, this.mode);
-      handleImageSize(this.mode);
-      handleScrollTop(element);
+      handleImageSize(this.element, this.mode);
+      handleScrollPosition(element, this.mode);
       bindEvent(element, this.chapterList, this.chapterDocList, this.mode);
       resolve();
     });
@@ -63,6 +63,15 @@ class StrRender {
 
   goToChapter(title: string) {
     handleRenderChatper(title, this.chapterDocList, this.element, this.mode);
+  }
+  goToPosition(text: string, chapterTitle: string, count: string) {
+    handleRenderChatper(
+      chapterTitle,
+      this.chapterDocList,
+      this.element,
+      this.mode
+    );
+    handleScrollPosition(this.element, this.mode, text, count);
   }
 }
 export default StrRender;

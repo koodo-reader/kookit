@@ -1,12 +1,13 @@
 class StorageUtil {
-  static getReaderConfig(key: string) {
-    let readerConfig = JSON.parse(localStorage.getItem("kookitConfig")!) || {};
-    return readerConfig[key];
+  static getKookitConfig(key: string) {
+    let kookitConfig = JSON.parse(localStorage.getItem("kookitConfig")!) || {};
+    return kookitConfig[key];
   }
-  static setReaderConfig(key: string, value: string) {
-    let readerConfig = JSON.parse(localStorage.getItem("kookitConfig")!) || {};
-    readerConfig[key] = value;
-    localStorage.setItem("kookitConfig", JSON.stringify(readerConfig));
+
+  static setKookitConfig(key: string, value: string) {
+    let kookitConfig = JSON.parse(localStorage.getItem("kookitConfig")!) || {};
+    kookitConfig[key] = value;
+    localStorage.setItem("kookitConfig", JSON.stringify(kookitConfig));
   }
 }
 
