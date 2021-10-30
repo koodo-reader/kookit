@@ -7,8 +7,11 @@ import {
   createIframe,
   handleIframeHeight,
   handleLayout,
+  handlePrevChapter,
   handleRenderChatper,
+  handleScrollPage,
   handleScrollPosition,
+  handleTurnChapter,
 } from "./utils/layoutUtil";
 import StorageUtil from "./utils/storageUtil";
 import txtParser from "./utils/txtParser";
@@ -59,7 +62,10 @@ class TxtRender {
       window.frames[0].document.body.innerHTML = this.chapterDocList[
         chapterIndex
       ].text;
-      StorageUtil.setKookitConfig("chapterTitle", chapterTitle);
+      StorageUtil.setKookitConfig(
+        "chapterTitle",
+        this.chapterDocList[chapterIndex].title
+      );
       handleLayout(element, this.mode);
       handleIframeHeight(element, this.mode);
       handleScrollPosition(element, this.mode);
@@ -81,6 +87,61 @@ class TxtRender {
       this.mode
     );
     handleScrollPosition(this.element, this.mode, text, count);
+  }
+  prevPage() {
+    if (window.frames[0].document.body.scrollLeft === 0) {
+      handlePrevChapter(
+        this.element,
+        this.chapterList,
+        this.chapterDocList,
+        this.mode
+      );
+    } else {
+      handleScrollPage(
+        this.element,
+        this.chapterList,
+        this.chapterDocList,
+        this.mode,
+        1
+      );
+    }
+  }
+  nextPage() {
+    if (
+      Math.abs(
+        window.frames[0].document.body.scrollWidth -
+          window.frames[0].document.body.scrollLeft -
+          window.frames[0].document.body.clientWidth
+      ) < 10
+    ) {
+      handleTurnChapter(
+        this.element,
+        this.chapterList,
+        this.chapterDocList,
+        this.mode
+      );
+    } else {
+      handleScrollPage(
+        this.element,
+        this.chapterList,
+        this.chapterDocList,
+        this.mode,
+        -1
+      );
+    }
+  }
+  getPosition() {
+    return {
+      text: StorageUtil.getKookitConfig("text"),
+      chapterTitle: StorageUtil.getKookitConfig("chapterTitle"),
+      count: StorageUtil.getKookitConfig("count"),
+    };
+  }
+  setStyle(css: string) {
+    window.frames[0].document.body.setAttribute(
+      "style",
+      css + window.frames[0].document.body.getAttribute("style")
+    );
   }
 }
 

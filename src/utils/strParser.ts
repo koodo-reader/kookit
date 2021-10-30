@@ -103,7 +103,6 @@ class StrParser {
     let chapterStrList: string[] = this.bookDoc.body.innerHTML.split(
       "<address> </address>"
     );
-
     for (let i = 0; i < chapterStrList.length; i++) {
       if (chapterStrList.length === this.chapterList.length) {
         this.chapterDocList.push({

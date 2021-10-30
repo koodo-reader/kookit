@@ -30,7 +30,9 @@ class MobiParser {
         tempChapter += tempChapterList[i];
       }
     }
-
+    if (chapterList.length === 0) {
+      chapterList.push(tempChapter);
+    }
     for (let i = 0; i < chapterList.length; i++) {
       let chapterDoc = new DOMParser().parseFromString(
         chapterList[i],

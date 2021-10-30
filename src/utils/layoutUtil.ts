@@ -12,7 +12,6 @@ export const isScrolledIntoView = (
   var rect = el.getBoundingClientRect();
   if (mode !== "continuous" && el.innerText.trim()) {
     let elemLeft = rect.left;
-
     isVisible = elemLeft >= 0 && elemLeft <= element.offsetWidth;
   } else if (el.innerText.trim()) {
     let elemTop = rect.top;
@@ -20,7 +19,6 @@ export const isScrolledIntoView = (
       elemTop >= element.scrollTop &&
       elemTop <= element.scrollTop + element.offsetHeight;
   }
-
   return isVisible;
 };
 export const handleIframeHeight = (element: HTMLElement, mode: string) => {
@@ -115,6 +113,7 @@ export const createIframe = (element: HTMLElement) => {
   iframe.style.fontSize = "100%";
   iframe.style.font = "inherit";
   iframe.style.verticalAlign = "baseline";
+  element.innerHTML = "";
   element.appendChild(iframe);
 };
 export const bindEvent = (
@@ -133,7 +132,13 @@ export const bindEvent = (
       "DOMMouseScroll",
       (event) => {
         if (mode !== "continuous") {
-          handleScrollPage(element, (event as any).detail);
+          handleScrollPage(
+            element,
+            chapterList,
+            chapterDocList,
+            mode,
+            (event as any).detail
+          );
         }
         handleRecord(element, mode);
         handleTurnChapter(element, chapterList, chapterDocList, mode);
@@ -145,7 +150,13 @@ export const bindEvent = (
       "mousewheel",
       (event) => {
         if (mode !== "continuous") {
-          handleScrollPage(element, (event as any).wheelDelta);
+          handleScrollPage(
+            element,
+            chapterList,
+            chapterDocList,
+            mode,
+            (event as any).wheelDelta
+          );
         }
         handleRecord(element, mode);
         handleTurnChapter(element, chapterList, chapterDocList, mode);
@@ -173,10 +184,9 @@ export const handleTurnChapter = (
     let chapterIndex = _.findIndex(chapterList, {
       label: chapterTitle,
     });
-    if (chapterIndex === chapterList.length - 1) {
+    if (chapterIndex === chapterList.length - 1 || chapterIndex === -1) {
       return;
     }
-    chapterIndex = chapterIndex === -1 ? 0 : chapterIndex;
     StorageUtil.setKookitConfig(
       "chapterTitle",
       chapterList[chapterIndex + 1].label
@@ -187,16 +197,20 @@ export const handleTurnChapter = (
       element,
       mode
     );
-    handleIframeHeight(element, mode);
-    handleScrollPosition(element, mode);
-    handleImageSize(element, mode);
   }
 };
 export const handleRecord = (element: HTMLElement, mode: string) => {
   if (lock) return;
   let visibleNode = Array.from(
     window.frames[0].document.body.getElementsByTagName("*")
-  ).filter((s) => isScrolledIntoView(element, s as any, mode));
+  ).filter(
+    (s) =>
+      isScrolledIntoView(element, s as any, mode) &&
+      (s as HTMLElement).innerText.trim() &&
+      s.tagName !== "A" &&
+      s.tagName !== "SPAN"
+  );
+
   let firstVisibleNode = visibleNode[0] as HTMLElement;
   let count = 0;
   let nodeList = Array.from(
@@ -236,7 +250,8 @@ export const handleImageSize = (element: HTMLElement, mode: string) => {
   for (let item of imgs) {
     if (item.width && item.height) {
       let isImageScaleLargerThanElement =
-        item.height / item.width > element.offsetHeight / element.offsetWidth;
+        item.height / item.width >
+        element.offsetHeight / ((element.offsetWidth - 88) / scale);
       if (isImageScaleLargerThanElement) {
         maxHeight = element.offsetHeight;
         maxWidth = (maxHeight * item.width) / item.height;
@@ -244,6 +259,9 @@ export const handleImageSize = (element: HTMLElement, mode: string) => {
         maxWidth = (element.offsetWidth - 88) / scale;
         maxHeight = (maxWidth * item.height) / item.width;
       }
+    } else {
+      maxWidth = (element.offsetWidth - 88) / scale;
+      maxHeight = element.offsetHeight;
     }
 
     item.setAttribute(
@@ -335,11 +353,42 @@ export const handleLayout = (element: HTMLElement, mode: string) => {
     column-width: ${(element.offsetWidth - 88) / scale}px;`
   );
 };
-export const handleScrollPage = (element: HTMLElement, delta: number) => {
-  console.log(window.frames[0].document.body.scrollLeft);
+export const handleScrollPage = (
+  element: HTMLElement,
+  chapterList: Chapter[],
+  chapterDocList: ChapterDoc[],
+  mode: string,
+  delta: number
+) => {
   if (delta > 0 && window.frames[0].document.body.scrollLeft > 0) {
     window.frames[0].document.body.scrollLeft -= element.offsetWidth + 88;
+  } else if (delta > 0 && window.frames[0].document.body.scrollLeft === 0) {
+    handlePrevChapter(element, chapterList, chapterDocList, mode);
   } else if (delta < 0) {
     window.frames[0].document.body.scrollLeft += element.offsetWidth + 88;
   }
+};
+export const handlePrevChapter = (
+  element: HTMLElement,
+  chapterList: Chapter[],
+  chapterDocList: ChapterDoc[],
+  mode: string
+) => {
+  let chapterTitle = StorageUtil.getKookitConfig("chapterTitle");
+  let chapterIndex = _.findIndex(chapterList, {
+    label: chapterTitle,
+  });
+  if (chapterIndex === 0 || chapterIndex === -1) {
+    return;
+  }
+  StorageUtil.setKookitConfig(
+    "chapterTitle",
+    chapterList[chapterIndex - 1].label
+  );
+  handleRenderChatper(
+    chapterList[chapterIndex - 1].label,
+    chapterDocList,
+    element,
+    mode
+  );
 };

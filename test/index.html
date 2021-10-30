@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="./index.css" />
     <script src="../dist/kookit.umd.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/localforage/1.9.0/localforage.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/mammoth/1.4.17/mammoth.browser.js"></script>
     <title>Kookit - Koodo Reader</title>
   </head>
   <body>
@@ -29,24 +30,31 @@
         },
         false
       );
-      localforage.getItem("book").then(async (result) => {
-        const { MobiRender } = Kookit;
-        let rendition = new MobiRender(result, "single");
-        await rendition.renderTo(
-          document.getElementsByClassName("ebook-viewer")[0]
-        );
-        console.log(rendition.getChapter());
-        rendition.getChapter().forEach((item) => {
-          let li = document.createElement("li");
-          li.innerText =
-            item.label.indexOf("#") > 0 ? item.label.split("#")[0] : item.label;
-          li.addEventListener("click", (e) => {
-            e.preventDefault();
-            rendition.goToChapter(item.label);
+      const renderFunc = async () => {
+        localforage.getItem("book").then(async (result) => {
+          const { Azw3Render } = Kookit;
+          let rendition = new Azw3Render(result, "continuous");
+          await rendition.renderTo(
+            document.getElementsByClassName("ebook-viewer")[0]
+          );
+          // rendition.setStyle("");
+          console.log(rendition.getChapter());
+          rendition.getChapter().forEach((item) => {
+            let li = document.createElement("li");
+            li.innerText =
+              item.label.indexOf("#") > 0
+                ? item.label.split("#")[0]
+                : item.label;
+            li.addEventListener("click", (e) => {
+              e.preventDefault();
+              rendition.goToChapter(item.label);
+            });
+            document.getElementsByClassName("content")[0].appendChild(li);
           });
-          document.getElementsByClassName("content")[0].appendChild(li);
         });
-      });
+      };
+      renderFunc();
+      window.addEventListener("resize", renderFunc);
     </script>
   </body>
 </html>
