@@ -2,18 +2,17 @@ import _ from "underscore";
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDom";
 import { excuteCode, txtToHtml } from "./utils/htmlUtil";
+import { createIframe, handleLayout } from "./utils/layoutUtil";
+import StorageUtil from "./utils/storageUtil";
 import {
-  bindEvent,
-  createIframe,
-  handleIframeHeight,
-  handleLayout,
+  handleNextChapter,
   handlePrevChapter,
+  handleRecord,
   handleRenderChatper,
   handleScrollPage,
   handleScrollPosition,
   handleTurnChapter,
-} from "./utils/layoutUtil";
-import StorageUtil from "./utils/storageUtil";
+} from "./utils/navigationUtil";
 import txtParser from "./utils/txtParser";
 class TxtRender {
   txtBuffer: ArrayBuffer;
@@ -49,27 +48,15 @@ class TxtRender {
       let chapterTitle =
         StorageUtil.getKookitConfig("chapterTitle") ||
         this.chapterDocList[0].title;
-      let chapterIndex =
-        _.findIndex(this.chapterDocList, {
-          title: chapterTitle,
-        }) === -1
-          ? 0
-          : _.findIndex(this.chapterDocList, {
-              title: chapterTitle,
-            });
-
       createIframe(element);
-      window.frames[0].document.body.innerHTML = this.chapterDocList[
-        chapterIndex
-      ].text;
-      StorageUtil.setKookitConfig(
-        "chapterTitle",
-        this.chapterDocList[chapterIndex].title
-      );
+
       handleLayout(element, this.mode);
-      handleIframeHeight(element, this.mode);
-      handleScrollPosition(element, this.mode);
-      bindEvent(element, this.chapterList, this.chapterDocList, this.mode);
+      handleRenderChatper(
+        chapterTitle,
+        this.chapterDocList,
+        this.element,
+        this.mode
+      );
       resolve();
     });
   }
@@ -88,8 +75,14 @@ class TxtRender {
     );
     handleScrollPosition(this.element, this.mode, text, count);
   }
-  prevPage() {
-    if (window.frames[0].document.body.scrollLeft === 0) {
+  record() {
+    handleRecord(this.element, this.mode);
+  }
+  prev() {
+    if (
+      this.mode === "scroll" ||
+      window.frames[0].document.body.scrollLeft === 0
+    ) {
       handlePrevChapter(
         this.element,
         this.chapterList,
@@ -105,16 +98,18 @@ class TxtRender {
         1
       );
     }
+    handleRecord(this.element, this.mode);
   }
-  nextPage() {
+  next() {
     if (
       Math.abs(
         window.frames[0].document.body.scrollWidth -
           window.frames[0].document.body.scrollLeft -
           window.frames[0].document.body.clientWidth
-      ) < 10
+      ) < 10 ||
+      this.mode === "scroll"
     ) {
-      handleTurnChapter(
+      handleNextChapter(
         this.element,
         this.chapterList,
         this.chapterDocList,
@@ -129,6 +124,7 @@ class TxtRender {
         -1
       );
     }
+    handleRecord(this.element, this.mode);
   }
   getPosition() {
     return {

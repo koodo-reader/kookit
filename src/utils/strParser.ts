@@ -81,7 +81,7 @@ class StrParser {
 
     if (this.chapterDomList.length === 0) {
       this.chapterDomList = Array.from(
-        this.bookDoc.querySelectorAll("p")
+        this.bookDoc.getElementsByTagName("p")
       ).filter((item) => {
         if (
           !isStartWithKeyword &&
@@ -104,24 +104,19 @@ class StrParser {
       "<address> </address>"
     );
     for (let i = 0; i < chapterStrList.length; i++) {
-      if (chapterStrList.length === this.chapterList.length) {
-        this.chapterDocList.push({
-          title: this.chapterList[i].label,
-          text: chapterStrList[i] || this.bookStr,
+      if (chapterStrList.length > this.chapterList.length && i === 0) {
+        let random = Math.floor(Math.random() * 900000) + 100000;
+        this.chapterList.unshift({
+          label: "Forword" + "#" + i,
+          id: "title" + random,
+          href: "#title" + random,
+          subitems: [],
         });
-      } else {
-        if (i === 0) {
-          this.chapterDocList.push({
-            title: "Forword",
-            text: chapterStrList[i] || this.bookStr,
-          });
-        } else {
-          this.chapterDocList.push({
-            title: this.chapterList[i - 1].label,
-            text: chapterStrList[i],
-          });
-        }
       }
+      this.chapterDocList.push({
+        title: this.chapterList[i].label,
+        text: chapterStrList[i],
+      });
     }
     return this.chapterDocList;
   }

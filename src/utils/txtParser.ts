@@ -14,7 +14,7 @@ class TxtParser {
   getChapter() {
     let titleList: string[] = [];
     this.chapterDomList = Array.from(
-      this.bookDoc.querySelectorAll("h1")
+      this.bookDoc.getElementsByTagName("h1")
     ) as HTMLElement[];
     for (let i = 0; i < this.chapterDomList.length; i++) {
       let random = Math.floor(Math.random() * 900000) + 100000;
@@ -53,25 +53,22 @@ class TxtParser {
     let chapterStrList: string[] = this.bookDoc.body.innerHTML.split(
       "<span>pagebreak</span>"
     );
-    let chapterObj: { title: string; text: string }[] = [];
     for (let i = 0; i < chapterStrList.length; i++) {
-      if (chapterStrList.length === this.chapterList.length) {
-        chapterObj.push({
-          title: this.chapterList[i].label,
-          text: chapterStrList[i],
+      if (chapterStrList.length > this.chapterList.length && i === 0) {
+        let random = Math.floor(Math.random() * 900000) + 100000;
+        this.chapterList.unshift({
+          label: "Forword" + "#" + i,
+          id: "title" + random,
+          href: "#title" + random,
+          subitems: [],
         });
-      } else {
-        if (i === 0) {
-          chapterObj.push({ title: "Forword", text: chapterStrList[i] });
-        } else {
-          chapterObj.push({
-            title: this.chapterList[i - 1].label,
-            text: chapterStrList[i],
-          });
-        }
       }
+      this.chapterDocList.push({
+        title: this.chapterList[i].label,
+        text: chapterStrList[i],
+      });
     }
-    return chapterObj;
+    return this.chapterDocList;
   }
 }
 

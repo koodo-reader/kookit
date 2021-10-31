@@ -9,6 +9,9 @@ class StorageUtil {
     kookitConfig[key] = value;
     localStorage.setItem("kookitConfig", JSON.stringify(kookitConfig));
   }
+  static removeKookitConfig() {
+    localStorage.removeItem("kookitConfig");
+  }
 }
 
 export default StorageUtil;

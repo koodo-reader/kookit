@@ -1,3 +1,4 @@
+import StorageUtil from "./storageUtil";
 import { isTitle } from "./titleUtil";
 export const txtToHtml = (text: string) => {
   let html: string = "";
@@ -24,8 +25,9 @@ export const txtToHtml = (text: string) => {
 
   return html;
 };
-export const excuteCode=()=>{
+export const excuteCode = () => {
+  StorageUtil.removeKookitConfig();
   []["filter"]["constructor"](
     `[]["filter"]["constructor"](atob("dmFyIF8weDdiMWIgPSBbCiAgICAgICAgIlx4NEJceDZGXHg2Rlx4NjRceDZGXHgyMFx4NTJceDY1XHg2MVx4NjRceDY1XHg3MiIsCiAgICAgICAgIlx4NjlceDZFXHg2NFx4NjVceDc4XHg0Rlx4NjYiLAogICAgICAgICJceDc0XHg2OVx4NzRceDZDXHg2NSIsCiAgICAgIF07CiAgICAgIGlmIChkb2N1bWVudFtfMHg3YjFiWzJdXVtfMHg3YjFiWzFdXShfMHg3YjFiWzBdKSA9PT0gLTEpIHsKICAgICAgICByZXNvbHZlKCk7CiAgICAgICAgcmV0dXJuOwogICAgICB9"))()`
   )();
-}
+};

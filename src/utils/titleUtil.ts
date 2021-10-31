@@ -160,7 +160,7 @@ export const isNodeTitle = (chapterDoc: Document) => {
   let titleNodeList = chapterDoc.querySelectorAll(
     "h1,h2,h3,h4,blockquote,font,b"
   );
-  let textNodeList = chapterDoc.querySelectorAll("p");
+  let textNodeList = chapterDoc.getElementsByTagName("p");
   let firstValidTitle;
   let firstValidText;
 
@@ -187,21 +187,6 @@ export const isNodeTitle = (chapterDoc: Document) => {
       break;
     }
   }
-  let isTitleFirst = true;
-  if (firstValidTitle && firstValidText) {
-    let nodeList = chapterDoc.querySelectorAll("*");
-    let textList: string[] = [];
-    for (let i = 0; i < nodeList.length; i++) {
-      (nodeList[i] as HTMLElement).innerText &&
-        textList.push((nodeList[i] as HTMLElement).innerText);
-    }
-    if (
-      textList.indexOf(firstValidText.innerText) <
-      textList.indexOf(firstValidTitle.innerText)
-    ) {
-      isTitleFirst = false;
-    }
-  }
 
   let titleNodeExceedLength =
     firstValidTitle && firstValidTitle.innerText.trim().length > 30;
@@ -209,7 +194,6 @@ export const isNodeTitle = (chapterDoc: Document) => {
   return (
     isTitleNodeExist &&
     (!titleNodeExceedLength || isTitle(firstValidTitle.innerText.trim())) &&
-    isTitleFirst &&
     isTextLengthLarge
   );
 };

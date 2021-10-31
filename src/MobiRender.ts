@@ -2,19 +2,17 @@ import KindleParser from "./utils/kindleParser";
 import _ from "underscore";
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDom";
+import { createIframe, handleLayout } from "./utils/layoutUtil";
+import StorageUtil from "./utils/storageUtil";
 import {
-  bindEvent,
-  createIframe,
-  handleIframeHeight,
-  handleImageSize,
-  handleLayout,
+  handleNextChapter,
   handlePrevChapter,
+  handleRecord,
   handleRenderChatper,
   handleScrollPage,
   handleScrollPosition,
   handleTurnChapter,
-} from "./utils/layoutUtil";
-import StorageUtil from "./utils/storageUtil";
+} from "./utils/navigationUtil";
 import MobiParser from "./utils/mobiParser";
 import { excuteCode } from "./utils/htmlUtil";
 class MobiRender {
@@ -46,29 +44,16 @@ class MobiRender {
       let chapterTitle =
         StorageUtil.getKookitConfig("chapterTitle") ||
         this.chapterDocList[0].title;
-      let chapterIndex =
-        _.findIndex(this.chapterDocList, {
-          title: chapterTitle,
-        }) === -1
-          ? 0
-          : _.findIndex(this.chapterDocList, {
-              title: chapterTitle,
-            });
 
       createIframe(element);
-      window.frames[0].document.body.innerHTML = this.chapterDocList[
-        chapterIndex
-      ].text;
-      StorageUtil.setKookitConfig(
-        "chapterTitle",
-        this.chapterDocList[chapterIndex].title
-      );
-      handleLayout(element, this.mode);
-      handleIframeHeight(element, this.mode);
 
-      handleImageSize(this.element, this.mode);
-      handleScrollPosition(element, this.mode);
-      bindEvent(element, this.chapterList, this.chapterDocList, this.mode);
+      handleLayout(element, this.mode);
+      handleRenderChatper(
+        chapterTitle,
+        this.chapterDocList,
+        this.element,
+        this.mode
+      );
       resolve();
     });
   }
@@ -87,8 +72,11 @@ class MobiRender {
     );
     handleScrollPosition(this.element, this.mode, text, count);
   }
-  prevPage() {
-    if (window.frames[0].document.body.scrollLeft === 0) {
+  prev() {
+    if (
+      this.mode === "scroll" ||
+      window.frames[0].document.body.scrollLeft === 0
+    ) {
       handlePrevChapter(
         this.element,
         this.chapterList,
@@ -104,16 +92,18 @@ class MobiRender {
         1
       );
     }
+    handleRecord(this.element, this.mode);
   }
-  nextPage() {
+  next() {
     if (
       Math.abs(
         window.frames[0].document.body.scrollWidth -
           window.frames[0].document.body.scrollLeft -
           window.frames[0].document.body.clientWidth
-      ) < 10
+      ) < 10 ||
+      this.mode === "scroll"
     ) {
-      handleTurnChapter(
+      handleNextChapter(
         this.element,
         this.chapterList,
         this.chapterDocList,
@@ -128,6 +118,10 @@ class MobiRender {
         -1
       );
     }
+    handleRecord(this.element, this.mode);
+  }
+  record() {
+    handleRecord(this.element, this.mode);
   }
   getPosition() {
     return {

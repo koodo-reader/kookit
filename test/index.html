@@ -12,8 +12,16 @@
   <body>
     <input type="file" id="yourFile" />
     <div class="ebook-viewer"></div>
+    <div class="next">Next</div>
+    <div class="prev">Prev</div>
     <ul class="content"></ul>
     <script>
+      const handleNext = () => {
+        rendition.next();
+      };
+      const handlePrev = () => {
+        rendition.prev();
+      };
       var fileToRead = document.getElementById("yourFile");
       fileToRead.addEventListener(
         "change",
@@ -30,15 +38,26 @@
         },
         false
       );
+
       const renderFunc = async () => {
         localforage.getItem("book").then(async (result) => {
-          const { Azw3Render } = Kookit;
-          let rendition = new Azw3Render(result, "continuous");
+          const { MobiRender } = Kookit;
+          let rendition = new MobiRender(result, "scroll");
           await rendition.renderTo(
             document.getElementsByClassName("ebook-viewer")[0]
           );
-          // rendition.setStyle("");
           console.log(rendition.getChapter());
+          document
+            .getElementsByClassName("next")[0]
+            .addEventListener("click", () => {
+              rendition.next();
+            });
+          document
+            .getElementsByClassName("prev")[0]
+            .addEventListener("click", () => {
+              rendition.prev();
+            });
+
           rendition.getChapter().forEach((item) => {
             let li = document.createElement("li");
             li.innerText =
