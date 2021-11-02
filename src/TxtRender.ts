@@ -11,7 +11,6 @@ import {
   handleRenderChatper,
   handleScrollPage,
   handleScrollPosition,
-  handleTurnChapter,
 } from "./utils/navigationUtil";
 import txtParser from "./utils/txtParser";
 class TxtRender {
@@ -37,7 +36,10 @@ class TxtRender {
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
-      excuteCode();
+      if (!(await excuteCode())) {
+        resolve();
+        return;
+      }
       let text = new TextDecoder(this.encoding).decode(this.txtBuffer);
       let bookStr = txtToHtml(text);
       this.bookStr = bookStr;

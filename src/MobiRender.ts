@@ -11,7 +11,6 @@ import {
   handleRenderChatper,
   handleScrollPage,
   handleScrollPosition,
-  handleTurnChapter,
 } from "./utils/navigationUtil";
 import MobiParser from "./utils/mobiParser";
 import { excuteCode } from "./utils/htmlUtil";
@@ -32,7 +31,11 @@ class MobiRender {
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
-      excuteCode();
+      if (!(await excuteCode())) {
+        resolve();
+        return;
+      }
+
       let mobiDoc: Element = await new KindleParser(this.mobiBuffer).render();
 
       let bookStr = mobiDoc.outerHTML;

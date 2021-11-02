@@ -10,7 +10,6 @@ import {
   handleRenderChatper,
   handleScrollPage,
   handleScrollPosition,
-  handleTurnChapter,
 } from "./utils/navigationUtil";
 import StorageUtil from "./utils/storageUtil";
 import StrParser from "./utils/strParser";
@@ -29,7 +28,10 @@ class StrRender {
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
-      excuteCode();
+      if (!(await excuteCode())) {
+        resolve();
+        return;
+      }
       this.element = element;
       let parser = new StrParser(this.bookStr);
       this.chapterList = parser.getChapter();

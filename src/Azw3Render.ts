@@ -10,7 +10,6 @@ import {
   handleRenderChatper,
   handleScrollPage,
   handleScrollPosition,
-  handleTurnChapter,
 } from "./utils/navigationUtil";
 import StorageUtil from "./utils/storageUtil";
 import StrParser from "./utils/strParser";
@@ -32,7 +31,10 @@ class Azw3Render {
   }
   async renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
-      excuteCode();
+      if (!(await excuteCode())) {
+        resolve();
+        return;
+      }
       let mobiDoc: Element = await new KindleParser(this.azw3Buffer).render();
       let bookStr = mobiDoc.outerHTML;
       this.bookStr = bookStr;

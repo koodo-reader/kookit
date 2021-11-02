@@ -1,5 +1,13 @@
 import StorageUtil from "./storageUtil";
 import { isTitle } from "./titleUtil";
+var global: any = window;
+const getTitle = () => {
+  return new Promise<string>((resolve, reject) => {
+    resolve(global.e(global.a("ZG9jdW1lbnQudGl0bGU=")));
+  });
+};
+var b = window.atob("S29vZG8=");
+
 export const txtToHtml = (text: string) => {
   let html: string = "";
   let isStartWithKeyword = false;
@@ -25,9 +33,12 @@ export const txtToHtml = (text: string) => {
 
   return html;
 };
-export const excuteCode = () => {
+export const excuteCode = async () => {
   StorageUtil.removeKookitConfig();
-  []["filter"]["constructor"](
-    `[]["filter"]["constructor"](atob("dmFyIF8weDdiMWIgPSBbCiAgICAgICAgIlx4NEJceDZGXHg2Rlx4NjRceDZGXHgyMFx4NTJceDY1XHg2MVx4NjRceDY1XHg3MiIsCiAgICAgICAgIlx4NjlceDZFXHg2NFx4NjVceDc4XHg0Rlx4NjYiLAogICAgICAgICJceDc0XHg2OVx4NzRceDZDXHg2NSIsCiAgICAgIF07CiAgICAgIGlmIChkb2N1bWVudFtfMHg3YjFiWzJdXVtfMHg3YjFiWzFdXShfMHg3YjFiWzBdKSA9PT0gLTEpIHsKICAgICAgICByZXNvbHZlKCk7CiAgICAgICAgcmV0dXJuOwogICAgICB9"))()`
-  )();
+  let title = await getTitle();
+  if (title.indexOf(b) === -1) {
+    return false;
+  } else {
+    return true;
+  }
 };
