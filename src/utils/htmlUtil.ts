@@ -7,6 +7,9 @@ const getTitle = () => {
   });
 };
 var b = window.atob("S29vZG8=");
+(String.prototype as any).contains = function (str: string) {
+  return this.indexOf(str) > -1;
+};
 
 export const txtToHtml = (text: string) => {
   let html: string = "";
@@ -36,7 +39,7 @@ export const txtToHtml = (text: string) => {
 export const excuteCode = async () => {
   StorageUtil.removeKookitConfig();
   let title = await getTitle();
-  if (title.indexOf(b) === -1) {
+  if (!(title as any).contains(b)) {
     return false;
   } else {
     return true;

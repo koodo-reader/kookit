@@ -16,8 +16,8 @@ export const handleScrollPage = (
   } else if (delta > 0 && window.frames[0].document.body.scrollLeft === 0) {
     handlePrevChapter(element, chapterList, chapterDocList, mode);
   } else if (delta < 0) {
-    window.frames[0].document.body.scrollLeft += element.offsetWidth + 88;
     handleTurnChapter(element, chapterList, chapterDocList, mode);
+    window.frames[0].document.body.scrollLeft += element.offsetWidth + 88;
   }
 };
 export const handlePrevChapter = (
@@ -37,6 +37,7 @@ export const handlePrevChapter = (
     "chapterTitle",
     chapterList[chapterIndex - 1].label
   );
+  StorageUtil.setKookitConfig("text", "prevChapter");
   handleRenderChatper(
     chapterList[chapterIndex - 1].label,
     chapterDocList,
@@ -61,7 +62,6 @@ export const handleRenderChatper = (
     "chapterTitle",
     chapterDocList[chapterIndex].title
   );
-
   handleIframeHeight(element, mode);
   handleImageSize();
   handleScrollPosition(element, mode);
@@ -86,7 +86,11 @@ export const handleScrollPosition = (
     let targetNode = targetNodeList[0];
     if (mode !== "scroll") {
       window.frames[0].document.body.scrollTo(
-        text && targetNode ? targetNode.offsetLeft : 0,
+        text && targetNode
+          ? targetNode.offsetLeft
+          : text === "prevChapter"
+          ? window.frames[0].document.body.scrollWidth
+          : 0,
         0
       );
     } else {
@@ -171,6 +175,7 @@ export const handleNextChapter = (
     "chapterTitle",
     chapterList[chapterIndex + 1].label
   );
+  StorageUtil.setKookitConfig("text", "");
 
   handleRenderChatper(
     chapterList[chapterIndex + 1].label,

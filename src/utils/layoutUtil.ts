@@ -83,6 +83,7 @@ export const handleIframeHeight = (element: HTMLElement, mode: string) => {
       (lastEle.nodeType === 3 ? nodeHeight : 0);
   }, 500);
 };
+
 export const createIframe = (element: HTMLElement) => {
   var iframe = document.createElement("iframe");
   iframe.style.width = "100%";
@@ -138,7 +139,7 @@ export const handleLayout = (element: HTMLElement, mode: string) => {
     `width: auto;
     height: 100%;
     overflow-y: hidden;
-    overflow-X: hidden;
+    overflow-X: scroll;
     padding-left: 0px;
     padding-right: 0px;
     margin: 0px !important;

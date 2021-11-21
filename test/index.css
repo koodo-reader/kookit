@@ -5,7 +5,7 @@
   top: 50px;
   bottom: 20px;
   z-index: 5;
-  overflow-y: scroll;
+  /* overflow-y: scroll; */
 }
 ::-webkit-scrollbar-thumb,
 ::-webkit-scrollbar-thumb:hover {

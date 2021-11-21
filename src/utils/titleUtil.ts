@@ -12,12 +12,20 @@ let keywords = [
   "话",
   "篇",
 ];
+(String.prototype as any).contains = function (str: string) {
+  return this.indexOf(str) > -1;
+};
 export const isTitle = (line: string, isStartWithKeyword: boolean = false) => {
   return (
     line &&
     line.indexOf("[") === -1 &&
     line.indexOf("(") === -1 &&
     line.indexOf("。") === -1 &&
+    line.indexOf("“") === -1 &&
+    line.indexOf("‘") === -1 &&
+    line.indexOf("；") === -1 &&
+    line.indexOf(";") === -1 &&
+    line.indexOf("…") === -1 &&
     (line.startsWith("CHAPTER") ||
       line.startsWith("Chapter") ||
       line.startsWith("序章") ||
@@ -65,6 +73,7 @@ export const startWithDI = (line: string) => {
           line[line.indexOf(keywords[i]) + 1] === "　" ||
           line[line.indexOf(keywords[i]) + 1] === "、" ||
           line[line.indexOf(keywords[i]) + 1] === "：" ||
+          line.indexOf("章") > -1 ||
           line[line.indexOf(keywords[i]) + 1] === ":")) ||
       !line[line.indexOf(keywords[i]) + 1]
     ) {
