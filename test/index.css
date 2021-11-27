@@ -27,7 +27,7 @@
   opacity: 0.5;
 }
 .content {
-  position: absolute;
+  position: fixed;
   left: 0px;
   top: 50px;
   width: 250px;
@@ -36,4 +36,14 @@
 }
 li {
   cursor: pointer;
+}
+.next,
+.prev {
+  position: fixed;
+}
+.next {
+  left: 200px;
+}
+.prev {
+  left: 10px;
 }

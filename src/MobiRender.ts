@@ -14,7 +14,8 @@ import {
 } from "./utils/navigationUtil";
 import MobiParser from "./utils/mobiParser";
 import { excuteCode } from "./utils/htmlUtil";
-class MobiRender {
+import EventEmitter from "./utils/EventEmitter";
+class MobiRender extends EventEmitter {
   mobiBuffer: ArrayBuffer;
   mode: string;
   bookStr: string;
@@ -22,6 +23,7 @@ class MobiRender {
   chapterDocList: ChapterDoc[];
   element: any;
   constructor(mobiBuffer: ArrayBuffer, mode: string) {
+    super();
     this.mobiBuffer = mobiBuffer;
     this.mode = mode;
     this.chapterList = [];
@@ -57,6 +59,7 @@ class MobiRender {
         this.element,
         this.mode
       );
+      this.trigger("rendered");
       resolve();
     });
   }

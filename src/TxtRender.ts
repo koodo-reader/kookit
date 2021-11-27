@@ -13,7 +13,8 @@ import {
   handleScrollPosition,
 } from "./utils/navigationUtil";
 import txtParser from "./utils/txtParser";
-class TxtRender {
+import EventEmitter from "./utils/EventEmitter";
+class TxtRender extends EventEmitter {
   txtBuffer: ArrayBuffer;
   encoding: string;
   bookStr: string;
@@ -26,6 +27,7 @@ class TxtRender {
     mode: string,
     encoding: string = "utf-8"
   ) {
+    super();
     this.txtBuffer = txtBuffer;
     this.encoding = encoding;
     this.mode = mode;
@@ -59,6 +61,7 @@ class TxtRender {
         this.element,
         this.mode
       );
+      this.trigger("rendered");
       resolve();
     });
   }
@@ -77,6 +80,7 @@ class TxtRender {
     );
     handleScrollPosition(this.element, this.mode, text, count);
   }
+
   record() {
     handleRecord(this.element, this.mode);
   }

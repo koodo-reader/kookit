@@ -12,20 +12,21 @@ let keywords = [
   "话",
   "篇",
 ];
-(String.prototype as any).contains = function (str: string) {
+String.prototype.contains = function (str) {
   return this.indexOf(str) > -1;
 };
-export const isTitle = (line: string, isStartWithKeyword: boolean = false) => {
+
+export const isTitle = (line, isStartWithKeyword = false) => {
   return (
     line &&
-    line.indexOf("[") === -1 &&
-    line.indexOf("(") === -1 &&
-    line.indexOf("。") === -1 &&
-    line.indexOf("“") === -1 &&
-    line.indexOf("‘") === -1 &&
-    line.indexOf("；") === -1 &&
-    line.indexOf(";") === -1 &&
-    line.indexOf("…") === -1 &&
+    !line.contains("[") &&
+    !line.contains("(") &&
+    !line.contains("。") &&
+    !line.contains("“") &&
+    !line.contains("‘") &&
+    !line.contains("；") &&
+    !line.contains(";") &&
+    !line.contains("…") &&
     (line.startsWith("CHAPTER") ||
       line.startsWith("Chapter") ||
       line.startsWith("序章") ||
@@ -42,7 +43,7 @@ export const isTitle = (line: string, isStartWithKeyword: boolean = false) => {
       (line.startsWith("第") && startWithDI(line)) ||
       (line.startsWith("卷") && startWithJUAN(line)) ||
       (!isStartWithKeyword &&
-        line.indexOf("第") > -1 &&
+        line.contains("第") &&
         (line[line.indexOf("第") - 1] === " " ||
           line[line.indexOf("第") - 1] === "　" ||
           line[line.indexOf("第") - 1] === "、" ||
@@ -64,7 +65,7 @@ export const isTitle = (line: string, isStartWithKeyword: boolean = false) => {
       (!isStartWithKeyword && line.indexOf(":") && startWithNumAndColon(line)))
   );
 };
-export const startWithDI = (line: string) => {
+export const startWithDI = (line) => {
   let flag = false;
   for (let i = 0; i < keywords.length; i++) {
     if (
@@ -90,7 +91,7 @@ export const startWithDI = (line: string) => {
   }
   return flag;
 };
-const startWithJUAN = (line: string) => {
+const startWithJUAN = (line) => {
   if (
     /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c]+$/.test(
       line.substring(1, line.indexOf(" "))
@@ -115,7 +116,7 @@ const startWithJUAN = (line: string) => {
   return false;
 };
 
-const startWithNumAndSpace = (line: string) => {
+const startWithNumAndSpace = (line) => {
   if (
     /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c]+$/.test(
       line.substring(0, line.indexOf(" "))
@@ -133,7 +134,7 @@ const startWithNumAndSpace = (line: string) => {
   if (/^\d+$/.test(line.substring(0, line.indexOf("　")))) return true;
   return false;
 };
-const startWithNumAndColon = (line: string) => {
+const startWithNumAndColon = (line) => {
   if (
     /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c]+$/.test(
       line.substring(0, line.indexOf(":"))
@@ -151,7 +152,7 @@ const startWithNumAndColon = (line: string) => {
   if (/^\d+$/.test(line.substring(0, line.indexOf("：")))) return true;
   return false;
 };
-const startWithNumAndPause = (line: string) => {
+const startWithNumAndPause = (line) => {
   if (
     /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c]+$/.test(
       line.substring(0, line.indexOf("、"))
@@ -162,7 +163,7 @@ const startWithNumAndPause = (line: string) => {
   if (/^\d+$/.test(line.substring(0, line.indexOf("、")))) return true;
   return false;
 };
-export const isNodeTitle = (chapterDoc: Document) => {
+export const isNodeTitle = (chapterDoc) => {
   let isTitleNodeExist =
     chapterDoc.querySelectorAll("h1,h2,h3,h4,blockquote,font,b").length > 0;
 
@@ -176,30 +177,30 @@ export const isNodeTitle = (chapterDoc: Document) => {
   for (let i = 0; i < titleNodeList.length; i++) {
     let isSpecialChar =
       firstValidTitle &&
-      ((titleNodeList[i] as HTMLElement).innerText.trim() === "♦" ||
-        (titleNodeList[i] as HTMLElement).innerText.trim() === "●" ||
-        (titleNodeList[i] as HTMLElement).innerText.trim() === "◾" ||
-        (titleNodeList[i] as HTMLElement).innerText.trim() === "◀" ||
-        (titleNodeList[i] as HTMLElement).innerText.trim() === "◼" ||
-        (titleNodeList[i] as HTMLElement).innerText.trim() === "■");
-    if ((titleNodeList[i] as HTMLElement).innerText.trim() && !isSpecialChar) {
-      firstValidTitle = titleNodeList[i] as HTMLElement;
+      (titleNodeList[i].innerText.trim() === "♦" ||
+        titleNodeList[i].innerText.trim() === "●" ||
+        titleNodeList[i].innerText.trim() === "◾" ||
+        titleNodeList[i].innerText.trim() === "◀" ||
+        titleNodeList[i].innerText.trim() === "◼" ||
+        titleNodeList[i].innerText.trim() === "■");
+    if (titleNodeList[i].innerText.trim() && !isSpecialChar) {
+      firstValidTitle = titleNodeList[i];
       break;
     }
   }
   for (let i = 0; i < textNodeList.length; i++) {
     if (
-      (textNodeList[i] as HTMLElement).innerText.trim() &&
-      (textNodeList[i] as HTMLElement).innerHTML.indexOf("<") === -1
+      textNodeList[i].innerText.trim() &&
+      textNodeList[i].innerHTML.indexOf("<") === -1
     ) {
-      firstValidText = textNodeList[i] as HTMLElement;
+      firstValidText = textNodeList[i];
       break;
     }
   }
 
   let titleNodeExceedLength =
     firstValidTitle && firstValidTitle.innerText.trim().length > 30;
-  let isTextLengthLarge = (chapterDoc as any).body.innerText.length > 50;
+  let isTextLengthLarge = chapterDoc.body.innerText.length > 50;
   return (
     isTitleNodeExist &&
     (!titleNodeExceedLength || isTitle(firstValidTitle.innerText.trim())) &&

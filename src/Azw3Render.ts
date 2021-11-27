@@ -14,7 +14,8 @@ import {
 import StorageUtil from "./utils/storageUtil";
 import StrParser from "./utils/strParser";
 import { excuteCode } from "./utils/htmlUtil";
-class Azw3Render {
+import EventEmitter from "./utils/EventEmitter";
+class Azw3Render extends EventEmitter {
   azw3Buffer: ArrayBuffer;
   mode: string;
   bookStr: string;
@@ -22,6 +23,7 @@ class Azw3Render {
   chapterDocList: ChapterDoc[];
   element: any;
   constructor(azw3Buffer: ArrayBuffer, mode: string) {
+    super();
     this.azw3Buffer = azw3Buffer;
     this.mode = mode;
     this.chapterList = [];
@@ -56,6 +58,7 @@ class Azw3Render {
         this.element,
         this.mode
       );
+      this.trigger("rendered");
       resolve();
     });
   }

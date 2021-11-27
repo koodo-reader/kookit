@@ -139,7 +139,7 @@ export const handleLayout = (element: HTMLElement, mode: string) => {
     `width: auto;
     height: 100%;
     overflow-y: hidden;
-    overflow-X: scroll;
+    overflow-X: hidden;
     padding-left: 0px;
     padding-right: 0px;
     margin: 0px !important;

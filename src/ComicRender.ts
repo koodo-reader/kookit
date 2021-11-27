@@ -1,122 +1,151 @@
 import _ from "underscore";
-import Chapter from "./model/chapter";
-import ChapterDoc from "./model/chapterDom";
 import { excuteCode } from "./utils/htmlUtil";
-import { createIframe, handleLayout } from "./utils/layoutUtil";
 import {
-  handleNextChapter,
-  handlePrevChapter,
-  handleRecord,
-  handleRenderChatper,
-  handleScrollPage,
-  handleScrollPosition,
-} from "./utils/navigationUtil";
+  createIframe,
+  handleIframeHeight,
+  handleLayout,
+} from "./utils/layoutUtil";
+import { handleRecord } from "./utils/navigationUtil";
 import StorageUtil from "./utils/storageUtil";
-import StrParser from "./utils/strParser";
-class ComicRender {
-  bookStr: string;
+import ComicParser from "./utils/comicParser";
+import { handleScrollPage, handleScrollPosition } from "./utils/comicUtil";
+import EventEmitter from "./utils/EventEmitter";
+class ComicRender extends EventEmitter {
+  dataSource: any[];
+  zip: any;
   mode: string;
-  chapterList: Chapter[];
-  chapterDocList: ChapterDoc[];
+  format: string;
   element: any;
-  constructor(bookStr: string, mode: string) {
-    this.bookStr = bookStr;
+  parser: any;
+  chapterList: any[];
+  largestId: number;
+  constructor(dataSource: any[], zip: any, mode: string, format: string) {
+    super();
+
     this.mode = mode;
-    this.chapterList = [];
-    this.chapterDocList = [];
+    this.format = format;
+    this.zip = zip;
+    this.dataSource = dataSource;
     this.element = "";
+    this.parser = "";
+    this.chapterList = [];
+    this.largestId = parseInt(StorageUtil.getKookitConfig("count")) || 0;
   }
-  renderTo(element: HTMLElement) {
+  renderTo(element: HTMLElement, id: number = 0) {
     return new Promise<void>(async (resolve, reject) => {
       if (!(await excuteCode())) {
         resolve();
         return;
       }
+
       this.element = element;
-      let parser = new StrParser(this.bookStr);
-      this.chapterList = parser.getChapter();
-      this.chapterDocList = parser.getChapterDoc();
-
-      let chapterTitle =
-        StorageUtil.getKookitConfig("chapterTitle") ||
-        this.chapterDocList[0].title;
       createIframe(element);
-      handleRenderChatper(
-        chapterTitle,
-        this.chapterDocList,
+      this.parser = new ComicParser(
+        this.dataSource,
+        this.zip,
+        this.mode,
         this.element,
-        this.mode
+        this.format
       );
-      handleLayout(element, this.mode);
+      this.chapterList = this.parser.getChapter();
+      this.parser.renderComic();
+      this.renderImage(id);
 
+      let imgRatio = await this.parser.getImgRatio();
+      let height =
+        (window.frames[0].document.getElementById(id + "") as any).clientWidth *
+        imgRatio;
+      let imgs = window.frames[0].document.getElementsByTagName("img");
+      for (let i = 0; i < imgs.length; i++) {
+        if (this.mode === "scroll") {
+          imgs[i].style.height = height + "px";
+        } else {
+          let scale = this.mode === "single" ? 1 : 2;
+          if (height > this.element.clientHeight) {
+            imgs[i].style.height = this.element.clientHeight + "px";
+            imgs[i].style.width = this.element.clientHeight / imgRatio + "px";
+            imgs[i].style.paddingLeft =
+              (this.element.clientWidth - (this.mode === "single" ? 0 : 88)) /
+                2 /
+                scale -
+              this.element.clientHeight / imgRatio / 2 +
+              "px";
+          } else {
+            imgs[i].style.height = height + "px";
+            imgs[i].style.marginTop =
+              this.element.clientHeight / 2 - height / 2 + "px";
+          }
+        }
+      }
+      handleLayout(element, this.mode);
+      handleIframeHeight(element, this.mode);
+      this.trigger("rendered");
       resolve();
     });
+  }
+  renderImage(id: number) {
+    let cap = id + 4 < this.dataSource.length ? id + 4 : this.dataSource.length;
+    let bottom = id - 4 > 0 ? id - 4 : 0;
+    for (let i = bottom; i < cap; i++) {
+      this.parser.renderImage(i);
+    }
   }
   getChapter() {
     return this.chapterList;
   }
-
+  goToPosition(text: string, title: string, id: string) {
+    handleScrollPosition(this.element, this.mode, id);
+  }
   goToChapter(title: string) {
-    handleRenderChatper(title, this.chapterDocList, this.element, this.mode);
-  }
-  goToPosition(text: string, chapterTitle: string, count: string) {
-    handleRenderChatper(
-      chapterTitle,
-      this.chapterDocList,
+    handleScrollPosition(
       this.element,
-      this.mode
+      this.mode,
+      this.dataSource.indexOf(title) + ""
     );
-    handleScrollPosition(this.element, this.mode, text, count);
+    this.renderImage(this.dataSource.indexOf(title));
   }
+
   record() {
     handleRecord(this.element, this.mode);
+    let id = parseInt(StorageUtil.getKookitConfig("count")) || 0;
+    if (this.largestId - id > 1) {
+      return;
+    }
+    let cap =
+      id + 10 < this.dataSource.length - 1
+        ? id + 10
+        : this.dataSource.length - 1;
+    for (let i = id; i < cap; i++) {
+      this.parser.renderImage(i);
+    }
+    this.largestId = id + cap - 1;
   }
   prev() {
-    if (
-      this.mode === "scroll" ||
-      window.frames[0].document.body.scrollLeft === 0
-    ) {
-      handlePrevChapter(
-        this.element,
-        this.chapterList,
-        this.chapterDocList,
-        this.mode
-      );
-    } else {
-      handleScrollPage(
-        this.element,
-        this.chapterList,
-        this.chapterDocList,
-        this.mode,
-        1
-      );
+    let id = parseInt(StorageUtil.getKookitConfig("count")) || 0;
+    if (id > 0) {
+      let cap =
+        id + 4 < this.dataSource.length ? id + 3 : this.dataSource.length;
+      let bottom = id - 4 > 0 ? id - 4 : 0;
+      for (let i = bottom; i < cap; i++) {
+        this.parser.renderImage(i);
+      }
     }
+    handleScrollPage(this.element, 1);
     handleRecord(this.element, this.mode);
   }
   next() {
-    if (
-      Math.abs(
-        window.frames[0].document.body.scrollWidth -
-          window.frames[0].document.body.scrollLeft -
-          window.frames[0].document.body.clientWidth
-      ) < 10 ||
-      this.mode === "scroll"
-    ) {
-      handleNextChapter(
-        this.element,
-        this.chapterList,
-        this.chapterDocList,
-        this.mode
-      );
-    } else {
-      handleScrollPage(
-        this.element,
-        this.chapterList,
-        this.chapterDocList,
-        this.mode,
-        -1
-      );
+    let id = parseInt(StorageUtil.getKookitConfig("count")) || 0;
+    if (id < this.dataSource.length - 1) {
+      let cap =
+        id + 4 < this.dataSource.length - 1
+          ? id + 4
+          : this.dataSource.length - 1;
+      let bottom = id - 4 > 0 ? id - 4 : 0;
+      for (let i = bottom; i < cap; i++) {
+        this.parser.renderImage(i);
+      }
     }
+    handleScrollPage(this.element, -1);
     handleRecord(this.element, this.mode);
   }
   getPosition() {
@@ -133,4 +162,5 @@ class ComicRender {
     );
   }
 }
+
 export default ComicRender;

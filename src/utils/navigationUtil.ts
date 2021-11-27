@@ -125,29 +125,34 @@ export const handleTurnChapter = (
 export const handleRecord = (element: HTMLElement, mode: string) => {
   if (lock) return;
   let visibleNode = Array.from(
-    window.frames[0].document.body.querySelectorAll("h1,h2,h3,h4,p")
+    window.frames[0].document.body.querySelectorAll("h1,h2,h3,h4,p,img")
   ).filter(
     (s) =>
       isScrolledIntoView(element, s as any, mode) &&
       (s as HTMLElement).innerText.trim()
   );
+  //除2是为了更准确的记录当前位置
   let nodeIndex = mode === "scroll" ? Math.floor(visibleNode.length / 2) : 0;
   let firstVisibleNode = visibleNode[nodeIndex] as HTMLElement;
   let count = 0;
   let nodeList = Array.from(
-    window.frames[0].document.body.querySelectorAll("h1,h2,h3,h4,p")
+    window.frames[0].document.body.querySelectorAll("h1,h2,h3,h4,p,img")
   ) as HTMLElement[];
   for (let i = 0; i < nodeList.length; i++) {
+    if (isScrolledIntoView(element, nodeList[i], mode)) {
+      count = i;
+      break;
+    }
     if (
       isScrolledIntoView(element, nodeList[i], mode) &&
       firstVisibleNode &&
-      nodeList[i].innerHTML === firstVisibleNode.innerHTML
+      nodeList[i].innerHTML === firstVisibleNode.innerHTML &&
+      nodeList[i].tagName !== "IMG"
     ) {
       count = i;
       break;
     }
   }
-
   StorageUtil.setKookitConfig(
     "text",
     firstVisibleNode ? firstVisibleNode.innerText : ""
@@ -191,10 +196,13 @@ export const isScrolledIntoView = (
 ) => {
   var isVisible = false;
   var rect = el.getBoundingClientRect();
-  if (mode !== "scroll" && el.innerText.trim()) {
+  if (
+    mode !== "scroll" &&
+    (el.innerText.trim() || (el.id && el.tagName === "IMG"))
+  ) {
     let elemLeft = rect.left;
     isVisible = elemLeft >= 0 && elemLeft <= element.offsetWidth;
-  } else if (el.innerText.trim()) {
+  } else if (el.innerText.trim() || (el.id && el.tagName === "IMG")) {
     let elemTop = rect.top;
     isVisible =
       elemTop >= element.scrollTop &&

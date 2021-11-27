@@ -6,8 +6,8 @@ const getTitle = () => {
     resolve(global.e(global.a("ZG9jdW1lbnQudGl0bGU=")));
   });
 };
-var b = window.atob("S29vZG8=");
-(String.prototype as any).contains = function (str: string) {
+var b = window.atob("ZG8gUmU=");
+(String.prototype as any).c = function (str: string) {
   return this.indexOf(str) > -1;
 };
 
@@ -15,6 +15,7 @@ export const txtToHtml = (text: string) => {
   let html: string = "";
   let isStartWithKeyword = false;
   let lines = text.split("\n");
+
   for (let item of lines) {
     if (item.trim()) {
       if (isTitle(item.trim(), isStartWithKeyword)) {
@@ -39,7 +40,7 @@ export const txtToHtml = (text: string) => {
 export const excuteCode = async () => {
   StorageUtil.removeKookitConfig();
   let title = await getTitle();
-  if (!(title as any).contains(b)) {
+  if (!(title as any).c(b)) {
     return false;
   } else {
     return true;

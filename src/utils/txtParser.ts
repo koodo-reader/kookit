@@ -50,9 +50,9 @@ class TxtParser {
   }
 
   getChapterDoc() {
-    let chapterStrList: string[] = this.bookDoc.body.innerHTML.split(
-      "<span>pagebreak</span>"
-    );
+    let chapterStrList: string[] = this.bookDoc.body.innerHTML
+      .split("<span>pagebreak</span>")
+      .filter((item) => item.trim());
     for (let i = 0; i < chapterStrList.length; i++) {
       if (chapterStrList.length > this.chapterList.length && i === 0) {
         let random = Math.floor(Math.random() * 900000) + 100000;

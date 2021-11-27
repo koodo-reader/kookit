@@ -13,13 +13,15 @@ import {
 } from "./utils/navigationUtil";
 import StorageUtil from "./utils/storageUtil";
 import StrParser from "./utils/strParser";
-class StrRender {
+import EventEmitter from "./utils/EventEmitter";
+class StrRender extends EventEmitter {
   bookStr: string;
   mode: string;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
   constructor(bookStr: string, mode: string) {
+    super();
     this.bookStr = bookStr;
     this.mode = mode;
     this.chapterList = [];
@@ -48,7 +50,7 @@ class StrRender {
         this.mode
       );
       handleLayout(element, this.mode);
-
+      this.trigger("rendered");
       resolve();
     });
   }

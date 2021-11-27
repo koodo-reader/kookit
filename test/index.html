@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="./index.css" />
     <script src="../dist/kookit.umd.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/localforage/1.9.0/localforage.js"></script>
-    <script src="https://cdn.bootcdn.net/ajax/libs/mammoth/1.4.17/mammoth.browser.js"></script>
+    <script src="./unrar.js"></script>
     <title>Kookit - Koodo Reader</title>
   </head>
   <body>
@@ -41,8 +41,26 @@
 
       const renderFunc = async () => {
         localforage.getItem("book").then(async (result) => {
-          const { MobiRender } = Kookit;
-          let rendition = new MobiRender(result, "double");
+          const { TxtRender } = Kookit;
+          // let unrar = new Unrar(result);
+          // var entries = unrar.getEntries();
+
+          // let rendition = new ComicRender(
+          //   entries.map((item) => item.name),
+          //   unrar,
+          //   "scroll",
+          //   "cbr"
+          // );
+
+          // console.log(
+          //   unrar.decompress(
+          //     "Fantastic Four Anniversary Tribute (2021) 001-001.jpg"
+          //   )
+          // );
+          // await rendition.renderTo(
+          //   document.getElementsByClassName("ebook-viewer")[0]
+          // );
+          let rendition = new TxtRender(result, "double", "GB18030");
           await rendition.renderTo(
             document.getElementsByClassName("ebook-viewer")[0]
           );
@@ -57,7 +75,9 @@
             .addEventListener("click", () => {
               rendition.prev();
             });
-
+          rendition.on("rendered", () => {
+            console.log("rendered from html");
+          });
           rendition.getChapter().forEach((item) => {
             let li = document.createElement("li");
             li.innerText =
