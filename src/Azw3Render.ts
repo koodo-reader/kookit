@@ -18,14 +18,16 @@ import EventEmitter from "./utils/EventEmitter";
 class Azw3Render extends EventEmitter {
   azw3Buffer: ArrayBuffer;
   mode: string;
+  isSliding: boolean;
   bookStr: string;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(azw3Buffer: ArrayBuffer, mode: string) {
+  constructor(azw3Buffer: ArrayBuffer, mode: string, isSliding: boolean) {
     super();
     this.azw3Buffer = azw3Buffer;
     this.mode = mode;
+    this.isSliding = isSliding || false;
     this.chapterList = [];
     this.chapterDocList = [];
     this.bookStr = "";
@@ -65,9 +67,15 @@ class Azw3Render extends EventEmitter {
   getChapter() {
     return this.chapterList;
   }
-
+  getPageSize() {
+    return {
+      width: window.frames[0].document.body.scrollWidth,
+      height: this.element.clientHeight,
+    };
+  }
   goToChapter(title: string) {
     handleRenderChatper(title, this.chapterDocList, this.element, this.mode);
+    this.trigger("rendered");
   }
   goToPosition(text: string, chapterTitle: string, count: string) {
     handleRenderChatper(
@@ -77,6 +85,7 @@ class Azw3Render extends EventEmitter {
       this.mode
     );
     handleScrollPosition(this.element, this.mode, text, count);
+    this.trigger("rendered");
   }
   prev() {
     if (
@@ -89,13 +98,16 @@ class Azw3Render extends EventEmitter {
         this.chapterDocList,
         this.mode
       );
+      this.trigger("rendered");
     } else {
       handleScrollPage(
         this.element,
         this.chapterList,
         this.chapterDocList,
         this.mode,
-        1
+        1,
+        this.isSliding,
+        this.trigger
       );
     }
     handleRecord(this.element, this.mode);
@@ -121,7 +133,9 @@ class Azw3Render extends EventEmitter {
         this.chapterList,
         this.chapterDocList,
         this.mode,
-        -1
+        -1,
+        this.isSliding,
+        this.trigger
       );
     }
     handleRecord(this.element, this.mode);

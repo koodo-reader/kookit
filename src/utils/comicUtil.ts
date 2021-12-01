@@ -1,12 +1,24 @@
 import StorageUtil from "./storageUtil";
 
-export const handleScrollPage = (element: HTMLElement, delta: number) => {
+export const handleScrollPage = (
+  element: HTMLElement,
+  delta: number,
+  isSliding: boolean
+) => {
   if (delta > 0 && window.frames[0].document.body.scrollLeft > 0) {
-    window.frames[0].document.body.scrollLeft -= element.offsetWidth + 88;
+    window.frames[0].document.body.scrollBy({
+      top: 0,
+      left: -element.offsetWidth - 88,
+      behavior: isSliding ? "smooth" : "auto",
+    });
   } else if (delta > 0 && window.frames[0].document.body.scrollLeft === 0) {
     return;
   } else if (delta < 0) {
-    window.frames[0].document.body.scrollLeft += element.offsetWidth + 88;
+    window.frames[0].document.body.scrollBy({
+      top: 0,
+      left: element.offsetWidth + 88,
+      behavior: isSliding ? "smooth" : "auto",
+    });
   }
 };
 export const handleScrollPosition = (
@@ -23,11 +35,14 @@ export const handleScrollPosition = (
     let targetNode = nodeList[id];
     if (mode !== "scroll") {
       window.frames[0].document.body.scrollTo(
-        id && targetNode ? targetNode.offsetLeft : 0,
+        id && targetNode ? targetNode.getBoundingClientRect().left : 0,
         0
       );
     } else {
-      element.scrollTo(0, id && targetNode ? targetNode.offsetTop : 0);
+      element.scrollTo(
+        0,
+        id && targetNode ? targetNode.getBoundingClientRect().top : 0
+      );
     }
   } else {
     if (mode !== "scroll") {

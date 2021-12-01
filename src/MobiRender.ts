@@ -22,7 +22,8 @@ class MobiRender extends EventEmitter {
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(mobiBuffer: ArrayBuffer, mode: string) {
+  isSliding: boolean;
+  constructor(mobiBuffer: ArrayBuffer, mode: string, isSliding: boolean) {
     super();
     this.mobiBuffer = mobiBuffer;
     this.mode = mode;
@@ -30,6 +31,7 @@ class MobiRender extends EventEmitter {
     this.chapterDocList = [];
     this.bookStr = "";
     this.element = "";
+    this.isSliding = isSliding || false;
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -63,11 +65,18 @@ class MobiRender extends EventEmitter {
       resolve();
     });
   }
+  getPageSize() {
+    return {
+      width: window.frames[0].document.body.scrollWidth,
+      height: this.element.clientHeight,
+    };
+  }
   getChapter() {
     return this.chapterList;
   }
   goToChapter(title: string) {
     handleRenderChatper(title, this.chapterDocList, this.element, this.mode);
+    this.trigger("rendered");
   }
   goToPosition(text: string, chapterTitle: string, count: string) {
     handleRenderChatper(
@@ -77,6 +86,7 @@ class MobiRender extends EventEmitter {
       this.mode
     );
     handleScrollPosition(this.element, this.mode, text, count);
+    this.trigger("rendered");
   }
   prev() {
     if (
@@ -89,13 +99,16 @@ class MobiRender extends EventEmitter {
         this.chapterDocList,
         this.mode
       );
+      this.trigger("rendered");
     } else {
       handleScrollPage(
         this.element,
         this.chapterList,
         this.chapterDocList,
         this.mode,
-        1
+        1,
+        this.isSliding,
+        this.trigger
       );
     }
     handleRecord(this.element, this.mode);
@@ -115,15 +128,19 @@ class MobiRender extends EventEmitter {
         this.chapterDocList,
         this.mode
       );
+      this.trigger("rendered");
     } else {
       handleScrollPage(
         this.element,
         this.chapterList,
         this.chapterDocList,
         this.mode,
-        -1
+        -1,
+        this.isSliding,
+        this.trigger
       );
     }
+
     handleRecord(this.element, this.mode);
   }
   record() {

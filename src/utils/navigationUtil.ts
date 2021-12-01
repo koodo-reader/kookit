@@ -3,21 +3,39 @@ import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDom";
 import { handleIframeHeight, handleImageSize } from "./layoutUtil";
 import StorageUtil from "./storageUtil";
+import Chinese from "chinese-s2t";
+
 let lock = false;
 export const handleScrollPage = (
   element: HTMLElement,
   chapterList: Chapter[],
   chapterDocList: ChapterDoc[],
   mode: string,
-  delta: number
+  delta: number,
+  isSliding: boolean,
+  trigger: (status: string) => void
 ) => {
   if (delta > 0 && window.frames[0].document.body.scrollLeft > 0) {
-    window.frames[0].document.body.scrollLeft -= element.offsetWidth + 88;
+    // window.frames[0].document.body.scrollLeft -= element.offsetWidth + 88;
+
+    window.frames[0].document.body.scrollBy({
+      top: 0,
+      left: -element.offsetWidth - 88,
+      behavior: isSliding ? "smooth" : "auto",
+    });
   } else if (delta > 0 && window.frames[0].document.body.scrollLeft === 0) {
     handlePrevChapter(element, chapterList, chapterDocList, mode);
+    trigger("rendered");
   } else if (delta < 0) {
-    handleTurnChapter(element, chapterList, chapterDocList, mode);
-    window.frames[0].document.body.scrollLeft += element.offsetWidth + 88;
+    handleTurnChapter(element, chapterList, chapterDocList, mode, trigger);
+
+    window.frames[0].document.body.scrollBy({
+      top: 0,
+      left: element.offsetWidth + 88,
+      behavior: isSliding ? "smooth" : "auto",
+    });
+
+    // window.frames[0].document.body.scrollLeft += element.offsetWidth + 88;
   }
 };
 export const handlePrevChapter = (
@@ -62,6 +80,7 @@ export const handleRenderChatper = (
     "chapterTitle",
     chapterDocList[chapterIndex].title
   );
+
   handleIframeHeight(element, mode);
   handleImageSize();
   handleScrollPosition(element, mode);
@@ -75,26 +94,34 @@ export const handleScrollPosition = (
   let text = _text || StorageUtil.getKookitConfig("text") || "";
   if (text) {
     let nodeList = Array.from(
-      window.frames[0].document.body.querySelectorAll("h1,h2,h3,h4,p")
+      window.frames[0].document.body.querySelectorAll("h1,h2,h3,h4,p,img")
     ) as HTMLElement[];
-    let targetNodeList = nodeList.filter(
-      (s, index) =>
-        (s as HTMLElement).innerText === text &&
-        index === parseInt(StorageUtil.getKookitConfig("count") || _count)
-    );
-
+    let targetNodeList = nodeList.filter((s, index) => {
+      return (
+        ((s as HTMLElement).innerText === text ||
+          (s as HTMLElement).innerText === Chinese.t2s(text) ||
+          (s as HTMLElement).innerText === Chinese.s2t(text)) &&
+        Math.abs(
+          index - parseInt(_count || StorageUtil.getKookitConfig("count"))
+        ) < 2
+      );
+    });
     let targetNode = targetNodeList[0];
+
     if (mode !== "scroll") {
       window.frames[0].document.body.scrollTo(
         text && targetNode
-          ? targetNode.offsetLeft
+          ? targetNode.getBoundingClientRect().left
           : text === "prevChapter"
           ? window.frames[0].document.body.scrollWidth
           : 0,
         0
       );
     } else {
-      element.scrollTo(0, text && targetNode ? targetNode.offsetTop : 0);
+      element.scrollTo(
+        0,
+        text && targetNode ? targetNode.getBoundingClientRect().top : 0
+      );
     }
   } else {
     if (mode !== "scroll") {
@@ -108,7 +135,8 @@ export const handleTurnChapter = (
   element: HTMLElement,
   chapterList: Chapter[],
   chapterDocList: ChapterDoc[],
-  mode: string
+  mode: string,
+  trigger: (status: string) => void
 ) => {
   if (
     Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) <
@@ -120,6 +148,7 @@ export const handleTurnChapter = (
     ) < 10
   ) {
     handleNextChapter(element, chapterList, chapterDocList, mode);
+    trigger("rendered");
   }
 };
 export const handleRecord = (element: HTMLElement, mode: string) => {
@@ -139,7 +168,10 @@ export const handleRecord = (element: HTMLElement, mode: string) => {
     window.frames[0].document.body.querySelectorAll("h1,h2,h3,h4,p,img")
   ) as HTMLElement[];
   for (let i = 0; i < nodeList.length; i++) {
-    if (isScrolledIntoView(element, nodeList[i], mode)) {
+    if (
+      isScrolledIntoView(element, nodeList[i], mode) &&
+      nodeList[i].tagName === "IMG"
+    ) {
       count = i;
       break;
     }
@@ -201,7 +233,7 @@ export const isScrolledIntoView = (
     (el.innerText.trim() || (el.id && el.tagName === "IMG"))
   ) {
     let elemLeft = rect.left;
-    isVisible = elemLeft >= 0 && elemLeft <= element.offsetWidth;
+    isVisible = elemLeft > -10 && elemLeft <= element.offsetWidth;
   } else if (el.innerText.trim() || (el.id && el.tagName === "IMG")) {
     let elemTop = rect.top;
     isVisible =

@@ -142,7 +142,7 @@ export const handleLayout = (element: HTMLElement, mode: string) => {
     overflow-X: hidden;
     padding-left: 0px;
     padding-right: 0px;
-    margin: 0px !important;
+    margin: 0px;
     box-sizing: border-box;
     max-width: inherit;
     column-fill: auto;
@@ -150,4 +150,10 @@ export const handleLayout = (element: HTMLElement, mode: string) => {
     column-count: 12;
     column-width: ${(element.offsetWidth - 88) / scale}px;`
   );
+
+  let style = window.frames[0].document.createElement("style");
+  style.id = "default-style";
+  style.textContent =
+    "p{display: inherit;margin-block-start: inherit;margin-block-end: inherit;margin-inline-start: inherit;margin-inline-end: inherit;}";
+  window.frames[0].document.head.appendChild(style);
 };

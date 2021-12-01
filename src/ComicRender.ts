@@ -17,11 +17,18 @@ class ComicRender extends EventEmitter {
   format: string;
   element: any;
   parser: any;
+  isSliding: boolean;
   chapterList: any[];
   largestId: number;
-  constructor(dataSource: any[], zip: any, mode: string, format: string) {
+  constructor(
+    dataSource: any[],
+    zip: any,
+    mode: string,
+    format: string,
+    isSliding: boolean
+  ) {
     super();
-
+    this.isSliding = isSliding || false;
     this.mode = mode;
     this.format = format;
     this.zip = zip;
@@ -83,12 +90,16 @@ class ComicRender extends EventEmitter {
       resolve();
     });
   }
+  getPageSize() {
+    return {
+      width: window.frames[0].document.body.scrollWidth,
+      height: this.element.clientHeight,
+    };
+  }
   renderImage(id: number) {
-    let cap = id + 4 < this.dataSource.length ? id + 4 : this.dataSource.length;
-    let bottom = id - 4 > 0 ? id - 4 : 0;
-    for (let i = bottom; i < cap; i++) {
-      this.parser.renderImage(i);
-    }
+    this.parser.renderImage(id - 1);
+    this.parser.renderImage(id);
+    this.parser.renderImage(id + 1);
   }
   getChapter() {
     return this.chapterList;
@@ -107,45 +118,29 @@ class ComicRender extends EventEmitter {
 
   record() {
     handleRecord(this.element, this.mode);
+
     let id = parseInt(StorageUtil.getKookitConfig("count")) || 0;
-    if (this.largestId - id > 1) {
-      return;
-    }
-    let cap =
-      id + 10 < this.dataSource.length - 1
-        ? id + 10
-        : this.dataSource.length - 1;
-    for (let i = id; i < cap; i++) {
-      this.parser.renderImage(i);
-    }
-    this.largestId = id + cap - 1;
+    this.parser.renderImage(id - 1);
+    this.parser.renderImage(id);
+    this.parser.renderImage(id + 1);
   }
   prev() {
     let id = parseInt(StorageUtil.getKookitConfig("count")) || 0;
-    if (id > 0) {
-      let cap =
-        id + 4 < this.dataSource.length ? id + 3 : this.dataSource.length;
-      let bottom = id - 4 > 0 ? id - 4 : 0;
-      for (let i = bottom; i < cap; i++) {
-        this.parser.renderImage(i);
-      }
-    }
-    handleScrollPage(this.element, 1);
+    this.parser.renderImage(id);
+    this.parser.renderImage(id - 1);
+    this.parser.renderImage(id - 2);
+
+    handleScrollPage(this.element, 1, this.isSliding);
     handleRecord(this.element, this.mode);
   }
   next() {
     let id = parseInt(StorageUtil.getKookitConfig("count")) || 0;
-    if (id < this.dataSource.length - 1) {
-      let cap =
-        id + 4 < this.dataSource.length - 1
-          ? id + 4
-          : this.dataSource.length - 1;
-      let bottom = id - 4 > 0 ? id - 4 : 0;
-      for (let i = bottom; i < cap; i++) {
-        this.parser.renderImage(i);
-      }
-    }
-    handleScrollPage(this.element, -1);
+    this.parser.renderImage(id);
+    this.parser.renderImage(id + 1);
+    this.parser.renderImage(id + 2);
+    this.parser.renderImage(id + 3);
+    this.parser.renderImage(id + 4);
+    handleScrollPage(this.element, -1, this.isSliding);
     handleRecord(this.element, this.mode);
   }
   getPosition() {

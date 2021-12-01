@@ -20,13 +20,15 @@ class StrRender extends EventEmitter {
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(bookStr: string, mode: string) {
+  isSliding: boolean;
+  constructor(bookStr: string, mode: string, isSliding: boolean) {
     super();
     this.bookStr = bookStr;
     this.mode = mode;
     this.chapterList = [];
     this.chapterDocList = [];
     this.element = "";
+    this.isSliding = isSliding || false;
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -57,9 +59,15 @@ class StrRender extends EventEmitter {
   getChapter() {
     return this.chapterList;
   }
-
+  getPageSize() {
+    return {
+      width: window.frames[0].document.body.scrollWidth,
+      height: this.element.clientHeight,
+    };
+  }
   goToChapter(title: string) {
     handleRenderChatper(title, this.chapterDocList, this.element, this.mode);
+    this.trigger("rendered");
   }
   goToPosition(text: string, chapterTitle: string, count: string) {
     handleRenderChatper(
@@ -68,6 +76,7 @@ class StrRender extends EventEmitter {
       this.element,
       this.mode
     );
+    this.trigger("rendered");
     handleScrollPosition(this.element, this.mode, text, count);
   }
   record() {
@@ -84,13 +93,16 @@ class StrRender extends EventEmitter {
         this.chapterDocList,
         this.mode
       );
+      this.trigger("rendered");
     } else {
       handleScrollPage(
         this.element,
         this.chapterList,
         this.chapterDocList,
         this.mode,
-        1
+        1,
+        this.isSliding,
+        this.trigger
       );
     }
     handleRecord(this.element, this.mode);
@@ -110,15 +122,19 @@ class StrRender extends EventEmitter {
         this.chapterDocList,
         this.mode
       );
+      this.trigger("rendered");
     } else {
       handleScrollPage(
         this.element,
         this.chapterList,
         this.chapterDocList,
         this.mode,
-        -1
+        -1,
+        this.isSliding,
+        this.trigger
       );
     }
+
     handleRecord(this.element, this.mode);
   }
   getPosition() {

@@ -91,7 +91,10 @@ class ComicParser {
   }
   async renderImage(i: number) {
     this.extension = this.fileNameList[0].split(".").reverse()[0];
-    if (!(window.frames[0].document.getElementById(i + "") as any).src) {
+    if (
+      window.frames[0].document.getElementById(i + "") &&
+      !(window.frames[0].document.getElementById(i + "") as any).src
+    ) {
       let buffer: ArrayBuffer;
       if (this.format === "cbr") {
         buffer = this.zip.decompress(this.fileNameList[i]);

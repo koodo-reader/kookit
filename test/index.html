@@ -60,7 +60,7 @@
           // await rendition.renderTo(
           //   document.getElementsByClassName("ebook-viewer")[0]
           // );
-          let rendition = new TxtRender(result, "double", "GB18030");
+          let rendition = new TxtRender(result, "single", "GB18030");
           await rendition.renderTo(
             document.getElementsByClassName("ebook-viewer")[0]
           );
