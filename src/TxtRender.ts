@@ -14,6 +14,9 @@ import {
 } from "./utils/navigationUtil";
 import txtParser from "./utils/txtParser";
 import EventEmitter from "./utils/EventEmitter";
+const sleep = (ms: number) => {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+};
 class TxtRender extends EventEmitter {
   txtBuffer: ArrayBuffer;
   encoding: string;
@@ -95,7 +98,7 @@ class TxtRender extends EventEmitter {
   record() {
     handleRecord(this.element, this.mode);
   }
-  prev() {
+  async prev() {
     if (
       this.mode === "scroll" ||
       window.frames[0].document.body.scrollLeft === 0
@@ -118,10 +121,12 @@ class TxtRender extends EventEmitter {
         this.trigger
       );
     }
-
+    if (this.isSliding) {
+      await sleep(500);
+    }
     handleRecord(this.element, this.mode);
   }
-  next() {
+  async next() {
     if (
       Math.abs(
         window.frames[0].document.body.scrollWidth -
@@ -147,6 +152,10 @@ class TxtRender extends EventEmitter {
         this.isSliding,
         this.trigger
       );
+    }
+    //动画导致的延迟
+    if (this.isSliding) {
+      await sleep(500);
     }
     // this.trigger("rendered");
     handleRecord(this.element, this.mode);

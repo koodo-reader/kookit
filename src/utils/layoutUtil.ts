@@ -97,7 +97,7 @@ export const createIframe = (element: HTMLElement) => {
   element.appendChild(iframe);
 };
 
-export const handleImageSize = () => {
+export const handleImageSize = (element: HTMLElement, mode: string) => {
   let iframe = document.getElementsByTagName("iframe")[0];
   if (!iframe) return;
   let doc = iframe.contentDocument;
@@ -124,6 +124,12 @@ export const handleImageSize = () => {
     } else {
       maxWidth = parentItem.clientWidth;
     }
+    maxWidth = Math.min(
+      mode === "scroll" || mode === "single"
+        ? element.offsetWidth
+        : (element.offsetWidth - 88) / 2,
+      maxWidth
+    );
     item.setAttribute(
       "style",
       `max-width: ${maxWidth}px;max-height:${maxHeight}px`

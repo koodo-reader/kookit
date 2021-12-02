@@ -1,6 +1,6 @@
 import StorageUtil from "./storageUtil";
 
-export const handleScrollPage = (
+export const handleScrollPage = async (
   element: HTMLElement,
   delta: number,
   isSliding: boolean

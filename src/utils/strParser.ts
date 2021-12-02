@@ -100,9 +100,9 @@ class StrParser {
     if (this.chapterDocList.length > 0) {
       return this.chapterDocList;
     }
-    let chapterStrList: string[] = this.bookDoc.body.innerHTML.split(
-      "<address> </address>"
-    );
+    let chapterStrList: string[] = this.bookDoc.body.innerHTML
+      .split("<address> </address>")
+      .filter((item) => item.trim() !== "");
     for (let i = 0; i < chapterStrList.length; i++) {
       if (chapterStrList.length > this.chapterList.length && i === 0) {
         let random = Math.floor(Math.random() * 900000) + 100000;

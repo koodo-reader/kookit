@@ -12,8 +12,12 @@ class MobiParser {
   getChapterDoc() {
     let tempChapterList =
       this.bookStr.indexOf("<mbp:pagebreak>") > -1
-        ? this.bookStr.split("<mbp:pagebreak>")
-        : this.bookStr.split("<address> </address>");
+        ? this.bookStr
+            .split("<mbp:pagebreak>")
+            .filter((item) => item.trim() !== "")
+        : this.bookStr
+            .split("<address> </address>")
+            .filter((item) => item.trim() !== "");
     let chapterList: string[] = [];
     let titleList: string[] = [];
     let tempChapter = "";

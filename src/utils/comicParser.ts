@@ -89,30 +89,39 @@ class ComicParser {
   renderComic() {
     window.frames[0].document.body.innerHTML = this.bookDoc.outerHTML;
   }
-  async renderImage(i: number) {
-    this.extension = this.fileNameList[0].split(".").reverse()[0];
-    if (
-      window.frames[0].document.getElementById(i + "") &&
-      !(window.frames[0].document.getElementById(i + "") as any).src
-    ) {
-      let buffer: ArrayBuffer;
-      if (this.format === "cbr") {
-        buffer = this.zip.decompress(this.fileNameList[i]);
-      } else if (this.format === "cbt") {
-        buffer =
-          this.zip[_.findLastIndex(this.zip, { name: this.fileNameList[i] })]
-            .buffer;
+  renderImage(i: number) {
+    return new Promise<void>(async (resolve, reject) => {
+      this.extension = this.fileNameList[0].split(".").reverse()[0];
+      if (
+        window.frames[0].document.getElementById(i + "") &&
+        !(window.frames[0].document.getElementById(i + "") as any).src
+      ) {
+        let buffer: ArrayBuffer;
+        if (this.format === "cbr") {
+          buffer = this.zip.decompress(this.fileNameList[i]);
+        } else if (this.format === "cbt") {
+          buffer =
+            this.zip[_.findLastIndex(this.zip, { name: this.fileNameList[i] })]
+              .buffer;
+        } else {
+          buffer = await this.zip
+            .file(this.fileNameList[i])
+            .async("arraybuffer");
+        }
+        if (window.frames[0].document.getElementById(i + "")) {
+          (window.frames[0].document.getElementById(i + "") as any).src =
+            "data:" +
+            mimetype[this.extension.toLowerCase()] +
+            ";base64," +
+            this.base64ArrayBuffer(buffer);
+          resolve();
+        } else {
+          resolve();
+        }
       } else {
-        buffer = await this.zip.file(this.fileNameList[i]).async("arraybuffer");
+        resolve();
       }
-      if (window.frames[0].document.getElementById(i + "")) {
-        (window.frames[0].document.getElementById(i + "") as any).src =
-          "data:" +
-          mimetype[this.extension.toLowerCase()] +
-          ";base64," +
-          this.base64ArrayBuffer(buffer);
-      }
-    }
+    });
   }
 
   base64ArrayBuffer(arrayBuffer: ArrayBuffer) {

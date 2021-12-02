@@ -6,7 +6,7 @@ import StorageUtil from "./storageUtil";
 import Chinese from "chinese-s2t";
 
 let lock = false;
-export const handleScrollPage = (
+export const handleScrollPage = async (
   element: HTMLElement,
   chapterList: Chapter[],
   chapterDocList: ChapterDoc[],
@@ -82,7 +82,7 @@ export const handleRenderChatper = (
   );
 
   handleIframeHeight(element, mode);
-  handleImageSize();
+  handleImageSize(element, mode);
   handleScrollPosition(element, mode);
 };
 export const handleScrollPosition = (
@@ -151,8 +151,9 @@ export const handleTurnChapter = (
     trigger("rendered");
   }
 };
-export const handleRecord = (element: HTMLElement, mode: string) => {
+export const handleRecord = async (element: HTMLElement, mode: string) => {
   if (lock) return;
+
   let visibleNode = Array.from(
     window.frames[0].document.body.querySelectorAll("h1,h2,h3,h4,p,img")
   ).filter(
@@ -234,11 +235,17 @@ export const isScrolledIntoView = (
   ) {
     let elemLeft = rect.left;
     isVisible = elemLeft > -10 && elemLeft <= element.offsetWidth;
-  } else if (el.innerText.trim() || (el.id && el.tagName === "IMG")) {
+  } else if (el.innerText.trim()) {
     let elemTop = rect.top;
     isVisible =
       elemTop >= element.scrollTop &&
       elemTop <= element.scrollTop + element.offsetHeight;
+  } else if (el.id && el.tagName === "IMG") {
+    let elemTop = rect.top;
+    isVisible =
+      elemTop >= element.scrollTop - element.clientHeight / 2 &&
+      elemTop <=
+        element.scrollTop + element.offsetHeight + element.clientHeight / 2;
   }
   return isVisible;
 };

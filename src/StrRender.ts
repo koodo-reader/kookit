@@ -14,6 +14,9 @@ import {
 import StorageUtil from "./utils/storageUtil";
 import StrParser from "./utils/strParser";
 import EventEmitter from "./utils/EventEmitter";
+const sleep = (ms: number) => {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+};
 class StrRender extends EventEmitter {
   bookStr: string;
   mode: string;
@@ -82,7 +85,7 @@ class StrRender extends EventEmitter {
   record() {
     handleRecord(this.element, this.mode);
   }
-  prev() {
+  async prev() {
     if (
       this.mode === "scroll" ||
       window.frames[0].document.body.scrollLeft === 0
@@ -105,9 +108,12 @@ class StrRender extends EventEmitter {
         this.trigger
       );
     }
+    if (this.isSliding) {
+      await sleep(500);
+    }
     handleRecord(this.element, this.mode);
   }
-  next() {
+  async next() {
     if (
       Math.abs(
         window.frames[0].document.body.scrollWidth -
@@ -134,7 +140,9 @@ class StrRender extends EventEmitter {
         this.trigger
       );
     }
-
+    if (this.isSliding) {
+      await sleep(500);
+    }
     handleRecord(this.element, this.mode);
   }
   getPosition() {

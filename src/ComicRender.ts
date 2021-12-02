@@ -10,6 +10,9 @@ import StorageUtil from "./utils/storageUtil";
 import ComicParser from "./utils/comicParser";
 import { handleScrollPage, handleScrollPosition } from "./utils/comicUtil";
 import EventEmitter from "./utils/EventEmitter";
+const sleep = (ms: number) => {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+};
 class ComicRender extends EventEmitter {
   dataSource: any[];
   zip: any;
@@ -56,7 +59,7 @@ class ComicRender extends EventEmitter {
       );
       this.chapterList = this.parser.getChapter();
       this.parser.renderComic();
-      this.renderImage(id);
+      await this.renderImage(id);
 
       let imgRatio = await this.parser.getImgRatio();
       let height =
@@ -96,10 +99,14 @@ class ComicRender extends EventEmitter {
       height: this.element.clientHeight,
     };
   }
-  renderImage(id: number) {
-    this.parser.renderImage(id - 1);
-    this.parser.renderImage(id);
-    this.parser.renderImage(id + 1);
+  async renderImage(id: number) {
+    await this.parser.renderImage(id - 3);
+    await this.parser.renderImage(id - 2);
+    await this.parser.renderImage(id - 1);
+    await this.parser.renderImage(id);
+    await this.parser.renderImage(id + 1);
+    await this.parser.renderImage(id + 2);
+    await this.parser.renderImage(id + 3);
   }
   getChapter() {
     return this.chapterList;
@@ -107,40 +114,53 @@ class ComicRender extends EventEmitter {
   goToPosition(text: string, title: string, id: string) {
     handleScrollPosition(this.element, this.mode, id);
   }
-  goToChapter(title: string) {
+  async goToChapter(title: string) {
     handleScrollPosition(
       this.element,
       this.mode,
       this.dataSource.indexOf(title) + ""
     );
-    this.renderImage(this.dataSource.indexOf(title));
+    await this.renderImage(this.dataSource.indexOf(title));
   }
 
-  record() {
+  async record() {
     handleRecord(this.element, this.mode);
 
     let id = parseInt(StorageUtil.getKookitConfig("count")) || 0;
-    this.parser.renderImage(id - 1);
-    this.parser.renderImage(id);
-    this.parser.renderImage(id + 1);
+    await this.parser.renderImage(id - 3);
+    await this.parser.renderImage(id - 2);
+    await this.parser.renderImage(id - 1);
+    await this.parser.renderImage(id);
+    await this.parser.renderImage(id + 1);
+    await this.parser.renderImage(id + 2);
+    await this.parser.renderImage(id + 3);
   }
-  prev() {
+  async prev() {
     let id = parseInt(StorageUtil.getKookitConfig("count")) || 0;
-    this.parser.renderImage(id);
-    this.parser.renderImage(id - 1);
-    this.parser.renderImage(id - 2);
+    await this.parser.renderImage(id);
+    await this.parser.renderImage(id - 1);
+    await this.parser.renderImage(id - 2);
+    await this.parser.renderImage(id - 3);
+    await this.parser.renderImage(id - 4);
 
     handleScrollPage(this.element, 1, this.isSliding);
+    if (this.isSliding) {
+      await sleep(500);
+    }
     handleRecord(this.element, this.mode);
   }
-  next() {
+  async next() {
     let id = parseInt(StorageUtil.getKookitConfig("count")) || 0;
-    this.parser.renderImage(id);
-    this.parser.renderImage(id + 1);
-    this.parser.renderImage(id + 2);
-    this.parser.renderImage(id + 3);
-    this.parser.renderImage(id + 4);
+    await this.parser.renderImage(id);
+    await this.parser.renderImage(id + 1);
+    await this.parser.renderImage(id + 2);
+    await this.parser.renderImage(id + 3);
+    await this.parser.renderImage(id + 4);
+
     handleScrollPage(this.element, -1, this.isSliding);
+    if (this.isSliding) {
+      await sleep(500);
+    }
     handleRecord(this.element, this.mode);
   }
   getPosition() {
