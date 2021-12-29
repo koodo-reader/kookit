@@ -15,9 +15,7 @@ import {
 import MobiParser from "./utils/mobiParser";
 import { excuteCode } from "./utils/htmlUtil";
 import EventEmitter from "./utils/EventEmitter";
-const sleep = (ms: number) => {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-};
+
 class MobiRender extends EventEmitter {
   mobiBuffer: ArrayBuffer;
   mode: string;
@@ -114,9 +112,7 @@ class MobiRender extends EventEmitter {
         this.trigger
       );
     }
-    if (this.isSliding) {
-      await sleep(500);
-    }
+
     handleRecord(this.element, this.mode);
   }
   async next() {
@@ -146,9 +142,7 @@ class MobiRender extends EventEmitter {
         this.trigger
       );
     }
-    if (this.isSliding) {
-      await sleep(500);
-    }
+
     handleRecord(this.element, this.mode);
   }
   record() {

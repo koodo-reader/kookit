@@ -76,6 +76,7 @@ export const handleRenderChatper = (
   });
   chapterIndex = chapterIndex === -1 ? 0 : chapterIndex;
   window.frames[0].document.body.innerHTML = chapterDocList[chapterIndex].text;
+
   StorageUtil.setKookitConfig(
     "chapterTitle",
     chapterDocList[chapterIndex].title
@@ -161,9 +162,8 @@ export const handleRecord = async (element: HTMLElement, mode: string) => {
       isScrolledIntoView(element, s as any, mode) &&
       (s as HTMLElement).innerText.trim()
   );
-  //除2是为了更准确的记录当前位置
-  let nodeIndex = mode === "scroll" ? Math.floor(visibleNode.length / 2) : 0;
-  let firstVisibleNode = visibleNode[nodeIndex] as HTMLElement;
+
+  let firstVisibleNode = visibleNode[0] as HTMLElement;
   let count = 0;
   let nodeList = Array.from(
     window.frames[0].document.body.querySelectorAll("h1,h2,h3,h4,p,img")
@@ -229,10 +229,7 @@ export const isScrolledIntoView = (
 ) => {
   var isVisible = false;
   var rect = el.getBoundingClientRect();
-  if (
-    mode !== "scroll" &&
-    (el.innerText.trim() || (el.id && el.tagName === "IMG"))
-  ) {
+  if (mode !== "scroll" && el.innerText.trim()) {
     let elemLeft = rect.left;
     isVisible = elemLeft > -10 && elemLeft <= element.offsetWidth;
   } else if (el.innerText.trim()) {
@@ -240,6 +237,9 @@ export const isScrolledIntoView = (
     isVisible =
       elemTop >= element.scrollTop &&
       elemTop <= element.scrollTop + element.offsetHeight;
+  } else if (mode !== "scroll" && el.id && el.tagName === "IMG") {
+    let elemLeft = rect.left;
+    isVisible = elemLeft >= 0 && elemLeft <= element.offsetWidth;
   } else if (el.id && el.tagName === "IMG") {
     let elemTop = rect.top;
     isVisible =

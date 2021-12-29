@@ -10,9 +10,7 @@ import StorageUtil from "./utils/storageUtil";
 import ComicParser from "./utils/comicParser";
 import { handleScrollPage, handleScrollPosition } from "./utils/comicUtil";
 import EventEmitter from "./utils/EventEmitter";
-const sleep = (ms: number) => {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-};
+
 class ComicRender extends EventEmitter {
   dataSource: any[];
   zip: any;
@@ -60,10 +58,12 @@ class ComicRender extends EventEmitter {
       this.chapterList = this.parser.getChapter();
       this.parser.renderComic();
       await this.renderImage(id);
-
+      if (!window.frames[0].document.getElementById(id + "")) {
+        return;
+      }
       let imgRatio = await this.parser.getImgRatio();
       let height =
-        (window.frames[0].document.getElementById(id + "") as any).clientWidth *
+        window.frames[0].document.getElementById(id + "")!.clientWidth *
         imgRatio;
       let imgs = window.frames[0].document.getElementsByTagName("img");
       for (let i = 0; i < imgs.length; i++) {
@@ -144,9 +144,7 @@ class ComicRender extends EventEmitter {
     await this.parser.renderImage(id - 4);
 
     handleScrollPage(this.element, 1, this.isSliding);
-    if (this.isSliding) {
-      await sleep(500);
-    }
+
     handleRecord(this.element, this.mode);
   }
   async next() {
@@ -158,9 +156,6 @@ class ComicRender extends EventEmitter {
     await this.parser.renderImage(id + 4);
 
     handleScrollPage(this.element, -1, this.isSliding);
-    if (this.isSliding) {
-      await sleep(500);
-    }
     handleRecord(this.element, this.mode);
   }
   getPosition() {

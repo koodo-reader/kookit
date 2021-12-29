@@ -41,7 +41,7 @@
 
       const renderFunc = async () => {
         localforage.getItem("book").then(async (result) => {
-          const { TxtRender } = Kookit;
+          const { Azw3Render } = Kookit;
           // let unrar = new Unrar(result);
           // var entries = unrar.getEntries();
 
@@ -60,7 +60,7 @@
           // await rendition.renderTo(
           //   document.getElementsByClassName("ebook-viewer")[0]
           // );
-          let rendition = new TxtRender(result, "single", "GB18030");
+          let rendition = new Azw3Render(result, "scroll");
           await rendition.renderTo(
             document.getElementsByClassName("ebook-viewer")[0]
           );

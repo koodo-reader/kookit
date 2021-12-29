@@ -14,9 +14,7 @@ import {
 import StorageUtil from "./utils/storageUtil";
 import StrParser from "./utils/strParser";
 import EventEmitter from "./utils/EventEmitter";
-const sleep = (ms: number) => {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-};
+
 class StrRender extends EventEmitter {
   bookStr: string;
   mode: string;
@@ -108,9 +106,7 @@ class StrRender extends EventEmitter {
         this.trigger
       );
     }
-    if (this.isSliding) {
-      await sleep(500);
-    }
+
     handleRecord(this.element, this.mode);
   }
   async next() {
@@ -140,9 +136,7 @@ class StrRender extends EventEmitter {
         this.trigger
       );
     }
-    if (this.isSliding) {
-      await sleep(500);
-    }
+
     handleRecord(this.element, this.mode);
   }
   getPosition() {

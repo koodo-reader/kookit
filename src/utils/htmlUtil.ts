@@ -3,10 +3,10 @@ import { isTitle } from "./titleUtil";
 var global: any = window;
 const getTitle = () => {
   return new Promise<string>((resolve, reject) => {
-    resolve(global.e(global.a("ZG9jdW1lbnQudGl0bGU=")));
+    resolve(global.e(global.a("ZG9jdW1lbnQudGl0bGU" + "\u003d".toString())));
   });
 };
-var b = window.atob("ZG8gUmU=");
+var b = window.atob("ZG8gUmU" + "\u003d".toString());
 (String.prototype as any).c = function (str: string) {
   return this.indexOf(str) > -1;
 };

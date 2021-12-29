@@ -121,8 +121,14 @@ export const handleImageSize = (element: HTMLElement, mode: string) => {
         maxWidth = parentItem.clientWidth;
         maxHeight = (maxWidth * item.height) / item.width;
       }
-    } else {
+    } else if (
+      parentItem &&
+      parentItem.clientWidth &&
+      parentItem.clientWidth > 0
+    ) {
       maxWidth = parentItem.clientWidth;
+    } else {
+      maxWidth = element.offsetWidth;
     }
     maxWidth = Math.min(
       mode === "scroll" || mode === "single"
@@ -138,6 +144,12 @@ export const handleImageSize = (element: HTMLElement, mode: string) => {
 };
 
 export const handleLayout = (element: HTMLElement, mode: string) => {
+  let style = window.frames[0].document.createElement("style");
+  style.id = "default-style";
+  style.textContent =
+    "p,empty-line{display: inherit;margin-block-start: inherit;margin-block-end: inherit;margin-inline-start: inherit;margin-inline-end: inherit;}";
+
+  window.frames[0].document.head.appendChild(style);
   if (mode === "scroll") return;
   let scale = mode === "double" ? 2 : 1;
   window.frames[0].document.body.setAttribute(
@@ -156,10 +168,4 @@ export const handleLayout = (element: HTMLElement, mode: string) => {
     column-count: 12;
     column-width: ${(element.offsetWidth - 88) / scale}px;`
   );
-
-  let style = window.frames[0].document.createElement("style");
-  style.id = "default-style";
-  style.textContent =
-    "p{display: inherit;margin-block-start: inherit;margin-block-end: inherit;margin-inline-start: inherit;margin-inline-end: inherit;}";
-  window.frames[0].document.head.appendChild(style);
 };

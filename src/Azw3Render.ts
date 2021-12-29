@@ -15,9 +15,6 @@ import StorageUtil from "./utils/storageUtil";
 import StrParser from "./utils/strParser";
 import { excuteCode } from "./utils/htmlUtil";
 import EventEmitter from "./utils/EventEmitter";
-const sleep = (ms: number) => {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-};
 class Azw3Render extends EventEmitter {
   azw3Buffer: ArrayBuffer;
   mode: string;
@@ -113,9 +110,6 @@ class Azw3Render extends EventEmitter {
         this.trigger
       );
     }
-    if (this.isSliding) {
-      await sleep(500);
-    }
     handleRecord(this.element, this.mode);
   }
   async next() {
@@ -143,9 +137,6 @@ class Azw3Render extends EventEmitter {
         this.isSliding,
         this.trigger
       );
-    }
-    if (this.isSliding) {
-      await sleep(500);
     }
     handleRecord(this.element, this.mode);
   }
