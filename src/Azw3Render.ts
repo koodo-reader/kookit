@@ -68,8 +68,16 @@ class Azw3Render extends EventEmitter {
     return this.chapterList;
   }
   getPageSize() {
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe) return;
+    let doc = iframe.contentDocument;
+    if (!doc) {
+      return;
+    }
     return {
-      width: window.frames[0].document.body.scrollWidth,
+      width: this.element.clientWidth,
       height: this.element.clientHeight,
     };
   }
@@ -88,10 +96,15 @@ class Azw3Render extends EventEmitter {
     this.trigger("rendered");
   }
   async prev() {
-    if (
-      this.mode === "scroll" ||
-      window.frames[0].document.body.scrollLeft === 0
-    ) {
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe) return;
+    let doc = iframe.contentDocument;
+    if (!doc) {
+      return;
+    }
+    if (this.mode === "scroll" || doc.body.scrollLeft === 0) {
       handlePrevChapter(
         this.element,
         this.chapterList,
@@ -113,11 +126,17 @@ class Azw3Render extends EventEmitter {
     handleRecord(this.element, this.mode);
   }
   async next() {
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe) return;
+    let doc = iframe.contentDocument;
+    if (!doc) {
+      return;
+    }
     if (
       Math.abs(
-        window.frames[0].document.body.scrollWidth -
-          window.frames[0].document.body.scrollLeft -
-          window.frames[0].document.body.clientWidth
+        doc.body.scrollWidth - doc.body.scrollLeft - doc.body.clientWidth
       ) < 10 ||
       this.mode === "scroll"
     ) {
@@ -148,13 +167,22 @@ class Azw3Render extends EventEmitter {
       text: StorageUtil.getKookitConfig("text"),
       chapterTitle: StorageUtil.getKookitConfig("chapterTitle"),
       count: StorageUtil.getKookitConfig("count"),
+      percentage: StorageUtil.getKookitConfig("percentage"),
     };
   }
+  getMetadata() {
+    return new KindleParser(this.azw3Buffer).getMetadata();
+  }
   setStyle(css: string) {
-    window.frames[0].document.body.setAttribute(
-      "style",
-      css + window.frames[0].document.body.getAttribute("style")
-    );
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe) return;
+    let doc = iframe.contentDocument;
+    if (!doc) {
+      return;
+    }
+    doc.body.setAttribute("style", css + doc.body.getAttribute("style"));
   }
 }
 export default Azw3Render;

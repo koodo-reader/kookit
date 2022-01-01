@@ -15,27 +15,35 @@ export const handleScrollPage = async (
   isSliding: boolean,
   trigger: (status: string) => void
 ) => {
-  if (delta > 0 && window.frames[0].document.body.scrollLeft > 0) {
-    // window.frames[0].document.body.scrollLeft -= element.offsetWidth + 88;
+  let pageArea = document.getElementById("page-area");
+  if (!pageArea) return;
+  let iframe = pageArea.getElementsByTagName("iframe")[0];
+  if (!iframe) return;
+  let doc = iframe.contentDocument;
+  if (!doc) {
+    return;
+  }
+  if (delta > 0 && doc.body.scrollLeft > 0) {
+    // doc.body.scrollLeft -= element.offsetWidth + 88;
 
-    window.frames[0].document.body.scrollBy({
+    doc.body.scrollBy({
       top: 0,
       left: -element.offsetWidth - 88,
       behavior: isSliding ? "smooth" : "auto",
     });
-  } else if (delta > 0 && window.frames[0].document.body.scrollLeft === 0) {
+  } else if (delta > 0 && doc.body.scrollLeft === 0) {
     handlePrevChapter(element, chapterList, chapterDocList, mode);
     trigger("rendered");
   } else if (delta < 0) {
     handleTurnChapter(element, chapterList, chapterDocList, mode, trigger);
 
-    window.frames[0].document.body.scrollBy({
+    doc.body.scrollBy({
       top: 0,
       left: element.offsetWidth + 88,
       behavior: isSliding ? "smooth" : "auto",
     });
 
-    // window.frames[0].document.body.scrollLeft += element.offsetWidth + 88;
+    // doc.body.scrollLeft += element.offsetWidth + 88;
   }
 };
 export const handlePrevChapter = (
@@ -70,18 +78,29 @@ export const handleRenderChatper = (
   element: HTMLElement,
   mode: string
 ) => {
-  window.frames[0].document.body.innerHTML = "";
+  let pageArea = document.getElementById("page-area");
+  if (!pageArea) return;
+  let iframe = pageArea.getElementsByTagName("iframe")[0];
+  if (!iframe) return;
+  let doc = iframe.contentDocument;
+  if (!doc) {
+    return;
+  }
+  doc.body.innerHTML = "";
   let chapterIndex = _.findIndex(chapterDocList, {
     title: label,
   });
   chapterIndex = chapterIndex === -1 ? 0 : chapterIndex;
-  window.frames[0].document.body.innerHTML = chapterDocList[chapterIndex].text;
+  doc.body.innerHTML = chapterDocList[chapterIndex].text;
 
   StorageUtil.setKookitConfig(
     "chapterTitle",
     chapterDocList[chapterIndex].title
   );
-
+  StorageUtil.setKookitConfig(
+    "percentage",
+    chapterIndex / chapterDocList.length + ""
+  );
   handleIframeHeight(element, mode);
   handleImageSize(element, mode);
   handleScrollPosition(element, mode);
@@ -93,9 +112,17 @@ export const handleScrollPosition = (
   _count: string = "0"
 ) => {
   let text = _text || StorageUtil.getKookitConfig("text") || "";
+  let pageArea = document.getElementById("page-area");
+  if (!pageArea) return;
+  let iframe = pageArea.getElementsByTagName("iframe")[0];
+  if (!iframe) return;
+  let doc = iframe.contentDocument;
+  if (!doc) {
+    return;
+  }
   if (text) {
     let nodeList = Array.from(
-      window.frames[0].document.body.querySelectorAll("h1,h2,h3,h4,p,img")
+      doc.body.querySelectorAll("h1,h2,h3,h4,p,img")
     ) as HTMLElement[];
     let targetNodeList = nodeList.filter((s, index) => {
       return (
@@ -110,11 +137,11 @@ export const handleScrollPosition = (
     let targetNode = targetNodeList[0];
 
     if (mode !== "scroll") {
-      window.frames[0].document.body.scrollTo(
+      doc.body.scrollTo(
         text && targetNode
           ? targetNode.getBoundingClientRect().left
           : text === "prevChapter"
-          ? window.frames[0].document.body.scrollWidth
+          ? doc.body.scrollWidth
           : 0,
         0
       );
@@ -126,7 +153,7 @@ export const handleScrollPosition = (
     }
   } else {
     if (mode !== "scroll") {
-      window.frames[0].document.body.scrollTo(0, 0);
+      doc.body.scrollTo(0, 0);
     } else {
       element.scrollTo(0, 0);
     }
@@ -139,13 +166,19 @@ export const handleTurnChapter = (
   mode: string,
   trigger: (status: string) => void
 ) => {
+  let pageArea = document.getElementById("page-area");
+  if (!pageArea) return;
+  let iframe = pageArea.getElementsByTagName("iframe")[0];
+  if (!iframe) return;
+  let doc = iframe.contentDocument;
+  if (!doc) {
+    return;
+  }
   if (
     Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) <
       10 &&
     Math.abs(
-      window.frames[0].document.body.scrollWidth -
-        window.frames[0].document.body.scrollLeft -
-        window.frames[0].document.body.clientWidth
+      doc.body.scrollWidth - doc.body.scrollLeft - doc.body.clientWidth
     ) < 10
   ) {
     handleNextChapter(element, chapterList, chapterDocList, mode);
@@ -154,9 +187,16 @@ export const handleTurnChapter = (
 };
 export const handleRecord = async (element: HTMLElement, mode: string) => {
   if (lock) return;
-
+  let pageArea = document.getElementById("page-area");
+  if (!pageArea) return;
+  let iframe = pageArea.getElementsByTagName("iframe")[0];
+  if (!iframe) return;
+  let doc = iframe.contentDocument;
+  if (!doc) {
+    return;
+  }
   let visibleNode = Array.from(
-    window.frames[0].document.body.querySelectorAll("h1,h2,h3,h4,p,img")
+    doc.body.querySelectorAll("h1,h2,h3,h4,p,img")
   ).filter(
     (s) =>
       isScrolledIntoView(element, s as any, mode) &&
@@ -166,7 +206,7 @@ export const handleRecord = async (element: HTMLElement, mode: string) => {
   let firstVisibleNode = visibleNode[0] as HTMLElement;
   let count = 0;
   let nodeList = Array.from(
-    window.frames[0].document.body.querySelectorAll("h1,h2,h3,h4,p,img")
+    doc.body.querySelectorAll("h1,h2,h3,h4,p,img")
   ) as HTMLElement[];
   for (let i = 0; i < nodeList.length; i++) {
     if (

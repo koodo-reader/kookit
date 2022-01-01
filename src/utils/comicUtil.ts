@@ -5,16 +5,24 @@ export const handleScrollPage = async (
   delta: number,
   isSliding: boolean
 ) => {
-  if (delta > 0 && window.frames[0].document.body.scrollLeft > 0) {
-    window.frames[0].document.body.scrollBy({
+  let pageArea = document.getElementById("page-area");
+  if (!pageArea) return;
+  let iframe = pageArea.getElementsByTagName("iframe")[0];
+  if (!iframe) return;
+  let doc = iframe.contentDocument;
+  if (!doc) {
+    return;
+  }
+  if (delta > 0 && doc.body.scrollLeft > 0) {
+    doc.body.scrollBy({
       top: 0,
       left: -element.offsetWidth - 88,
       behavior: isSliding ? "smooth" : "auto",
     });
-  } else if (delta > 0 && window.frames[0].document.body.scrollLeft === 0) {
+  } else if (delta > 0 && doc.body.scrollLeft === 0) {
     return;
   } else if (delta < 0) {
-    window.frames[0].document.body.scrollBy({
+    doc.body.scrollBy({
       top: 0,
       left: element.offsetWidth + 88,
       behavior: isSliding ? "smooth" : "auto",
@@ -27,14 +35,22 @@ export const handleScrollPosition = (
   _id: string = ""
 ) => {
   let id = _id || parseInt(StorageUtil.getKookitConfig("count")) || 0;
+  let pageArea = document.getElementById("page-area");
+  if (!pageArea) return;
+  let iframe = pageArea.getElementsByTagName("iframe")[0];
+  if (!iframe) return;
+  let doc = iframe.contentDocument;
+  if (!doc) {
+    return;
+  }
   if (id) {
     let nodeList = Array.from(
-      window.frames[0].document.body.querySelectorAll("img")
+      doc.body.querySelectorAll("img")
     ) as HTMLElement[];
 
     let targetNode = nodeList[id];
     if (mode !== "scroll") {
-      window.frames[0].document.body.scrollTo(
+      doc.body.scrollTo(
         id && targetNode ? targetNode.getBoundingClientRect().left : 0,
         0
       );
@@ -46,7 +62,7 @@ export const handleScrollPosition = (
     }
   } else {
     if (mode !== "scroll") {
-      window.frames[0].document.body.scrollTo(0, 0);
+      doc.body.scrollTo(0, 0);
     } else {
       element.scrollTo(0, 0);
     }

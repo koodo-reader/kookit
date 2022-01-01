@@ -1,28 +1,44 @@
 import _ from "underscore";
 
 export const handleIframeHeight = (element: HTMLElement, mode: string) => {
-  let iFrame: any = document.getElementsByTagName("iframe")[0];
+  let pageArea = document.getElementById("page-area");
+  if (!pageArea) return;
+  let iframe = pageArea.getElementsByTagName("iframe")[0];
+  if (!iframe) return;
+
   if (mode !== "scroll") {
-    iFrame.height = element.offsetHeight;
+    iframe.height = element.offsetHeight + "px";
     return;
   }
-  var body = iFrame.contentWindow.document.body,
-    html = iFrame.contentWindow.document.documentElement;
-  iFrame.height =
+  let doc = iframe.contentDocument;
+  if (!doc) {
+    return;
+  }
+  var body = doc.body,
+    html = doc.documentElement;
+  iframe.height =
     Math.max(
       body.scrollHeight,
       body.offsetHeight,
       html.clientHeight,
       html.scrollHeight,
       html.offsetHeight
-    ) * 2;
+    ) *
+      2 +
+    "px";
 
   setTimeout(() => {
-    let iFrame: any = document.getElementsByTagName("iframe")[0];
-
-    let body = iFrame.contentWindow.document.body;
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe) return;
+    let doc = iframe.contentDocument;
+    if (!doc) {
+      return;
+    }
+    let body = doc.body;
     let lastchild = body.lastElementChild;
-    let lastEle = body.lastChild;
+    let lastEle: any = body.lastChild;
     let itemAs = body.getElementsByTagName("a");
     let itemPs = body.getElementsByTagName("p");
     let itemIs = body.getElementsByTagName("img");
@@ -30,7 +46,7 @@ export const handleIframeHeight = (element: HTMLElement, mode: string) => {
     let lastItemP = itemPs[itemPs.length - 1];
     let lastItemI = itemPs[itemIs.length - 1];
 
-    let lastItem = lastItemP || lastItemA || lastItemI;
+    let lastItem: any = lastItemP || lastItemA || lastItemI;
     if (_.isElement(lastItemA) && _.isElement(lastItemP)) {
       if (
         lastItemA.clientHeight + (lastItemA as any).offsetTop >
@@ -67,7 +83,7 @@ export const handleIframeHeight = (element: HTMLElement, mode: string) => {
       }
     }
 
-    iFrame.height =
+    iframe.height =
       Math.max(
         _.isElement(lastchild)
           ? lastchild.clientHeight + (lastchild as any).offsetTop
@@ -80,7 +96,8 @@ export const handleIframeHeight = (element: HTMLElement, mode: string) => {
           : 0
       ) +
       400 +
-      (lastEle.nodeType === 3 ? nodeHeight : 0);
+      (lastEle.nodeType === 3 ? nodeHeight : 0) +
+      "px";
   }, 500);
 };
 
@@ -98,7 +115,9 @@ export const createIframe = (element: HTMLElement) => {
 };
 
 export const handleImageSize = (element: HTMLElement, mode: string) => {
-  let iframe = document.getElementsByTagName("iframe")[0];
+  let pageArea = document.getElementById("page-area");
+  if (!pageArea) return;
+  let iframe = pageArea.getElementsByTagName("iframe")[0];
   if (!iframe) return;
   let doc = iframe.contentDocument;
   if (!doc) {
@@ -144,15 +163,23 @@ export const handleImageSize = (element: HTMLElement, mode: string) => {
 };
 
 export const handleLayout = (element: HTMLElement, mode: string) => {
-  let style = window.frames[0].document.createElement("style");
+  let pageArea = document.getElementById("page-area");
+  if (!pageArea) return;
+  let iframe = pageArea.getElementsByTagName("iframe")[0];
+  if (!iframe) return;
+  let doc = iframe.contentDocument;
+  if (!doc) {
+    return;
+  }
+  let style = doc.createElement("style");
   style.id = "default-style";
   style.textContent =
     "p,empty-line{display: inherit;margin-block-start: inherit;margin-block-end: inherit;margin-inline-start: inherit;margin-inline-end: inherit;}";
 
-  window.frames[0].document.head.appendChild(style);
+  doc.head.appendChild(style);
   if (mode === "scroll") return;
   let scale = mode === "double" ? 2 : 1;
-  window.frames[0].document.body.setAttribute(
+  doc.body.setAttribute(
     "style",
     `width: auto;
     height: 100%;

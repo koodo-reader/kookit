@@ -190,7 +190,7 @@ class MobiFile {
   constructor(data) {
     this.view = new DataView(data);
     this.buffer = this.view.buffer;
-    console.log(this.view);
+
     this.offset = 0;
     this.header = null;
   }
@@ -283,7 +283,6 @@ class MobiFile {
       buffers.push(this.read_text_record(i));
     }
 
-    // console.log(this.read_text_record(0));
     var all = copagesne_uint8array(buffers);
     return ab2str(all);
   }
@@ -308,7 +307,6 @@ class MobiFile {
   // 从buffer中读出image
   read_image(idx) {
     var first_image_idx = this.mobi_header.first_image_idx;
-
     var begin = this.reclist[first_image_idx + idx].offset;
 
     var end = this.reclist[first_image_idx + idx + 1].offset;
@@ -320,8 +318,6 @@ class MobiFile {
     this.header = this.load_pdbheader();
     this.reclist = this.load_reclist();
     this.load_record0();
-    console.log(this.header);
-    console.log(this.reclist);
   }
 
   load_pdbheader() {
@@ -358,7 +354,6 @@ class MobiFile {
   load_record0() {
     this.palm_header = this.load_record0_header();
     this.mobi_header = this.load_mobi_header();
-    console.log(this.palm_header, this.mobi_header);
   }
 
   load_record0_header() {
@@ -422,7 +417,6 @@ class MobiFile {
     this.skip(46);
 
     mobi_header.extra_flags = this.getUint16();
-    console.log(start_offset + mobi_header.header_length);
     this.setoffset(start_offset + mobi_header.header_length);
 
     return mobi_header;
@@ -448,22 +442,25 @@ class MobiFile {
       for (let i = 0; i < imgDoms.length; i++) {
         await this.render_image(imgDoms, i);
       }
-      // let blob = await this.read_image(0);
-      // var imgReader = new FileReader();
-      // imgReader.onload = (e) => {
-      //   console.log(e.target?.result);
-      // };
-      // imgReader.onerror = function (err) {
-      //   reject(err);
-      // };
-      // imgReader.readAsDataURL(blob);
+
       resolve(bookDoc);
     });
+  }
+  getMetadata() {
+    return {
+      compression: this.palm_header.compression,
+      ctime: this.header.ctime,
+      mtime: this.header.mtime,
+      language: this.mobi_header.language,
+    };
   }
   render_image = (imgDoms, i) => {
     return new Promise((resolve, reject) => {
       var imgDom = imgDoms[i];
-      var idx = +imgDom.getAttribute("recindex");
+      var idx = imgDom.getAttribute("recindex")
+        ? +imgDom.getAttribute("recindex")
+        : i + 1;
+      imgDom.setAttribute("onerror", "this.style.display='none'");
       var blob = this.read_image(idx - 1);
       var imgReader = new FileReader();
       imgReader.onload = (e) => {

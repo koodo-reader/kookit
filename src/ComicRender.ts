@@ -58,14 +58,20 @@ class ComicRender extends EventEmitter {
       this.chapterList = this.parser.getChapter();
       this.parser.renderComic();
       await this.renderImage(id);
-      if (!window.frames[0].document.getElementById(id + "")) {
+      let pageArea = document.getElementById("page-area");
+      if (!pageArea) return;
+      let iframe = pageArea.getElementsByTagName("iframe")[0];
+      if (!iframe) return;
+      let doc = iframe.contentDocument;
+      if (!doc) {
+        return;
+      }
+      if (!doc.getElementById(id + "")) {
         return;
       }
       let imgRatio = await this.parser.getImgRatio();
-      let height =
-        window.frames[0].document.getElementById(id + "")!.clientWidth *
-        imgRatio;
-      let imgs = window.frames[0].document.getElementsByTagName("img");
+      let height = doc.getElementById(id + "")!.clientWidth * imgRatio;
+      let imgs = doc.getElementsByTagName("img");
       for (let i = 0; i < imgs.length; i++) {
         if (this.mode === "scroll") {
           imgs[i].style.height = height + "px";
@@ -94,8 +100,16 @@ class ComicRender extends EventEmitter {
     });
   }
   getPageSize() {
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe) return;
+    let doc = iframe.contentDocument;
+    if (!doc) {
+      return;
+    }
     return {
-      width: window.frames[0].document.body.scrollWidth,
+      width: this.element.clientWidth,
       height: this.element.clientHeight,
     };
   }
@@ -163,13 +177,19 @@ class ComicRender extends EventEmitter {
       text: StorageUtil.getKookitConfig("text"),
       chapterTitle: StorageUtil.getKookitConfig("chapterTitle"),
       count: StorageUtil.getKookitConfig("count"),
+      percentage: StorageUtil.getKookitConfig("percentage"),
     };
   }
   setStyle(css: string) {
-    window.frames[0].document.body.setAttribute(
-      "style",
-      css + window.frames[0].document.body.getAttribute("style")
-    );
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe) return;
+    let doc = iframe.contentDocument;
+    if (!doc) {
+      return;
+    }
+    doc.body.setAttribute("style", css + doc.body.getAttribute("style"));
   }
 }
 

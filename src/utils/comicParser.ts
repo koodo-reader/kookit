@@ -87,14 +87,30 @@ class ComicParser {
     });
   }
   renderComic() {
-    window.frames[0].document.body.innerHTML = this.bookDoc.outerHTML;
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe) return;
+    let doc = iframe.contentDocument;
+    if (!doc) {
+      return;
+    }
+    doc.body.innerHTML = this.bookDoc.outerHTML;
   }
   renderImage(i: number) {
     return new Promise<void>(async (resolve, reject) => {
       this.extension = this.fileNameList[0].split(".").reverse()[0];
+      let pageArea = document.getElementById("page-area");
+      if (!pageArea) return;
+      let iframe = pageArea.getElementsByTagName("iframe")[0];
+      if (!iframe) return;
+      let doc = iframe.contentDocument;
+      if (!doc) {
+        return;
+      }
       if (
-        window.frames[0].document.getElementById(i + "") &&
-        !(window.frames[0].document.getElementById(i + "") as any).src
+        doc.getElementById(i + "") &&
+        !(doc.getElementById(i + "") as any).src
       ) {
         let buffer: ArrayBuffer;
         if (this.format === "cbr") {
@@ -108,8 +124,8 @@ class ComicParser {
             .file(this.fileNameList[i])
             .async("arraybuffer");
         }
-        if (window.frames[0].document.getElementById(i + "")) {
-          (window.frames[0].document.getElementById(i + "") as any).src =
+        if (doc.getElementById(i + "")) {
+          (doc.getElementById(i + "") as any).src =
             "data:" +
             mimetype[this.extension.toLowerCase()] +
             ";base64," +
