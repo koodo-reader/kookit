@@ -202,19 +202,9 @@ export const handleLayout = (element: HTMLElement, mode: string) => {
   let scale = mode === "double" ? 2 : 1;
   doc.body.setAttribute(
     "style",
-    `width: auto;
-    height: 100%;
-    overflow-y: hidden;
-    overflow-X: hidden;
-    padding-left: 0px;
-    padding-right: 0px;
-    margin: 0px;
-    box-sizing: border-box;
-    max-width: inherit;
-    column-fill: auto;
-    column-gap: 88px;
-    column-count: 12;
-    column-width: ${(element.offsetWidth - 88) / scale}px;`
+    `width: auto;height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;max-width: inherit;column-fill: auto;column-gap: 88px;column-count: 12;column-width: ${
+      (element.offsetWidth - 88) / scale
+    }px;`
   );
 };
 export const isElement = (obj) => {
