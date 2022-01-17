@@ -100,8 +100,18 @@ export const handleIframeHeight = (element: HTMLElement, mode: string) => {
       "px";
   }, 500);
 };
-
-export const createIframe = (element: HTMLElement) => {
+export const getAzw3Style = (doc: Element) => {
+  let style = "";
+  if (
+    doc.lastChild &&
+    doc.lastChild?.lastChild &&
+    !isElement(doc.lastChild?.lastChild)
+  ) {
+    style = doc.lastChild?.lastChild.textContent || "";
+  }
+  return style;
+};
+export const createIframe = (element: HTMLElement, styleStr: string = "") => {
   var iframe = document.createElement("iframe");
   iframe.style.width = "100%";
   iframe.style.border = "0";
@@ -112,6 +122,12 @@ export const createIframe = (element: HTMLElement) => {
   iframe.style.verticalAlign = "baseline";
   element.innerHTML = "";
   element.appendChild(iframe);
+  if (styleStr && iframe.contentDocument) {
+    let style = iframe.contentDocument.createElement("style");
+    style.id = "azw3-style";
+    style.textContent = styleStr;
+    iframe.contentDocument.head.appendChild(style);
+  }
 };
 
 export const handleImageSize = (element: HTMLElement, mode: string) => {
@@ -129,6 +145,9 @@ export const handleImageSize = (element: HTMLElement, mode: string) => {
   let maxWidth;
   for (let item of imgs) {
     let parentItem = item.parentElement;
+    maxHeight = 0;
+    maxWidth = 0;
+    console.log(item.width, item.height);
     if (item.width && item.height) {
       let isImageScaleLargerThanElement =
         item.height / item.width >
@@ -155,10 +174,13 @@ export const handleImageSize = (element: HTMLElement, mode: string) => {
         : (element.offsetWidth - 88) / 2,
       maxWidth
     );
-    item.setAttribute(
-      "style",
-      `max-width: ${maxWidth}px;max-height:${maxHeight}px`
-    );
+
+    maxWidth &&
+      maxHeight &&
+      item.setAttribute(
+        "style",
+        `max-width: ${maxWidth}px;max-height:${maxHeight}px`
+      );
   }
 };
 
@@ -175,7 +197,6 @@ export const handleLayout = (element: HTMLElement, mode: string) => {
   style.id = "default-style";
   style.textContent =
     "p,empty-line{display: inherit;margin-block-start: inherit;margin-block-end: inherit;margin-inline-start: inherit;margin-inline-end: inherit;}";
-
   doc.head.appendChild(style);
   if (mode === "scroll") return;
   let scale = mode === "double" ? 2 : 1;
@@ -195,4 +216,20 @@ export const handleLayout = (element: HTMLElement, mode: string) => {
     column-count: 12;
     column-width: ${(element.offsetWidth - 88) / scale}px;`
   );
+};
+export const isElement = (obj) => {
+  try {
+    //Using W3 DOM2 (works for FF, Opera and Chrome)
+    return obj instanceof HTMLElement;
+  } catch (e) {
+    //Browsers not supporting W3 DOM2 don't have HTMLElement and
+    //an exception is thrown and we end up here. Testing some
+    //properties that all elements have (works on IE7)
+    return (
+      typeof obj === "object" &&
+      obj.nodeType === 1 &&
+      typeof obj.style === "object" &&
+      typeof obj.ownerDocument === "object"
+    );
+  }
 };

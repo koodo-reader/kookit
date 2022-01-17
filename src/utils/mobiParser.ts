@@ -1,4 +1,4 @@
-import { isNodeTitle } from "./titleUtil";
+import { isKeyword, isNodeTitle, isSpecialChar } from "./titleUtil";
 
 class MobiParser {
   bookStr: string;
@@ -45,20 +45,13 @@ class MobiParser {
       let titleNodeList = chapterDoc.querySelectorAll(
         "h1,h2,h3,h4,blockquote,font,b"
       );
-
       let firstValidTitle: any;
 
       for (let i = 0; i < titleNodeList.length; i++) {
-        let isSpecialChar =
-          (titleNodeList[i] as HTMLElement).innerText.trim() === "♦" ||
-          (titleNodeList[i] as HTMLElement).innerText.trim() === "●" ||
-          (titleNodeList[i] as HTMLElement).innerText.trim() === "◾" ||
-          (titleNodeList[i] as HTMLElement).innerText.trim() === "◀" ||
-          (titleNodeList[i] as HTMLElement).innerText.trim() === "◼" ||
-          (titleNodeList[i] as HTMLElement).innerText.trim() === "■";
         if (
           (titleNodeList[i] as HTMLElement).innerText.trim() &&
-          !isSpecialChar
+          !isSpecialChar((titleNodeList[i] as HTMLElement).innerText) &&
+          !isKeyword((titleNodeList[i] as HTMLElement).innerText)
         ) {
           firstValidTitle = titleNodeList[i] as HTMLElement;
           break;

@@ -2,7 +2,7 @@ import KindleParser from "./utils/kindleParser";
 import _ from "underscore";
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDom";
-import { createIframe, handleLayout } from "./utils/layoutUtil";
+import { createIframe, getAzw3Style, handleLayout } from "./utils/layoutUtil";
 import {
   handleNextChapter,
   handlePrevChapter,
@@ -50,8 +50,7 @@ class Azw3Render extends EventEmitter {
       let chapterTitle =
         StorageUtil.getKookitConfig("chapterTitle") ||
         this.chapterDocList[0].title;
-
-      createIframe(element);
+      createIframe(element, getAzw3Style(mobiDoc));
 
       handleLayout(element, this.mode);
       handleRenderChatper(

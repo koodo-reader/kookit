@@ -26,7 +26,6 @@ export const isTitle = (line, isStartWithKeyword = false) => {
     !line.contains("‘") &&
     !line.contains("；") &&
     !line.contains(";") &&
-    !line.contains("…") &&
     (line.startsWith("CHAPTER") ||
       line.startsWith("Chapter") ||
       line.startsWith("序章") ||
@@ -175,15 +174,11 @@ export const isNodeTitle = (chapterDoc) => {
   let firstValidText;
 
   for (let i = 0; i < titleNodeList.length; i++) {
-    let isSpecialChar =
+    let isSpecial =
       firstValidTitle &&
-      (titleNodeList[i].innerText.trim() === "♦" ||
-        titleNodeList[i].innerText.trim() === "●" ||
-        titleNodeList[i].innerText.trim() === "◾" ||
-        titleNodeList[i].innerText.trim() === "◀" ||
-        titleNodeList[i].innerText.trim() === "◼" ||
-        titleNodeList[i].innerText.trim() === "■");
-    if (titleNodeList[i].innerText.trim() && !isSpecialChar) {
+      isSpecialChar(titleNodeList[i].innerText) &&
+      isKeyword(titleNodeList[i].innerText);
+    if (titleNodeList[i].innerText.trim() && !isSpecial) {
       firstValidTitle = titleNodeList[i];
       break;
     }
@@ -205,5 +200,24 @@ export const isNodeTitle = (chapterDoc) => {
     isTitleNodeExist &&
     (!titleNodeExceedLength || isTitle(firstValidTitle.innerText.trim())) &&
     isTextLengthLarge
+  );
+};
+export const isSpecialChar = (title) => {
+  return (
+    title.trim() === "♦" ||
+    title.trim() === "●" ||
+    title.trim() === "◾" ||
+    title.trim() === "◀" ||
+    title.trim() === "◼" ||
+    title.trim() === "■"
+  );
+};
+export const isKeyword = (title) => {
+  return (
+    title.trim() === "|" ||
+    title.trim() === "Next" ||
+    title.trim() === "Main menu" ||
+    title.trim() === "Section menu" ||
+    title.trim() === "Previous"
   );
 };
