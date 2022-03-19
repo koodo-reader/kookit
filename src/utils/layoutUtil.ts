@@ -32,22 +32,29 @@ export const handleIframeHeight = (element: HTMLElement, mode: string) => {
     if (!pageArea) return;
     let iframe = pageArea.getElementsByTagName("iframe")[0];
     if (!iframe) return;
-    let doc = iframe.contentDocument;
+    let doc: any = iframe.contentDocument;
     if (!doc) {
       return;
     }
     let body = doc.body;
+
     let lastchild = body.lastElementChild;
     let lastEle: any = body.lastChild;
     let itemAs = body.getElementsByTagName("a");
     let itemPs = body.getElementsByTagName("p");
     let itemIs = body.getElementsByTagName("img");
+    let itemDs = body.getElementsByTagName("div");
     let lastItemA = itemAs[itemAs.length - 1];
     let lastItemP = itemPs[itemPs.length - 1];
     let lastItemI = itemPs[itemIs.length - 1];
+    let lastItemD = itemDs[itemDs.length - 1];
 
-    let lastItem: any = lastItemP || lastItemA || lastItemI;
-    if (_.isElement(lastItemA) && _.isElement(lastItemP)) {
+    let lastItem: any = lastItemP || lastItemA || lastItemI || lastItemD;
+    if (
+      _.isElement(lastItemA) &&
+      _.isElement(lastItemP) &&
+      _.isElement(lastItemD)
+    ) {
       if (
         lastItemA.clientHeight + (lastItemA as any).offsetTop >
         lastItemP.clientHeight + (lastItemP as any).offsetTop
@@ -55,6 +62,12 @@ export const handleIframeHeight = (element: HTMLElement, mode: string) => {
         lastItem = lastItemA;
       } else {
         lastItem = lastItemP;
+      }
+      if (
+        lastItemD.clientHeight + (lastItemD as any).offsetTop >
+        lastItem.clientHeight + (lastItem as any).offsetTop
+      ) {
+        lastItem = lastItemD;
       }
     }
     if (_.isElement(lastItemI)) {
@@ -82,8 +95,7 @@ export const handleIframeHeight = (element: HTMLElement, mode: string) => {
         }
       }
     }
-
-    iframe.height =
+    let targetHeight =
       Math.max(
         _.isElement(lastchild)
           ? lastchild.clientHeight + (lastchild as any).offsetTop
@@ -96,8 +108,11 @@ export const handleIframeHeight = (element: HTMLElement, mode: string) => {
           : 0
       ) +
       400 +
-      (lastEle.nodeType === 3 ? nodeHeight : 0) +
-      "px";
+      (lastEle.nodeType === 3 ? nodeHeight : 0);
+    iframe.height = targetHeight + "px";
+    // let html = doc.documentElement;
+    // if (!html) return;
+    // html.setAttribute("style", `height: ${targetHeight}px`);
   }, 500);
 };
 export const getAzw3Style = (doc: Element) => {
@@ -130,6 +145,20 @@ export const createIframe = (element: HTMLElement, styleStr: string = "") => {
   }
 };
 
+export const progressInfo = () => {
+  let pageArea = document.getElementById("page-area");
+  if (!pageArea) return;
+  let iframe = pageArea.getElementsByTagName("iframe")[0];
+  if (!iframe) return;
+  let doc = iframe.contentDocument;
+  if (!doc) {
+    return;
+  }
+  return {
+    totalPage: parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") + 1,
+    currentPage: parseInt(doc.body.scrollLeft / doc.body.clientWidth + "") + 1,
+  };
+};
 export const handleImageSize = (element: HTMLElement, mode: string) => {
   let pageArea = document.getElementById("page-area");
   if (!pageArea) return;
@@ -147,7 +176,6 @@ export const handleImageSize = (element: HTMLElement, mode: string) => {
     let parentItem = item.parentElement;
     maxHeight = 0;
     maxWidth = 0;
-    console.log(item.width, item.height);
     if (item.width && item.height) {
       let isImageScaleLargerThanElement =
         item.height / item.width >
@@ -165,8 +193,10 @@ export const handleImageSize = (element: HTMLElement, mode: string) => {
       parentItem.clientWidth > 0
     ) {
       maxWidth = parentItem.clientWidth;
+      maxHeight = parentItem.clientHeight;
     } else {
       maxWidth = element.offsetWidth;
+      maxHeight = element.offsetHeight;
     }
     maxWidth = Math.min(
       mode === "scroll" || mode === "single"
@@ -174,12 +204,12 @@ export const handleImageSize = (element: HTMLElement, mode: string) => {
         : (element.offsetWidth - 88) / 2,
       maxWidth
     );
-
-    maxWidth &&
-      maxHeight &&
+    (maxWidth || maxHeight) &&
       item.setAttribute(
         "style",
-        `max-width: ${maxWidth}px;max-height:${maxHeight}px`
+        `max-width: ${maxWidth > 0 ? maxWidth : ""}px;max-height:${
+          maxHeight > 0 ? maxHeight : ""
+        }px`
       );
   }
 };

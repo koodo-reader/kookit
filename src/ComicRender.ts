@@ -100,14 +100,6 @@ class ComicRender extends EventEmitter {
     });
   }
   getPageSize() {
-    let pageArea = document.getElementById("page-area");
-    if (!pageArea) return;
-    let iframe = pageArea.getElementsByTagName("iframe")[0];
-    if (!iframe) return;
-    let doc = iframe.contentDocument;
-    if (!doc) {
-      return;
-    }
     return {
       width: this.element.clientWidth,
       height: this.element.clientHeight,

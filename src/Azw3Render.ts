@@ -2,8 +2,15 @@ import KindleParser from "./utils/kindleParser";
 import _ from "underscore";
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDom";
-import { createIframe, getAzw3Style, handleLayout } from "./utils/layoutUtil";
 import {
+  createIframe,
+  getAzw3Style,
+  handleLayout,
+  progressInfo,
+} from "./utils/layoutUtil";
+import {
+  getSearchResult,
+  getVisibleText,
   handleNextChapter,
   handlePrevChapter,
   handleRecord,
@@ -67,14 +74,6 @@ class Azw3Render extends EventEmitter {
     return this.chapterList;
   }
   getPageSize() {
-    let pageArea = document.getElementById("page-area");
-    if (!pageArea) return;
-    let iframe = pageArea.getElementsByTagName("iframe")[0];
-    if (!iframe) return;
-    let doc = iframe.contentDocument;
-    if (!doc) {
-      return;
-    }
     return {
       width: this.element.clientWidth,
       height: this.element.clientHeight,
@@ -145,6 +144,7 @@ class Azw3Render extends EventEmitter {
         this.chapterDocList,
         this.mode
       );
+      this.trigger("rendered");
     } else {
       handleScrollPage(
         this.element,
@@ -157,6 +157,15 @@ class Azw3Render extends EventEmitter {
       );
     }
     handleRecord(this.element, this.mode);
+  }
+  visibleText() {
+    return getVisibleText(this.element, this.mode);
+  }
+  doSearch(keyword: string) {
+    return getSearchResult(keyword, this.chapterDocList);
+  }
+  getProgress() {
+    return progressInfo();
   }
   record() {
     handleRecord(this.element, this.mode);

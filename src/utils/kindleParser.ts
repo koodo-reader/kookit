@@ -490,6 +490,7 @@ class MobiFile {
         ? +imgDom.getAttribute("recindex")
         : i + 1;
       imgDom.setAttribute("onerror", "this.style.display='none'");
+      // imgDom.setAttribute("style", "max-width: 100%; max-height: 100%");
       var blob = this.read_image(idx - 1);
       var imgReader = new FileReader();
       imgReader.onload = (e) => {

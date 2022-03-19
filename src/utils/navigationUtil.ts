@@ -120,15 +120,18 @@ export const handleScrollPosition = (
   if (!doc) {
     return;
   }
+  let nodeList = Array.from(
+    doc.body.querySelectorAll("h1,h2,h3,h4,p,img")
+  ) as HTMLElement[];
   if (text) {
-    let nodeList = Array.from(
-      doc.body.querySelectorAll("h1,h2,h3,h4,p,img")
-    ) as HTMLElement[];
     let targetNodeList = nodeList.filter((s, index) => {
       return (
-        ((s as HTMLElement).innerText === text ||
-          (s as HTMLElement).innerText === Chinese.t2s(text) ||
-          (s as HTMLElement).innerText === Chinese.s2t(text)) &&
+        (((s as HTMLElement).innerText &&
+          ((s as HTMLElement).innerText === text ||
+            (s as HTMLElement).innerText === Chinese.t2s(text) ||
+            (s as HTMLElement).innerText === Chinese.s2t(text))) ||
+          ((s as any).getAttribute("recindex") &&
+            (s as any).getAttribute("recindex") === text)) &&
         Math.abs(
           index - parseInt(_count || StorageUtil.getKookitConfig("count"))
         ) < 2
@@ -182,6 +185,7 @@ export const handleTurnChapter = (
     ) < 10
   ) {
     handleNextChapter(element, chapterList, chapterDocList, mode);
+
     trigger("rendered");
   }
 };
@@ -195,19 +199,17 @@ export const handleRecord = async (element: HTMLElement, mode: string) => {
   if (!doc) {
     return;
   }
-  let visibleNode = Array.from(
-    doc.body.querySelectorAll("h1,h2,h3,h4,p,img")
-  ).filter(
-    (s) =>
-      isScrolledIntoView(element, s as any, mode) &&
-      (s as HTMLElement).innerText.trim()
-  );
-
-  let firstVisibleNode = visibleNode[0] as HTMLElement;
-  let count = 0;
   let nodeList = Array.from(
     doc.body.querySelectorAll("h1,h2,h3,h4,p,img")
   ) as HTMLElement[];
+  let visibleNode = nodeList.filter(
+    (s) =>
+      isScrolledIntoView(element, s as any, mode) &&
+      ((s as HTMLElement).innerText.trim() || s.getAttribute("recindex"))
+  );
+  let firstVisibleNode: any = visibleNode[0] as HTMLElement;
+  let count = 0;
+
   for (let i = 0; i < nodeList.length; i++) {
     if (
       isScrolledIntoView(element, nodeList[i], mode) &&
@@ -226,9 +228,16 @@ export const handleRecord = async (element: HTMLElement, mode: string) => {
       break;
     }
   }
+
   StorageUtil.setKookitConfig(
     "text",
-    firstVisibleNode ? firstVisibleNode.innerText : ""
+    firstVisibleNode
+      ? firstVisibleNode.innerText
+        ? firstVisibleNode.innerText
+        : firstVisibleNode.getAttribute("recindex")
+        ? firstVisibleNode.getAttribute("recindex")
+        : ""
+      : ""
   );
   StorageUtil.setKookitConfig("count", count + "");
   lock = true;
@@ -262,6 +271,57 @@ export const handleNextChapter = (
     mode
   );
 };
+export const getVisibleText = (element: HTMLElement, mode: string) => {
+  let pageArea = document.getElementById("page-area");
+  if (!pageArea) return;
+  let iframe = pageArea.getElementsByTagName("iframe")[0];
+  if (!iframe) return;
+  let doc = iframe.contentDocument;
+  if (!doc) {
+    return;
+  }
+  let nodeList = Array.from(
+    doc.body.querySelectorAll("h1,h2,h3,h4,p,img")
+  ) as HTMLElement[];
+  let visibleNode = nodeList.filter(
+    (s) =>
+      isScrolledIntoView(element, s as any, mode) &&
+      ((s as HTMLElement).innerText.trim() || s.getAttribute("recindex"))
+  );
+  return (mode !== "scroll" ? visibleNode : nodeList)
+    .map((item) => item.innerText)
+    .join(" ");
+};
+export const getSearchResult = (
+  keyword: string,
+  chapterDocList: ChapterDoc[]
+) => {
+  let searchResult: { cfi: string; excerpt: string }[] = [];
+  for (let i = 0; i < chapterDocList.length; i++) {
+    let chapterDoc = new DOMParser().parseFromString(
+      chapterDocList[i].text,
+      "text/html"
+    );
+    let nodeList = Array.from(
+      chapterDoc.body.querySelectorAll("h1,h2,h3,h4,p,img")
+    ) as HTMLElement[];
+
+    for (let j = 0; j < nodeList.length; j++) {
+      if (nodeList[j].innerText.indexOf(keyword) > -1) {
+        searchResult.push({
+          excerpt: nodeList[j].innerText,
+          cfi: JSON.stringify({
+            text: nodeList[j].innerText,
+            chapterTitle: chapterDocList[i].title,
+            count: j,
+            percentage: i / chapterDocList.length,
+          }),
+        });
+      }
+    }
+  }
+  return searchResult;
+};
 export const isScrolledIntoView = (
   element: HTMLElement,
   el: HTMLElement,
@@ -277,10 +337,14 @@ export const isScrolledIntoView = (
     isVisible =
       elemTop >= element.scrollTop &&
       elemTop <= element.scrollTop + element.offsetHeight;
-  } else if (mode !== "scroll" && el.id && el.tagName === "IMG") {
+  } else if (
+    mode !== "scroll" &&
+    (el.id || el.onerror) &&
+    el.tagName === "IMG"
+  ) {
     let elemLeft = rect.left;
     isVisible = elemLeft >= 0 && elemLeft <= element.offsetWidth;
-  } else if (el.id && el.tagName === "IMG") {
+  } else if ((el.id || el.onerror) && el.tagName === "IMG") {
     let elemTop = rect.top;
     isVisible =
       elemTop >= element.scrollTop - element.clientHeight / 2 &&
