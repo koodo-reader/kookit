@@ -7,6 +7,9 @@
     <script src="../dist/kookit.umd.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/localforage/1.9.0/localforage.js"></script>
     <script src="./unrar.js"></script>
+    <script src="./jszip.min.js"></script>
+    <script src="./epub.min.js"></script>
+
     <title>Kookit - Koodo Reader</title>
   </head>
   <body>
@@ -41,7 +44,7 @@
 
       const renderFunc = async () => {
         localforage.getItem("book").then(async (result) => {
-          const { Azw3Render } = Kookit;
+          const { EpubRender } = Kookit;
           // let unrar = new Unrar(result);
           // var entries = unrar.getEntries();
 
@@ -60,11 +63,13 @@
           // await rendition.renderTo(
           //   document.getElementsByClassName("ebook-viewer")[0]
           // );
-          let rendition = new Azw3Render(result, "double");
+
+          let rendition = new EpubRender(result, "double");
           await rendition.renderTo(
             document.getElementsByClassName("ebook-viewer")[0]
           );
-          console.log(rendition.getChapter());
+          let chapterList = await rendition.getChapter();
+
           document
             .getElementsByClassName("next")[0]
             .addEventListener("click", () => {
@@ -78,7 +83,7 @@
           rendition.on("rendered", () => {
             console.log("rendered from html");
           });
-          rendition.getChapter().forEach((item) => {
+          chapterList.forEach((item) => {
             let li = document.createElement("li");
             li.innerText =
               item.label.indexOf("#") > 0

@@ -51,7 +51,7 @@ class StrParser {
       this.chapterList.push({
         label: "Forword",
         id: "title" + random,
-        href: "#title" + random,
+        href: "title" + random,
         subitems: [],
       });
     }
@@ -64,13 +64,11 @@ class StrParser {
             ? this.chapterDomList[i].innerText
             : titleList[
                 titleList.lastIndexOf(this.chapterDomList[i].innerText)
-              ] +
-              "#" +
-              i
+              ] + i
           : "Forword",
 
         id: "title" + random,
-        href: "#title" + random,
+        href: "title" + random,
         subitems: [],
       });
       titleList.push(this.chapterList[i].label);
@@ -107,9 +105,9 @@ class StrParser {
       if (chapterStrList.length > this.chapterList.length && i === 0) {
         let random = Math.floor(Math.random() * 900000) + 100000;
         this.chapterList.unshift({
-          label: "Forword" + "#" + i,
+          label: "Forword" + i,
           id: "title" + random,
-          href: "#title" + random,
+          href: "title" + random,
           subitems: [],
         });
       }

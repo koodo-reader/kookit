@@ -84,7 +84,8 @@ class TxtRender extends EventEmitter {
       height: this.element.clientHeight,
     };
   }
-  goToPosition(text: string, chapterTitle: string, count: string) {
+  goToPosition(cfi: string) {
+    let { text, chapterTitle, count } = JSON.parse(cfi);
     handleRenderChatper(
       chapterTitle,
       this.chapterDocList,

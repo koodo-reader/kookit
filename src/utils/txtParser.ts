@@ -24,13 +24,11 @@ class TxtParser {
             ? this.chapterDomList[i].innerText
             : titleList[
                 titleList.lastIndexOf(this.chapterDomList[i].innerText)
-              ] +
-              "#" +
-              i
+              ] + i
           : "Forword",
 
         id: "title" + random,
-        href: "#title" + random,
+        href: "title" + random,
         subitems: [],
       });
       titleList.push(this.chapterList[i].label);
@@ -59,7 +57,7 @@ class TxtParser {
         this.chapterList.unshift({
           label: "Forword" + "#" + i,
           id: "title" + random,
-          href: "#title" + random,
+          href: "title" + random,
           subitems: [],
         });
       }

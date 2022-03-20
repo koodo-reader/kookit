@@ -99,6 +99,12 @@ class ComicRender extends EventEmitter {
       resolve();
     });
   }
+  getProgress() {
+    return {
+      totalPage: this.chapterList.length,
+      currentPage: parseInt(StorageUtil.getKookitConfig("count")) || 0,
+    };
+  }
   getPageSize() {
     return {
       width: this.element.clientWidth,
@@ -117,7 +123,9 @@ class ComicRender extends EventEmitter {
   getChapter() {
     return this.chapterList;
   }
-  goToPosition(text: string, title: string, id: string) {
+  goToPosition(cfi: string) {
+    let { id } = JSON.parse(cfi);
+
     handleScrollPosition(this.element, this.mode, id);
   }
   async goToChapter(title: string) {

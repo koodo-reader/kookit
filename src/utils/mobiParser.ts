@@ -78,7 +78,7 @@ class MobiParser {
       this.chapterList.push({
         label: this.chapterDocList[i].title,
         id: "title" + random,
-        href: "#title" + random,
+        href: "title" + random,
         subitems: [],
       });
     }

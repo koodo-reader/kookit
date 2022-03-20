@@ -56,7 +56,7 @@ class ComicParser {
       this.chapterList.push({
         label: this.fileNameList[i],
         id: i + "",
-        href: "#" + i,
+        href: i,
         subitems: [],
       });
     }

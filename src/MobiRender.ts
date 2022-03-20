@@ -79,7 +79,8 @@ class MobiRender extends EventEmitter {
     handleRenderChatper(title, this.chapterDocList, this.element, this.mode);
     this.trigger("rendered");
   }
-  goToPosition(text: string, chapterTitle: string, count: string) {
+  goToPosition(cfi: string) {
+    let { text, chapterTitle, count } = JSON.parse(cfi);
     handleRenderChatper(
       chapterTitle,
       this.chapterDocList,
