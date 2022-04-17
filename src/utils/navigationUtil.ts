@@ -23,14 +23,15 @@ export const handleScrollPage = async (
   if (!doc) {
     return;
   }
+  let section = Math.floor(element.clientWidth / 12);
+  let gap = section % 2 === 0 ? section : section - 1;
   if (delta > 0 && doc.body.scrollLeft > 0) {
-    // doc.body.scrollLeft -= element.offsetWidth + 88;
-
     doc.body.scrollBy({
       top: 0,
-      left: -element.offsetWidth - 88,
+      left: -element.offsetWidth - gap,
       behavior: isSliding ? "smooth" : "auto",
     });
+    // trigger("page-changed");
   } else if (delta > 0 && doc.body.scrollLeft === 0) {
     handlePrevChapter(element, chapterList, chapterDocList, mode);
     trigger("rendered");
@@ -39,11 +40,9 @@ export const handleScrollPage = async (
 
     doc.body.scrollBy({
       top: 0,
-      left: element.offsetWidth + 88,
+      left: element.offsetWidth + gap,
       behavior: isSliding ? "smooth" : "auto",
     });
-
-    // doc.body.scrollLeft += element.offsetWidth + 88;
   }
 };
 export const handlePrevChapter = (
@@ -53,9 +52,15 @@ export const handlePrevChapter = (
   mode: string
 ) => {
   let chapterTitle = StorageUtil.getKookitConfig("chapterTitle");
-  let chapterIndex = _.findIndex(chapterList, {
-    label: chapterTitle,
-  });
+  let chapterIndex = _.findIndex(
+    chapterList.map((item) => {
+      item.label = item.label.trim();
+      return item;
+    }),
+    {
+      label: chapterTitle.trim(),
+    }
+  );
   if (chapterIndex === 0 || chapterIndex === -1 || !chapterTitle) {
     return;
   }
@@ -87,9 +92,15 @@ export const handleRenderChatper = (
     return;
   }
   doc.body.innerHTML = "";
-  let chapterIndex = _.findIndex(chapterDocList, {
-    title: label,
-  });
+  let chapterIndex = _.findIndex(
+    chapterDocList.map((item) => {
+      item.title = item.title.trim();
+      return item;
+    }),
+    {
+      title: label.trim(),
+    }
+  );
   chapterIndex = chapterIndex === -1 ? 0 : chapterIndex;
   doc.body.innerHTML = chapterDocList[chapterIndex].text;
 
@@ -138,7 +149,6 @@ export const handleScrollPosition = (
       );
     });
     let targetNode = targetNodeList[0];
-
     if (mode !== "scroll") {
       doc.body.scrollTo(
         text && targetNode
@@ -177,6 +187,7 @@ export const handleTurnChapter = (
   if (!doc) {
     return;
   }
+
   if (
     Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) <
       10 &&
@@ -252,9 +263,15 @@ export const handleNextChapter = (
   mode: string
 ) => {
   let chapterTitle = StorageUtil.getKookitConfig("chapterTitle");
-  let chapterIndex = _.findIndex(chapterList, {
-    label: chapterTitle,
-  });
+  let chapterIndex = _.findIndex(
+    chapterList.map((item) => {
+      item.label = item.label.trim();
+      return item;
+    }),
+    {
+      label: chapterTitle.trim(),
+    }
+  );
   if (chapterIndex === chapterList.length - 1 || chapterIndex === -1) {
     return;
   }
@@ -263,7 +280,6 @@ export const handleNextChapter = (
     chapterList[chapterIndex + 1].label
   );
   StorageUtil.setKookitConfig("text", "");
-
   handleRenderChatper(
     chapterList[chapterIndex + 1].label,
     chapterDocList,

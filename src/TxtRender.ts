@@ -2,9 +2,11 @@ import _ from "underscore";
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDom";
 import { excuteCode, txtToHtml } from "./utils/htmlUtil";
-import { createIframe, handleLayout } from "./utils/layoutUtil";
+import { createIframe, handleLayout, progressInfo } from "./utils/layoutUtil";
 import StorageUtil from "./utils/storageUtil";
 import {
+  getSearchResult,
+  getVisibleText,
   handleNextChapter,
   handlePrevChapter,
   handleRecord,
@@ -99,7 +101,14 @@ class TxtRender extends EventEmitter {
   record() {
     handleRecord(this.element, this.mode);
   }
+  removeContent() {
+    this.element.innerHTML = "";
+  }
+  flatChapter(chapters: any) {
+    return chapters;
+  }
   async prev() {
+    this.trigger("page-changed");
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;
     let iframe = pageArea.getElementsByTagName("iframe")[0];
@@ -131,6 +140,7 @@ class TxtRender extends EventEmitter {
     handleRecord(this.element, this.mode);
   }
   async next() {
+    this.trigger("page-changed");
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;
     let iframe = pageArea.getElementsByTagName("iframe")[0];
@@ -166,6 +176,15 @@ class TxtRender extends EventEmitter {
 
     // this.trigger("rendered");
     handleRecord(this.element, this.mode);
+  }
+  visibleText() {
+    return getVisibleText(this.element, this.mode);
+  }
+  doSearch(keyword: string) {
+    return getSearchResult(keyword, this.chapterDocList);
+  }
+  getProgress() {
+    return progressInfo();
   }
   getPosition() {
     return {

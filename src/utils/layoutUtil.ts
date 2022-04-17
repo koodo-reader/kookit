@@ -126,6 +126,7 @@ export const getAzw3Style = (doc: Element) => {
   }
   return style;
 };
+
 export const createIframe = (element: HTMLElement, styleStr: string = "") => {
   var iframe = document.createElement("iframe");
   iframe.style.width = "100%";
@@ -168,7 +169,8 @@ export const handleImageSize = (element: HTMLElement, mode: string) => {
   if (!doc) {
     return;
   }
-
+  let section = Math.floor(element.clientWidth / 12);
+  let gap = section % 2 === 0 ? section : section - 1;
   let imgs = doc.getElementsByTagName("img") as any;
   let maxHeight;
   let maxWidth;
@@ -201,7 +203,7 @@ export const handleImageSize = (element: HTMLElement, mode: string) => {
     maxWidth = Math.min(
       mode === "scroll" || mode === "single"
         ? element.offsetWidth
-        : (element.offsetWidth - 88) / 2,
+        : (element.offsetWidth - gap) / 2,
       maxWidth
     );
     (maxWidth || maxHeight) &&
@@ -226,14 +228,16 @@ export const handleLayout = (element: HTMLElement, mode: string) => {
   let style = doc.createElement("style");
   style.id = "default-style";
   style.textContent =
-    "p,empty-line{display: inherit;margin-block-start: inherit;margin-block-end: inherit;margin-inline-start: inherit;margin-inline-end: inherit;}";
+    "p,empty-line{display: inherit;margin-block-start: inherit;margin-block-end: inherit;margin-inline-start: inherit;margin-inline-end: inherit;}body{margin: 0px}";
   doc.head.appendChild(style);
   if (mode === "scroll") return;
   let scale = mode === "double" ? 2 : 1;
+  let section = Math.floor(element.clientWidth / 12);
+  let gap = section % 2 === 0 ? section : section - 1;
   doc.body.setAttribute(
     "style",
-    `width: auto;height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;max-width: inherit;column-fill: auto;column-gap: 88px;column-count: 12;column-width: ${
-      (element.offsetWidth - 88) / scale
+    `width: auto;height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;max-width: inherit;column-fill: auto;column-gap: ${gap}px;column-count: 12;column-width: ${
+      (element.offsetWidth - gap) / scale
     }px;`
   );
 };

@@ -13,10 +13,12 @@ export const handleScrollPage = async (
   if (!doc) {
     return;
   }
+  let section = Math.floor(element.clientWidth / 12);
+  let gap = section % 2 === 0 ? section : section - 1;
   if (delta > 0 && doc.body.scrollLeft > 0) {
     doc.body.scrollBy({
       top: 0,
-      left: -element.offsetWidth - 88,
+      left: -element.offsetWidth - gap,
       behavior: isSliding ? "smooth" : "auto",
     });
   } else if (delta > 0 && doc.body.scrollLeft === 0) {
@@ -24,7 +26,7 @@ export const handleScrollPage = async (
   } else if (delta < 0) {
     doc.body.scrollBy({
       top: 0,
-      left: element.offsetWidth + 88,
+      left: element.offsetWidth + gap,
       behavior: isSliding ? "smooth" : "auto",
     });
   }

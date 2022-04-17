@@ -124,6 +124,9 @@ class Azw3Render extends EventEmitter {
     }
     handleRecord(this.element, this.mode);
   }
+  removeContent() {
+    this.element.innerHTML = "";
+  }
   async next() {
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;
@@ -164,6 +167,9 @@ class Azw3Render extends EventEmitter {
   }
   doSearch(keyword: string) {
     return getSearchResult(keyword, this.chapterDocList);
+  }
+  flatChapter(chapters: any) {
+    return chapters;
   }
   getProgress() {
     return progressInfo();

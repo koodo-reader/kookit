@@ -15,6 +15,7 @@ class EpubRender extends EventEmitter {
   chapterDocList: ChapterDoc[];
   element: any;
   epub: any;
+  flattenChapters: any;
   constructor(epubBuffer: ArrayBuffer, mode: string, isSliding: boolean) {
     super();
     this.epubBuffer = epubBuffer;
@@ -25,7 +26,7 @@ class EpubRender extends EventEmitter {
     this.bookStr = "";
     this.element = "";
   }
-  async renderTo(element: HTMLElement) {
+  async renderTo(element: HTMLElement, cfi: string) {
     return new Promise<void>(async (resolve, reject) => {
       if (!(await excuteCode())) {
         resolve();
@@ -33,7 +34,7 @@ class EpubRender extends EventEmitter {
       }
 
       this.epub = window.ePub(this.epubBuffer, {});
-      console.log(this.epub, "window");
+
       this.element = element;
       this.rendition = this.epub.renderTo(this.element, {
         manager: "default",
@@ -43,7 +44,8 @@ class EpubRender extends EventEmitter {
         snap: true,
         spread: this.mode === "single" ? "none" : "",
       });
-      this.rendition.display().then(() => {
+
+      this.rendition.display(cfi).then(() => {
         this.trigger("rendered");
         resolve();
       });
@@ -74,26 +76,43 @@ class EpubRender extends EventEmitter {
     return newChapter;
   }
   goToChapter(title: string) {
-    let flattenChapters = this.flatChapter(this.chapterList);
+    if (!this.flattenChapters) {
+      this.flattenChapters = this.flatChapter(this.chapterList);
+    }
+
     let href =
-      flattenChapters[_.findLastIndex(flattenChapters, { label: title })]?.href;
+      this.flattenChapters[
+        _.findLastIndex(
+          this.flattenChapters.map((item) => {
+            item.label = item.label.trim();
+            return item;
+          }),
+          { label: title.trim() }
+        )
+      ]?.href;
     this.rendition.display(href);
 
     this.trigger("rendered");
   }
-  goToPosition(cfi: string) {
-    this.rendition.display(cfi);
+  async goToPosition(cfiStr: string) {
+    let position = JSON.parse(cfiStr) || {};
+    this.epub.rendition.display(position.cfi);
     this.trigger("rendered");
+  }
+  removeContent() {
+    this.element.innerHTML = "";
   }
   async prev() {
     this.rendition.prev();
     await this.record();
-    // this.trigger("rendered");
+    this.trigger("rendered");
+    this.trigger("page-changed");
   }
   async next() {
     this.rendition.next();
     await this.record();
-    // this.trigger("rendered");
+    this.trigger("rendered");
+    this.trigger("page-changed");
   }
   async visibleText() {
     const currentLocation = this.rendition.currentLocation();
@@ -117,45 +136,69 @@ class EpubRender extends EventEmitter {
           .then(item.find.bind(item, keyword))
           .finally(item.unload.bind(item))
       )
-    ).then((results: any) => Promise.resolve([].concat.apply([], results)));
+    ).then((results: any) =>
+      Promise.resolve(
+        [].concat.apply([], results).map((item: any) => {
+          item.cfi = JSON.stringify({ cfi: item.cfi });
+          return item;
+        })
+      )
+    );
   }
-  getProgress() {
-    const currentLocation = this.rendition.currentLocation();
+  async getProgress() {
+    let currentLocation = this.rendition.currentLocation();
+
     if (!currentLocation.start) {
-      return;
+      await this.epub.locations.generate();
+      currentLocation = this.rendition.currentLocation();
     }
     return {
-      prevPage: currentLocation.start.displayed.page,
-      nextPage: currentLocation.end.displayed.page,
+      currentPage:
+        this.mode === "double"
+          ? parseInt(currentLocation.start.displayed.page / 2 + "")
+          : currentLocation.start.displayed.page,
       totalPage: currentLocation.start.displayed.total,
     };
   }
   async record() {
-    const currentLocation = this.rendition.currentLocation();
-    if (!currentLocation.start) {
-      return;
+    let currentLocation = this.rendition.currentLocation();
+    let locations = this.epub.locations._locations;
+    if (!currentLocation.start || locations.length === 0) {
+      locations = await this.epub.locations.generate();
+      currentLocation = this.rendition.currentLocation();
     }
+
     const cfi = currentLocation.start.cfi;
-    await this.epub.locations.generate();
     let percentage = this.epub.locations.percentageFromCfi(cfi);
+
+    let chapterHref = currentLocation.start.href;
+    if (!this.flattenChapters) {
+      this.flattenChapters = this.flatChapter(this.chapterList);
+    }
+    let chapter = "Unknown Chapter";
+    let currentChapter = this.flattenChapters.filter(
+      (item: any) =>
+        item.href.indexOf(chapterHref) > -1 ||
+        chapterHref.indexOf(item.href) > -1
+    )[0];
+    if (currentChapter) {
+      chapter = currentChapter.label.trim(" ");
+    }
     StorageUtil.setKookitConfig("cfi", cfi);
     StorageUtil.setKookitConfig("percentage", percentage);
+    StorageUtil.setKookitConfig("chapterTitle", chapter);
   }
   async getPosition() {
-    const currentLocation = this.rendition.currentLocation();
-    if (!currentLocation.start) {
-      return;
-    }
-    await this.epub.locations.generate();
-    let percentage = this.epub.locations.percentageFromCfi(
-      currentLocation.start.cfi
-    );
-    return { cfi: currentLocation.start.cfi, percentage: percentage };
+    await this.record();
+    return {
+      cfi: StorageUtil.getKookitConfig("cfi"),
+      percentage: StorageUtil.getKookitConfig("percentage"),
+      chapterTitle: StorageUtil.getKookitConfig("chapterTitle"),
+    };
   }
   getMetadata() {
     return new Promise<any>(async (resolve, reject) => {
       this.epub = window.ePub(this.epubBuffer, {});
-      console.log(this.epubBuffer, window);
       let metadata = await this.epub.loaded.metadata;
       let coverUrl = await this.epub.coverUrl();
       let blob = await fetch(coverUrl).then((r) => r.blob());

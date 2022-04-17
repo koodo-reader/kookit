@@ -32,7 +32,8 @@ class ComicParser {
   getBookStr() {
     let bookDoc = document.createElement("div");
     let scale = this.mode === "single" ? 1 : 2;
-
+    let section = Math.floor(this.element.clientWidth / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
     for (let i = 0; i < this.fileNameList.length; i++) {
       let imageDom = document.createElement("img");
 
@@ -42,7 +43,7 @@ class ComicParser {
         `width: ${
           this.mode === "scroll"
             ? this.element.clientWidth
-            : (this.element.clientWidth - 88) / scale
+            : (this.element.clientWidth - gap) / scale
         }px;max-height:${
           this.mode === "scroll" ? "inherit" : this.element.clientHeight
         }px`

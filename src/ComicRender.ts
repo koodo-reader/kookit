@@ -72,6 +72,8 @@ class ComicRender extends EventEmitter {
       let imgRatio = await this.parser.getImgRatio();
       let height = doc.getElementById(id + "")!.clientWidth * imgRatio;
       let imgs = doc.getElementsByTagName("img");
+      let section = Math.floor(this.element.clientWidth / 12);
+      let gap = section % 2 === 0 ? section : section - 1;
       for (let i = 0; i < imgs.length; i++) {
         if (this.mode === "scroll") {
           imgs[i].style.height = height + "px";
@@ -81,7 +83,7 @@ class ComicRender extends EventEmitter {
             imgs[i].style.height = this.element.clientHeight + "px";
             imgs[i].style.width = this.element.clientHeight / imgRatio + "px";
             imgs[i].style.paddingLeft =
-              (this.element.clientWidth - (this.mode === "single" ? 0 : 88)) /
+              (this.element.clientWidth - (this.mode === "single" ? 0 : gap)) /
                 2 /
                 scale -
               this.element.clientHeight / imgRatio / 2 +
@@ -98,6 +100,9 @@ class ComicRender extends EventEmitter {
       this.trigger("rendered");
       resolve();
     });
+  }
+  flatChapter(chapters: any) {
+    return chapters;
   }
   getProgress() {
     return {
@@ -148,6 +153,9 @@ class ComicRender extends EventEmitter {
     await this.parser.renderImage(id + 1);
     await this.parser.renderImage(id + 2);
     await this.parser.renderImage(id + 3);
+  }
+  removeContent() {
+    this.element.innerHTML = "";
   }
   async prev() {
     let id = parseInt(StorageUtil.getKookitConfig("count")) || 0;

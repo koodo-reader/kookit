@@ -2,9 +2,11 @@ import KindleParser from "./utils/kindleParser";
 import _ from "underscore";
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDom";
-import { createIframe, handleLayout } from "./utils/layoutUtil";
+import { createIframe, handleLayout, progressInfo } from "./utils/layoutUtil";
 import StorageUtil from "./utils/storageUtil";
 import {
+  getSearchResult,
+  getVisibleText,
   handleNextChapter,
   handlePrevChapter,
   handleRecord,
@@ -72,6 +74,9 @@ class MobiRender extends EventEmitter {
       height: this.element.clientHeight,
     };
   }
+  flatChapter(chapters: any) {
+    return chapters;
+  }
   getChapter() {
     return this.chapterList;
   }
@@ -90,7 +95,11 @@ class MobiRender extends EventEmitter {
     handleScrollPosition(this.element, this.mode, text, count);
     this.trigger("rendered");
   }
+  removeContent() {
+    this.element.innerHTML = "";
+  }
   async prev() {
+    this.trigger("page-changed");
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;
     let iframe = pageArea.getElementsByTagName("iframe")[0];
@@ -122,6 +131,7 @@ class MobiRender extends EventEmitter {
     handleRecord(this.element, this.mode);
   }
   async next() {
+    this.trigger("page-changed");
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;
     let iframe = pageArea.getElementsByTagName("iframe")[0];
@@ -156,6 +166,15 @@ class MobiRender extends EventEmitter {
     }
 
     handleRecord(this.element, this.mode);
+  }
+  visibleText() {
+    return getVisibleText(this.element, this.mode);
+  }
+  doSearch(keyword: string) {
+    return getSearchResult(keyword, this.chapterDocList);
+  }
+  getProgress() {
+    return progressInfo();
   }
   record() {
     handleRecord(this.element, this.mode);
