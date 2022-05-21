@@ -132,6 +132,7 @@ class ComicRender extends EventEmitter {
     let { id } = JSON.parse(cfi);
 
     handleScrollPosition(this.element, this.mode, id);
+    this.record();
   }
   async goToChapter(title: string) {
     handleScrollPosition(

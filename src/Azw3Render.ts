@@ -92,6 +92,7 @@ class Azw3Render extends EventEmitter {
       this.mode
     );
     handleScrollPosition(this.element, this.mode, text, count);
+    this.record();
     this.trigger("rendered");
   }
   async prev() {

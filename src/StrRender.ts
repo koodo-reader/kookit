@@ -80,8 +80,9 @@ class StrRender extends EventEmitter {
       this.element,
       this.mode
     );
-    this.trigger("rendered");
     handleScrollPosition(this.element, this.mode, text, count);
+    this.record();
+    this.trigger("rendered");
   }
   record() {
     handleRecord(this.element, this.mode);

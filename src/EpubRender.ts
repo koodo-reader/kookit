@@ -49,6 +49,9 @@ class EpubRender extends EventEmitter {
         this.trigger("rendered");
         resolve();
       });
+      this.rendition.on("rendered", () => {
+        this.trigger("rendered");
+      });
     });
   }
   async getChapter() {
@@ -97,6 +100,7 @@ class EpubRender extends EventEmitter {
   async goToPosition(cfiStr: string) {
     let position = JSON.parse(cfiStr) || {};
     this.epub.rendition.display(position.cfi);
+    await this.record();
     this.trigger("rendered");
   }
   removeContent() {
@@ -105,13 +109,13 @@ class EpubRender extends EventEmitter {
   async prev() {
     this.rendition.prev();
     await this.record();
-    this.trigger("rendered");
+    // this.trigger("rendered");
     this.trigger("page-changed");
   }
   async next() {
     this.rendition.next();
     await this.record();
-    this.trigger("rendered");
+    // this.trigger("rendered");
     this.trigger("page-changed");
   }
   async visibleText() {
@@ -155,8 +159,8 @@ class EpubRender extends EventEmitter {
     return {
       currentPage:
         this.mode === "double"
-          ? parseInt(currentLocation.start.displayed.page / 2 + "")
-          : currentLocation.start.displayed.page,
+          ? parseInt(currentLocation.start.displayed.page / 2 + "") + 1
+          : currentLocation.start.displayed.page + 1,
       totalPage: currentLocation.start.displayed.total,
     };
   }
