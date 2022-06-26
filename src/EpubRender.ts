@@ -98,9 +98,17 @@ class EpubRender extends EventEmitter {
     this.trigger("rendered");
   }
   async goToPosition(cfiStr: string) {
+    console.log(cfiStr, "cfi");
     let position = JSON.parse(cfiStr) || {};
     this.epub.rendition.display(position.cfi);
-    await this.record();
+    if (position.isFirst) {
+      setTimeout(async () => {
+        await this.record();
+      }, 0);
+    } else {
+      await this.record();
+    }
+
     this.trigger("rendered");
   }
   removeContent() {
@@ -109,13 +117,17 @@ class EpubRender extends EventEmitter {
   async prev() {
     this.rendition.prev();
     await this.record();
+
+    console.log("prev");
     // this.trigger("rendered");
     this.trigger("page-changed");
   }
   async next() {
     this.rendition.next();
     await this.record();
+
     // this.trigger("rendered");
+    console.log("next");
     this.trigger("page-changed");
   }
   async visibleText() {
@@ -160,7 +172,7 @@ class EpubRender extends EventEmitter {
       currentPage:
         this.mode === "double"
           ? parseInt(currentLocation.start.displayed.page / 2 + "") + 1
-          : currentLocation.start.displayed.page + 1,
+          : currentLocation.start.displayed.page,
       totalPage: currentLocation.start.displayed.total,
     };
   }
@@ -173,8 +185,7 @@ class EpubRender extends EventEmitter {
     }
 
     const cfi = currentLocation.start.cfi;
-    let percentage = this.epub.locations.percentageFromCfi(cfi);
-
+    let percentage = currentLocation.start.percentage;
     let chapterHref = currentLocation.start.href;
     if (!this.flattenChapters) {
       this.flattenChapters = this.flatChapter(this.chapterList);
@@ -194,6 +205,7 @@ class EpubRender extends EventEmitter {
   }
   async getPosition() {
     await this.record();
+
     return {
       cfi: StorageUtil.getKookitConfig("cfi"),
       percentage: StorageUtil.getKookitConfig("percentage"),

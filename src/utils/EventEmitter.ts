@@ -134,7 +134,6 @@ export default class {
     setTimeout(() => {
       if (name.namespace === "base") {
         // Try to find callback in each namespace
-
         for (const namespace in that.callbacks) {
           if (
             that.callbacks[namespace] instanceof Object &&
@@ -142,7 +141,6 @@ export default class {
           ) {
             that.callbacks[namespace][name.value].forEach(function (callback) {
               result = callback.apply(that, args);
-
               if (typeof finalResult === "undefined") {
                 finalResult = result;
               }
@@ -152,7 +150,6 @@ export default class {
               console.warn("wrong name");
               return this;
             }
-
             that.callbacks[name.namespace][name.value].forEach(function (
               callback
             ) {

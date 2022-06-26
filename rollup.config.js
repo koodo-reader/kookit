@@ -6,6 +6,23 @@ import pkg from "./package.json";
 import json from "@rollup/plugin-json";
 export default [
   // browser-friendly UMD build
+  // {
+  //   input: "src/index.ts",
+  //   output: {
+  //     name: "Kookit",
+  //     file: pkg.browser,
+  //     format: "umd",
+  //   },
+  //   plugins: [
+  //     resolve(),
+  //     commonjs({
+  //       include: [/node_modules/],
+  //     }),
+  //     json(),
+  //     typescript({ tsconfig: "./tsconfig.json" }),
+  //     uglify(),
+  //   ],
+  // },
   {
     input: "src/index.ts",
     output: {
