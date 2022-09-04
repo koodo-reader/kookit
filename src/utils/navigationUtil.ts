@@ -137,17 +137,19 @@ export const handleScrollPosition = (
   if (text) {
     let targetNodeList = nodeList.filter((s, index) => {
       return (
-        (((s as HTMLElement).innerText &&
-          ((s as HTMLElement).innerText === text ||
-            (s as HTMLElement).innerText === Chinese.t2s(text) ||
-            (s as HTMLElement).innerText === Chinese.s2t(text))) ||
+        (((s as HTMLElement).innerText.trim() &&
+          ((s as HTMLElement).innerText.trim() === text.trim() ||
+            (s as HTMLElement).innerText.trim() === Chinese.t2s(text.trim()) ||
+            (s as HTMLElement).innerText.trim() ===
+              Chinese.s2t(text.trim()))) ||
           ((s as any).getAttribute("recindex") &&
-            (s as any).getAttribute("recindex") === text)) &&
+            (s as any).getAttribute("recindex").trim() === text.trim())) &&
         Math.abs(
           index - parseInt(_count || StorageUtil.getKookitConfig("count"))
         ) < 2
       );
     });
+
     let targetNode = targetNodeList[0];
     if (mode !== "scroll") {
       doc.body.scrollTo(

@@ -50,7 +50,9 @@ class EpubRender extends EventEmitter {
         resolve();
       });
       this.rendition.on("rendered", () => {
-        this.trigger("rendered");
+        setTimeout(() => {
+          this.trigger("rendered");
+        }, 500);
       });
     });
   }
@@ -98,7 +100,6 @@ class EpubRender extends EventEmitter {
     this.trigger("rendered");
   }
   async goToPosition(cfiStr: string) {
-    console.log(cfiStr, "cfi");
     let position = JSON.parse(cfiStr) || {};
     this.epub.rendition.display(position.cfi);
     if (position.isFirst) {
@@ -118,7 +119,6 @@ class EpubRender extends EventEmitter {
     this.rendition.prev();
     await this.record();
 
-    console.log("prev");
     // this.trigger("rendered");
     this.trigger("page-changed");
   }
@@ -127,7 +127,6 @@ class EpubRender extends EventEmitter {
     await this.record();
 
     // this.trigger("rendered");
-    console.log("next");
     this.trigger("page-changed");
   }
   async visibleText() {
@@ -217,13 +216,18 @@ class EpubRender extends EventEmitter {
       this.epub = window.ePub(this.epubBuffer, {});
       let metadata = await this.epub.loaded.metadata;
       let coverUrl = await this.epub.coverUrl();
-      let blob = await fetch(coverUrl).then((r) => r.blob());
-      var reader = new FileReader();
-      reader.readAsDataURL(blob);
-      reader.onloadend = () => {
-        metadata.cover = reader.result;
+      try {
+        let blob = await fetch(coverUrl).then((r) => r.blob());
+        var reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => {
+          metadata.cover = reader.result;
+          resolve(metadata);
+        };
+      } catch (error) {
+        metadata.cover = "";
         resolve(metadata);
-      };
+      }
     });
   }
   setStyle(css: string) {

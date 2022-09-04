@@ -78,7 +78,7 @@ export const startWithDI = (line) => {
       !line[line.indexOf(keywords[i]) + 1]
     ) {
       if (
-        /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c]+$/.test(
+        /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c\u96f6]+$/.test(
           line.substring(1, line.indexOf(keywords[i])).trim()
         ) ||
         /^\d+$/.test(line.substring(1, line.indexOf(keywords[i])).trim())
@@ -92,21 +92,21 @@ export const startWithDI = (line) => {
 };
 const startWithJUAN = (line) => {
   if (
-    /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c]+$/.test(
+    /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c\u96f6]+$/.test(
       line.substring(1, line.indexOf(" "))
     ) ||
     /^\d+$/.test(line.substring(1, line.indexOf(" ")))
   )
     return true;
   if (
-    /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c]+$/.test(
+    /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c\u96f6]+$/.test(
       line.substring(1, line.indexOf("　"))
     ) ||
     /^\d+$/.test(line.substring(1, line.indexOf("　")))
   )
     return true;
   if (
-    /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c]+$/.test(
+    /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c\u96f6]+$/.test(
       line.substring(1)
     ) ||
     /^\d+$/.test(line.substring(1))
@@ -117,13 +117,13 @@ const startWithJUAN = (line) => {
 
 const startWithNumAndSpace = (line) => {
   if (
-    /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c]+$/.test(
+    /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c\u96f6]+$/.test(
       line.substring(0, line.indexOf(" "))
     )
   )
     return true;
   if (
-    /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c]+$/.test(
+    /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c\u96f6]+$/.test(
       line.substring(0, line.indexOf("　"))
     )
   )
@@ -135,13 +135,13 @@ const startWithNumAndSpace = (line) => {
 };
 const startWithNumAndColon = (line) => {
   if (
-    /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c]+$/.test(
+    /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c\u96f6]+$/.test(
       line.substring(0, line.indexOf(":"))
     )
   )
     return true;
   if (
-    /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c]+$/.test(
+    /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c\u96f6]+$/.test(
       line.substring(0, line.indexOf("："))
     )
   )
@@ -153,7 +153,7 @@ const startWithNumAndColon = (line) => {
 };
 const startWithNumAndPause = (line) => {
   if (
-    /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c]+$/.test(
+    /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c\u96f6]+$/.test(
       line.substring(0, line.indexOf("、"))
     )
   )
