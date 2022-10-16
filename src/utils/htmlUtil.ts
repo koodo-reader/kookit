@@ -15,20 +15,27 @@ const getTitle = () => {
 (String.prototype as any).c = function (str: string) {
   return this.indexOf(str) > -1;
 };
-
+(String.prototype as any).slim = function () {
+  return this.split("")
+    .filter(
+      (item: string) =>
+        item !== "=" && item !== "-" && item !== "_" && item !== "+"
+    )
+    .join("");
+};
 export const txtToHtml = (text: string) => {
   let html: string = "";
   let isStartWithKeyword = false;
   let lines = text.split("\n");
 
   for (let item of lines) {
-    if (item.trim()) {
-      if (isTitle(item.trim(), isStartWithKeyword)) {
+    if ((item.trim() as any).slim()) {
+      if (isTitle((item.trim() as any).slim(), isStartWithKeyword)) {
         //只要出现以第，chapter，CHAPTER开头的章节，就不再检测不以这些字开头的段落
         if (
-          item.trim().startsWith("第") ||
-          item.trim().startsWith("Chapter") ||
-          item.trim().startsWith("CHAPTER")
+          (item.trim() as any).slim().startsWith("第") ||
+          (item.trim() as any).slim().startsWith("Chapter") ||
+          (item.trim() as any).slim().startsWith("CHAPTER")
         ) {
           isStartWithKeyword = true;
         }

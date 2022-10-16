@@ -213,6 +213,10 @@ class EpubRender extends EventEmitter {
   }
   getMetadata() {
     return new Promise<any>(async (resolve, reject) => {
+      let fileSize = this.epubBuffer.byteLength / 1024 / 1024;
+      setTimeout(() => {
+        resolve("timeout_error");
+      }, Math.ceil(fileSize / 10) * 1000);
       this.epub = window.ePub(this.epubBuffer, {});
       let metadata = await this.epub.loaded.metadata;
       let coverUrl = await this.epub.coverUrl();

@@ -1,6 +1,13 @@
 import MobiParser from "./mobiParser";
 import { isTitle, startWithDI } from "./titleUtil";
-
+(String.prototype as any).slim = function () {
+  return this.split("")
+    .filter(
+      (item: string) =>
+        item !== "=" && item !== "-" && item !== "_" && item !== "+"
+    )
+    .join("");
+};
 class StrParser {
   bookStr: string;
   bookDoc: HTMLDocument;
@@ -83,14 +90,19 @@ class StrParser {
       ).filter((item) => {
         if (
           !isStartWithKeyword &&
-          ((item.innerText.trim().startsWith("第") &&
+          (((item.innerText.trim() as any).slim().startsWith("第") &&
             startWithDI(item.innerText.trim())) ||
-            item.innerText.trim().startsWith("Chapter") ||
-            item.innerText.trim().startsWith("CHAPTER"))
+            (item.innerText.trim() as any).slim().startsWith("Chapter") ||
+            (item.innerText.trim() as any).slim().startsWith("CHAPTER"))
         ) {
           isStartWithKeyword = true;
+        } else {
+          isStartWithKeyword = false;
         }
-        return isTitle(item.innerText.trim(), isStartWithKeyword);
+        return isTitle(
+          (item.innerText.trim() as any).slim(),
+          isStartWithKeyword
+        );
       });
     }
   }
