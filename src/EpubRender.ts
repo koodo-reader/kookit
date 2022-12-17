@@ -44,6 +44,18 @@ class EpubRender extends EventEmitter {
         snap: true,
         spread: this.mode === "single" ? "none" : "",
       });
+      this.rendition.hooks.content.register((content) => {
+        let section = this.epub.section(content.sectionIndex);
+        let mathml = section.properties.includes("mathml");
+
+        if (mathml) {
+          return content.addScript(
+            navigator.language === "zh-CN"
+              ? "https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"
+              : "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+          );
+        }
+      });
 
       this.rendition.display(cfi).then(() => {
         this.trigger("rendered");
