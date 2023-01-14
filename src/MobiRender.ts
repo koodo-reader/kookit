@@ -17,7 +17,7 @@ import {
 import MobiParser from "./utils/mobiParser";
 import { excuteCode } from "./utils/htmlUtil";
 import EventEmitter from "./utils/EventEmitter";
-
+declare var window: any;
 class MobiRender extends EventEmitter {
   mobiBuffer: ArrayBuffer;
   mode: string;
@@ -41,6 +41,18 @@ class MobiRender extends EventEmitter {
       if (!(await excuteCode())) {
         resolve();
         return;
+      }
+      const { isMOBI, MOBI } = await import("./utils/mobi.js");
+      let blob = new Blob([this.mobiBuffer]);
+      let file = new File([blob], "config.zip", {
+        lastModified: new Date().getTime(),
+        type: blob.type,
+      });
+      if (await isMOBI(file)) {
+        let book = await new MOBI({ unzlib: window.fflate.unzlibSync }).open(
+          file
+        );
+        console.log(book);
       }
 
       let mobiDoc: Element = await new KindleParser(this.mobiBuffer).render();
