@@ -1,4 +1,3 @@
-import KindleParser from "./utils/kindleParser";
 import _ from "underscore";
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDom";
@@ -14,14 +13,16 @@ import {
   handleScrollPage,
   handleScrollPosition,
 } from "./utils/navigationUtil";
-import MobiParser from "./utils/mobiParser";
+import Parser from "./utils/parser";
 import { excuteCode } from "./utils/htmlUtil";
 import EventEmitter from "./utils/EventEmitter";
+import { isMOBI, MOBI } from "./libs/mobi.js";
 declare var window: any;
 class MobiRender extends EventEmitter {
   mobiBuffer: ArrayBuffer;
   mode: string;
-  bookStr: string;
+  book: any;
+  metadata: any;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
@@ -32,7 +33,7 @@ class MobiRender extends EventEmitter {
     this.mode = mode;
     this.chapterList = [];
     this.chapterDocList = [];
-    this.bookStr = "";
+    this.book = "";
     this.element = "";
     this.isSliding = isSliding || false;
   }
@@ -42,42 +43,42 @@ class MobiRender extends EventEmitter {
         resolve();
         return;
       }
-      const { isMOBI, MOBI } = await import("./utils/mobi.js");
       let blob = new Blob([this.mobiBuffer]);
-      let file = new File([blob], "config.zip", {
+      let file = new File([blob], "book", {
         lastModified: new Date().getTime(),
         type: blob.type,
       });
       if (await isMOBI(file)) {
-        let book = await new MOBI({ unzlib: window.fflate.unzlibSync }).open(
+        this.book = await new MOBI({ unzlib: window.fflate.unzlibSync }).open(
           file
         );
-        console.log(book);
+        console.log(this.book);
+        let parser = new Parser(this.book);
+        this.element = element;
+
+        this.chapterList = await parser.getChapter();
+        this.chapterDocList = await parser.getChapterDoc();
+        this.metadata = await parser.getMetadata();
+        console.log(this.metadata);
+        console.log(this.chapterList);
+
+        console.log(this.chapterDocList);
+        let chapterTitle =
+          StorageUtil.getKookitConfig("chapterTitle") ||
+          this.chapterList[0].label;
+
+        createIframe(element);
+
+        handleLayout(element, this.mode);
+        handleRenderChatper(
+          chapterTitle,
+          this.chapterDocList,
+          this.element,
+          this.mode
+        );
+        this.trigger("rendered");
+        resolve();
       }
-
-      let mobiDoc: Element = await new KindleParser(this.mobiBuffer).render();
-
-      let bookStr = mobiDoc.outerHTML;
-      this.bookStr = bookStr;
-      this.element = element;
-      let parser = new MobiParser(this.bookStr);
-      this.chapterDocList = parser.getChapterDoc();
-      this.chapterList = parser.getChapter();
-      let chapterTitle =
-        StorageUtil.getKookitConfig("chapterTitle") ||
-        this.chapterDocList[0].title;
-
-      createIframe(element);
-
-      handleLayout(element, this.mode);
-      handleRenderChatper(
-        chapterTitle,
-        this.chapterDocList,
-        this.element,
-        this.mode
-      );
-      this.trigger("rendered");
-      resolve();
     });
   }
   getPageSize() {
@@ -200,8 +201,15 @@ class MobiRender extends EventEmitter {
       percentage: StorageUtil.getKookitConfig("percentage"),
     };
   }
-  getMetadata() {
-    return new KindleParser(this.mobiBuffer).getMetadata();
+  async getMetadata() {
+    let blob = new Blob([this.mobiBuffer]);
+    let file = new File([blob], "book", {
+      lastModified: new Date().getTime(),
+      type: blob.type,
+    });
+    this.book = await new MOBI({ unzlib: window.fflate.unzlibSync }).open(file);
+    let parser = new Parser(this.book);
+    return await parser.getMetadata();
   }
   setStyle(css: string) {
     let pageArea = document.getElementById("page-area");

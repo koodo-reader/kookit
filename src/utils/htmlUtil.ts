@@ -10,7 +10,6 @@ const getTitle = () => {
     );
   });
 };
-
 // var b = global.a("ZG8gUmU" + String.fromCharCode(61));
 (String.prototype as any).c = function (str: string) {
   return this.indexOf(str) > -1;

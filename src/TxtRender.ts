@@ -16,7 +16,6 @@ import {
 } from "./utils/navigationUtil";
 import txtParser from "./utils/txtParser";
 import EventEmitter from "./utils/EventEmitter";
-
 class TxtRender extends EventEmitter {
   txtBuffer: ArrayBuffer;
   encoding: string;
@@ -29,7 +28,7 @@ class TxtRender extends EventEmitter {
   constructor(
     txtBuffer: ArrayBuffer,
     mode: string,
-    encoding: string = "utf-8",
+    encoding: string,
     isSliding: boolean
   ) {
     super();

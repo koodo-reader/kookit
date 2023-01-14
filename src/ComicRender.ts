@@ -10,11 +10,13 @@ import StorageUtil from "./utils/storageUtil";
 import ComicParser from "./utils/comicParser";
 import { handleScrollPage, handleScrollPosition } from "./utils/comicUtil";
 import EventEmitter from "./utils/EventEmitter";
-
+import untar from "js-untar";
+declare var window: any;
 class ComicRender extends EventEmitter {
-  dataSource: any[];
-  zip: any;
+  comicBuffer: ArrayBuffer;
   mode: string;
+  dataSource: string[];
+  zip: any;
   format: string;
   element: any;
   parser: any;
@@ -22,8 +24,7 @@ class ComicRender extends EventEmitter {
   chapterList: any[];
   largestId: number;
   constructor(
-    dataSource: any[],
-    zip: any,
+    comicBuffer: ArrayBuffer,
     mode: string,
     format: string,
     isSliding: boolean
@@ -31,9 +32,10 @@ class ComicRender extends EventEmitter {
     super();
     this.isSliding = isSliding || false;
     this.mode = mode;
+    this.dataSource = [];
+    this.zip = "";
     this.format = format;
-    this.zip = zip;
-    this.dataSource = dataSource;
+    this.comicBuffer = comicBuffer;
     this.element = "";
     this.parser = "";
     this.chapterList = [];
@@ -45,60 +47,79 @@ class ComicRender extends EventEmitter {
         resolve();
         return;
       }
-
       this.element = element;
       createIframe(element);
-      this.parser = new ComicParser(
-        this.dataSource,
-        this.zip,
-        this.mode,
-        this.element,
-        this.format
-      );
-      this.chapterList = this.parser.getChapter();
-      this.parser.renderComic();
-      await this.renderImage(id);
-      let pageArea = document.getElementById("page-area");
-      if (!pageArea) return;
-      let iframe = pageArea.getElementsByTagName("iframe")[0];
-      if (!iframe) return;
-      let doc = iframe.contentDocument;
-      if (!doc) {
-        return;
-      }
-      if (!doc.getElementById(id + "")) {
-        return;
-      }
-      let imgRatio = await this.parser.getImgRatio();
-      let height = doc.getElementById(id + "")!.clientWidth * imgRatio;
-      let imgs = doc.getElementsByTagName("img");
-      let section = Math.floor(this.element.clientWidth / 12);
-      let gap = section % 2 === 0 ? section : section - 1;
-      for (let i = 0; i < imgs.length; i++) {
-        if (this.mode === "scroll") {
-          imgs[i].style.height = height + "px";
-        } else {
-          let scale = this.mode === "single" ? 1 : 2;
-          if (height > this.element.clientHeight) {
-            imgs[i].style.height = this.element.clientHeight + "px";
-            imgs[i].style.width = this.element.clientHeight / imgRatio + "px";
-            imgs[i].style.paddingLeft =
-              (this.element.clientWidth - (this.mode === "single" ? 0 : gap)) /
-                2 /
-                scale -
-              this.element.clientHeight / imgRatio / 2 +
-              "px";
-          } else {
+      const handleRender = async () => {
+        this.parser = new ComicParser(
+          this.dataSource,
+          this.zip,
+          this.mode,
+          this.element,
+          this.format
+        );
+        this.chapterList = this.parser.getChapter();
+        this.parser.renderComic();
+        await this.renderImage(id);
+        let pageArea = document.getElementById("page-area");
+        if (!pageArea) return;
+        let iframe = pageArea.getElementsByTagName("iframe")[0];
+        if (!iframe) return;
+        let doc = iframe.contentDocument;
+        if (!doc) {
+          return;
+        }
+        if (!doc.getElementById(id + "")) {
+          return;
+        }
+        let imgRatio = await this.parser.getImgRatio();
+        let height = doc.getElementById(id + "")!.clientWidth * imgRatio;
+        let imgs = doc.getElementsByTagName("img");
+        let section = Math.floor(this.element.clientWidth / 12);
+        let gap = section % 2 === 0 ? section : section - 1;
+        for (let i = 0; i < imgs.length; i++) {
+          if (this.mode === "scroll") {
             imgs[i].style.height = height + "px";
-            imgs[i].style.marginTop =
-              this.element.clientHeight / 2 - height / 2 + "px";
+          } else {
+            let scale = this.mode === "single" ? 1 : 2;
+            if (height > this.element.clientHeight) {
+              imgs[i].style.height = this.element.clientHeight + "px";
+              imgs[i].style.width = this.element.clientHeight / imgRatio + "px";
+              imgs[i].style.paddingLeft =
+                (this.element.clientWidth -
+                  (this.mode === "single" ? 0 : gap)) /
+                  2 /
+                  scale -
+                this.element.clientHeight / imgRatio / 2 +
+                "px";
+            } else {
+              imgs[i].style.height = height + "px";
+              imgs[i].style.marginTop =
+                this.element.clientHeight / 2 - height / 2 + "px";
+            }
           }
         }
+        handleLayout(element, this.mode);
+        handleIframeHeight(element, this.mode);
+        this.trigger("rendered");
+        resolve();
+      };
+      if (this.format === "CBZ") {
+        this.zip = new window.JSZip();
+        this.zip.loadAsync(this.comicBuffer).then(async (contents) => {
+          this.dataSource = Object.keys(contents.files).sort();
+          await handleRender();
+        });
+      } else if (this.format === "CBT") {
+        untar(this.comicBuffer).then(async (extractedFiles) => {
+          this.zip = extractedFiles;
+          this.dataSource = extractedFiles.map((item: any) => item.name);
+          await handleRender();
+        });
+      } else if (this.format === "CBR") {
+        this.zip = new window.Unrar(this.comicBuffer);
+        this.dataSource = this.zip.getEntries().map((item: any) => item.name);
+        await handleRender();
       }
-      handleLayout(element, this.mode);
-      handleIframeHeight(element, this.mode);
-      this.trigger("rendered");
-      resolve();
     });
   }
   flatChapter(chapters: any) {

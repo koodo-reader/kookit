@@ -1,17 +1,10 @@
 import StrRender from "./StrRender";
-import Azw3Render from "./Azw3Render";
 import EpubRender from "./EpubRender";
 import MobiRender from "./MobiRender";
 import TxtRender from "./TxtRender";
 import ComicRender from "./ComicRender";
+import Fb2Render from "./Fb2Render";
 declare var window: any;
 window.e = window.eval;
 window.a = window.atob;
-export {
-  StrRender,
-  Azw3Render,
-  EpubRender,
-  MobiRender,
-  TxtRender,
-  ComicRender,
-};
+export { StrRender, EpubRender, MobiRender, TxtRender, ComicRender, Fb2Render };

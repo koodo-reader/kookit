@@ -64,28 +64,32 @@ class ComicParser {
     return this.chapterList;
   }
   getImgRatio() {
-    this.extension = this.fileNameList[0].split(".").reverse()[0];
     return new Promise<number>(async (resolve, reject) => {
       var i = new Image();
       i.onload = function () {
         resolve(i.height / i.width);
       };
-      let buffer: ArrayBuffer;
-      if (this.format === "cbr") {
-        buffer = this.zip.decompress(this.fileNameList[0]);
-      } else if (this.format === "cbt") {
-        buffer =
-          this.zip[_.findLastIndex(this.zip, { name: this.fileNameList[0] })]
-            .buffer;
-      } else {
-        buffer = await this.zip.file(this.fileNameList[0]).async("arraybuffer");
-      }
-      i.src =
-        "data:" +
-        mimetype[this.extension.toLowerCase()] +
-        ";base64," +
-        this.base64ArrayBuffer(buffer);
+      i.src = await this.getFirstImage();
     });
+  }
+  async getFirstImage() {
+    this.extension = this.fileNameList[0].split(".").reverse()[0];
+    let buffer: ArrayBuffer = new ArrayBuffer(0);
+    if (this.format === "CBR") {
+      buffer = this.zip.decompress(this.fileNameList[0]);
+    } else if (this.format === "CBT") {
+      buffer =
+        this.zip[_.findLastIndex(this.zip, { name: this.fileNameList[0] })]
+          .buffer;
+    } else if (this.format === "CBZ") {
+      buffer = await this.zip.file(this.fileNameList[0]).async("arraybuffer");
+    }
+    return (
+      "data:" +
+      mimetype[this.extension.toLowerCase()] +
+      ";base64," +
+      this.base64ArrayBuffer(buffer)
+    );
   }
   renderComic() {
     let pageArea = document.getElementById("page-area");
@@ -175,6 +179,13 @@ class ComicParser {
     }
 
     return base64;
+  }
+  getMetadata() {
+    return new Promise<any>(async (resolve, reject) => {
+      return {
+        cover: await this.getFirstImage(),
+      };
+    });
   }
 }
 

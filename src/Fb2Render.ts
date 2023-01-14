@@ -1,13 +1,8 @@
-import KindleParser from "./utils/kindleParser";
 import _ from "underscore";
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDom";
-import {
-  createIframe,
-  getAzw3Style,
-  handleLayout,
-  progressInfo,
-} from "./utils/layoutUtil";
+import { createIframe, handleLayout, progressInfo } from "./utils/layoutUtil";
+import StorageUtil from "./utils/storageUtil";
 import {
   getSearchResult,
   getVisibleText,
@@ -18,46 +13,52 @@ import {
   handleScrollPage,
   handleScrollPosition,
 } from "./utils/navigationUtil";
-import StorageUtil from "./utils/storageUtil";
-import StrParser from "./utils/strParser";
+import Parser from "./utils/parser";
 import { excuteCode } from "./utils/htmlUtil";
 import EventEmitter from "./utils/EventEmitter";
-class Azw3Render extends EventEmitter {
-  azw3Buffer: ArrayBuffer;
+import { makeFB2 } from "./libs/fb2";
+
+class Fb2Render extends EventEmitter {
+  fb2Buffer: ArrayBuffer;
   mode: string;
-  isSliding: boolean;
-  bookStr: string;
+  book: any;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(azw3Buffer: ArrayBuffer, mode: string, isSliding: boolean) {
+  isSliding: boolean;
+  constructor(fb2Buffer: ArrayBuffer, mode: string, isSliding: boolean) {
     super();
-    this.azw3Buffer = azw3Buffer;
+    this.fb2Buffer = fb2Buffer;
     this.mode = mode;
-    this.isSliding = isSliding || false;
     this.chapterList = [];
     this.chapterDocList = [];
-    this.bookStr = "";
+    this.book = "";
     this.element = "";
+    this.isSliding = isSliding || false;
   }
-  async renderTo(element: HTMLElement) {
+  renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
       if (!(await excuteCode())) {
         resolve();
         return;
       }
-      let mobiDoc: Element = await new KindleParser(this.azw3Buffer).render();
-      let bookStr = mobiDoc.outerHTML;
-      this.bookStr = bookStr;
+      let blob = new Blob([this.fb2Buffer]);
+      this.book = await makeFB2(blob);
+      console.log(this.book);
+      let parser = new Parser(this.book);
       this.element = element;
-      let parser = new StrParser(this.bookStr);
-      this.chapterList = parser.getChapter();
-      this.chapterDocList = parser.getChapterDoc();
 
+      this.chapterList = await parser.getChapter();
+      this.chapterDocList = await parser.getChapterDoc();
+      let metadata = await parser.getMetadata();
+      console.log(metadata);
+
+      console.log(this.chapterDocList);
       let chapterTitle =
         StorageUtil.getKookitConfig("chapterTitle") ||
-        this.chapterDocList[0].title;
-      createIframe(element, getAzw3Style(mobiDoc));
+        this.chapterList[0].label;
+
+      createIframe(element);
 
       handleLayout(element, this.mode);
       handleRenderChatper(
@@ -70,14 +71,17 @@ class Azw3Render extends EventEmitter {
       resolve();
     });
   }
-  getChapter() {
-    return this.chapterList;
-  }
   getPageSize() {
     return {
       width: this.element.clientWidth,
       height: this.element.clientHeight,
     };
+  }
+  flatChapter(chapters: any) {
+    return chapters;
+  }
+  getChapter() {
+    return this.chapterList;
   }
   goToChapter(title: string) {
     handleRenderChatper(title, this.chapterDocList, this.element, this.mode);
@@ -95,7 +99,11 @@ class Azw3Render extends EventEmitter {
     this.record();
     this.trigger("rendered");
   }
+  removeContent() {
+    this.element.innerHTML = "";
+  }
   async prev() {
+    this.trigger("page-changed");
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;
     let iframe = pageArea.getElementsByTagName("iframe")[0];
@@ -123,12 +131,11 @@ class Azw3Render extends EventEmitter {
         this.trigger
       );
     }
+
     handleRecord(this.element, this.mode);
   }
-  removeContent() {
-    this.element.innerHTML = "";
-  }
   async next() {
+    this.trigger("page-changed");
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;
     let iframe = pageArea.getElementsByTagName("iframe")[0];
@@ -161,6 +168,7 @@ class Azw3Render extends EventEmitter {
         this.trigger
       );
     }
+
     handleRecord(this.element, this.mode);
   }
   visibleText() {
@@ -168,9 +176,6 @@ class Azw3Render extends EventEmitter {
   }
   doSearch(keyword: string) {
     return getSearchResult(keyword, this.chapterDocList);
-  }
-  flatChapter(chapters: any) {
-    return chapters;
   }
   getProgress() {
     return progressInfo();
@@ -186,8 +191,12 @@ class Azw3Render extends EventEmitter {
       percentage: StorageUtil.getKookitConfig("percentage"),
     };
   }
-  getMetadata() {
-    return new KindleParser(this.azw3Buffer).getMetadata();
+  async getMetadata() {
+    let blob = new Blob([this.fb2Buffer]);
+    this.book = await makeFB2(blob);
+    console.log(this.book);
+    let parser = new Parser(this.book);
+    return parser.getMetadata();
   }
   setStyle(css: string) {
     let pageArea = document.getElementById("page-area");
@@ -201,4 +210,4 @@ class Azw3Render extends EventEmitter {
     doc.body.setAttribute("style", css + doc.body.getAttribute("style"));
   }
 }
-export default Azw3Render;
+export default Fb2Render;
