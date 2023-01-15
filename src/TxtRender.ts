@@ -114,7 +114,6 @@ class TxtRender extends EventEmitter {
     return chapters;
   }
   async prev() {
-    console.log("prev");
     this.trigger("page-changed");
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;
@@ -141,7 +140,6 @@ class TxtRender extends EventEmitter {
     handleRecord(this.element, this.mode);
   }
   async next() {
-    console.log("next");
     this.trigger("page-changed");
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;

@@ -1,86 +1,94 @@
 import _ from "underscore";
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDoc";
+import { createIframe, handleLayout, progressInfo } from "./utils/layoutUtil";
 import StorageUtil from "./utils/storageUtil";
+import {
+  getSearchResult,
+  getVisibleText,
+  handleNextChapter,
+  handlePrevChapter,
+  handleRecord,
+  handleRenderChatper,
+  handleScrollPage,
+  handleScrollPosition,
+} from "./utils/navigationUtil";
+import EpubParser from "./utils/epubParser";
 import { excuteCode } from "./utils/htmlUtil";
 import EventEmitter from "./utils/EventEmitter";
+import { EPUB } from "./libs/epub";
 declare var window: any;
+
 class EpubRender extends EventEmitter {
   epubBuffer: ArrayBuffer;
   mode: string;
-  isSliding: boolean;
-  bookStr: string;
-  rendition: any;
+  book: any;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  epub: any;
-  flattenChapters: any;
+  isSliding: boolean;
   constructor(epubBuffer: ArrayBuffer, mode: string, isSliding: boolean) {
     super();
     this.epubBuffer = epubBuffer;
     this.mode = mode;
-    this.isSliding = isSliding || false;
     this.chapterList = [];
     this.chapterDocList = [];
-    this.bookStr = "";
+    this.book = "";
     this.element = "";
+    this.isSliding = isSliding || false;
   }
-  async renderTo(element: HTMLElement, cfi: string) {
+  renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
       if (!(await excuteCode())) {
         resolve();
         return;
       }
+      let blob = new Blob([this.epubBuffer]);
+      let file = new File([blob], "book", {
+        lastModified: new Date().getTime(),
+        type: blob.type,
+      });
 
-      this.epub = window.ePub(this.epubBuffer, {});
-
+      const loader: any = await this.makeZipLoader(file);
+      this.book = await new EPUB(loader).init();
+      let parser = new EpubParser(this.book);
       this.element = element;
-      this.rendition = this.epub.renderTo(this.element, {
-        manager: "default",
-        flow: this.mode === "scroll" ? "scrolled" : "auto",
-        width: "100%",
-        height: "100%",
-        snap: true,
-        spread: this.mode === "single" ? "none" : "",
-      });
-      this.rendition.hooks.content.register((content) => {
-        let section = this.epub.section(content.sectionIndex);
-        let mathml = section.properties.includes("mathml");
+      console.log(this.book);
+      this.chapterList = await parser.getChapter(this.book.toc);
+      this.chapterDocList = await parser.getChapterDoc();
+      console.log(this.chapterList);
+      console.log(this.chapterDocList);
+      let chapterDocIndex = parseInt(
+        StorageUtil.getKookitConfig("chapterDocIndex") || "0"
+      );
 
-        if (mathml) {
-          return content.addScript(
-            navigator.language === "zh-CN"
-              ? "https://cdn.bootcdn.net/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"
-              : "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
-          );
-        }
-      });
+      createIframe(element);
 
-      this.rendition.display(cfi).then(() => {
-        this.trigger("rendered");
-        resolve();
-      });
-      this.rendition.on("rendered", () => {
-        setTimeout(() => {
-          this.trigger("rendered");
-        }, 500);
-      });
+      handleLayout(element, this.mode);
+      handleRenderChatper(
+        chapterDocIndex,
+        this.chapterDocList,
+        this.element,
+        this.mode
+      );
+      this.trigger("rendered");
+      resolve();
     });
   }
-  async getChapter() {
-    let chapter = await this.epub.loaded.navigation;
-    if (!chapter) return [];
-    console.log(chapter.toc);
-    this.chapterList = chapter.toc.map((item, index) => {
-      return {
-        href: item.href,
-        title: item.label,
-        index: index,
-        subitems: item.subitems,
-      };
-    });
-    return this.chapterList;
+  async makeZipLoader(file) {
+    const { ZipReader, BlobReader, TextWriter, BlobWriter } = window.zip;
+    window.zip.configure({ useWebWorkers: false });
+    const reader = new ZipReader(new BlobReader(file));
+    const entries = await reader.getEntries();
+    const map = new Map(entries.map((entry) => [entry.filename, entry]));
+    const load =
+      (f) =>
+      (name, ...args) =>
+        map.has(name) ? f(map.get(name), ...args) : null;
+    const loadText = load((entry) => entry.getData(new TextWriter()));
+    const loadBlob = load((entry, type) => entry.getData(new BlobWriter(type)));
+    const getSize = (name) => (map.get(name) as any)?.uncompressedSize ?? 0;
+    return { entries, loadText, loadBlob, getSize };
   }
   getPageSize() {
     return {
@@ -91,7 +99,7 @@ class EpubRender extends EventEmitter {
   flatChapter(chapters: any) {
     let newChapter: any = [];
     for (let i = 0; i < chapters.length; i++) {
-      if (chapters[i].subitems[0]) {
+      if (chapters[i].subitems && chapters[i].subitems.length > 0) {
         newChapter.push(chapters[i]);
         newChapter = newChapter.concat(this.flatChapter(chapters[i].subitems));
       } else {
@@ -100,166 +108,133 @@ class EpubRender extends EventEmitter {
     }
     return newChapter;
   }
-  goToChapter(title: string) {
-    if (!this.flattenChapters) {
-      this.flattenChapters = this.flatChapter(this.chapterList);
-    }
-
-    let href =
-      this.flattenChapters[
-        _.findLastIndex(
-          this.flattenChapters.map((item) => {
-            item.title = item.title.trim();
-            return item;
-          }),
-          { title: title.trim() }
-        )
-      ]?.href;
-    this.rendition.display(href);
-
+  getChapter() {
+    return this.chapterList;
+  }
+  goToChapter(index: string) {
+    handleRenderChatper(
+      parseInt(index),
+      this.chapterDocList,
+      this.element,
+      this.mode
+    );
     this.trigger("rendered");
   }
-  async goToPosition(cfiStr: string) {
-    let position = JSON.parse(cfiStr) || {};
-    this.epub.rendition.display(position.cfi);
-    if (position.isFirst) {
-      setTimeout(async () => {
-        await this.record();
-      }, 0);
-    } else {
-      await this.record();
-    }
-
+  goToPosition(cfi: string) {
+    let { text, chapterDocIndex, count } = JSON.parse(cfi);
+    handleRenderChatper(
+      chapterDocIndex,
+      this.chapterDocList,
+      this.element,
+      this.mode
+    );
+    handleScrollPosition(this.element, this.mode, text, count);
+    this.record();
     this.trigger("rendered");
   }
   removeContent() {
     this.element.innerHTML = "";
   }
   async prev() {
-    this.rendition.prev();
-    await this.record();
-
-    // this.trigger("rendered");
     this.trigger("page-changed");
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe) return;
+    let doc = iframe.contentDocument;
+    if (!doc) {
+      return;
+    }
+    if (this.mode === "scroll" || doc.body.scrollLeft === 0) {
+      handlePrevChapter(this.element, this.chapterDocList, this.mode);
+      this.trigger("rendered");
+    } else {
+      handleScrollPage(
+        this.element,
+        this.chapterDocList,
+        this.mode,
+        1,
+        this.isSliding,
+        this.trigger
+      );
+    }
+
+    handleRecord(this.element, this.mode);
   }
   async next() {
-    this.rendition.next();
-    await this.record();
-
-    // this.trigger("rendered");
     this.trigger("page-changed");
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe) return;
+    let doc = iframe.contentDocument;
+    if (!doc) {
+      return;
+    }
+    if (
+      Math.abs(
+        doc.body.scrollWidth - doc.body.scrollLeft - doc.body.clientWidth
+      ) < 10 ||
+      this.mode === "scroll"
+    ) {
+      handleNextChapter(this.element, this.chapterDocList, this.mode);
+      this.trigger("rendered");
+    } else {
+      handleScrollPage(
+        this.element,
+        this.chapterDocList,
+        this.mode,
+        -1,
+        this.isSliding,
+        this.trigger
+      );
+    }
+
+    handleRecord(this.element, this.mode);
   }
-  async visibleText() {
-    const currentLocation = this.rendition.currentLocation();
-    const cfibase = currentLocation.start.cfi
-      .replace(/!.*/, "")
-      .replace("epubcfi(", "");
-    const cfistart = currentLocation.start.cfi
-      .replace(/.*!/, "")
-      .replace(/\)/, "");
-    const cfiend = currentLocation.end.cfi.replace(/.*!/, "").replace(/\)/, "");
-    const cfiRange = `epubcfi(${cfibase}!,${cfistart},${cfiend})`;
-    let range = await this.epub.getRange(cfiRange);
-    let text = range.toString();
-    return text;
+  visibleText() {
+    return getVisibleText(this.element, this.mode);
   }
   doSearch(keyword: string) {
-    return Promise.all(
-      this.epub.spine.spineItems.map((item: any) =>
-        item
-          .load(this.epub.load.bind(this.epub))
-          .then(item.find.bind(item, keyword))
-          .finally(item.unload.bind(item))
-      )
-    ).then((results: any) =>
-      Promise.resolve(
-        [].concat.apply([], results).map((item: any) => {
-          item.cfi = JSON.stringify({ cfi: item.cfi });
-          return item;
-        })
-      )
-    );
+    return getSearchResult(keyword, this.chapterDocList);
   }
-  async getProgress() {
-    let currentLocation = this.rendition.currentLocation();
-
-    if (!currentLocation.start) {
-      await this.epub.locations.generate();
-      currentLocation = this.rendition.currentLocation();
-    }
+  getProgress() {
+    return progressInfo();
+  }
+  record() {
+    handleRecord(this.element, this.mode);
+  }
+  getPosition() {
     return {
-      currentPage:
-        this.mode === "double"
-          ? parseInt(currentLocation.start.displayed.page / 2 + "") + 1
-          : currentLocation.start.displayed.page,
-      totalPage: currentLocation.start.displayed.total,
-    };
-  }
-  async record() {
-    let currentLocation = this.rendition.currentLocation();
-    let locations = this.epub.locations._locations;
-    if (!currentLocation.start || locations.length === 0) {
-      locations = await this.epub.locations.generate();
-      currentLocation = this.rendition.currentLocation();
-    }
-
-    const cfi = currentLocation.start.cfi;
-    let percentage = currentLocation.start.percentage;
-    let chapterHref = currentLocation.start.href;
-    if (!this.flattenChapters) {
-      this.flattenChapters = this.flatChapter(this.chapterList);
-    }
-    let chapter = "Unknown Chapter";
-    let chapterDocIndex = "0";
-    let currentChapter = this.flattenChapters.filter(
-      (item: any) =>
-        item.href.indexOf(chapterHref) > -1 ||
-        chapterHref.indexOf(item.href) > -1
-    )[0];
-    if (currentChapter) {
-      chapter = currentChapter.title.trim(" ");
-      chapterDocIndex = currentChapter.index.toString();
-    }
-    StorageUtil.setKookitConfig("cfi", cfi);
-    StorageUtil.setKookitConfig("percentage", percentage);
-    StorageUtil.setKookitConfig("chapterTitle", chapter);
-    StorageUtil.setKookitConfig("chapterDocIndex", chapterDocIndex);
-  }
-  async getPosition() {
-    await this.record();
-
-    return {
-      cfi: StorageUtil.getKookitConfig("cfi"),
-      percentage: StorageUtil.getKookitConfig("percentage"),
+      text: StorageUtil.getKookitConfig("text"),
       chapterTitle: StorageUtil.getKookitConfig("chapterTitle"),
       chapterDocIndex: StorageUtil.getKookitConfig("chapterDocIndex"),
+      count: StorageUtil.getKookitConfig("count"),
+      percentage: StorageUtil.getKookitConfig("percentage"),
     };
   }
-  getMetadata() {
-    return new Promise<any>(async (resolve, reject) => {
-      let fileSize = this.epubBuffer.byteLength / 1024 / 1024;
-      setTimeout(() => {
-        resolve("timeout_error");
-      }, Math.ceil(fileSize / 10) * 1000);
-      this.epub = window.ePub(this.epubBuffer, {});
-      let metadata = await this.epub.loaded.metadata;
-      let coverUrl = await this.epub.coverUrl();
-      try {
-        let blob = await fetch(coverUrl).then((r) => r.blob());
-        var reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onloadend = () => {
-          metadata.cover = reader.result;
-          resolve(metadata);
-        };
-      } catch (error) {
-        metadata.cover = "";
-        resolve(metadata);
-      }
+  async getMetadata() {
+    let blob = new Blob([this.epubBuffer]);
+    let file = new File([blob], "book", {
+      lastModified: new Date().getTime(),
+      type: blob.type,
     });
+
+    const loader: any = await this.makeZipLoader(file);
+    this.book = await new EPUB(loader).init();
+    let parser = new EpubParser(this.book);
+    return await parser.getMetadata();
   }
   setStyle(css: string) {
-    this.rendition.themes.default(css);
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe) return;
+    let doc = iframe.contentDocument;
+    if (!doc) {
+      return;
+    }
+    doc.body.setAttribute("style", css + doc.body.getAttribute("style"));
   }
 }
 export default EpubRender;

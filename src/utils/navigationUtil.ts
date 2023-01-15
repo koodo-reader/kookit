@@ -82,7 +82,6 @@ export const handleRenderChatper = (
   if (!doc) {
     return;
   }
-  console.log(chapterDocIndex, chapterDocList);
   doc.body.innerHTML = "";
   doc.body.innerHTML = chapterDocList[chapterDocIndex].text;
 
@@ -249,7 +248,6 @@ export const handleNextChapter = (
   let chapterDocIndex = parseInt(
     StorageUtil.getKookitConfig("chapterDocIndex") || "0"
   );
-  console.log(chapterDocIndex, "chapterDocIndex");
   StorageUtil.setKookitConfig(
     "chapterTitle",
     chapterDocList[chapterDocIndex + 1].title

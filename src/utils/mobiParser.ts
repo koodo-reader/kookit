@@ -4,10 +4,12 @@ import ChapterDoc from "../model/chapterDoc";
 class Parser {
   book: any;
   chapterList: Chapter[];
+  flattenChapters: Chapter[];
   chapterDocList: ChapterDoc[];
   constructor(book: any) {
     this.book = book;
     this.chapterList = [];
+    this.flattenChapters = [];
     this.chapterDocList = [];
   }
   async getChapterDoc() {
@@ -34,18 +36,33 @@ class Parser {
   }
 
   async getChapter(toc) {
-    for (let i = 0; i < toc.length; i++) {
-      let random = Math.floor(Math.random() * 900000) + 100000;
-      let index = (await toc[i].index).index;
-      this.chapterList.push({
-        title: toc[i].label,
-        id: "title" + random,
-        href: "title" + random,
-        index: index,
-        subitems: toc[i].subitems ? await this.getChapter(toc[i].subitems) : [],
-      });
-    }
+    this.chapterList = await Promise.all<Chapter>(
+      toc.map(async (item) => {
+        let random = Math.floor(Math.random() * 900000) + 100000;
+        let index = (await item.index).index;
+        return {
+          title: item.label,
+          id: "title" + random,
+          href: "title" + random,
+          index: index,
+          subitems: item.subitems ? await this.getChapter(item.subitems) : [],
+        } as Chapter;
+      })
+    );
+    this.flattenChapters = this.flatChapter(this.chapterList);
     return this.chapterList;
+  }
+  flatChapter(chapters: any) {
+    let newChapter: any = [];
+    for (let i = 0; i < chapters.length; i++) {
+      if (chapters[i].subitems && chapters[i].subitems.length > 0) {
+        newChapter.push(chapters[i]);
+        newChapter = newChapter.concat(this.flatChapter(chapters[i].subitems));
+      } else {
+        newChapter.push(chapters[i]);
+      }
+    }
+    return newChapter;
   }
   getMetadata() {
     return new Promise<any>(async (resolve, reject) => {

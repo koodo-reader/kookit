@@ -103,7 +103,7 @@ class ComicRender extends EventEmitter {
         this.trigger("rendered");
         resolve();
       };
-      this.handleArchive();
+      await this.handleArchive();
       await handleRender();
     });
   }
@@ -111,7 +111,9 @@ class ComicRender extends EventEmitter {
     if (this.format === "CBZ") {
       this.zip = new window.JSZip();
       let contents = await this.zip.loadAsync(this.comicBuffer);
+      console.log(contents);
       this.dataSource = Object.keys(contents.files).sort();
+      console.log(this.dataSource);
     } else if (this.format === "CBT") {
       this.zip = await untar(this.comicBuffer);
       this.dataSource = this.zip.map((item: any) => item.name);

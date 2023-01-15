@@ -25,6 +25,7 @@ class ComicParser {
     this.bookDoc = null;
     this.mode = mode;
     this.chapterList = [];
+    console.log(this.fileNameList);
     this.extension = this.fileNameList[0].split(".").reverse()[0];
     this.element = element;
     this.getBookStr();
@@ -105,6 +106,7 @@ class ComicParser {
   }
   renderImage(i: number) {
     return new Promise<void>(async (resolve, reject) => {
+      console.log(this.fileNameList[0]);
       this.extension = this.fileNameList[0].split(".").reverse()[0];
       let pageArea = document.getElementById("page-area");
       if (!pageArea) return;

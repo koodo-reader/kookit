@@ -84,8 +84,9 @@ class MobiRender extends EventEmitter {
   }
   flatChapter(chapters: any) {
     let newChapter: any = [];
+
     for (let i = 0; i < chapters.length; i++) {
-      if (chapters[i].subitems[0]) {
+      if (chapters[i].subitems && chapters[i].subitems.length > 0) {
         newChapter.push(chapters[i]);
         newChapter = newChapter.concat(this.flatChapter(chapters[i].subitems));
       } else {

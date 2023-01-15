@@ -1,7 +1,7 @@
 import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
 
-class Fb2Parser {
+class EpubParser {
   book: any;
   chapterList: Chapter[];
   flattenChapters: Chapter[];
@@ -15,15 +15,16 @@ class Fb2Parser {
   async getChapterDoc() {
     let sectionDocList: any[] = await Promise.all(
       this.book.sections.map(async (item) => {
-        return item.load ? await item.load() : "";
+        return item.load
+          ? (await fetch(await item.load()).then((r) => r.blob())).text()
+          : "";
       })
     );
-
-    const chapterIndexList = this.chapterList.map((item) => item.index);
+    const chapterIndexList = this.flattenChapters.map((item) => item.index);
     return sectionDocList.map((item: string, index: number) => {
       if (chapterIndexList.indexOf(index) > -1) {
         return {
-          title: this.chapterList[chapterIndexList.indexOf(index)].title,
+          title: this.flattenChapters[chapterIndexList.indexOf(index)].title,
           text: item,
         };
       } else {
@@ -33,6 +34,28 @@ class Fb2Parser {
         };
       }
     }) as ChapterDoc[];
+  }
+
+  async getChapter(toc) {
+    this.chapterList = await Promise.all<Chapter>(
+      toc.map(async (item, i) => {
+        let random = Math.floor(Math.random() * 900000) + 100000;
+        console.log(item);
+        let index =
+          item.href && this.book.resolveHref(item.href)
+            ? this.book.resolveHref(item.href).index
+            : i;
+        return {
+          title: item.label ? item.label : index,
+          id: "title" + random,
+          href: "title" + random,
+          index: index,
+          subitems: item.subitems ? await this.getChapter(item.subitems) : [],
+        } as Chapter;
+      })
+    );
+    this.flattenChapters = this.flatChapter(this.chapterList);
+    return this.chapterList;
   }
   flatChapter(chapters: any) {
     let newChapter: any = [];
@@ -46,24 +69,6 @@ class Fb2Parser {
     }
     return newChapter;
   }
-  async getChapter(toc) {
-    this.chapterList = await Promise.all<Chapter>(
-      toc.map(async (item) => {
-        let random = Math.floor(Math.random() * 900000) + 100000;
-        let index = this.book.resolveHref(item.href).index;
-        return {
-          title: item.label,
-          id: "title" + random,
-          href: "title" + random,
-          index: index,
-          subitems: item.subitems ? await this.getChapter(item.subitems) : [],
-        } as Chapter;
-      })
-    );
-    this.flattenChapters = this.flatChapter(this.chapterList);
-    return this.chapterList;
-  }
-
   getMetadata() {
     return new Promise<any>(async (resolve, reject) => {
       const metadata = this.book.metadata;
@@ -93,4 +98,4 @@ class Fb2Parser {
   }
 }
 
-export default Fb2Parser;
+export default EpubParser;

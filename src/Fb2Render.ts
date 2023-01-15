@@ -75,7 +75,7 @@ class Fb2Render extends EventEmitter {
   flatChapter(chapters: any) {
     let newChapter: any = [];
     for (let i = 0; i < chapters.length; i++) {
-      if (chapters[i].subitems[0]) {
+      if (chapters[i].subitems && chapters[i].subitems.length > 0) {
         newChapter.push(chapters[i]);
         newChapter = newChapter.concat(this.flatChapter(chapters[i].subitems));
       } else {
@@ -193,7 +193,7 @@ class Fb2Render extends EventEmitter {
     let blob = new Blob([this.fb2Buffer]);
     this.book = await makeFB2(blob);
     let parser = new Fb2Parser(this.book);
-    return parser.getMetadata();
+    return await parser.getMetadata();
   }
   setStyle(css: string) {
     let pageArea = document.getElementById("page-area");
