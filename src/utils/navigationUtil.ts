@@ -1,6 +1,5 @@
 import _ from "underscore";
-import Chapter from "../model/chapter";
-import ChapterDoc from "../model/chapterDom";
+import ChapterDoc from "../model/chapterDoc";
 import { handleIframeHeight, handleImageSize } from "./layoutUtil";
 import StorageUtil from "./storageUtil";
 import Chinese from "chinese-s2t";
@@ -8,7 +7,6 @@ import Chinese from "chinese-s2t";
 let lock = false;
 export const handleScrollPage = async (
   element: HTMLElement,
-  chapterList: Chapter[],
   chapterDocList: ChapterDoc[],
   mode: string,
   delta: number,
@@ -33,10 +31,10 @@ export const handleScrollPage = async (
     });
     // trigger("page-changed");
   } else if (delta > 0 && doc.body.scrollLeft === 0) {
-    handlePrevChapter(element, chapterList, chapterDocList, mode);
+    handlePrevChapter(element, chapterDocList, mode);
     trigger("rendered");
   } else if (delta < 0) {
-    handleTurnChapter(element, chapterList, chapterDocList, mode, trigger);
+    handleTurnChapter(element, chapterDocList, mode, trigger);
 
     doc.body.scrollBy({
       top: 0,
@@ -47,38 +45,31 @@ export const handleScrollPage = async (
 };
 export const handlePrevChapter = (
   element: HTMLElement,
-  chapterList: Chapter[],
   chapterDocList: ChapterDoc[],
   mode: string
 ) => {
   let chapterTitle = StorageUtil.getKookitConfig("chapterTitle");
-  let chapterIndex = _.findIndex(
-    chapterList.map((item) => {
-      item.label = item.label.trim();
-      return item;
-    }),
-    {
-      label: chapterTitle.trim(),
-    }
+  let chapterDocIndex = parseInt(
+    StorageUtil.getKookitConfig("chapterDocIndex") || "0"
   );
-  if (chapterIndex === 0 || chapterIndex === -1 || !chapterTitle) {
+
+  if (chapterDocIndex === 0 || !chapterTitle) {
     return;
   }
   StorageUtil.setKookitConfig(
     "chapterTitle",
-    chapterList[chapterIndex - 1].label
+    chapterDocList[chapterDocIndex - 1].title
+  );
+  StorageUtil.setKookitConfig(
+    "chapterDocIndex",
+    (chapterDocIndex - 1).toString()
   );
   StorageUtil.setKookitConfig("text", "prevChapter");
-  handleRenderChatper(
-    chapterList[chapterIndex - 1].label,
-    chapterDocList,
-    element,
-    mode
-  );
+  handleRenderChatper(chapterDocIndex - 1, chapterDocList, element, mode);
 };
 
 export const handleRenderChatper = (
-  label: string = "",
+  chapterDocIndex: number = 0,
   chapterDocList: ChapterDoc[],
   element: HTMLElement,
   mode: string
@@ -91,26 +82,18 @@ export const handleRenderChatper = (
   if (!doc) {
     return;
   }
+  console.log(chapterDocIndex, chapterDocList);
   doc.body.innerHTML = "";
-  let chapterIndex = _.findIndex(
-    chapterDocList.map((item) => {
-      item.title = item.title.trim();
-      return item;
-    }),
-    {
-      title: label.trim(),
-    }
-  );
-  chapterIndex = chapterIndex === -1 ? 0 : chapterIndex;
-  doc.body.innerHTML = chapterDocList[chapterIndex].text;
+  doc.body.innerHTML = chapterDocList[chapterDocIndex].text;
 
   StorageUtil.setKookitConfig(
     "chapterTitle",
-    chapterDocList[chapterIndex].title
+    chapterDocList[chapterDocIndex].title
   );
+  StorageUtil.setKookitConfig("chapterDocIndex", chapterDocIndex.toString());
   StorageUtil.setKookitConfig(
     "percentage",
-    chapterIndex / chapterDocList.length + ""
+    chapterDocIndex / chapterDocList.length + ""
   );
   handleIframeHeight(element, mode);
   handleImageSize(element, mode);
@@ -145,7 +128,8 @@ export const handleScrollPosition = (
           ((s as any).getAttribute("recindex") &&
             (s as any).getAttribute("recindex").trim() === text.trim())) &&
         Math.abs(
-          index - parseInt(_count || StorageUtil.getKookitConfig("count"))
+          index -
+            parseInt(_count || StorageUtil.getKookitConfig("count") || "0")
         ) < 2
       );
     });
@@ -176,7 +160,6 @@ export const handleScrollPosition = (
 };
 export const handleTurnChapter = (
   element: HTMLElement,
-  chapterList: Chapter[],
   chapterDocList: ChapterDoc[],
   mode: string,
   trigger: (status: string) => void
@@ -197,7 +180,7 @@ export const handleTurnChapter = (
       doc.body.scrollWidth - doc.body.scrollLeft - doc.body.clientWidth
     ) < 10
   ) {
-    handleNextChapter(element, chapterList, chapterDocList, mode);
+    handleNextChapter(element, chapterDocList, mode);
 
     trigger("rendered");
   }
@@ -260,34 +243,23 @@ export const handleRecord = async (element: HTMLElement, mode: string) => {
 };
 export const handleNextChapter = (
   element: HTMLElement,
-  chapterList: Chapter[],
   chapterDocList: ChapterDoc[],
   mode: string
 ) => {
-  let chapterTitle = StorageUtil.getKookitConfig("chapterTitle");
-  let chapterIndex = _.findIndex(
-    chapterList.map((item) => {
-      item.label = item.label.trim();
-      return item;
-    }),
-    {
-      label: chapterTitle.trim(),
-    }
+  let chapterDocIndex = parseInt(
+    StorageUtil.getKookitConfig("chapterDocIndex") || "0"
   );
-  if (chapterIndex === chapterList.length - 1 || chapterIndex === -1) {
-    return;
-  }
+  console.log(chapterDocIndex, "chapterDocIndex");
   StorageUtil.setKookitConfig(
     "chapterTitle",
-    chapterList[chapterIndex + 1].label
+    chapterDocList[chapterDocIndex + 1].title
+  );
+  StorageUtil.setKookitConfig(
+    "chapterDocIndex",
+    (chapterDocIndex + 1).toString()
   );
   StorageUtil.setKookitConfig("text", "");
-  handleRenderChatper(
-    chapterList[chapterIndex + 1].label,
-    chapterDocList,
-    element,
-    mode
-  );
+  handleRenderChatper(chapterDocIndex + 1, chapterDocList, element, mode);
 };
 export const getVisibleText = (element: HTMLElement, mode: string) => {
   let pageArea = document.getElementById("page-area");
@@ -331,6 +303,7 @@ export const getSearchResult = (
           cfi: JSON.stringify({
             text: nodeList[j].innerText,
             chapterTitle: chapterDocList[i].title,
+            chapterDocIndex: i,
             count: j,
             percentage: i / chapterDocList.length,
           }),

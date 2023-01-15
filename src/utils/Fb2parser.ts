@@ -1,5 +1,5 @@
 import Chapter from "../model/chapter";
-import ChapterDoc from "../model/chapterDom";
+import ChapterDoc from "../model/chapterDoc";
 
 class Parser {
   book: any;
@@ -21,7 +21,7 @@ class Parser {
     return sectionDocList.map((item: string, index: number) => {
       if (chapterIndexList.indexOf(index) > -1) {
         return {
-          title: this.chapterList[chapterIndexList.indexOf(index)].label,
+          title: this.chapterList[chapterIndexList.indexOf(index)].title,
           text: item,
         };
       } else {
@@ -33,18 +33,16 @@ class Parser {
     }) as ChapterDoc[];
   }
 
-  async getChapter() {
-    for (let i = 0; i < this.book.toc.length; i++) {
+  async getChapter(toc) {
+    for (let i = 0; i < toc.length; i++) {
       let random = Math.floor(Math.random() * 900000) + 100000;
-      let index = this.book.resolveHref
-        ? this.book.resolveHref(this.book.toc[i].href).index
-        : (await this.book.toc[i].index).index;
+      let index = this.book.resolveHref(toc[i].href).index;
       this.chapterList.push({
-        label: this.book.toc[i].label,
+        title: toc[i].label,
         id: "title" + random,
         href: "title" + random,
         index: index,
-        subitems: [],
+        subitems: toc[i].subitems ? await this.getChapter(toc[i].subitems) : [],
       });
     }
     return this.chapterList;
@@ -52,10 +50,8 @@ class Parser {
   getMetadata() {
     return new Promise<any>(async (resolve, reject) => {
       const metadata = this.book.metadata;
-      console.log(metadata);
       try {
         const blob = await this.book.getCover();
-        console.log(blob);
         var reader = new FileReader();
         reader.readAsDataURL(blob);
         reader.onloadend = () => {
@@ -70,7 +66,7 @@ class Parser {
       } catch (error) {
         resolve({
           name: metadata.title,
-          author: metadata.author.join(", "),
+          author: metadata.author[0].name,
           description: metadata.description,
           publisher: metadata.publisher,
           cover: "",

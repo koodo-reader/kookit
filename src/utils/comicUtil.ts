@@ -36,7 +36,7 @@ export const handleScrollPosition = (
   mode: string,
   _id: string = ""
 ) => {
-  let id = _id || parseInt(StorageUtil.getKookitConfig("count")) || 0;
+  let id = _id || parseInt(StorageUtil.getKookitConfig("count") || "0");
   let pageArea = document.getElementById("page-area");
   if (!pageArea) return;
   let iframe = pageArea.getElementsByTagName("iframe")[0];

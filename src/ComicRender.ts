@@ -19,7 +19,7 @@ class ComicRender extends EventEmitter {
   zip: any;
   format: string;
   element: any;
-  parser: any;
+  parser: ComicParser | null;
   isSliding: boolean;
   chapterList: any[];
   largestId: number;
@@ -37,9 +37,9 @@ class ComicRender extends EventEmitter {
     this.format = format;
     this.comicBuffer = comicBuffer;
     this.element = "";
-    this.parser = "";
+    this.parser = null;
     this.chapterList = [];
-    this.largestId = parseInt(StorageUtil.getKookitConfig("count")) || 0;
+    this.largestId = parseInt(StorageUtil.getKookitConfig("count") || "0");
   }
   renderTo(element: HTMLElement, id: number = 0) {
     return new Promise<void>(async (resolve, reject) => {
@@ -103,24 +103,22 @@ class ComicRender extends EventEmitter {
         this.trigger("rendered");
         resolve();
       };
-      if (this.format === "CBZ") {
-        this.zip = new window.JSZip();
-        this.zip.loadAsync(this.comicBuffer).then(async (contents) => {
-          this.dataSource = Object.keys(contents.files).sort();
-          await handleRender();
-        });
-      } else if (this.format === "CBT") {
-        untar(this.comicBuffer).then(async (extractedFiles) => {
-          this.zip = extractedFiles;
-          this.dataSource = extractedFiles.map((item: any) => item.name);
-          await handleRender();
-        });
-      } else if (this.format === "CBR") {
-        this.zip = new window.Unrar(this.comicBuffer);
-        this.dataSource = this.zip.getEntries().map((item: any) => item.name);
-        await handleRender();
-      }
+      this.handleArchive();
+      await handleRender();
     });
+  }
+  async handleArchive() {
+    if (this.format === "CBZ") {
+      this.zip = new window.JSZip();
+      let contents = await this.zip.loadAsync(this.comicBuffer);
+      this.dataSource = Object.keys(contents.files).sort();
+    } else if (this.format === "CBT") {
+      this.zip = await untar(this.comicBuffer);
+      this.dataSource = this.zip.map((item: any) => item.name);
+    } else if (this.format === "CBR") {
+      this.zip = new window.Unrar(this.comicBuffer);
+      this.dataSource = this.zip.getEntries().map((item: any) => item.name);
+    }
   }
   flatChapter(chapters: any) {
     return chapters;
@@ -128,7 +126,7 @@ class ComicRender extends EventEmitter {
   getProgress() {
     return {
       totalPage: this.chapterList.length,
-      currentPage: parseInt(StorageUtil.getKookitConfig("count")) || 0,
+      currentPage: parseInt(StorageUtil.getKookitConfig("count") || "0"),
     };
   }
   getPageSize() {
@@ -138,6 +136,7 @@ class ComicRender extends EventEmitter {
     };
   }
   async renderImage(id: number) {
+    if (!this.parser) return;
     await this.parser.renderImage(id - 3);
     await this.parser.renderImage(id - 2);
     await this.parser.renderImage(id - 1);
@@ -167,7 +166,8 @@ class ComicRender extends EventEmitter {
   async record() {
     handleRecord(this.element, this.mode);
 
-    let id = parseInt(StorageUtil.getKookitConfig("count")) || 0;
+    let id = parseInt(StorageUtil.getKookitConfig("count") || "0");
+    if (!this.parser) return;
     await this.parser.renderImage(id - 3);
     await this.parser.renderImage(id - 2);
     await this.parser.renderImage(id - 1);
@@ -180,7 +180,8 @@ class ComicRender extends EventEmitter {
     this.element.innerHTML = "";
   }
   async prev() {
-    let id = parseInt(StorageUtil.getKookitConfig("count")) || 0;
+    let id = parseInt(StorageUtil.getKookitConfig("count") || "0");
+    if (!this.parser) return;
     await this.parser.renderImage(id);
     await this.parser.renderImage(id - 1);
     await this.parser.renderImage(id - 2);
@@ -192,7 +193,8 @@ class ComicRender extends EventEmitter {
     handleRecord(this.element, this.mode);
   }
   async next() {
-    let id = parseInt(StorageUtil.getKookitConfig("count")) || 0;
+    let id = parseInt(StorageUtil.getKookitConfig("count") || "0");
+    if (!this.parser) return;
     await this.parser.renderImage(id);
     await this.parser.renderImage(id + 1);
     await this.parser.renderImage(id + 2);
@@ -206,9 +208,21 @@ class ComicRender extends EventEmitter {
     return {
       text: StorageUtil.getKookitConfig("text"),
       chapterTitle: StorageUtil.getKookitConfig("chapterTitle"),
+      chapterDocIndex: StorageUtil.getKookitConfig("chapterDocIndex"),
       count: StorageUtil.getKookitConfig("count"),
       percentage: StorageUtil.getKookitConfig("percentage"),
     };
+  }
+  async getMetadata() {
+    await this.handleArchive();
+    this.parser = new ComicParser(
+      this.dataSource,
+      this.zip,
+      this.mode,
+      this.element,
+      this.format
+    );
+    return await this.parser.getMetadata();
   }
   setStyle(css: string) {
     let pageArea = document.getElementById("page-area");

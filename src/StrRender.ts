@@ -1,7 +1,7 @@
 import _ from "underscore";
 import Chapter from "./model/chapter";
-import ChapterDoc from "./model/chapterDom";
-import { excuteCode } from "./utils/htmlUtil";
+import ChapterDoc from "./model/chapterDoc";
+import { excuteCode, txtToHtml } from "./utils/htmlUtil";
 import { createIframe, handleLayout, progressInfo } from "./utils/layoutUtil";
 import {
   getSearchResult,
@@ -41,15 +41,21 @@ class StrRender extends EventEmitter {
       }
       this.element = element;
       let parser = new StrParser(this.bookStr);
-      this.chapterList = parser.getChapter();
+      if (parser.isContainChapter()) {
+        this.chapterList = parser.getChapter();
+      } else {
+        this.bookStr = txtToHtml(parser.getDocText());
+        parser = new StrParser(this.bookStr);
+        this.chapterList = parser.getChapter();
+      }
       this.chapterDocList = parser.getChapterDoc();
 
-      let chapterTitle =
-        StorageUtil.getKookitConfig("chapterTitle") ||
-        this.chapterDocList[0].title;
+      let chapterDocIndex = parseInt(
+        StorageUtil.getKookitConfig("chapterDocIndex") || "0"
+      );
       createIframe(element);
       handleRenderChatper(
-        chapterTitle,
+        chapterDocIndex,
         this.chapterDocList,
         this.element,
         this.mode
@@ -68,14 +74,19 @@ class StrRender extends EventEmitter {
       height: this.element.clientHeight,
     };
   }
-  goToChapter(title: string) {
-    handleRenderChatper(title, this.chapterDocList, this.element, this.mode);
+  goToChapter(index: string) {
+    handleRenderChatper(
+      parseInt(index),
+      this.chapterDocList,
+      this.element,
+      this.mode
+    );
     this.trigger("rendered");
   }
   goToPosition(cfi: string) {
-    let { text, chapterTitle, count } = JSON.parse(cfi);
+    let { text, chapterDocIndex, count } = JSON.parse(cfi);
     handleRenderChatper(
-      chapterTitle,
+      chapterDocIndex,
       this.chapterDocList,
       this.element,
       this.mode
@@ -104,17 +115,11 @@ class StrRender extends EventEmitter {
       return;
     }
     if (this.mode === "scroll" || doc.body.scrollLeft === 0) {
-      handlePrevChapter(
-        this.element,
-        this.chapterList,
-        this.chapterDocList,
-        this.mode
-      );
+      handlePrevChapter(this.element, this.chapterDocList, this.mode);
       this.trigger("rendered");
     } else {
       handleScrollPage(
         this.element,
-        this.chapterList,
         this.chapterDocList,
         this.mode,
         1,
@@ -141,17 +146,11 @@ class StrRender extends EventEmitter {
       ) < 10 ||
       this.mode === "scroll"
     ) {
-      handleNextChapter(
-        this.element,
-        this.chapterList,
-        this.chapterDocList,
-        this.mode
-      );
+      handleNextChapter(this.element, this.chapterDocList, this.mode);
       this.trigger("rendered");
     } else {
       handleScrollPage(
         this.element,
-        this.chapterList,
         this.chapterDocList,
         this.mode,
         -1,
@@ -175,6 +174,7 @@ class StrRender extends EventEmitter {
     return {
       text: StorageUtil.getKookitConfig("text"),
       chapterTitle: StorageUtil.getKookitConfig("chapterTitle"),
+      chapterDocIndex: StorageUtil.getKookitConfig("chapterDocIndex"),
       count: StorageUtil.getKookitConfig("count"),
       percentage: StorageUtil.getKookitConfig("percentage"),
     };

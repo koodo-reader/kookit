@@ -26,7 +26,6 @@ export const txtToHtml = (text: string) => {
   let html: string = "";
   let isStartWithKeyword = false;
   let lines = text.split("\n");
-
   for (let item of lines) {
     if ((item.trim() as any).slim()) {
       if (isTitle((item.trim() as any).slim(), isStartWithKeyword)) {
@@ -45,8 +44,11 @@ export const txtToHtml = (text: string) => {
       }
     }
   }
-
-  return html;
+  if (html) {
+    return html;
+  } else {
+    return `<h1>Title</h1><p>${text}</p>`;
+  }
 };
 export const excuteCode = async () => {
   StorageUtil.removeKookitConfig();

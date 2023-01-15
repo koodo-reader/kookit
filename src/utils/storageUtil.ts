@@ -1,7 +1,8 @@
 class StorageUtil {
   static getKookitConfig(key: string) {
     let kookitConfig = JSON.parse(localStorage.getItem("kookitConfig")!) || {};
-    return kookitConfig[key];
+    let value: string | undefined = kookitConfig[key];
+    return value;
   }
 
   static setKookitConfig(key: string, value: string) {

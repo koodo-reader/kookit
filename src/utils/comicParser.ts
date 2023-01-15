@@ -55,9 +55,10 @@ class ComicParser {
   getChapter() {
     for (let i = 0; i < this.fileNameList.length; i++) {
       this.chapterList.push({
-        label: this.fileNameList[i],
+        title: this.fileNameList[i],
         id: i + "",
         href: i,
+        index: i,
         subitems: [],
       });
     }
@@ -182,9 +183,9 @@ class ComicParser {
   }
   getMetadata() {
     return new Promise<any>(async (resolve, reject) => {
-      return {
+      resolve({
         cover: await this.getFirstImage(),
-      };
+      });
     });
   }
 }

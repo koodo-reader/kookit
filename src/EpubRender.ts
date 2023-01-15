@@ -1,6 +1,6 @@
 import _ from "underscore";
 import Chapter from "./model/chapter";
-import ChapterDoc from "./model/chapterDom";
+import ChapterDoc from "./model/chapterDoc";
 import StorageUtil from "./utils/storageUtil";
 import { excuteCode } from "./utils/htmlUtil";
 import EventEmitter from "./utils/EventEmitter";
@@ -71,7 +71,15 @@ class EpubRender extends EventEmitter {
   async getChapter() {
     let chapter = await this.epub.loaded.navigation;
     if (!chapter) return [];
-    this.chapterList = chapter.toc;
+    console.log(chapter.toc);
+    this.chapterList = chapter.toc.map((item, index) => {
+      return {
+        href: item.href,
+        title: item.label,
+        index: index,
+        subitems: item.subitems,
+      };
+    });
     return this.chapterList;
   }
   getPageSize() {
@@ -101,10 +109,10 @@ class EpubRender extends EventEmitter {
       this.flattenChapters[
         _.findLastIndex(
           this.flattenChapters.map((item) => {
-            item.label = item.label.trim();
+            item.title = item.title.trim();
             return item;
           }),
-          { label: title.trim() }
+          { title: title.trim() }
         )
       ]?.href;
     this.rendition.display(href);
@@ -202,17 +210,20 @@ class EpubRender extends EventEmitter {
       this.flattenChapters = this.flatChapter(this.chapterList);
     }
     let chapter = "Unknown Chapter";
+    let chapterDocIndex = "0";
     let currentChapter = this.flattenChapters.filter(
       (item: any) =>
         item.href.indexOf(chapterHref) > -1 ||
         chapterHref.indexOf(item.href) > -1
     )[0];
     if (currentChapter) {
-      chapter = currentChapter.label.trim(" ");
+      chapter = currentChapter.title.trim(" ");
+      chapterDocIndex = currentChapter.index.toString();
     }
     StorageUtil.setKookitConfig("cfi", cfi);
     StorageUtil.setKookitConfig("percentage", percentage);
     StorageUtil.setKookitConfig("chapterTitle", chapter);
+    StorageUtil.setKookitConfig("chapterDocIndex", chapterDocIndex);
   }
   async getPosition() {
     await this.record();
@@ -221,6 +232,7 @@ class EpubRender extends EventEmitter {
       cfi: StorageUtil.getKookitConfig("cfi"),
       percentage: StorageUtil.getKookitConfig("percentage"),
       chapterTitle: StorageUtil.getKookitConfig("chapterTitle"),
+      chapterDocIndex: StorageUtil.getKookitConfig("chapterDocIndex"),
     };
   }
   getMetadata() {

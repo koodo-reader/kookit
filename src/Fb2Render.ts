@@ -1,6 +1,6 @@
 import _ from "underscore";
 import Chapter from "./model/chapter";
-import ChapterDoc from "./model/chapterDom";
+import ChapterDoc from "./model/chapterDoc";
 import { createIframe, handleLayout, progressInfo } from "./utils/layoutUtil";
 import StorageUtil from "./utils/storageUtil";
 import {
@@ -13,7 +13,7 @@ import {
   handleScrollPage,
   handleScrollPosition,
 } from "./utils/navigationUtil";
-import Parser from "./utils/parser";
+import Fb2Parser from "./utils/fb2Parser";
 import { excuteCode } from "./utils/htmlUtil";
 import EventEmitter from "./utils/EventEmitter";
 import { makeFB2 } from "./libs/fb2";
@@ -44,25 +44,20 @@ class Fb2Render extends EventEmitter {
       }
       let blob = new Blob([this.fb2Buffer]);
       this.book = await makeFB2(blob);
-      console.log(this.book);
-      let parser = new Parser(this.book);
+      let parser = new Fb2Parser(this.book);
       this.element = element;
 
-      this.chapterList = await parser.getChapter();
+      this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
-      let metadata = await parser.getMetadata();
-      console.log(metadata);
-
-      console.log(this.chapterDocList);
-      let chapterTitle =
-        StorageUtil.getKookitConfig("chapterTitle") ||
-        this.chapterList[0].label;
+      let chapterDocIndex = parseInt(
+        StorageUtil.getKookitConfig("chapterDocIndex") || "0"
+      );
 
       createIframe(element);
 
       handleLayout(element, this.mode);
       handleRenderChatper(
-        chapterTitle,
+        chapterDocIndex,
         this.chapterDocList,
         this.element,
         this.mode
@@ -78,19 +73,33 @@ class Fb2Render extends EventEmitter {
     };
   }
   flatChapter(chapters: any) {
-    return chapters;
+    let newChapter: any = [];
+    for (let i = 0; i < chapters.length; i++) {
+      if (chapters[i].subitems[0]) {
+        newChapter.push(chapters[i]);
+        newChapter = newChapter.concat(this.flatChapter(chapters[i].subitems));
+      } else {
+        newChapter.push(chapters[i]);
+      }
+    }
+    return newChapter;
   }
   getChapter() {
     return this.chapterList;
   }
-  goToChapter(title: string) {
-    handleRenderChatper(title, this.chapterDocList, this.element, this.mode);
+  goToChapter(index: string) {
+    handleRenderChatper(
+      parseInt(index),
+      this.chapterDocList,
+      this.element,
+      this.mode
+    );
     this.trigger("rendered");
   }
   goToPosition(cfi: string) {
-    let { text, chapterTitle, count } = JSON.parse(cfi);
+    let { text, chapterDocIndex, count } = JSON.parse(cfi);
     handleRenderChatper(
-      chapterTitle,
+      chapterDocIndex,
       this.chapterDocList,
       this.element,
       this.mode
@@ -113,17 +122,11 @@ class Fb2Render extends EventEmitter {
       return;
     }
     if (this.mode === "scroll" || doc.body.scrollLeft === 0) {
-      handlePrevChapter(
-        this.element,
-        this.chapterList,
-        this.chapterDocList,
-        this.mode
-      );
+      handlePrevChapter(this.element, this.chapterDocList, this.mode);
       this.trigger("rendered");
     } else {
       handleScrollPage(
         this.element,
-        this.chapterList,
         this.chapterDocList,
         this.mode,
         1,
@@ -150,17 +153,11 @@ class Fb2Render extends EventEmitter {
       ) < 10 ||
       this.mode === "scroll"
     ) {
-      handleNextChapter(
-        this.element,
-        this.chapterList,
-        this.chapterDocList,
-        this.mode
-      );
+      handleNextChapter(this.element, this.chapterDocList, this.mode);
       this.trigger("rendered");
     } else {
       handleScrollPage(
         this.element,
-        this.chapterList,
         this.chapterDocList,
         this.mode,
         -1,
@@ -187,6 +184,7 @@ class Fb2Render extends EventEmitter {
     return {
       text: StorageUtil.getKookitConfig("text"),
       chapterTitle: StorageUtil.getKookitConfig("chapterTitle"),
+      chapterDocIndex: StorageUtil.getKookitConfig("chapterDocIndex"),
       count: StorageUtil.getKookitConfig("count"),
       percentage: StorageUtil.getKookitConfig("percentage"),
     };
@@ -194,8 +192,7 @@ class Fb2Render extends EventEmitter {
   async getMetadata() {
     let blob = new Blob([this.fb2Buffer]);
     this.book = await makeFB2(blob);
-    console.log(this.book);
-    let parser = new Parser(this.book);
+    let parser = new Fb2Parser(this.book);
     return parser.getMetadata();
   }
   setStyle(css: string) {

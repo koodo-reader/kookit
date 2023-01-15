@@ -1,89 +1,79 @@
-import { isKeyword, isNodeTitle, isSpecialChar } from "./titleUtil";
+import Chapter from "../model/chapter";
+import ChapterDoc from "../model/chapterDoc";
 
-class MobiParser {
-  bookStr: string;
-  chapterList: any[];
-  chapterDocList: any[];
-  constructor(bookStr: string) {
-    this.bookStr = bookStr;
+class Parser {
+  book: any;
+  chapterList: Chapter[];
+  chapterDocList: ChapterDoc[];
+  constructor(book: any) {
+    this.book = book;
     this.chapterList = [];
     this.chapterDocList = [];
   }
-  getChapterDoc() {
-    let tempChapterList =
-      this.bookStr.indexOf("<mbp:pagebreak>") > -1
-        ? this.bookStr
-            .split("<mbp:pagebreak>")
-            .filter((item) => item.trim() !== "")
-        : this.bookStr
-            .split("<address> </address>")
-            .filter((item) => item.trim() !== "");
-    let chapterList: string[] = [];
-    let titleList: string[] = [];
-    let tempChapter = "";
-    for (let i = 0; i < tempChapterList.length; i++) {
-      let chapterDoc = new DOMParser().parseFromString(
-        tempChapterList[i],
-        "text/html"
-      );
+  async getChapterDoc() {
+    let sectionDocList: any[] = await Promise.all(
+      this.book.sections.map(async (item) => {
+        return item.load ? await item.load() : "";
+      })
+    );
 
-      if (isNodeTitle(chapterDoc)) {
-        chapterList.push(tempChapter + tempChapterList[i]);
-        tempChapter = "";
+    const chapterIndexList = this.chapterList.map((item) => item.index);
+    return sectionDocList.map((item: string, index: number) => {
+      if (chapterIndexList.indexOf(index) > -1) {
+        return {
+          title: this.chapterList[chapterIndexList.indexOf(index)].title,
+          text: item,
+        };
       } else {
-        tempChapter += tempChapterList[i];
+        return {
+          title: "",
+          text: item,
+        };
       }
-    }
-    if (chapterList.length === 0) {
-      chapterList.push(tempChapter);
-    }
-    for (let i = 0; i < chapterList.length; i++) {
-      let chapterDoc = new DOMParser().parseFromString(
-        chapterList[i],
-        "text/html"
-      );
-      let titleNodeList = chapterDoc.querySelectorAll(
-        "h1,h2,h3,h4,blockquote,font,b"
-      );
-      let firstValidTitle: any;
-
-      for (let i = 0; i < titleNodeList.length; i++) {
-        if (
-          (titleNodeList[i] as HTMLElement).innerText.trim() &&
-          !isSpecialChar((titleNodeList[i] as HTMLElement).innerText) &&
-          !isKeyword((titleNodeList[i] as HTMLElement).innerText)
-        ) {
-          firstValidTitle = titleNodeList[i] as HTMLElement;
-          break;
-        }
-      }
-
-      this.chapterDocList.push({
-        title: firstValidTitle
-          ? titleList.indexOf(firstValidTitle.innerText) === -1
-            ? firstValidTitle.innerText
-            : firstValidTitle.innerText + "#" + i
-          : "Forword",
-        text: chapterList[i],
-      });
-      firstValidTitle && titleList.push(firstValidTitle.innerText);
-    }
-
-    return this.chapterDocList;
+    }) as ChapterDoc[];
   }
 
-  getChapter() {
-    for (let i = 0; i < this.chapterDocList.length; i++) {
+  async getChapter(toc) {
+    for (let i = 0; i < toc.length; i++) {
       let random = Math.floor(Math.random() * 900000) + 100000;
+      let index = (await toc[i].index).index;
       this.chapterList.push({
-        label: this.chapterDocList[i].title,
+        title: toc[i].label,
         id: "title" + random,
         href: "title" + random,
-        subitems: [],
+        index: index,
+        subitems: toc[i].subitems ? await this.getChapter(toc[i].subitems) : [],
       });
     }
     return this.chapterList;
   }
+  getMetadata() {
+    return new Promise<any>(async (resolve, reject) => {
+      const metadata = this.book.metadata;
+      try {
+        const blob = await this.book.getCover();
+        var reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => {
+          resolve({
+            title: metadata.title,
+            author: metadata.author[0],
+            description: metadata.description,
+            publisher: metadata.publisher,
+            cover: reader.result,
+          });
+        };
+      } catch (error) {
+        resolve({
+          name: metadata.title,
+          author: metadata.author[0],
+          description: metadata.description,
+          publisher: metadata.publisher,
+          cover: "",
+        });
+      }
+    });
+  }
 }
 
-export default MobiParser;
+export default Parser;
