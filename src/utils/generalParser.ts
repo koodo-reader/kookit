@@ -1,7 +1,7 @@
 import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
 
-class EpubParser {
+class GeneralParser {
   book: any;
   chapterList: Chapter[];
   flattenChapters: Chapter[];
@@ -11,6 +11,22 @@ class EpubParser {
     this.chapterList = [];
     this.flattenChapters = [];
     this.chapterDocList = [];
+  }
+  async getChapter(toc) {
+    this.chapterList = await Promise.all<Chapter>(
+      toc.map(async (item) => {
+        let index = -1;
+        index = (await this.book.resolveHref(item.href)).index;
+        return {
+          title: item.label ? item.label : "Content",
+          href: item.href,
+          index: index,
+          subitems: item.subitems ? await this.getChapter(item.subitems) : [],
+        } as Chapter;
+      })
+    );
+    this.flattenChapters = this.flatChapter(this.chapterList);
+    return this.chapterList;
   }
   async getChapterDoc() {
     let sectionDocList: any[] = await Promise.all(
@@ -25,37 +41,17 @@ class EpubParser {
       if (chapterIndexList.indexOf(index) > -1) {
         return {
           title: this.flattenChapters[chapterIndexList.indexOf(index)].title,
+          href: this.flattenChapters[chapterIndexList.indexOf(index)].href,
           text: item,
         };
       } else {
         return {
           title: "",
+          href: "",
           text: item,
         };
       }
     }) as ChapterDoc[];
-  }
-
-  async getChapter(toc) {
-    this.chapterList = await Promise.all<Chapter>(
-      toc.map(async (item, i) => {
-        let random = Math.floor(Math.random() * 900000) + 100000;
-        console.log(item);
-        let index =
-          item.href && this.book.resolveHref(item.href)
-            ? this.book.resolveHref(item.href).index
-            : i;
-        return {
-          title: item.label ? item.label : index,
-          id: "title" + random,
-          href: "title" + random,
-          index: index,
-          subitems: item.subitems ? await this.getChapter(item.subitems) : [],
-        } as Chapter;
-      })
-    );
-    this.flattenChapters = this.flatChapter(this.chapterList);
-    return this.chapterList;
   }
   flatChapter(chapters: any) {
     let newChapter: any = [];
@@ -69,6 +65,7 @@ class EpubParser {
     }
     return newChapter;
   }
+
   getMetadata() {
     return new Promise<any>(async (resolve, reject) => {
       const metadata = this.book.metadata;
@@ -88,7 +85,9 @@ class EpubParser {
       } catch (error) {
         resolve({
           name: metadata.title,
-          author: metadata.author[0].name,
+          author: metadata.author[0].name
+            ? metadata.author[0].name
+            : metadata.author[0],
           description: metadata.description,
           publisher: metadata.publisher,
           cover: "",
@@ -98,4 +97,4 @@ class EpubParser {
   }
 }
 
-export default EpubParser;
+export default GeneralParser;

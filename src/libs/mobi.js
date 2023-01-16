@@ -826,7 +826,6 @@ class MOBI6 {
     this.sections = this.#sections.map((section, index) => ({
       id: index,
       load: () => this.loadSection(section),
-      loadText: () => this.loadText(section),
       createDocument: () => this.createDocument(section),
       size: section.end - section.start,
     }));
@@ -837,10 +836,9 @@ class MOBI6 {
       const map = ({ label, offset, children }) => {
         const filepos = offset.toString().padStart(10, "0");
         const href = `filepos:${filepos}`;
-        const index = this.resolveHref(href);
         fileposInNCX.push(filepos);
         label = unescapeHTML(label);
-        return { label, href, index, subitems: children?.map(map) };
+        return { label, href, subitems: children?.map(map) };
       };
       this.toc = ncx?.map(map);
       this.landmarks = await this.getGuide();
@@ -965,7 +963,10 @@ class MOBI6 {
     );
 
     await this.replaceResources(doc);
-    return this.serializer.serializeToString(doc);
+    const result = this.serializer.serializeToString(doc);
+    const url = URL.createObjectURL(new Blob([result], { type: this.#type }));
+    this.#cache.set(section, url);
+    return url;
   }
   resolveHref(href) {
     const filepos = href.match(/filepos:(.*)/)[1];
@@ -1114,7 +1115,6 @@ class KF8 {
         ? {
             id: index,
             load: () => this.loadSection(section),
-            loadText: () => this.loadText(section),
             createDocument: () => this.createDocument(section),
             size: section.length,
           }
@@ -1126,14 +1126,12 @@ class KF8 {
       const map = ({ label, pos, children }) => {
         const [fid, off] = pos;
         const href = makePosURI(fid, off);
-        const index = this.resolveHref(href);
         const arr = this.#fragmentOffsets.get(fid);
         if (arr) arr.push(off);
         else this.#fragmentOffsets.set(fid, [off]);
         return {
           label: unescapeHTML(label),
           href,
-          index,
           subitems: children?.map(map),
         };
       };
@@ -1282,7 +1280,10 @@ class KF8 {
     // let's just check it once for now
     if (this.#checkType) this.#checkType = false;
 
-    return await this.replaceResources(str);
+    const replaced = await this.replaceResources(str);
+    const url = URL.createObjectURL(new Blob([replaced], { type: this.#type }));
+    this.#cache.set(section, url);
+    return url;
   }
   getIndexByFID(fid) {
     return this.#sections.findIndex((section) =>

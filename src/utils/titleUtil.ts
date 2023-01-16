@@ -12,7 +12,7 @@ let keywords = [
   "话",
   "篇",
 ];
-String.prototype.contains = function (str) {
+(String as any).prototype.contains = function (str) {
   return this.indexOf(str) > -1;
 };
 

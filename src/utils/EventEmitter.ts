@@ -137,7 +137,8 @@ export default class {
         for (const namespace in that.callbacks) {
           if (
             that.callbacks[namespace] instanceof Object &&
-            that.callbacks[namespace][name.value] instanceof Array
+            that.callbacks[namespace][name.value] instanceof Array &&
+            that.callbacks[namespace][name.value]
           ) {
             that.callbacks[namespace][name.value].forEach(function (callback) {
               result = callback.apply(that, args);
@@ -145,7 +146,10 @@ export default class {
                 finalResult = result;
               }
             });
-          } else if (this.callbacks[name.namespace] instanceof Object) {
+          } else if (
+            this.callbacks[name.namespace] instanceof Object &&
+            that.callbacks[name.namespace][name.value]
+          ) {
             if (name.value === "") {
               console.warn("wrong name");
               return this;

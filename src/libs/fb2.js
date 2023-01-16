@@ -328,7 +328,7 @@ export const makeFB2 = async (blob) => {
         ids,
         title,
         titles,
-        load: () => str,
+        load: () => url,
         createDocument: () => new DOMParser().parseFromString(str, MIME.XHTML),
         // doo't count image data as it'd skew the size too much
         size:

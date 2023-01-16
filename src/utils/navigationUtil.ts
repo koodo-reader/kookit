@@ -3,10 +3,12 @@ import ChapterDoc from "../model/chapterDoc";
 import { handleIframeHeight, handleImageSize } from "./layoutUtil";
 import StorageUtil from "./storageUtil";
 import Chinese from "chinese-s2t";
+import Chapter from "../model/chapter";
 
 let lock = false;
 export const handleScrollPage = async (
   element: HTMLElement,
+  flattenChapters: Chapter[],
   chapterDocList: ChapterDoc[],
   mode: string,
   delta: number,
@@ -31,10 +33,10 @@ export const handleScrollPage = async (
     });
     // trigger("page-changed");
   } else if (delta > 0 && doc.body.scrollLeft === 0) {
-    handlePrevChapter(element, chapterDocList, mode);
+    handlePrevChapter(element, flattenChapters, chapterDocList, mode);
     trigger("rendered");
   } else if (delta < 0) {
-    handleTurnChapter(element, chapterDocList, mode, trigger);
+    handleTurnChapter(element, flattenChapters, chapterDocList, mode, trigger);
 
     doc.body.scrollBy({
       top: 0,
@@ -45,6 +47,7 @@ export const handleScrollPage = async (
 };
 export const handlePrevChapter = (
   element: HTMLElement,
+  flattenChapters: Chapter[],
   chapterDocList: ChapterDoc[],
   mode: string
 ) => {
@@ -52,24 +55,51 @@ export const handlePrevChapter = (
   let chapterDocIndex = parseInt(
     StorageUtil.getKookitConfig("chapterDocIndex") || "0"
   );
-
+  let chapterHref = StorageUtil.getKookitConfig("chapterHref") || "";
   if (chapterDocIndex === 0 || !chapterTitle) {
     return;
   }
+  let currentChapterIndex = _.findLastIndex(flattenChapters, {
+    index: chapterDocIndex,
+    href: chapterHref,
+  });
   StorageUtil.setKookitConfig(
     "chapterTitle",
-    chapterDocList[chapterDocIndex - 1].title
+    flattenChapters[currentChapterIndex - 1].title
+  );
+  StorageUtil.setKookitConfig(
+    "chapterHref",
+    flattenChapters[currentChapterIndex - 1].href
   );
   StorageUtil.setKookitConfig(
     "chapterDocIndex",
-    (chapterDocIndex - 1).toString()
+    flattenChapters[currentChapterIndex - 1].index.toString()
   );
   StorageUtil.setKookitConfig("text", "prevChapter");
-  handleRenderChatper(chapterDocIndex - 1, chapterDocList, element, mode);
+  handleRenderChatper(
+    flattenChapters[currentChapterIndex - 1].index,
+    flattenChapters[currentChapterIndex - 1].title,
+    chapterDocList,
+    element,
+    mode
+  );
+  if (
+    flattenChapters[currentChapterIndex - 1].href &&
+    flattenChapters[currentChapterIndex - 1].href.indexOf("#") > -1
+  ) {
+    handleScrollPosition(
+      element,
+      mode,
+      "",
+      "",
+      flattenChapters[currentChapterIndex - 1].href
+    );
+  }
 };
 
 export const handleRenderChatper = (
   chapterDocIndex: number = 0,
+  chapterTitle: string = "",
   chapterDocList: ChapterDoc[],
   element: HTMLElement,
   mode: string
@@ -85,10 +115,7 @@ export const handleRenderChatper = (
   doc.body.innerHTML = "";
   doc.body.innerHTML = chapterDocList[chapterDocIndex].text;
 
-  StorageUtil.setKookitConfig(
-    "chapterTitle",
-    chapterDocList[chapterDocIndex].title
-  );
+  StorageUtil.setKookitConfig("chapterTitle", chapterTitle);
   StorageUtil.setKookitConfig("chapterDocIndex", chapterDocIndex.toString());
   StorageUtil.setKookitConfig(
     "percentage",
@@ -96,15 +123,15 @@ export const handleRenderChatper = (
   );
   handleIframeHeight(element, mode);
   handleImageSize(element, mode);
-  handleScrollPosition(element, mode);
+  handleScrollPosition(element, mode, "", "", "");
 };
 export const handleScrollPosition = (
   element: HTMLElement,
   mode: string,
-  _text: string = "",
-  _count: string = "0"
+  text: string,
+  count: string,
+  href: string
 ) => {
-  let text = _text || StorageUtil.getKookitConfig("text") || "";
   let pageArea = document.getElementById("page-area");
   if (!pageArea) return;
   let iframe = pageArea.getElementsByTagName("iframe")[0];
@@ -113,10 +140,13 @@ export const handleScrollPosition = (
   if (!doc) {
     return;
   }
-  let nodeList = Array.from(
-    doc.body.querySelectorAll("h1,h2,h3,h4,p,img")
-  ) as HTMLElement[];
+  let top = 0;
+  let left = 0;
+  let targetNode = doc.body;
   if (text) {
+    let nodeList = Array.from(
+      doc.body.querySelectorAll("h1,h2,h3,h4,p,img")
+    ) as HTMLElement[];
     let targetNodeList = nodeList.filter((s, index) => {
       return (
         (((s as HTMLElement).innerText.trim() &&
@@ -126,39 +156,31 @@ export const handleScrollPosition = (
               Chinese.s2t(text.trim()))) ||
           ((s as any).getAttribute("recindex") &&
             (s as any).getAttribute("recindex").trim() === text.trim())) &&
-        Math.abs(
-          index -
-            parseInt(_count || StorageUtil.getKookitConfig("count") || "0")
-        ) < 2
+        Math.abs(index - parseInt(count)) < 2
       );
     });
-
-    let targetNode = targetNodeList[0];
-    if (mode !== "scroll") {
-      doc.body.scrollTo(
-        text && targetNode
-          ? targetNode.getBoundingClientRect().left
-          : text === "prevChapter"
-          ? doc.body.scrollWidth
-          : 0,
-        0
-      );
-    } else {
-      element.scrollTo(
-        0,
-        text && targetNode ? targetNode.getBoundingClientRect().top : 0
-      );
-    }
+    targetNode = targetNodeList[0];
+  } else if (href && href.indexOf("#") > -1) {
+    let id = href.split("#").reverse()[0];
+    console.log(id);
+    targetNode = doc.body.querySelector("#" + id) || doc.body;
+    console.log(targetNode);
+  }
+  left = targetNode
+    ? targetNode.getBoundingClientRect().left
+    : text === "prevChapter"
+    ? doc.body.scrollWidth
+    : 0;
+  top = targetNode ? targetNode.getBoundingClientRect().top : 0;
+  if (mode !== "scroll") {
+    doc.body.scrollTo(left, 0);
   } else {
-    if (mode !== "scroll") {
-      doc.body.scrollTo(0, 0);
-    } else {
-      element.scrollTo(0, 0);
-    }
+    element.scrollTo(0, top);
   }
 };
 export const handleTurnChapter = (
   element: HTMLElement,
+  flattenChapters: Chapter[],
   chapterDocList: ChapterDoc[],
   mode: string,
   trigger: (status: string) => void
@@ -179,8 +201,7 @@ export const handleTurnChapter = (
       doc.body.scrollWidth - doc.body.scrollLeft - doc.body.clientWidth
     ) < 10
   ) {
-    handleNextChapter(element, chapterDocList, mode);
-
+    handleNextChapter(element, flattenChapters, chapterDocList, mode);
     trigger("rendered");
   }
 };
@@ -242,22 +263,50 @@ export const handleRecord = async (element: HTMLElement, mode: string) => {
 };
 export const handleNextChapter = (
   element: HTMLElement,
+  flattenChapters: Chapter[],
   chapterDocList: ChapterDoc[],
   mode: string
 ) => {
   let chapterDocIndex = parseInt(
     StorageUtil.getKookitConfig("chapterDocIndex") || "0"
   );
+  let chapterHref = StorageUtil.getKookitConfig("chapterHref") || "";
+  let currentChapterIndex = _.findLastIndex(flattenChapters, {
+    index: chapterDocIndex,
+    href: chapterHref,
+  });
   StorageUtil.setKookitConfig(
     "chapterTitle",
-    chapterDocList[chapterDocIndex + 1].title
+    flattenChapters[currentChapterIndex + 1].title
+  );
+  StorageUtil.setKookitConfig(
+    "chapterHref",
+    flattenChapters[currentChapterIndex + 1].href
   );
   StorageUtil.setKookitConfig(
     "chapterDocIndex",
-    (chapterDocIndex + 1).toString()
+    flattenChapters[currentChapterIndex + 1].index.toString()
   );
   StorageUtil.setKookitConfig("text", "");
-  handleRenderChatper(chapterDocIndex + 1, chapterDocList, element, mode);
+  handleRenderChatper(
+    flattenChapters[currentChapterIndex + 1].index,
+    flattenChapters[currentChapterIndex + 1].title,
+    chapterDocList,
+    element,
+    mode
+  );
+  if (
+    flattenChapters[currentChapterIndex + 1].href &&
+    flattenChapters[currentChapterIndex + 1].href.indexOf("#") > -1
+  ) {
+    handleScrollPosition(
+      element,
+      mode,
+      "",
+      "",
+      flattenChapters[currentChapterIndex + 1].href
+    );
+  }
 };
 export const getVisibleText = (element: HTMLElement, mode: string) => {
   let pageArea = document.getElementById("page-area");
@@ -302,6 +351,7 @@ export const getSearchResult = (
             text: nodeList[j].innerText,
             chapterTitle: chapterDocList[i].title,
             chapterDocIndex: i,
+            chapterHref: chapterDocList[i].href,
             count: j,
             percentage: i / chapterDocList.length,
           }),
