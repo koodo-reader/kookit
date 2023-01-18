@@ -1,4 +1,5 @@
 import HtmlParser from "./htmlParser";
+import { getTitleElement } from "./titleUtil";
 
 class StrParser {
   bookStr: string;
@@ -14,9 +15,7 @@ class StrParser {
     this.chapterDomList = [];
   }
   getChapter() {
-    this.chapterDomList = Array.from(
-      this.bookDoc.querySelectorAll("h1,h2,h3,h4,font,b")
-    ) as HTMLElement[];
+    this.chapterDomList = getTitleElement(this.bookDoc);
     this.insertPageBreak();
     let parser = new HtmlParser(this.bookDoc.body.innerHTML);
     this.chapterDocList = parser.getChapterDoc();
@@ -27,9 +26,7 @@ class StrParser {
     return this.bookDoc.body.innerText;
   }
   isContainChapter() {
-    this.chapterDomList = Array.from(
-      this.bookDoc.querySelectorAll("h1,h2,h3,h4,font,b")
-    ) as HTMLElement[];
+    this.chapterDomList = getTitleElement(this.bookDoc);
     if (this.chapterDomList.length > 0) {
       return true;
     } else {

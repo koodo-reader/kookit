@@ -42,7 +42,6 @@ class EpubRender extends GeneralRender {
       this.book = await new EPUB(loader).init();
       let parser = new GeneralParser(this.book);
       this.element = element;
-      console.log(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
       console.log(this.chapterList);

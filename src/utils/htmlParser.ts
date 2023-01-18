@@ -1,4 +1,10 @@
-import { isKeyword, isNodeTitle, isSpecialChar } from "./titleUtil";
+import {
+  getTitleElement,
+  handleImageMarker,
+  isKeyword,
+  isNodeTitle,
+  isSpecialChar,
+} from "./titleUtil";
 
 class HtmlParser {
   bookStr: string;
@@ -10,15 +16,11 @@ class HtmlParser {
     this.chapterDocList = [];
   }
   getChapterDoc() {
-    let tempChapterList =
-      this.bookStr.indexOf("<mbp:pagebreak>") > -1
-        ? this.bookStr
-            .split("<mbp:pagebreak>")
-            .filter((item) => item.trim() !== "")
-        : this.bookStr
-            .split("<address> </address>")
-            .filter((item) => item.trim() !== "");
-    let chapterList: string[] = [];
+    let tempChapterList = this.bookStr
+      .split("<address> </address>")
+      .filter((item) => item.trim() !== "")
+      .map((item) => handleImageMarker(item));
+    let chapterStrList: string[] = [];
     let titleList: string[] = [];
     let tempChapter = "";
     for (let i = 0; i < tempChapterList.length; i++) {
@@ -28,23 +30,21 @@ class HtmlParser {
       );
 
       if (isNodeTitle(chapterDoc)) {
-        chapterList.push(tempChapter + tempChapterList[i]);
+        chapterStrList.push(tempChapter + tempChapterList[i]);
         tempChapter = "";
       } else {
         tempChapter += tempChapterList[i];
       }
     }
-    if (chapterList.length === 0) {
-      chapterList.push(tempChapter);
+    if (chapterStrList.length === 0) {
+      chapterStrList.push(tempChapter);
     }
-    for (let i = 0; i < chapterList.length; i++) {
+    for (let i = 0; i < chapterStrList.length; i++) {
       let chapterDoc = new DOMParser().parseFromString(
-        chapterList[i],
+        chapterStrList[i],
         "text/html"
       );
-      let titleNodeList = chapterDoc.querySelectorAll(
-        "h1,h2,h3,h4,blockquote,font,b"
-      );
+      let titleNodeList = getTitleElement(chapterDoc);
       let firstValidTitle: any;
 
       for (let i = 0; i < titleNodeList.length; i++) {
@@ -60,7 +60,7 @@ class HtmlParser {
 
       this.chapterDocList.push({
         title: firstValidTitle ? firstValidTitle.innerText : "",
-        text: chapterList[i],
+        text: chapterStrList[i],
       });
       firstValidTitle && titleList.push(firstValidTitle.innerText);
     }

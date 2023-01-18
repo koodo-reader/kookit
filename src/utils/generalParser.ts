@@ -1,5 +1,6 @@
 import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
+import { handleImageMarker } from "./titleUtil";
 
 class GeneralParser {
   book: any;
@@ -16,7 +17,10 @@ class GeneralParser {
     this.chapterList = await Promise.all<Chapter>(
       toc.map(async (item) => {
         let index = -1;
-        index = (await this.book.resolveHref(item.href)).index;
+        index =
+          item.href && (await this.book.resolveHref(item.href))
+            ? (await this.book.resolveHref(item.href)).index
+            : -1;
         return {
           title: item.label ? item.label : "Content",
           href: item.href,
@@ -37,21 +41,23 @@ class GeneralParser {
       })
     );
     const chapterIndexList = this.flattenChapters.map((item) => item.index);
-    return sectionDocList.map((item: string, index: number) => {
-      if (chapterIndexList.indexOf(index) > -1) {
-        return {
-          title: this.flattenChapters[chapterIndexList.indexOf(index)].title,
-          href: this.flattenChapters[chapterIndexList.indexOf(index)].href,
-          text: item,
-        };
-      } else {
-        return {
-          title: "",
-          href: "",
-          text: item,
-        };
-      }
-    }) as ChapterDoc[];
+    return sectionDocList
+      .map((item) => handleImageMarker(item))
+      .map((item: string, index: number) => {
+        if (chapterIndexList.indexOf(index) > -1) {
+          return {
+            title: this.flattenChapters[chapterIndexList.indexOf(index)].title,
+            href: this.flattenChapters[chapterIndexList.indexOf(index)].href,
+            text: item,
+          };
+        } else {
+          return {
+            title: "",
+            href: "",
+            text: item,
+          };
+        }
+      }) as ChapterDoc[];
   }
   flatChapter(chapters: any) {
     let newChapter: any = [];

@@ -15,7 +15,45 @@ let keywords = [
 (String as any).prototype.contains = function (str) {
   return this.indexOf(str) > -1;
 };
-
+export const getTitleElement = (Element) => {
+  return Array.from(
+    Element.querySelectorAll("h1,h2,h3,h4,h5,h6,title")
+  ) as HTMLElement[];
+};
+export const getBlockElement = (Element) => {
+  return Array.from(
+    Element.querySelectorAll(
+      "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address"
+    )
+  ) as HTMLElement[];
+};
+export const getImageElement = (Element) => {
+  return Array.from(Element.querySelectorAll("img")) as HTMLElement[];
+};
+export const cleanText = (str) => {
+  return str
+    .trim()
+    .replace(/(\r\n|\n|\r)/gm, "")
+    .substring(0, 100);
+};
+export const handleImageMarker = (bookStr) => {
+  let chapterDoc = new DOMParser().parseFromString(bookStr, "text/html") as any;
+  let imgDomList = getImageElement(chapterDoc);
+  if (imgDomList.length === 0) {
+    return bookStr;
+  } else {
+    for (let i = 0; i < imgDomList.length; i++) {
+      var newItem = document.createElement("address");
+      var textnode = document.createTextNode("img");
+      newItem.appendChild(textnode);
+      newItem.setAttribute("style", "visibility: hidden");
+      if (imgDomList[i].parentNode) {
+        (imgDomList[i].parentNode as any).insertBefore(newItem, imgDomList[i]);
+      }
+    }
+    return chapterDoc.documentElement.innerHTML;
+  }
+};
 export const isTitle = (line, isStartWithKeyword = false) => {
   return (
     line &&
@@ -163,12 +201,8 @@ const startWithNumAndPause = (line) => {
   return false;
 };
 export const isNodeTitle = (chapterDoc) => {
-  let isTitleNodeExist =
-    chapterDoc.querySelectorAll("h1,h2,h3,h4,blockquote,font,b").length > 0;
-
-  let titleNodeList = chapterDoc.querySelectorAll(
-    "h1,h2,h3,h4,blockquote,font,b"
-  );
+  let titleNodeList = getTitleElement(chapterDoc);
+  let isTitleNodeExist = titleNodeList.length > 0;
   let textNodeList = chapterDoc.getElementsByTagName("p");
   let firstValidTitle;
   let firstValidText;

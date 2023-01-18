@@ -52,30 +52,33 @@ class GeneralRender extends EventEmitter {
   getChapter() {
     return this.chapterList;
   }
-  goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
+  async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
     handleRenderChatper(
       parseInt(chapterDocIndex),
       chapterTitle,
+      chapterHref,
       this.chapterDocList,
       this.element,
       this.mode
     );
     if (chapterHref && chapterHref.indexOf("#") > -1) {
-      handleScrollPosition(this.element, this.mode, "", "", chapterHref);
+      await handleScrollPosition(this.element, this.mode, "", "", chapterHref);
     }
     this.record();
     this.trigger("rendered");
   }
-  goToPosition(cfi: string) {
-    let { text, chapterDocIndex, chapterTitle, count } = JSON.parse(cfi);
+  async goToPosition(cfi: string) {
+    let { text, chapterDocIndex, chapterTitle, chapterHref, count } =
+      JSON.parse(cfi);
     handleRenderChatper(
       chapterDocIndex,
       chapterTitle,
+      chapterHref,
       this.chapterDocList,
       this.element,
       this.mode
     );
-    handleScrollPosition(this.element, this.mode, text, count, "");
+    await handleScrollPosition(this.element, this.mode, text, count, "");
     this.record();
     this.trigger("rendered");
   }
