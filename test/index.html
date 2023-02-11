@@ -6,11 +6,10 @@
     <link rel="stylesheet" href="./index.css" />
     <script src="../dist/kookit.umd.js"></script>
     <script src="https://cdn.bootcdn.net/ajax/libs/localforage/1.9.0/localforage.js"></script>
-    <script src="./unrar.js"></script>
-    <script src="./jszip.min.js"></script>
+    <!-- <script src="./jszip.min.js"></script> -->
     <script src="./fflate.min.js"></script>
     <script src="./zip-no-worker.min.js"></script>
-
+    <script src="../lib/libunrar/rpc.js"></script>
     <title>Kookit - Koodo Reader</title>
   </head>
   <body>
@@ -45,7 +44,43 @@
 
       const renderFunc = async () => {
         localforage.getItem("book").then(async (result) => {
-          const { EpubRender } = Kookit;
+          const { ComicRender } = Kookit;
+          console.log(result);
+          var loaded = function () {
+            console.log("loaded");
+          };
+
+          var progressShow = function (fileName, fileSize, progress) {
+            console.log(progress);
+          };
+
+          var errShow = function (errMsg) {
+            console.log(errMsg);
+          };
+
+          // sort by name
+
+          // var rpc;
+          // var so = { loaded: loaded, progressShow: progressShow };
+          // RPC.new("./worker.js", so).then(function (r) {
+          //   rpc = r;
+          //   //test
+          //   localforage.getItem("book").then(async (result) => {
+          //     // const { ComicRender } = Kookit;
+          //     console.log(result);
+          //     var buffers = [result];
+          //     var dataToPass = [{ name: "test.rar", content: result }];
+          //     var password = null;
+          //     rpc.transferables = buffers;
+          //     rpc
+          //       .unrar(dataToPass, password, 0)
+          //       .then(function (ret) {
+          //         console.log(ret);
+          //       })
+          //       .catch(errShow);
+          //   });
+          // });
+
           // let unrar = new Unrar(result);
           // var entries = unrar.getEntries();
 
@@ -64,12 +99,11 @@
           // await rendition.renderTo(
           //   document.getElementsByClassName("ebook-viewer")[0]
           // );
-
-          let rendition = new EpubRender(result, "double");
+          let rendition = new ComicRender(result, "double", "CBR");
           await rendition.renderTo(
             document.getElementsByClassName("ebook-viewer")[0]
           );
-          console.log(await rendition.getMetadata());
+
           let chapterList = await rendition.getChapter();
 
           document

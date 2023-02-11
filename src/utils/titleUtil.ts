@@ -46,7 +46,7 @@ export const handleImageMarker = (bookStr) => {
       var newItem = document.createElement("address");
       var textnode = document.createTextNode("img");
       newItem.appendChild(textnode);
-      newItem.setAttribute("style", "visibility: hidden");
+      newItem.setAttribute("style", "visibility: hidden; position: absolute");
       if (imgDomList[i].parentNode) {
         (imgDomList[i].parentNode as any).insertBefore(newItem, imgDomList[i]);
       }

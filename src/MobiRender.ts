@@ -43,12 +43,9 @@ class MobiRender extends GeneralRender {
         );
         let parser = new GeneralParser(this.book);
         this.element = element;
-
         this.chapterList = await parser.getChapter(this.book.toc);
         this.chapterDocList = await parser.getChapterDoc();
         this.metadata = await parser.getMetadata();
-        console.log(this.chapterList);
-        console.log(this.chapterDocList);
         createIframe(element);
         handleLayout(element, this.mode);
         this.trigger("rendered");

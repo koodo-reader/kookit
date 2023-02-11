@@ -147,7 +147,6 @@ export const handleScrollPosition = async (
   }
 
   let linkList = Array.from(doc.getElementsByTagName("link"));
-  console.log(linkList);
   linkList.forEach((element: any) => {
     element.onload = () => {
       console.log("finished");

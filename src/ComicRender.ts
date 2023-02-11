@@ -1,242 +1,280 @@
 import _ from "underscore";
+import Chapter from "./model/chapter";
+import ChapterDoc from "./model/chapterDoc";
+import { createIframe, handleLayout } from "./utils/layoutUtil";
+import GeneralParser from "./utils/generalParser";
 import { excuteCode } from "./utils/htmlUtil";
-import {
-  createIframe,
-  handleIframeHeight,
-  handleLayout,
-} from "./utils/layoutUtil";
-import { handleRecord } from "./utils/navigationUtil";
-import StorageUtil from "./utils/storageUtil";
-import ComicParser from "./utils/comicParser";
-import { handleScrollPage, handleScrollPosition } from "./utils/comicUtil";
-import EventEmitter from "./utils/EventEmitter";
+import { makeComicBook } from "./libs/comic-book";
+import GeneralRender from "./GeneralRender";
 import untar from "js-untar";
+import SevenZip from "7z-wasm";
 declare var window: any;
-class ComicRender extends EventEmitter {
+
+class ComicRender extends GeneralRender {
   comicBuffer: ArrayBuffer;
   mode: string;
-  dataSource: string[];
-  zip: any;
+  book: any;
   format: string;
+  chapterList: Chapter[];
+  chapterDocList: ChapterDoc[];
   element: any;
-  parser: ComicParser | null;
+  rpc: any;
   isSliding: boolean;
-  chapterList: any[];
-  largestId: number;
   constructor(
     comicBuffer: ArrayBuffer,
     mode: string,
     format: string,
     isSliding: boolean
   ) {
-    super();
-    this.isSliding = isSliding || false;
-    this.mode = mode;
-    this.dataSource = [];
-    this.zip = "";
-    this.format = format;
+    super(mode, isSliding);
     this.comicBuffer = comicBuffer;
-    this.element = "";
-    this.parser = null;
+    this.mode = mode;
+    this.format = format;
     this.chapterList = [];
-    this.largestId = parseInt(StorageUtil.getKookitConfig("count") || "0");
+    this.chapterDocList = [];
+    this.book = "";
+    this.element = "";
+    this.isSliding = isSliding || false;
+    this.rpc;
   }
-  renderTo(element: HTMLElement, id: number = 0) {
+  renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
       if (!(await excuteCode())) {
         resolve();
         return;
       }
+      let blob = new Blob([this.comicBuffer]);
+      let file = new File([blob], "book." + this.format.toLocaleLowerCase(), {
+        lastModified: new Date().getTime(),
+        type: blob.type,
+      });
+      if (this.format === "CBZ") {
+        const loader: any = await this.makeZipLoader(file);
+        this.book = makeComicBook(loader, file);
+      } else if (this.format === "CBT") {
+        const loader: any = await this.makeTarLoader();
+        this.book = makeComicBook(loader, file);
+      } else if (this.format === "CBR") {
+        this.rpc = await window.RPC.new("/lib/libunrar/worker.js", {
+          loaded: function () {
+            console.log("loaded");
+          },
+          progressShow: function (fileName, fileSize, progress) {
+            console.log(progress);
+          },
+        });
+        await new Promise((r) => setTimeout(r, 200));
+        const loader: any = await this.makeRarLoader();
+        this.book = makeComicBook(loader, file);
+      } else if (this.format === "CB7") {
+        const loader: any = await this.make7zLoader();
+        this.book = makeComicBook(loader, file);
+      }
+
+      let parser = new GeneralParser(this.book);
       this.element = element;
+      this.chapterList = await parser.getChapter(this.book.toc);
+      this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
-      const handleRender = async () => {
-        this.parser = new ComicParser(
-          this.dataSource,
-          this.zip,
-          this.mode,
-          this.element,
-          this.format
-        );
-        this.chapterList = this.parser.getChapter();
-        this.parser.renderComic();
-        await this.renderImage(id);
-        let pageArea = document.getElementById("page-area");
-        if (!pageArea) return;
-        let iframe = pageArea.getElementsByTagName("iframe")[0];
-        if (!iframe) return;
-        let doc = iframe.contentDocument;
-        if (!doc) {
-          return;
-        }
-        if (!doc.getElementById(id + "")) {
-          return;
-        }
-        let imgRatio = await this.parser.getImgRatio();
-        let height = doc.getElementById(id + "")!.clientWidth * imgRatio;
-        let imgs = doc.getElementsByTagName("img");
-        let section = Math.floor(this.element.clientWidth / 12);
-        let gap = section % 2 === 0 ? section : section - 1;
-        for (let i = 0; i < imgs.length; i++) {
-          if (this.mode === "scroll") {
-            imgs[i].style.height = height + "px";
-          } else {
-            let scale = this.mode === "single" ? 1 : 2;
-            if (height > this.element.clientHeight) {
-              imgs[i].style.height = this.element.clientHeight + "px";
-              imgs[i].style.width = this.element.clientHeight / imgRatio + "px";
-              imgs[i].style.paddingLeft =
-                (this.element.clientWidth -
-                  (this.mode === "single" ? 0 : gap)) /
-                  2 /
-                  scale -
-                this.element.clientHeight / imgRatio / 2 +
-                "px";
-            } else {
-              imgs[i].style.height = height + "px";
-              imgs[i].style.marginTop =
-                this.element.clientHeight / 2 - height / 2 + "px";
-            }
-          }
-        }
-        handleLayout(element, this.mode);
-        handleIframeHeight(element, this.mode);
-        this.trigger("rendered");
-        resolve();
-      };
-      await this.handleArchive();
-      await handleRender();
+
+      handleLayout(element, this.mode);
+      this.trigger("rendered");
+      resolve();
     });
   }
-  async handleArchive() {
-    if (this.format === "CBZ") {
-      this.zip = new window.JSZip();
-      let contents = await this.zip.loadAsync(this.comicBuffer);
-      console.log(contents);
-      this.dataSource = Object.keys(contents.files).sort();
-      console.log(this.dataSource);
-    } else if (this.format === "CBT") {
-      this.zip = await untar(this.comicBuffer);
-      this.dataSource = this.zip.map((item: any) => item.name);
-    } else if (this.format === "CBR") {
-      this.zip = new window.Unrar(this.comicBuffer);
-      this.dataSource = this.zip.getEntries().map((item: any) => item.name);
+  async makeZipLoader(file) {
+    const { ZipReader, BlobReader, TextWriter, BlobWriter } = window.zip;
+    window.zip.configure({ useWebWorkers: false });
+    const reader = new ZipReader(new BlobReader(file));
+    const entries = await reader.getEntries();
+    const map = new Map(entries.map((entry) => [entry.filename, entry]));
+    const load =
+      (f) =>
+      (name, ...args) =>
+        map.has(name) ? f(map.get(name), ...args) : null;
+    const loadText = load((entry) => entry.getData(new TextWriter()));
+    const loadBlob = load((entry, type) => entry.getData(new BlobWriter(type)));
+    const getSize = (name) => (map.get(name) as any)?.uncompressedSize ?? 0;
+    return { entries, loadText, loadBlob, getSize };
+  }
+  async makeTarLoader() {
+    const entries = await untar(this.comicBuffer);
+    const map = new Map(entries.map((entry) => [entry.name, entry]));
+    const load =
+      (f) =>
+      (name, ...args) =>
+        map.has(name) ? f(map.get(name), ...args) : null;
+    const loadText = load((entry) => entry.readAsString());
+    const loadBlob = load((entry, type) => entry.blob);
+    const getSize = (name) => (map.get(name) as any)?.size ?? 0;
+    return {
+      entries: entries.map((item) => {
+        return { filename: item.name };
+      }),
+      loadText,
+      loadBlob,
+      getSize,
+    };
+  }
+  async makeRarLoader() {
+    return new Promise<any>((resolve, reject) => {
+      var buffers = [this.comicBuffer];
+      var dataToPass = [{ name: "test.rar", content: this.comicBuffer }];
+      var password = null;
+      this.rpc.transferables = buffers;
+
+      this.rpc
+        .unrar(dataToPass, password, 0)
+        .then((ret) => {
+          let entries = this.getRarEntries(ret.ls);
+          const map = new Map(
+            Object.values(entries).map((entry: any) => [
+              entry.fullFileName,
+              entry,
+            ])
+          );
+          const load =
+            (f) =>
+            (name, ...args) =>
+              map.has(name) ? f(map.get(name), ...args) : null;
+          const loadText = load((entry) => entry.fullFileName);
+          const loadBlob = load((entry, type) => new Blob([entry.fileContent]));
+          const getSize = (name) => (map.get(name) as any)?.fileSize ?? 0;
+          resolve({
+            entries: Object.values(entries).map((item: any) => {
+              return { filename: item.fullFileName };
+            }),
+            loadText,
+            loadBlob,
+            getSize,
+          });
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    });
+  }
+  async make7zLoader() {
+    const wasmBinaryFile = "/lib/7z-wasm/7zz.wasm";
+    if (!window.wasmBinary) {
+      const response = await fetch(wasmBinaryFile, {
+        credentials: "same-origin",
+      });
+      if (!response["ok"]) {
+        throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
+      }
+      window.wasmBinary = await response["arrayBuffer"]();
     }
-  }
-  flatChapter(chapters: any) {
-    return chapters;
-  }
-  getProgress() {
+    const sevenZip = await SevenZip({
+      wasmBinary: window.wasmBinary,
+    });
+
+    const archiveData = new Uint8Array(this.comicBuffer);
+    const archiveName = "archive.cb7";
+
+    const stream = sevenZip.FS.open(archiveName, "w+");
+    sevenZip.FS.write(stream, archiveData, 0, archiveData.length);
+    sevenZip.FS.close(stream);
+    sevenZip.callMain(["x", archiveName]);
+    const loader = sevenZip.FS;
+    const entries = this.get7zEntries(loader.lookupPath("/").node);
+    const map = new Map(entries.map((entry) => [entry.name, entry]));
+    const load =
+      (f) =>
+      (name, ...args) =>
+        map.has(name) ? f(map.get(name), ...args) : null;
+    const loadText = load((entry) => entry.name);
+    const loadBlob = load((entry, type) => new Blob([entry.buffer]));
+    const getSize = (name) => (map.get(name) as any)?.packSize ?? 0;
     return {
-      totalPage: this.chapterList.length,
-      currentPage: parseInt(StorageUtil.getKookitConfig("count") || "0"),
+      entries: entries.map((item) => {
+        return { filename: item.name };
+      }),
+      loadText,
+      loadBlob,
+      getSize,
     };
   }
-  getPageSize() {
-    return {
-      width: this.element.clientWidth,
-      height: this.element.clientHeight,
-    };
+  getRarEntries(Node) {
+    const list = Object.keys(Node);
+    let entries: any = [];
+    list.forEach((item) => {
+      if (Node[item].type === "dir") {
+        entries = entries.concat(this.getRarEntries(Node[item].ls));
+      } else {
+        entries.push({
+          fullFileName: item,
+          fileContent: Node[item].fileContent,
+          fileSize: Node[item].fileSize,
+        });
+      }
+    });
+    return entries;
   }
-  async renderImage(id: number) {
-    if (!this.parser) return;
-    await this.parser.renderImage(id - 3);
-    await this.parser.renderImage(id - 2);
-    await this.parser.renderImage(id - 1);
-    await this.parser.renderImage(id);
-    await this.parser.renderImage(id + 1);
-    await this.parser.renderImage(id + 2);
-    await this.parser.renderImage(id + 3);
-  }
-  getChapter() {
-    return this.chapterList;
-  }
-  goToPosition(cfi: string) {
-    let { id } = JSON.parse(cfi);
-
-    handleScrollPosition(this.element, this.mode, id);
-    this.record();
-  }
-  async goToChapter(title: string) {
-    handleScrollPosition(
-      this.element,
-      this.mode,
-      this.dataSource.indexOf(title) + ""
-    );
-    await this.renderImage(this.dataSource.indexOf(title));
-  }
-
-  async record() {
-    handleRecord(this.element, this.mode);
-
-    let id = parseInt(StorageUtil.getKookitConfig("count") || "0");
-    if (!this.parser) return;
-    await this.parser.renderImage(id - 3);
-    await this.parser.renderImage(id - 2);
-    await this.parser.renderImage(id - 1);
-    await this.parser.renderImage(id);
-    await this.parser.renderImage(id + 1);
-    await this.parser.renderImage(id + 2);
-    await this.parser.renderImage(id + 3);
-  }
-  removeContent() {
-    this.element.innerHTML = "";
-  }
-  async prev() {
-    let id = parseInt(StorageUtil.getKookitConfig("count") || "0");
-    if (!this.parser) return;
-    await this.parser.renderImage(id);
-    await this.parser.renderImage(id - 1);
-    await this.parser.renderImage(id - 2);
-    await this.parser.renderImage(id - 3);
-    await this.parser.renderImage(id - 4);
-
-    handleScrollPage(this.element, 1, this.isSliding);
-
-    handleRecord(this.element, this.mode);
-  }
-  async next() {
-    let id = parseInt(StorageUtil.getKookitConfig("count") || "0");
-    if (!this.parser) return;
-    await this.parser.renderImage(id);
-    await this.parser.renderImage(id + 1);
-    await this.parser.renderImage(id + 2);
-    await this.parser.renderImage(id + 3);
-    await this.parser.renderImage(id + 4);
-
-    handleScrollPage(this.element, -1, this.isSliding);
-    handleRecord(this.element, this.mode);
-  }
-  getPosition() {
-    return {
-      text: StorageUtil.getKookitConfig("text"),
-      chapterTitle: StorageUtil.getKookitConfig("chapterTitle"),
-      chapterDocIndex: StorageUtil.getKookitConfig("chapterDocIndex"),
-      count: StorageUtil.getKookitConfig("count"),
-      percentage: StorageUtil.getKookitConfig("percentage"),
-    };
+  get7zEntries(FSNode: any) {
+    const contents = FSNode.contents;
+    const list = Object.keys(contents).filter((item) => {
+      return (
+        item != "archive.cb7" &&
+        item != "dev" &&
+        item != "home" &&
+        item != "proc" &&
+        item != "tmp"
+      );
+    });
+    let entries: any = [];
+    list.forEach((item) => {
+      if (contents[item].isFolder) {
+        entries = entries.concat(this.get7zEntries(contents[item]));
+      } else {
+        entries.push({
+          name: item,
+          buffer: contents[item].contents,
+          size: contents[item].usedBytes,
+        });
+      }
+    });
+    return entries;
   }
   async getMetadata() {
-    await this.handleArchive();
-    this.parser = new ComicParser(
-      this.dataSource,
-      this.zip,
-      this.mode,
-      this.element,
-      this.format
-    );
-    return await this.parser.getMetadata();
-  }
-  setStyle(css: string) {
-    let pageArea = document.getElementById("page-area");
-    if (!pageArea) return;
-    let iframe = pageArea.getElementsByTagName("iframe")[0];
-    if (!iframe) return;
-    let doc = iframe.contentDocument;
-    if (!doc) {
-      return;
-    }
-    doc.body.setAttribute("style", css + doc.body.getAttribute("style"));
+    return new Promise<any>(async (resolve, reject) => {
+      let blob = new Blob([this.comicBuffer]);
+      let file = new File([blob], "book", {
+        lastModified: new Date().getTime(),
+        type: blob.type,
+      });
+      if (this.format === "CBZ") {
+        const loader: any = await this.makeZipLoader(file);
+        this.book = makeComicBook(loader, file);
+      } else if (this.format === "CBT") {
+        const loader: any = await this.makeTarLoader();
+        this.book = makeComicBook(loader, file);
+      } else if (this.format === "CBR") {
+        this.rpc = await window.RPC.new("/lib/libunrar/worker.js", {
+          loaded: function () {
+            console.log("loaded");
+          },
+          progressShow: function (fileName, fileSize, progress) {
+            console.log(progress);
+          },
+        });
+        await new Promise((r) => setTimeout(r, 200));
+        const loader: any = await this.makeRarLoader();
+        this.book = makeComicBook(loader, file);
+      } else if (this.format === "CB7") {
+        const loader: any = await this.make7zLoader();
+        this.book = makeComicBook(loader, file);
+      }
+
+      const coverBlob = await this.book.getCover();
+      var reader = new FileReader();
+      reader.readAsDataURL(coverBlob);
+      reader.onloadend = () => {
+        resolve({
+          cover: reader.result,
+        });
+      };
+    });
   }
 }
-
 export default ComicRender;

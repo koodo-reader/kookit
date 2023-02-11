@@ -44,8 +44,6 @@ class EpubRender extends GeneralRender {
       this.element = element;
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
-      console.log(this.chapterList);
-      console.log(this.chapterDocList);
       createIframe(element);
 
       handleLayout(element, this.mode);
