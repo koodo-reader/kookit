@@ -23,7 +23,7 @@ class StrParser {
     return this.chapterList;
   }
   getDocText() {
-    return this.bookDoc.body.innerText;
+    return this.bookDoc.body.textContent || "";
   }
   isContainChapter() {
     this.chapterDomList = getTitleElement(this.bookDoc);

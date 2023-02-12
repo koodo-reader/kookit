@@ -1,4 +1,4 @@
-import _ from "underscore";
+declare var window: any;
 
 export const handleIframeHeight = (element: HTMLElement, mode: string) => {
   let pageArea = document.getElementById("page-area");
@@ -51,9 +51,9 @@ export const handleIframeHeight = (element: HTMLElement, mode: string) => {
 
     let lastItem: any = lastItemP || lastItemA || lastItemI || lastItemD;
     if (
-      _.isElement(lastItemA) &&
-      _.isElement(lastItemP) &&
-      _.isElement(lastItemD)
+      window._.isElement(lastItemA) &&
+      window._.isElement(lastItemP) &&
+      window._.isElement(lastItemD)
     ) {
       if (
         lastItemA.clientHeight + (lastItemA as any).offsetTop >
@@ -70,7 +70,7 @@ export const handleIframeHeight = (element: HTMLElement, mode: string) => {
         lastItem = lastItemD;
       }
     }
-    if (_.isElement(lastItemI)) {
+    if (window._.isElement(lastItemI)) {
       if (
         lastItemI.clientHeight + (lastItemI as any).offsetTop >
         lastItem.clientHeight + (lastItem as any).offsetTop
@@ -97,13 +97,13 @@ export const handleIframeHeight = (element: HTMLElement, mode: string) => {
     }
     let targetHeight =
       Math.max(
-        _.isElement(lastchild)
+        window._.isElement(lastchild)
           ? lastchild.clientHeight + (lastchild as any).offsetTop
           : 0,
-        _.isElement(lastEle)
+        window._.isElement(lastEle)
           ? lastEle.clientHeight + (lastEle as any).offsetTop
           : 0,
-        _.isElement(lastItem)
+        window._.isElement(lastItem)
           ? lastItem.clientHeight + (lastItem as any).offsetTop
           : 0
       ) +

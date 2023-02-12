@@ -1,4 +1,3 @@
-import _ from "underscore";
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDoc";
 import { createIframe, handleLayout } from "./utils/layoutUtil";

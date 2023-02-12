@@ -1,4 +1,3 @@
-import _ from "underscore";
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDoc";
 import { createIframe, handleLayout } from "./utils/layoutUtil";
@@ -45,7 +44,8 @@ class EpubRender extends GeneralRender {
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
-
+      console.log(this.chapterList);
+      console.log(this.chapterDocList);
       handleLayout(element, this.mode);
       this.trigger("rendered");
       resolve();

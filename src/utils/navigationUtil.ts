@@ -1,10 +1,10 @@
-import _ from "underscore";
 import ChapterDoc from "../model/chapterDoc";
 import { handleIframeHeight, handleImageSize } from "./layoutUtil";
 import StorageUtil from "./storageUtil";
 import Chinese from "chinese-s2t";
 import Chapter from "../model/chapter";
 import { cleanText, getBlockElement } from "./titleUtil";
+declare var window: any;
 
 let lock = false;
 export const handleScrollPage = async (
@@ -53,7 +53,7 @@ const findValidChapter = (
   flag
 ) => {
   let validChapters = flattenChapters.filter((item) => item.href);
-  let currentChapterIndex = _.findLastIndex(validChapters, {
+  let currentChapterIndex = window._.findLastIndex(validChapters, {
     index: chapterDocIndex,
     href: chapterHref,
   });
@@ -100,7 +100,7 @@ export const handlePrevChapter = (
   }
 };
 
-export const handleRenderChatper = (
+export const handleRenderChatper = async (
   chapterDocIndex: number = 0,
   chapterTitle: string = "",
   chapterHref: string = "",
@@ -117,8 +117,24 @@ export const handleRenderChatper = (
     return;
   }
   doc.body.innerHTML = "";
+  doc.body.scrollTo(0, 0);
   doc.body.innerHTML = chapterDocList[chapterDocIndex].text;
-
+  let linkList = Array.from(doc.getElementsByTagName("link"));
+  linkList.forEach((element: any) => {
+    element.onload = () => {
+      console.log("finished");
+    };
+  });
+  let styleSheetPromises: any = [];
+  linkList.forEach((link: any) => {
+    styleSheetPromises.push(
+      new Promise((resolve, reject) => {
+        link.addEventListener("load", resolve);
+      })
+    );
+  });
+  let results = await Promise.all(styleSheetPromises);
+  console.log(results);
   StorageUtil.setKookitConfig("chapterTitle", chapterTitle);
   StorageUtil.setKookitConfig("chapterHref", chapterHref);
   StorageUtil.setKookitConfig("chapterDocIndex", chapterDocIndex.toString());
@@ -146,22 +162,6 @@ export const handleScrollPosition = async (
     return;
   }
 
-  let linkList = Array.from(doc.getElementsByTagName("link"));
-  linkList.forEach((element: any) => {
-    element.onload = () => {
-      console.log("finished");
-    };
-  });
-  let styleSheetPromises: any = [];
-  linkList.forEach((link: any) => {
-    styleSheetPromises.push(
-      new Promise((resolve, reject) => {
-        link.addEventListener("load", resolve);
-      })
-    );
-  });
-  let results = await Promise.all(styleSheetPromises);
-  console.log(results);
   let top = 0;
   let left = 0;
   let targetNode = doc.body;
@@ -169,11 +169,11 @@ export const handleScrollPosition = async (
     let nodeList = getBlockElement(doc.body);
     let targetNodeList = nodeList.filter((s, index) => {
       return (
-        cleanText((s as HTMLElement).innerText) &&
-        (cleanText((s as HTMLElement).innerText) === cleanText(text) ||
-          cleanText((s as HTMLElement).innerText) ===
+        cleanText((s as HTMLElement).textContent) &&
+        (cleanText((s as HTMLElement).textContent) === cleanText(text) ||
+          cleanText((s as HTMLElement).textContent) ===
             Chinese.t2s(cleanText(text)) ||
-          cleanText((s as HTMLElement).innerText) ===
+          cleanText((s as HTMLElement).textContent) ===
             Chinese.s2t(cleanText(text))) &&
         Math.abs(index - parseInt(count)) < 2
       );
@@ -181,19 +181,37 @@ export const handleScrollPosition = async (
     targetNode = targetNodeList[0];
   } else if (href && href.indexOf("#") > -1) {
     let id = href.split("#").reverse()[0];
-    targetNode = doc.body.querySelector("#" + id) || doc.body;
+    targetNode = getCloestBlock(
+      doc.body.querySelector("#" + id) || doc.body,
+      element
+    );
   }
+  console.log(targetNode);
   left = targetNode
     ? targetNode.getBoundingClientRect().left
     : text === "prevChapter"
     ? doc.body.scrollWidth
     : 0;
-
+  console.log(targetNode);
   top = targetNode ? targetNode.getBoundingClientRect().top : 0;
   if (mode !== "scroll") {
+    console.log(left);
     doc.body.scrollTo(left, 0);
   } else {
     element.scrollTo(0, top);
+  }
+};
+export const getCloestBlock = (targetNode, element) => {
+  console.log(
+    targetNode,
+    targetNode.getBoundingClientRect(),
+    element.clientWidth
+  );
+  if (targetNode.getBoundingClientRect().left % element.clientWidth === 0) {
+    return targetNode;
+  } else {
+    console.log(targetNode.parentElement);
+    return targetNode.parentElement;
   }
 };
 export const handleTurnChapter = (
@@ -236,8 +254,8 @@ export const handleRecord = async (element: HTMLElement, mode: string) => {
   let nodeList = getBlockElement(doc.body);
   let visibleNode = nodeList.filter(
     (s) =>
-      isScrolledIntoView(element, s as any, mode) &&
-      (s as HTMLElement).innerText.trim()
+      isScrolledIntoView(element, s as HTMLElement, mode) &&
+      ((s as HTMLElement).textContent || "").trim()
   );
   let firstVisibleNode: any = visibleNode[0] as HTMLElement;
   let count = 0;
@@ -256,8 +274,8 @@ export const handleRecord = async (element: HTMLElement, mode: string) => {
   StorageUtil.setKookitConfig(
     "text",
     firstVisibleNode
-      ? firstVisibleNode.innerText
-        ? firstVisibleNode.innerText
+      ? firstVisibleNode.textContent
+        ? firstVisibleNode.textContent
         : ""
       : ""
   );
@@ -283,6 +301,7 @@ export const handleNextChapter = (
     flattenChapters,
     "next"
   );
+  console.log(nextChapter, "nextChapter");
   StorageUtil.setKookitConfig("chapterTitle", nextChapter.title);
   StorageUtil.setKookitConfig("chapterHref", nextChapter.href);
   StorageUtil.setKookitConfig("chapterDocIndex", nextChapter.index.toString());
@@ -311,11 +330,11 @@ export const getVisibleText = (element: HTMLElement, mode: string) => {
   let nodeList = getBlockElement(doc.body);
   let visibleNode = nodeList.filter(
     (s) =>
-      isScrolledIntoView(element, s as any, mode) &&
-      (s as HTMLElement).innerText.trim()
+      isScrolledIntoView(element, s as HTMLElement, mode) &&
+      ((s as HTMLElement).textContent || "").trim()
   );
   return (mode !== "scroll" ? visibleNode : nodeList)
-    .map((item) => item.innerText)
+    .map((item) => item.textContent)
     .join(" ");
 };
 
@@ -331,11 +350,13 @@ export const getSearchResult = (
     );
     let nodeList = getBlockElement(chapterDoc.body);
     for (let j = 0; j < nodeList.length; j++) {
-      if (nodeList[j].innerText.indexOf(keyword) > -1) {
+      if (
+        ((nodeList[j] as HTMLElement).textContent || "").indexOf(keyword) > -1
+      ) {
         searchResult.push({
-          excerpt: nodeList[j].innerText,
+          excerpt: nodeList[j].textContent || "",
           cfi: JSON.stringify({
-            text: nodeList[j].innerText,
+            text: nodeList[j].textContent,
             chapterTitle: chapterDocList[i].title,
             chapterDocIndex: i,
             chapterHref: chapterDocList[i].href,
@@ -355,10 +376,10 @@ export const isScrolledIntoView = (
 ) => {
   var isVisible = false;
   var rect = el.getBoundingClientRect();
-  if (mode !== "scroll" && el.innerText.trim()) {
+  if (mode !== "scroll" && el.textContent && el.textContent.trim()) {
     let elemLeft = rect.left;
     isVisible = elemLeft > -10 && elemLeft <= element.offsetWidth;
-  } else if (el.innerText.trim()) {
+  } else if (el.textContent && el.textContent.trim()) {
     let elemTop = rect.top;
     isVisible =
       elemTop >= element.scrollTop &&

@@ -1,4 +1,3 @@
-import _ from "underscore";
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDoc";
 import { createIframe, handleLayout } from "./utils/layoutUtil";
@@ -6,8 +5,6 @@ import GeneralParser from "./utils/generalParser";
 import { excuteCode } from "./utils/htmlUtil";
 import { makeComicBook } from "./libs/comic-book";
 import GeneralRender from "./GeneralRender";
-import untar from "js-untar";
-import SevenZip from "7z-wasm";
 declare var window: any;
 
 class ComicRender extends GeneralRender {
@@ -98,7 +95,7 @@ class ComicRender extends GeneralRender {
     return { entries, loadText, loadBlob, getSize };
   }
   async makeTarLoader() {
-    const entries = await untar(this.comicBuffer);
+    const entries = await window.untar(this.comicBuffer);
     const map = new Map(entries.map((entry) => [entry.name, entry]));
     const load =
       (f) =>
@@ -119,7 +116,7 @@ class ComicRender extends GeneralRender {
   async makeRarLoader() {
     return new Promise<any>((resolve, reject) => {
       var buffers = [this.comicBuffer];
-      var dataToPass = [{ name: "test.rar", content: this.comicBuffer }];
+      var dataToPass = [{ name: "book.rar", content: this.comicBuffer }];
       var password = null;
       this.rpc.transferables = buffers;
 
@@ -165,7 +162,7 @@ class ComicRender extends GeneralRender {
       }
       window.wasmBinary = await response["arrayBuffer"]();
     }
-    const sevenZip = await SevenZip({
+    const sevenZip = await window.SevenZip({
       wasmBinary: window.wasmBinary,
     });
 

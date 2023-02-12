@@ -1,4 +1,3 @@
-import _ from "underscore";
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDoc";
 import { progressInfo } from "./utils/layoutUtil";
@@ -53,6 +52,7 @@ class GeneralRender extends EventEmitter {
     return this.chapterList;
   }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
+    console.log(chapterDocIndex, chapterHref, chapterTitle);
     handleRenderChatper(
       parseInt(chapterDocIndex),
       chapterTitle,
@@ -70,6 +70,7 @@ class GeneralRender extends EventEmitter {
   async goToPosition(cfi: string) {
     let { text, chapterDocIndex, chapterTitle, chapterHref, count } =
       JSON.parse(cfi);
+    console.log(text, chapterDocIndex, chapterTitle, chapterHref, count);
     handleRenderChatper(
       chapterDocIndex,
       chapterTitle,
@@ -79,6 +80,12 @@ class GeneralRender extends EventEmitter {
       this.mode
     );
     await handleScrollPosition(this.element, this.mode, text, count, "");
+    this.record();
+    this.trigger("rendered");
+  }
+  async goToAnchor(href: string) {
+    console.log(href);
+    await handleScrollPosition(this.element, this.mode, "", "", href);
     this.record();
     this.trigger("rendered");
   }
