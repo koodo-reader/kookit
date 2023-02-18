@@ -23,7 +23,7 @@ class GeneralParser {
               ? (await this.book.resolveHref(item.href)).index
               : -1;
           return {
-            title: item.label ? item.label : "Content",
+            title: item.label ? item.label : index,
             href: item.href,
             index: index,
             subitems: item.subitems ? await this.getChapter(item.subitems) : [],
@@ -34,7 +34,7 @@ class GeneralParser {
       this.chapterList = await Promise.all<Chapter>(
         this.book.sections.map(async (item, index) => {
           return {
-            title: item.label ? item.label : "Content",
+            title: item.label ? item.label : index,
             href: item.href || "",
             index: index,
             subitems: item.subitems ? await this.getChapter(item.subitems) : [],

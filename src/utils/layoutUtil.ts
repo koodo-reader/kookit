@@ -146,7 +146,7 @@ export const createIframe = (element: HTMLElement, styleStr: string = "") => {
   }
 };
 
-export const progressInfo = () => {
+export const progressInfo = async () => {
   let pageArea = document.getElementById("page-area");
   if (!pageArea) return;
   let iframe = pageArea.getElementsByTagName("iframe")[0];
@@ -154,6 +154,9 @@ export const progressInfo = () => {
   let doc = iframe.contentDocument;
   if (!doc) {
     return;
+  }
+  if (parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") === 1) {
+    await new Promise((r) => setTimeout(r, 1000));
   }
   return {
     totalPage: parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") + 1,

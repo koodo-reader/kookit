@@ -5,24 +5,7 @@ import { uglify } from "rollup-plugin-uglify";
 import pkg from "./package.json";
 import json from "@rollup/plugin-json";
 export default [
-  // browser-friendly UMD build
-  // {
-  //   input: "src/index.ts",
-  //   output: {
-  //     name: "Kookit",
-  //     file: pkg.browser,
-  //     format: "umd",
-  //   },
-  //   plugins: [
-  //     resolve(),
-  //     commonjs({
-  //       include: [/node_modules/],
-  //     }),
-  //     json(),
-  //     typescript({ tsconfig: "./tsconfig.json" }),
-  //     uglify(),
-  //   ],
-  // },
+  //browser-friendly UMD build
   {
     input: "src/index.ts",
     output: {
@@ -37,10 +20,26 @@ export default [
       }),
       json(),
       typescript({ tsconfig: "./tsconfig.json" }),
+      // uglify(),
+    ],
+  },
+  {
+    input: "src/index.ts",
+    output: {
+      name: "Kookit",
+      file: "dist/kookit.min.js",
+      format: "umd",
+    },
+    plugins: [
+      resolve(),
+      commonjs({
+        include: [/node_modules/],
+      }),
+      json(),
+      typescript({ tsconfig: "./tsconfig.json" }),
       uglify(),
     ],
   },
-
   // CommonJS (for Node) and ES module (for bundlers) build.
   // (We could have three entries in the configuration array
   // instead of two, but it's quicker to generate multiple

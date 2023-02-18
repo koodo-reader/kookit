@@ -1,19 +1,7 @@
-import StorageUtil from "./storageUtil";
 import { isTitle } from "./titleUtil";
 declare var window: any;
-var global: any = window;
 window.a = window.atob;
-const getTitle = () => {
-  return new Promise<string>((resolve, reject) => {
-    resolve(
-      global.e(global.a("ZG9jdW1lbnQudGl0bGU" + String.fromCharCode(61)))
-    );
-  });
-};
-// var b = global.a("ZG8gUmU" + String.fromCharCode(61));
-(String.prototype as any).c = function (str: string) {
-  return this.indexOf(str) > -1;
-};
+
 (String.prototype as any).slim = function () {
   return this.split("")
     .filter(
@@ -48,14 +36,5 @@ export const txtToHtml = (text: string) => {
     return html;
   } else {
     return `<h1>Title</h1><p>${text}</p>`;
-  }
-};
-export const excuteCode = async () => {
-  StorageUtil.removeKookitConfig();
-  let title = await getTitle();
-  if (!(title as any).c(global.a("ZG8gUmU" + String.fromCharCode(61)))) {
-    return false;
-  } else {
-    return true;
   }
 };

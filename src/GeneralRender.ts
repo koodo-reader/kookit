@@ -3,6 +3,7 @@ import ChapterDoc from "./model/chapterDoc";
 import { progressInfo } from "./utils/layoutUtil";
 import StorageUtil from "./utils/storageUtil";
 import {
+  getCloestBlock,
   getSearchResult,
   getVisibleText,
   handleNextChapter,
@@ -13,6 +14,8 @@ import {
   handleScrollPosition,
 } from "./utils/navigationUtil";
 import EventEmitter from "./utils/EventEmitter";
+import CFI from "epub-cfi-resolver";
+declare var window: any;
 
 class GeneralRender extends EventEmitter {
   mode: string;
@@ -20,15 +23,13 @@ class GeneralRender extends EventEmitter {
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  isSliding: boolean;
-  constructor(mode: string, isSliding: boolean) {
+  constructor(mode: string) {
     super();
     this.mode = mode;
     this.chapterList = [];
     this.chapterDocList = [];
     this.book = "";
     this.element = "";
-    this.isSliding = isSliding || false;
   }
   getPageSize() {
     return {
@@ -52,8 +53,7 @@ class GeneralRender extends EventEmitter {
     return this.chapterList;
   }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
-    console.log(chapterDocIndex, chapterHref, chapterTitle);
-    handleRenderChatper(
+    await handleRenderChatper(
       parseInt(chapterDocIndex),
       chapterTitle,
       chapterHref,
@@ -64,14 +64,18 @@ class GeneralRender extends EventEmitter {
     if (chapterHref && chapterHref.indexOf("#") > -1) {
       await handleScrollPosition(this.element, this.mode, "", "", chapterHref);
     }
-    this.record();
+    await this.record();
     this.trigger("rendered");
   }
   async goToPosition(cfi: string) {
     let { text, chapterDocIndex, chapterTitle, chapterHref, count } =
       JSON.parse(cfi);
-    console.log(text, chapterDocIndex, chapterTitle, chapterHref, count);
-    handleRenderChatper(
+    if (chapterTitle && !chapterDocIndex) {
+      chapterDocIndex = window._.findLastIndex(this.chapterDocList, {
+        title: chapterTitle,
+      });
+    }
+    await handleRenderChatper(
       chapterDocIndex,
       chapterTitle,
       chapterHref,
@@ -79,20 +83,48 @@ class GeneralRender extends EventEmitter {
       this.element,
       this.mode
     );
-    await handleScrollPosition(this.element, this.mode, text, count, "");
-    this.record();
+    //兼容1.5.1及之前的版本
+    if (JSON.parse(cfi).cfi) {
+      let cfiObj = new CFI(JSON.parse(cfi).cfi);
+      let pageArea = document.getElementById("page-area");
+      if (!pageArea) return;
+      let iframe = pageArea.getElementsByTagName("iframe")[0];
+      if (!iframe) return;
+      let doc: any = iframe.contentDocument;
+      if (!doc) {
+        return;
+      }
+      var bookmark = cfiObj.resolveLast(doc, {
+        ignoreIDs: true,
+      });
+
+      let targetNode = getCloestBlock(
+        bookmark.node.parentElement,
+        this.element
+      );
+      console.log(targetNode);
+      let left = targetNode ? targetNode.offsetLeft : 0;
+      let top = targetNode ? targetNode.offsetTop : 0;
+      if (this.mode !== "scroll") {
+        doc.body.scrollTo(left, 0);
+      } else {
+        this.element.scrollTo(0, top);
+      }
+    } else {
+      await handleScrollPosition(this.element, this.mode, text, count, "");
+    }
+    await this.record();
     this.trigger("rendered");
   }
   async goToAnchor(href: string) {
-    console.log(href);
     await handleScrollPosition(this.element, this.mode, "", "", href);
-    this.record();
+    await this.record();
     this.trigger("rendered");
   }
   removeContent() {
     this.element.innerHTML = "";
   }
-  prev() {
+  async prev() {
     this.trigger("page-changed");
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;
@@ -103,28 +135,32 @@ class GeneralRender extends EventEmitter {
       return;
     }
     if (this.mode === "scroll" || doc.body.scrollLeft === 0) {
-      handlePrevChapter(
+      await handlePrevChapter(
         this.element,
         this.flatChapter(this.chapterList),
         this.chapterDocList,
         this.mode
       );
+      doc.body.scrollTo(doc.body.scrollWidth, 0);
       this.trigger("rendered");
     } else {
-      handleScrollPage(
+      await handleScrollPage(
         this.element,
         this.flatChapter(this.chapterList),
         this.chapterDocList,
         this.mode,
         1,
-        this.isSliding,
         this.trigger
       );
     }
-
-    handleRecord(this.element, this.mode);
+    let isSliding =
+      StorageUtil.getReaderConfig("isSliding") === "yes" ? true : false;
+    if (isSliding) {
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    await handleRecord(this.element, this.mode);
   }
-  next() {
+  async next() {
     this.trigger("page-changed");
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;
@@ -140,7 +176,7 @@ class GeneralRender extends EventEmitter {
       ) < 10 ||
       this.mode === "scroll"
     ) {
-      handleNextChapter(
+      await handleNextChapter(
         this.element,
         this.flatChapter(this.chapterList),
         this.chapterDocList,
@@ -148,20 +184,23 @@ class GeneralRender extends EventEmitter {
       );
       this.trigger("rendered");
     } else {
-      handleScrollPage(
+      await handleScrollPage(
         this.element,
         this.flatChapter(this.chapterList),
         this.chapterDocList,
         this.mode,
         -1,
-        this.isSliding,
         this.trigger
       );
     }
-
-    handleRecord(this.element, this.mode);
+    let isSliding =
+      StorageUtil.getReaderConfig("isSliding") === "yes" ? true : false;
+    if (isSliding) {
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    await handleRecord(this.element, this.mode);
   }
-  prevChapter() {
+  async prevChapter() {
     this.trigger("page-changed");
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;
@@ -171,16 +210,16 @@ class GeneralRender extends EventEmitter {
     if (!doc) {
       return;
     }
-    handlePrevChapter(
+    await handlePrevChapter(
       this.element,
       this.flatChapter(this.chapterList),
       this.chapterDocList,
       this.mode
     );
-    this.record();
+    await this.record();
     this.trigger("rendered");
   }
-  nextChapter() {
+  async nextChapter() {
     this.trigger("page-changed");
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;
@@ -190,13 +229,13 @@ class GeneralRender extends EventEmitter {
     if (!doc) {
       return;
     }
-    handleNextChapter(
+    await handleNextChapter(
       this.element,
       this.flatChapter(this.chapterList),
       this.chapterDocList,
       this.mode
     );
-    this.record();
+    await this.record();
     this.trigger("rendered");
   }
   visibleText() {
@@ -205,11 +244,16 @@ class GeneralRender extends EventEmitter {
   doSearch(keyword: string) {
     return getSearchResult(keyword, this.chapterDocList);
   }
-  getProgress() {
-    return progressInfo();
+  async getProgress() {
+    return await progressInfo();
   }
-  record() {
-    handleRecord(this.element, this.mode);
+  async record() {
+    let isSliding =
+      StorageUtil.getReaderConfig("isSliding") === "yes" ? true : false;
+    if (isSliding) {
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    await handleRecord(this.element, this.mode);
   }
   getPosition() {
     return {

@@ -1,6 +1,6 @@
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDoc";
-import { excuteCode, txtToHtml } from "./utils/htmlUtil";
+import { txtToHtml } from "./utils/htmlUtil";
 import { createIframe, handleLayout } from "./utils/layoutUtil";
 import StrParser from "./utils/strParser";
 import GeneralRender from "./GeneralRender";
@@ -11,22 +11,16 @@ class StrRender extends GeneralRender {
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  isSliding: boolean;
-  constructor(bookStr: string, mode: string, isSliding: boolean) {
-    super(mode, isSliding);
+  constructor(bookStr: string, mode: string) {
+    super(mode);
     this.bookStr = bookStr;
     this.mode = mode;
     this.chapterList = [];
     this.chapterDocList = [];
     this.element = "";
-    this.isSliding = isSliding || false;
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
-      if (!(await excuteCode())) {
-        resolve();
-        return;
-      }
       this.element = element;
       let parser = new StrParser(this.bookStr);
       if (parser.isContainChapter()) {

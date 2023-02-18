@@ -70,12 +70,11 @@ class HtmlParser {
 
   getChapter() {
     for (let i = 0; i < this.chapterDocList.length; i++) {
-      let random = Math.floor(Math.random() * 900000) + 100000;
       this.chapterDocList[i].title &&
         this.chapterList.push({
           title: this.chapterDocList[i].title,
-          id: "title" + random,
-          href: "title" + random,
+          id: "title" + i,
+          href: "title" + i,
           index: i,
           subitems: [],
         });

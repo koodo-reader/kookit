@@ -2,7 +2,6 @@ import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDoc";
 import { createIframe, handleLayout } from "./utils/layoutUtil";
 import GeneralParser from "./utils/generalParser";
-import { excuteCode } from "./utils/htmlUtil";
 import { EPUB } from "./libs/epub";
 import GeneralRender from "./GeneralRender";
 declare var window: any;
@@ -14,23 +13,17 @@ class EpubRender extends GeneralRender {
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  isSliding: boolean;
-  constructor(epubBuffer: ArrayBuffer, mode: string, isSliding: boolean) {
-    super(mode, isSliding);
+  constructor(epubBuffer: ArrayBuffer, mode: string) {
+    super(mode);
     this.epubBuffer = epubBuffer;
     this.mode = mode;
     this.chapterList = [];
     this.chapterDocList = [];
     this.book = "";
     this.element = "";
-    this.isSliding = isSliding || false;
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
-      if (!(await excuteCode())) {
-        resolve();
-        return;
-      }
       let blob = new Blob([this.epubBuffer]);
       let file = new File([blob], "book", {
         lastModified: new Date().getTime(),
@@ -44,8 +37,6 @@ class EpubRender extends GeneralRender {
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
-      console.log(this.chapterList);
-      console.log(this.chapterDocList);
       handleLayout(element, this.mode);
       this.trigger("rendered");
       resolve();

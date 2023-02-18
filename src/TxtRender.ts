@@ -1,6 +1,6 @@
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDoc";
-import { excuteCode, txtToHtml } from "./utils/htmlUtil";
+import { txtToHtml } from "./utils/htmlUtil";
 import { createIframe, handleLayout } from "./utils/layoutUtil";
 import StrParser from "./utils/strParser";
 import GeneralRender from "./GeneralRender";
@@ -12,14 +12,8 @@ class TxtRender extends GeneralRender {
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  isSliding: boolean;
-  constructor(
-    txtBuffer: ArrayBuffer,
-    mode: string,
-    encoding: string,
-    isSliding: boolean
-  ) {
-    super(mode, isSliding);
+  constructor(txtBuffer: ArrayBuffer, mode: string, encoding: string) {
+    super(mode);
     this.txtBuffer = txtBuffer;
     this.encoding = encoding;
     this.mode = mode;
@@ -27,14 +21,9 @@ class TxtRender extends GeneralRender {
     this.chapterDocList = [];
     this.bookStr = "";
     this.element = "";
-    this.isSliding = isSliding || false;
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
-      if (!(await excuteCode())) {
-        resolve();
-        return;
-      }
       let text = new TextDecoder(this.encoding).decode(this.txtBuffer);
       let bookStr = txtToHtml(text);
       this.bookStr = bookStr;

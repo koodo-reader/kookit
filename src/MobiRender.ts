@@ -2,7 +2,6 @@ import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDoc";
 import { createIframe, handleLayout } from "./utils/layoutUtil";
 import GeneralParser from "./utils/generalParser";
-import { excuteCode } from "./utils/htmlUtil";
 import { isMOBI, MOBI } from "./libs/mobi.js";
 import GeneralRender from "./GeneralRender";
 declare var window: any;
@@ -14,23 +13,17 @@ class MobiRender extends GeneralRender {
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  isSliding: boolean;
-  constructor(mobiBuffer: ArrayBuffer, mode: string, isSliding: boolean) {
-    super(mode, isSliding);
+  constructor(mobiBuffer: ArrayBuffer, mode: string) {
+    super(mode);
     this.mobiBuffer = mobiBuffer;
     this.mode = mode;
     this.chapterList = [];
     this.chapterDocList = [];
     this.book = "";
     this.element = "";
-    this.isSliding = isSliding || false;
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
-      if (!(await excuteCode())) {
-        resolve();
-        return;
-      }
       let blob = new Blob([this.mobiBuffer]);
       let file = new File([blob], "book", {
         lastModified: new Date().getTime(),

@@ -13,9 +13,10 @@ export const handleScrollPage = async (
   chapterDocList: ChapterDoc[],
   mode: string,
   delta: number,
-  isSliding: boolean,
   trigger: (status: string) => void
 ) => {
+  let isSliding =
+    StorageUtil.getReaderConfig("isSliding") === "yes" ? true : false;
   let pageArea = document.getElementById("page-area");
   if (!pageArea) return;
   let iframe = pageArea.getElementsByTagName("iframe")[0];
@@ -26,18 +27,21 @@ export const handleScrollPage = async (
   }
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  if (delta > 0 && doc.body.scrollLeft > 0) {
+  if (delta > 0) {
     doc.body.scrollBy({
       top: 0,
       left: -element.offsetWidth - gap,
       behavior: isSliding ? "smooth" : "auto",
     });
     // trigger("page-changed");
-  } else if (delta > 0 && doc.body.scrollLeft === 0) {
-    handlePrevChapter(element, flattenChapters, chapterDocList, mode);
-    trigger("rendered");
   } else if (delta < 0) {
-    handleTurnChapter(element, flattenChapters, chapterDocList, mode, trigger);
+    await handleTurnChapter(
+      element,
+      flattenChapters,
+      chapterDocList,
+      mode,
+      trigger
+    );
 
     doc.body.scrollBy({
       top: 0,
@@ -63,7 +67,7 @@ const findValidChapter = (
     return validChapters[currentChapterIndex + 1];
   }
 };
-export const handlePrevChapter = (
+export const handlePrevChapter = async (
   element: HTMLElement,
   flattenChapters: Chapter[],
   chapterDocList: ChapterDoc[],
@@ -83,11 +87,12 @@ export const handlePrevChapter = (
     flattenChapters,
     "prev"
   );
+  if (!prevChapter) return;
   StorageUtil.setKookitConfig("chapterTitle", prevChapter.title);
   StorageUtil.setKookitConfig("chapterHref", prevChapter.href);
   StorageUtil.setKookitConfig("chapterDocIndex", prevChapter.index.toString());
   StorageUtil.setKookitConfig("text", "prevChapter");
-  handleRenderChatper(
+  await handleRenderChatper(
     prevChapter.index,
     prevChapter.title,
     prevChapter.href,
@@ -96,14 +101,14 @@ export const handlePrevChapter = (
     mode
   );
   if (prevChapter.href && prevChapter.href.indexOf("#") > -1) {
-    handleScrollPosition(element, mode, "", "", prevChapter.href);
+    await handleScrollPosition(element, mode, "", "", prevChapter.href);
   }
 };
 
 export const handleRenderChatper = async (
-  chapterDocIndex: number = 0,
-  chapterTitle: string = "",
-  chapterHref: string = "",
+  chapterDocIndex: number,
+  chapterTitle: string,
+  chapterHref: string,
   chapterDocList: ChapterDoc[],
   element: HTMLElement,
   mode: string
@@ -133,8 +138,7 @@ export const handleRenderChatper = async (
       })
     );
   });
-  let results = await Promise.all(styleSheetPromises);
-  console.log(results);
+  await Promise.all(styleSheetPromises);
   StorageUtil.setKookitConfig("chapterTitle", chapterTitle);
   StorageUtil.setKookitConfig("chapterHref", chapterHref);
   StorageUtil.setKookitConfig("chapterDocIndex", chapterDocIndex.toString());
@@ -179,42 +183,43 @@ export const handleScrollPosition = async (
       );
     });
     targetNode = targetNodeList[0];
+    left = targetNode
+      ? targetNode.getBoundingClientRect().left
+      : text === "prevChapter"
+      ? doc.body.scrollWidth
+      : 0;
+    top = targetNode ? targetNode.getBoundingClientRect().top : 0;
   } else if (href && href.indexOf("#") > -1) {
     let id = href.split("#").reverse()[0];
     targetNode = getCloestBlock(
       doc.body.querySelector("#" + id) || doc.body,
       element
     );
+    console.log(targetNode);
+    left = targetNode ? targetNode.offsetLeft : 0;
+    top = targetNode ? targetNode.offsetTop : 0;
   }
-  console.log(targetNode);
-  left = targetNode
-    ? targetNode.getBoundingClientRect().left
-    : text === "prevChapter"
-    ? doc.body.scrollWidth
-    : 0;
-  console.log(targetNode);
-  top = targetNode ? targetNode.getBoundingClientRect().top : 0;
+
   if (mode !== "scroll") {
-    console.log(left);
     doc.body.scrollTo(left, 0);
   } else {
     element.scrollTo(0, top);
   }
 };
 export const getCloestBlock = (targetNode, element) => {
-  console.log(
-    targetNode,
-    targetNode.getBoundingClientRect(),
-    element.clientWidth
-  );
-  if (targetNode.getBoundingClientRect().left % element.clientWidth === 0) {
+  let section = Math.floor(element.clientWidth / 12);
+  let gap = section % 2 === 0 ? section : section - 1;
+  if (
+    parseInt(targetNode.offsetLeft) %
+      ((parseInt(element.clientWidth) + gap) / 2) ===
+    0
+  ) {
     return targetNode;
   } else {
-    console.log(targetNode.parentElement);
-    return targetNode.parentElement;
+    return getCloestBlock(targetNode.parentElement, element);
   }
 };
-export const handleTurnChapter = (
+export const handleTurnChapter = async (
   element: HTMLElement,
   flattenChapters: Chapter[],
   chapterDocList: ChapterDoc[],
@@ -237,7 +242,7 @@ export const handleTurnChapter = (
       doc.body.scrollWidth - doc.body.scrollLeft - doc.body.clientWidth
     ) < 10
   ) {
-    handleNextChapter(element, flattenChapters, chapterDocList, mode);
+    await handleNextChapter(element, flattenChapters, chapterDocList, mode);
     trigger("rendered");
   }
 };
@@ -285,7 +290,7 @@ export const handleRecord = async (element: HTMLElement, mode: string) => {
     lock = false;
   }, 100);
 };
-export const handleNextChapter = (
+export const handleNextChapter = async (
   element: HTMLElement,
   flattenChapters: Chapter[],
   chapterDocList: ChapterDoc[],
@@ -301,12 +306,12 @@ export const handleNextChapter = (
     flattenChapters,
     "next"
   );
-  console.log(nextChapter, "nextChapter");
+  if (!nextChapter) return;
   StorageUtil.setKookitConfig("chapterTitle", nextChapter.title);
   StorageUtil.setKookitConfig("chapterHref", nextChapter.href);
   StorageUtil.setKookitConfig("chapterDocIndex", nextChapter.index.toString());
   StorageUtil.setKookitConfig("text", "");
-  handleRenderChatper(
+  await handleRenderChatper(
     nextChapter.index,
     nextChapter.title,
     nextChapter.href,
@@ -315,7 +320,7 @@ export const handleNextChapter = (
     mode
   );
   if (nextChapter.href && nextChapter.href.indexOf("#") > -1) {
-    handleScrollPosition(element, mode, "", "", nextChapter.href);
+    await handleScrollPosition(element, mode, "", "", nextChapter.href);
   }
 };
 export const getVisibleText = (element: HTMLElement, mode: string) => {

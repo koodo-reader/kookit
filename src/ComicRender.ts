@@ -2,7 +2,6 @@ import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDoc";
 import { createIframe, handleLayout } from "./utils/layoutUtil";
 import GeneralParser from "./utils/generalParser";
-import { excuteCode } from "./utils/htmlUtil";
 import { makeComicBook } from "./libs/comic-book";
 import GeneralRender from "./GeneralRender";
 declare var window: any;
@@ -16,14 +15,8 @@ class ComicRender extends GeneralRender {
   chapterDocList: ChapterDoc[];
   element: any;
   rpc: any;
-  isSliding: boolean;
-  constructor(
-    comicBuffer: ArrayBuffer,
-    mode: string,
-    format: string,
-    isSliding: boolean
-  ) {
-    super(mode, isSliding);
+  constructor(comicBuffer: ArrayBuffer, mode: string, format: string) {
+    super(mode);
     this.comicBuffer = comicBuffer;
     this.mode = mode;
     this.format = format;
@@ -31,15 +24,10 @@ class ComicRender extends GeneralRender {
     this.chapterDocList = [];
     this.book = "";
     this.element = "";
-    this.isSliding = isSliding || false;
     this.rpc;
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
-      if (!(await excuteCode())) {
-        resolve();
-        return;
-      }
       let blob = new Blob([this.comicBuffer]);
       let file = new File([blob], "book." + this.format.toLocaleLowerCase(), {
         lastModified: new Date().getTime(),
