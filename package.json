@@ -47,8 +47,7 @@
     "typescript": "^4.4.2"
   },
   "dependencies": {
-    "chinese-s2t": "^1.0.0",
-    "epub-cfi-resolver": "^1.0.2"
+    "chinese-s2t": "^1.0.0"
   },
   "bugs": {
     "url": "https://github.com/troyeguo/koodo-render/issues"

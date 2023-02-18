@@ -14,7 +14,6 @@ import {
   handleScrollPosition,
 } from "./utils/navigationUtil";
 import EventEmitter from "./utils/EventEmitter";
-import CFI from "epub-cfi-resolver";
 declare var window: any;
 
 class GeneralRender extends EventEmitter {
@@ -83,41 +82,29 @@ class GeneralRender extends EventEmitter {
       this.element,
       this.mode
     );
-    //兼容1.5.1及之前的版本
-    if (JSON.parse(cfi).cfi) {
-      let cfiObj = new CFI(JSON.parse(cfi).cfi);
-      let pageArea = document.getElementById("page-area");
-      if (!pageArea) return;
-      let iframe = pageArea.getElementsByTagName("iframe")[0];
-      if (!iframe) return;
-      let doc: any = iframe.contentDocument;
-      if (!doc) {
-        return;
-      }
-      var bookmark = cfiObj.resolveLast(doc, {
-        ignoreIDs: true,
-      });
 
-      let targetNode = getCloestBlock(
-        bookmark.node.parentElement,
-        this.element
-      );
-      console.log(targetNode);
-      let left = targetNode ? targetNode.offsetLeft : 0;
-      let top = targetNode ? targetNode.offsetTop : 0;
-      if (this.mode !== "scroll") {
-        doc.body.scrollTo(left, 0);
-      } else {
-        this.element.scrollTo(0, top);
-      }
-    } else {
-      await handleScrollPosition(this.element, this.mode, text, count, "");
-    }
+    await handleScrollPosition(this.element, this.mode, text, count, "");
+
     await this.record();
     this.trigger("rendered");
   }
-  async goToAnchor(href: string) {
-    await handleScrollPosition(this.element, this.mode, "", "", href);
+  async goToNode(node: any) {
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe) return;
+    let doc: any = iframe.contentDocument;
+    if (!doc) {
+      return;
+    }
+    let targetNode = getCloestBlock(node, this.element);
+    let left = targetNode ? targetNode.offsetLeft : 0;
+    let top = targetNode ? targetNode.offsetTop : 0;
+    if (this.mode !== "scroll") {
+      doc.body.scrollTo(left, 0);
+    } else {
+      this.element.scrollTo(0, top);
+    }
     await this.record();
     this.trigger("rendered");
   }
