@@ -69,11 +69,7 @@ class GeneralRender extends EventEmitter {
   async goToPosition(cfi: string) {
     let { text, chapterDocIndex, chapterTitle, chapterHref, count } =
       JSON.parse(cfi);
-    if (chapterTitle && !chapterDocIndex) {
-      chapterDocIndex = window._.findLastIndex(this.chapterDocList, {
-        title: chapterTitle,
-      });
-    }
+
     await handleRenderChatper(
       chapterDocIndex,
       chapterTitle,
@@ -82,9 +78,7 @@ class GeneralRender extends EventEmitter {
       this.element,
       this.mode
     );
-
     await handleScrollPosition(this.element, this.mode, text, count, "");
-
     await this.record();
     this.trigger("rendered");
   }

@@ -29,7 +29,6 @@ class EpubRender extends GeneralRender {
         lastModified: new Date().getTime(),
         type: blob.type,
       });
-
       const loader: any = await this.makeZipLoader(file);
       this.book = await new EPUB(loader).init();
       let parser = new GeneralParser(this.book);

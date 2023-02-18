@@ -123,6 +123,11 @@ export const handleRenderChatper = async (
   }
   doc.body.innerHTML = "";
   doc.body.scrollTo(0, 0);
+  if (chapterTitle && !chapterDocIndex) {
+    chapterDocIndex = window._.findLastIndex(chapterDocList, {
+      title: chapterTitle,
+    });
+  }
   doc.body.innerHTML = chapterDocList[chapterDocIndex].text;
   let linkList = Array.from(doc.getElementsByTagName("link"));
   linkList.forEach((element: any) => {
