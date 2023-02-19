@@ -1,3 +1,5 @@
+import Chapter from "../model/chapter";
+import ChapterDoc from "../model/chapterDoc";
 import {
   getTitleElement,
   handleImageMarker,
@@ -8,8 +10,8 @@ import {
 
 class HtmlParser {
   bookStr: string;
-  chapterList: any[];
-  chapterDocList: any[];
+  chapterList: Chapter[];
+  chapterDocList: ChapterDoc[];
   constructor(bookStr: string) {
     this.bookStr = bookStr;
     this.chapterList = [];
@@ -61,6 +63,7 @@ class HtmlParser {
       this.chapterDocList.push({
         title: firstValidTitle ? firstValidTitle.innerText : "",
         text: chapterStrList[i],
+        href: "title" + i,
       });
       firstValidTitle && titleList.push(firstValidTitle.innerText);
     }
@@ -73,7 +76,6 @@ class HtmlParser {
       this.chapterDocList[i].title &&
         this.chapterList.push({
           title: this.chapterDocList[i].title,
-          id: "title" + i,
           href: "title" + i,
           index: i,
           subitems: [],

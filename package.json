@@ -46,9 +46,7 @@
     "typedoc": "^0.21.9",
     "typescript": "^4.4.2"
   },
-  "dependencies": {
-    "chinese-s2t": "^1.0.0"
-  },
+  "dependencies": {},
   "bugs": {
     "url": "https://github.com/troyeguo/koodo-render/issues"
   },

@@ -14,17 +14,18 @@ import {
   handleScrollPosition,
 } from "./utils/navigationUtil";
 import EventEmitter from "./utils/EventEmitter";
-declare var window: any;
 
 class GeneralRender extends EventEmitter {
   mode: string;
+  format: string;
   book: any;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(mode: string) {
+  constructor(mode: string, format: string) {
     super();
     this.mode = mode;
+    this.format = format;
     this.chapterList = [];
     this.chapterDocList = [];
     this.book = "";
@@ -52,13 +53,15 @@ class GeneralRender extends EventEmitter {
     return this.chapterList;
   }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
+    console.log(this.element, this.mode, this.format);
     await handleRenderChatper(
       parseInt(chapterDocIndex),
       chapterTitle,
       chapterHref,
       this.chapterDocList,
       this.element,
-      this.mode
+      this.mode,
+      this.format
     );
     if (chapterHref && chapterHref.indexOf("#") > -1) {
       await handleScrollPosition(this.element, this.mode, "", "", chapterHref);
@@ -69,6 +72,7 @@ class GeneralRender extends EventEmitter {
   async goToPosition(cfi: string) {
     let { text, chapterDocIndex, chapterTitle, chapterHref, count } =
       JSON.parse(cfi);
+    console.log(this.element, this.mode, this.format);
 
     await handleRenderChatper(
       chapterDocIndex,
@@ -76,7 +80,8 @@ class GeneralRender extends EventEmitter {
       chapterHref,
       this.chapterDocList,
       this.element,
-      this.mode
+      this.mode,
+      this.format
     );
     await handleScrollPosition(this.element, this.mode, text, count, "");
     await this.record();
@@ -120,7 +125,8 @@ class GeneralRender extends EventEmitter {
         this.element,
         this.flatChapter(this.chapterList),
         this.chapterDocList,
-        this.mode
+        this.mode,
+        this.format
       );
       doc.body.scrollTo(doc.body.scrollWidth, 0);
       this.trigger("rendered");
@@ -130,6 +136,7 @@ class GeneralRender extends EventEmitter {
         this.flatChapter(this.chapterList),
         this.chapterDocList,
         this.mode,
+        this.format,
         1,
         this.trigger
       );
@@ -161,7 +168,8 @@ class GeneralRender extends EventEmitter {
         this.element,
         this.flatChapter(this.chapterList),
         this.chapterDocList,
-        this.mode
+        this.mode,
+        this.format
       );
       this.trigger("rendered");
     } else {
@@ -170,6 +178,7 @@ class GeneralRender extends EventEmitter {
         this.flatChapter(this.chapterList),
         this.chapterDocList,
         this.mode,
+        this.format,
         -1,
         this.trigger
       );
@@ -195,7 +204,8 @@ class GeneralRender extends EventEmitter {
       this.element,
       this.flatChapter(this.chapterList),
       this.chapterDocList,
-      this.mode
+      this.mode,
+      this.format
     );
     await this.record();
     this.trigger("rendered");
@@ -214,7 +224,8 @@ class GeneralRender extends EventEmitter {
       this.element,
       this.flatChapter(this.chapterList),
       this.chapterDocList,
-      this.mode
+      this.mode,
+      this.format
     );
     await this.record();
     this.trigger("rendered");

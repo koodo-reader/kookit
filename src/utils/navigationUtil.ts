@@ -1,7 +1,6 @@
 import ChapterDoc from "../model/chapterDoc";
 import { handleIframeHeight, handleImageSize } from "./layoutUtil";
 import StorageUtil from "./storageUtil";
-import Chinese from "chinese-s2t";
 import Chapter from "../model/chapter";
 import { cleanText, getBlockElement } from "./titleUtil";
 declare var window: any;
@@ -12,6 +11,7 @@ export const handleScrollPage = async (
   flattenChapters: Chapter[],
   chapterDocList: ChapterDoc[],
   mode: string,
+  format: string,
   delta: number,
   trigger: (status: string) => void
 ) => {
@@ -40,6 +40,7 @@ export const handleScrollPage = async (
       flattenChapters,
       chapterDocList,
       mode,
+      format,
       trigger
     );
 
@@ -71,7 +72,8 @@ export const handlePrevChapter = async (
   element: HTMLElement,
   flattenChapters: Chapter[],
   chapterDocList: ChapterDoc[],
-  mode: string
+  mode: string,
+  format: string
 ) => {
   let chapterTitle = StorageUtil.getKookitConfig("chapterTitle");
   let chapterDocIndex = parseInt(
@@ -98,7 +100,8 @@ export const handlePrevChapter = async (
     prevChapter.href,
     chapterDocList,
     element,
-    mode
+    mode,
+    format
   );
   if (prevChapter.href && prevChapter.href.indexOf("#") > -1) {
     await handleScrollPosition(element, mode, "", "", prevChapter.href);
@@ -111,7 +114,8 @@ export const handleRenderChatper = async (
   chapterHref: string,
   chapterDocList: ChapterDoc[],
   element: HTMLElement,
-  mode: string
+  mode: string,
+  format: string
 ) => {
   let pageArea = document.getElementById("page-area");
   if (!pageArea) return;
@@ -128,7 +132,12 @@ export const handleRenderChatper = async (
       title: chapterTitle,
     });
   }
+  if (chapterDocIndex === -1 || chapterDocIndex > chapterDocList.length - 1) {
+    chapterDocIndex = 0;
+  }
+  console.log(chapterDocIndex, chapterDocList);
   doc.body.innerHTML = chapterDocList[chapterDocIndex].text;
+
   let linkList = Array.from(doc.getElementsByTagName("link"));
   linkList.forEach((element: any) => {
     element.onload = () => {
@@ -151,9 +160,10 @@ export const handleRenderChatper = async (
     "percentage",
     chapterDocIndex / chapterDocList.length + ""
   );
-  handleIframeHeight(element, mode);
-  handleImageSize(element, mode);
-  // handleScrollPosition(element, mode, "", "", "");
+  await handleIframeHeight(element, mode);
+  console.log("asgsgsdgs");
+  handleImageSize(element, mode, format);
+  handleScrollPosition(element, mode, "", "", "");
 };
 export const handleScrollPosition = async (
   element: HTMLElement,
@@ -181,9 +191,9 @@ export const handleScrollPosition = async (
         cleanText((s as HTMLElement).textContent) &&
         (cleanText((s as HTMLElement).textContent) === cleanText(text) ||
           cleanText((s as HTMLElement).textContent) ===
-            Chinese.t2s(cleanText(text)) ||
+            window.ChineseS2T.t2s(cleanText(text)) ||
           cleanText((s as HTMLElement).textContent) ===
-            Chinese.s2t(cleanText(text))) &&
+            window.ChineseS2T.s2t(cleanText(text))) &&
         Math.abs(index - parseInt(count)) < 2
       );
     });
@@ -200,7 +210,6 @@ export const handleScrollPosition = async (
       doc.body.querySelector("#" + id) || doc.body,
       element
     );
-    console.log(targetNode);
     left = targetNode ? targetNode.offsetLeft : 0;
     top = targetNode ? targetNode.offsetTop : 0;
   }
@@ -211,11 +220,15 @@ export const handleScrollPosition = async (
     element.scrollTo(0, top);
   }
 };
+export const getStyleNum = (value: string) => {
+  return parseInt(value.substr(0, value.length - 2));
+};
 export const getCloestBlock = (targetNode, element) => {
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
+  let style = targetNode.currentStyle || window.getComputedStyle(targetNode);
   if (
-    parseInt(targetNode.offsetLeft) %
+    parseInt(targetNode.offsetLeft - getStyleNum(style.marginLeft) + "") %
       ((parseInt(element.clientWidth) + gap) / 2) ===
     0
   ) {
@@ -229,6 +242,7 @@ export const handleTurnChapter = async (
   flattenChapters: Chapter[],
   chapterDocList: ChapterDoc[],
   mode: string,
+  format: string,
   trigger: (status: string) => void
 ) => {
   let pageArea = document.getElementById("page-area");
@@ -247,7 +261,13 @@ export const handleTurnChapter = async (
       doc.body.scrollWidth - doc.body.scrollLeft - doc.body.clientWidth
     ) < 10
   ) {
-    await handleNextChapter(element, flattenChapters, chapterDocList, mode);
+    await handleNextChapter(
+      element,
+      flattenChapters,
+      chapterDocList,
+      mode,
+      format
+    );
     trigger("rendered");
   }
 };
@@ -299,7 +319,8 @@ export const handleNextChapter = async (
   element: HTMLElement,
   flattenChapters: Chapter[],
   chapterDocList: ChapterDoc[],
-  mode: string
+  mode: string,
+  format: string
 ) => {
   let chapterDocIndex = parseInt(
     StorageUtil.getKookitConfig("chapterDocIndex") || "0"
@@ -322,7 +343,8 @@ export const handleNextChapter = async (
     nextChapter.href,
     chapterDocList,
     element,
-    mode
+    mode,
+    format
   );
   if (nextChapter.href && nextChapter.href.indexOf("#") > -1) {
     await handleScrollPosition(element, mode, "", "", nextChapter.href);

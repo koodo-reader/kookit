@@ -13,7 +13,7 @@ class TxtRender extends GeneralRender {
   chapterDocList: ChapterDoc[];
   element: any;
   constructor(txtBuffer: ArrayBuffer, mode: string, encoding: string) {
-    super(mode);
+    super(mode, "TXT");
     this.txtBuffer = txtBuffer;
     this.encoding = encoding;
     this.mode = mode;

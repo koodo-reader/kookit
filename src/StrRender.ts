@@ -12,7 +12,7 @@ class StrRender extends GeneralRender {
   chapterDocList: ChapterDoc[];
   element: any;
   constructor(bookStr: string, mode: string) {
-    super(mode);
+    super(mode, "STR");
     this.bookStr = bookStr;
     this.mode = mode;
     this.chapterList = [];

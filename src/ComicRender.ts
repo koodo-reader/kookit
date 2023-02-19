@@ -16,7 +16,7 @@ class ComicRender extends GeneralRender {
   element: any;
   rpc: any;
   constructor(comicBuffer: ArrayBuffer, mode: string, format: string) {
-    super(mode);
+    super(mode, format);
     this.comicBuffer = comicBuffer;
     this.mode = mode;
     this.format = format;
@@ -40,7 +40,7 @@ class ComicRender extends GeneralRender {
         const loader: any = await this.makeTarLoader();
         this.book = makeComicBook(loader, file);
       } else if (this.format === "CBR") {
-        this.rpc = await window.RPC.new("/lib/libunrar/worker.js", {
+        this.rpc = await window.RPC.new("./lib/libunrar/worker.js", {
           loaded: function () {
             console.log("loaded");
           },
@@ -140,7 +140,7 @@ class ComicRender extends GeneralRender {
     });
   }
   async make7zLoader() {
-    const wasmBinaryFile = "/lib/7z-wasm/7zz.wasm";
+    const wasmBinaryFile = "./lib/7z-wasm/7zz.wasm";
     if (!window.wasmBinary) {
       const response = await fetch(wasmBinaryFile, {
         credentials: "same-origin",
@@ -235,7 +235,7 @@ class ComicRender extends GeneralRender {
         const loader: any = await this.makeTarLoader();
         this.book = makeComicBook(loader, file);
       } else if (this.format === "CBR") {
-        this.rpc = await window.RPC.new("/lib/libunrar/worker.js", {
+        this.rpc = await window.RPC.new("./lib/libunrar/worker.js", {
           loaded: function () {
             console.log("loaded");
           },

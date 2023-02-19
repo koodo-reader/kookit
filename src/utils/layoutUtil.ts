@@ -1,6 +1,9 @@
 declare var window: any;
 
-export const handleIframeHeight = (element: HTMLElement, mode: string) => {
+export const handleIframeHeight = async (
+  element: HTMLElement,
+  mode: string
+) => {
   let pageArea = document.getElementById("page-area");
   if (!pageArea) return;
   let iframe = pageArea.getElementsByTagName("iframe")[0];
@@ -26,94 +29,84 @@ export const handleIframeHeight = (element: HTMLElement, mode: string) => {
     ) *
       2 +
     "px";
+  iframe.scrolling = "no";
+  await new Promise((r) => setTimeout(r, 1000));
 
-  setTimeout(() => {
-    let pageArea = document.getElementById("page-area");
-    if (!pageArea) return;
-    let iframe = pageArea.getElementsByTagName("iframe")[0];
-    if (!iframe) return;
-    let doc: any = iframe.contentDocument;
-    if (!doc) {
-      return;
-    }
-    let body = doc.body;
+  let lastchild = body.lastElementChild;
+  let lastEle: any = body.lastChild;
+  let itemAs = body.getElementsByTagName("a");
+  let itemPs = body.getElementsByTagName("p");
+  let itemIs = body.getElementsByTagName("img");
+  let itemDs = body.getElementsByTagName("div");
+  let lastItemA = itemAs[itemAs.length - 1];
+  let lastItemP = itemPs[itemPs.length - 1];
+  let lastItemI = itemPs[itemIs.length - 1];
+  let lastItemD = itemDs[itemDs.length - 1];
 
-    let lastchild = body.lastElementChild;
-    let lastEle: any = body.lastChild;
-    let itemAs = body.getElementsByTagName("a");
-    let itemPs = body.getElementsByTagName("p");
-    let itemIs = body.getElementsByTagName("img");
-    let itemDs = body.getElementsByTagName("div");
-    let lastItemA = itemAs[itemAs.length - 1];
-    let lastItemP = itemPs[itemPs.length - 1];
-    let lastItemI = itemPs[itemIs.length - 1];
-    let lastItemD = itemDs[itemDs.length - 1];
-
-    let lastItem: any = lastItemP || lastItemA || lastItemI || lastItemD;
+  let lastItem: any = lastItemP || lastItemA || lastItemI || lastItemD;
+  if (
+    window._.isElement(lastItemA) &&
+    window._.isElement(lastItemP) &&
+    window._.isElement(lastItemD)
+  ) {
     if (
-      window._.isElement(lastItemA) &&
-      window._.isElement(lastItemP) &&
-      window._.isElement(lastItemD)
+      lastItemA.clientHeight + (lastItemA as any).offsetTop >
+      lastItemP.clientHeight + (lastItemP as any).offsetTop
     ) {
-      if (
-        lastItemA.clientHeight + (lastItemA as any).offsetTop >
-        lastItemP.clientHeight + (lastItemP as any).offsetTop
-      ) {
-        lastItem = lastItemA;
-      } else {
-        lastItem = lastItemP;
-      }
-      if (
-        lastItemD.clientHeight + (lastItemD as any).offsetTop >
-        lastItem.clientHeight + (lastItem as any).offsetTop
-      ) {
-        lastItem = lastItemD;
-      }
+      lastItem = lastItemA;
+    } else {
+      lastItem = lastItemP;
     }
-    if (window._.isElement(lastItemI)) {
-      if (
-        lastItemI.clientHeight + (lastItemI as any).offsetTop >
-        lastItem.clientHeight + (lastItem as any).offsetTop
-      ) {
-        lastItem = lastItemI;
-      }
+    if (
+      lastItemD.clientHeight + (lastItemD as any).offsetTop >
+      lastItem.clientHeight + (lastItem as any).offsetTop
+    ) {
+      lastItem = lastItemD;
     }
-    let nodeHeight = 0;
+  }
+  if (window._.isElement(lastItemI)) {
+    if (
+      lastItemI.clientHeight + (lastItemI as any).offsetTop >
+      lastItem.clientHeight + (lastItem as any).offsetTop
+    ) {
+      lastItem = lastItemI;
+    }
+  }
+  let nodeHeight = 0;
 
-    if (!lastchild && !lastItem && !lastEle) return;
-    if (lastEle.nodeType === 3 && !lastchild && !lastItem) return;
+  if (!lastchild && !lastItem && !lastEle) return;
+  if (lastEle.nodeType === 3 && !lastchild && !lastItem) return;
 
-    if (lastEle.nodeType === 3) {
-      if (document.createRange) {
-        let range = document.createRange();
-        range.selectNodeContents(lastEle);
-        if (range.getBoundingClientRect) {
-          let rect = range.getBoundingClientRect();
-          if (rect) {
-            nodeHeight = rect.bottom - rect.top;
-          }
+  if (lastEle.nodeType === 3) {
+    if (document.createRange) {
+      let range = document.createRange();
+      range.selectNodeContents(lastEle);
+      if (range.getBoundingClientRect) {
+        let rect = range.getBoundingClientRect();
+        if (rect) {
+          nodeHeight = rect.bottom - rect.top;
         }
       }
     }
-    let targetHeight =
-      Math.max(
-        window._.isElement(lastchild)
-          ? lastchild.clientHeight + (lastchild as any).offsetTop
-          : 0,
-        window._.isElement(lastEle)
-          ? lastEle.clientHeight + (lastEle as any).offsetTop
-          : 0,
-        window._.isElement(lastItem)
-          ? lastItem.clientHeight + (lastItem as any).offsetTop
-          : 0
-      ) +
-      400 +
-      (lastEle.nodeType === 3 ? nodeHeight : 0);
-    iframe.height = targetHeight + "px";
-    // let html = doc.documentElement;
-    // if (!html) return;
-    // html.setAttribute("style", `height: ${targetHeight}px`);
-  }, 500);
+  }
+  let targetHeight =
+    Math.max(
+      window._.isElement(lastchild)
+        ? lastchild!.clientHeight + (lastchild as any).offsetTop
+        : 0,
+      window._.isElement(lastEle)
+        ? lastEle.clientHeight + (lastEle as any).offsetTop
+        : 0,
+      window._.isElement(lastItem)
+        ? lastItem.clientHeight + (lastItem as any).offsetTop
+        : 0
+    ) +
+    400 +
+    (lastEle.nodeType === 3 ? nodeHeight : 0);
+  iframe.height = targetHeight + "px";
+  // let html = doc.documentElement;
+  // if (!html) return;
+  // html.setAttribute("style", `height: ${targetHeight}px`);
 };
 export const getAzw3Style = (doc: Element) => {
   let style = "";
@@ -163,7 +156,11 @@ export const progressInfo = async () => {
     currentPage: parseInt(doc.body.scrollLeft / doc.body.clientWidth + "") + 1,
   };
 };
-export const handleImageSize = (element: HTMLElement, mode: string) => {
+export const handleImageSize = (
+  element: HTMLElement,
+  mode: string,
+  format: string
+) => {
   let pageArea = document.getElementById("page-area");
   if (!pageArea) return;
   let iframe = pageArea.getElementsByTagName("iframe")[0];
@@ -175,13 +172,16 @@ export const handleImageSize = (element: HTMLElement, mode: string) => {
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   let imgs = doc.getElementsByTagName("img") as any;
-  let maxHeight;
-  let maxWidth;
   for (let item of imgs) {
     let parentItem = item.parentElement;
-    maxHeight = 0;
-    maxWidth = 0;
-    if (item.width && item.height) {
+    let maxHeight = 0;
+    let maxWidth = 0;
+    if (format.startsWith("CB") && mode === "scroll") {
+      maxWidth = parentItem.offsetWidth;
+    } else if (format.startsWith("CB") && mode === "single") {
+      maxHeight = element.offsetHeight;
+      maxWidth = element.offsetWidth;
+    } else if (item.width && item.height) {
       let isImageScaleLargerThanElement =
         item.height / item.width >
         parentItem.clientHeight / parentItem.clientWidth;
@@ -209,12 +209,17 @@ export const handleImageSize = (element: HTMLElement, mode: string) => {
         : (element.offsetWidth - gap) / 2,
       maxWidth
     );
+    console.log(format);
     (maxWidth || maxHeight) &&
       item.setAttribute(
         "style",
-        `max-width: ${maxWidth > 0 ? maxWidth : ""}px;max-height:${
-          maxHeight > 0 ? maxHeight : ""
-        }px`
+        `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${
+          maxHeight > 0 ? maxHeight + "px" : ""
+        }; ${
+          format.startsWith("CB")
+            ? "display: block; margin-left: auto; margin-right: auto;"
+            : ""
+        }`
       );
   }
 };

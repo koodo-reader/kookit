@@ -14,7 +14,7 @@ class MobiRender extends GeneralRender {
   chapterDocList: ChapterDoc[];
   element: any;
   constructor(mobiBuffer: ArrayBuffer, mode: string) {
-    super(mode);
+    super(mode, "MOBI");
     this.mobiBuffer = mobiBuffer;
     this.mode = mode;
     this.chapterList = [];

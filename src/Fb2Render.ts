@@ -13,7 +13,7 @@ class Fb2Render extends GeneralRender {
   chapterDocList: ChapterDoc[];
   element: any;
   constructor(fb2Buffer: ArrayBuffer, mode: string) {
-    super(mode);
+    super(mode, "FB2");
     this.fb2Buffer = fb2Buffer;
     this.mode = mode;
     this.chapterList = [];
