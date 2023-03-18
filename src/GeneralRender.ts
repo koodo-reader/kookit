@@ -1,6 +1,6 @@
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDoc";
-import { progressInfo } from "./utils/layoutUtil";
+import { convertStyleNum, progressInfo } from "./utils/layoutUtil";
 import StorageUtil from "./utils/storageUtil";
 import {
   getCloestBlock,
@@ -53,7 +53,6 @@ class GeneralRender extends EventEmitter {
     return this.chapterList;
   }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
-    console.log(this.element, this.mode, this.format);
     await handleRenderChatper(
       parseInt(chapterDocIndex),
       chapterTitle,
@@ -72,10 +71,9 @@ class GeneralRender extends EventEmitter {
   async goToPosition(cfi: string) {
     let { text, chapterDocIndex, chapterTitle, chapterHref, count } =
       JSON.parse(cfi);
-    console.log(this.element, this.mode, this.format);
 
     await handleRenderChatper(
-      chapterDocIndex,
+      parseInt(chapterDocIndex),
       chapterTitle,
       chapterHref,
       this.chapterDocList,
@@ -97,8 +95,8 @@ class GeneralRender extends EventEmitter {
       return;
     }
     let targetNode = getCloestBlock(node, this.element);
-    let left = targetNode ? targetNode.offsetLeft : 0;
-    let top = targetNode ? targetNode.offsetTop : 0;
+    let left = targetNode ? convertStyleNum(targetNode.offsetLeft) : 0;
+    let top = targetNode ? convertStyleNum(targetNode.offsetTop) : 0;
     if (this.mode !== "scroll") {
       doc.body.scrollTo(left, 0);
     } else {
@@ -120,7 +118,7 @@ class GeneralRender extends EventEmitter {
     if (!doc) {
       return;
     }
-    if (this.mode === "scroll" || doc.body.scrollLeft === 0) {
+    if (this.mode === "scroll" || convertStyleNum(doc.body.scrollLeft) === 0) {
       await handlePrevChapter(
         this.element,
         this.flatChapter(this.chapterList),
@@ -160,7 +158,9 @@ class GeneralRender extends EventEmitter {
     }
     if (
       Math.abs(
-        doc.body.scrollWidth - doc.body.scrollLeft - doc.body.clientWidth
+        doc.body.scrollWidth -
+          convertStyleNum(doc.body.scrollLeft) -
+          doc.body.clientWidth
       ) < 10 ||
       this.mode === "scroll"
     ) {
@@ -233,8 +233,8 @@ class GeneralRender extends EventEmitter {
   visibleText() {
     return getVisibleText(this.element, this.mode);
   }
-  doSearch(keyword: string) {
-    return getSearchResult(keyword, this.chapterDocList);
+  async doSearch(keyword: string) {
+    return await getSearchResult(keyword, this.chapterDocList);
   }
   async getProgress() {
     return await progressInfo();

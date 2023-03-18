@@ -1,9 +1,9 @@
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDoc";
-import { txtToHtml } from "./utils/htmlUtil";
 import { createIframe, handleLayout } from "./utils/layoutUtil";
-import StrParser from "./utils/strParser";
 import GeneralRender from "./GeneralRender";
+import { makeHtmlBook } from "./libs/html";
+import GeneralParser from "./utils/generalParser";
 
 class StrRender extends GeneralRender {
   bookStr: string;
@@ -22,15 +22,10 @@ class StrRender extends GeneralRender {
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
       this.element = element;
-      let parser = new StrParser(this.bookStr);
-      if (parser.isContainChapter()) {
-        this.chapterList = parser.getChapter();
-      } else {
-        this.bookStr = txtToHtml(parser.getDocText());
-        parser = new StrParser(this.bookStr);
-        this.chapterList = parser.getChapter();
-      }
-      this.chapterDocList = parser.getChapterDoc();
+      this.book = makeHtmlBook(this.bookStr, true);
+      let parser = new GeneralParser(this.book);
+      this.chapterList = await parser.getChapter(this.book.toc);
+      this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
       handleLayout(element, this.mode);
       this.trigger("rendered");

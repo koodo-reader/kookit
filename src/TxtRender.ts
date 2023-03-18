@@ -1,14 +1,15 @@
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDoc";
-import { txtToHtml } from "./utils/htmlUtil";
 import { createIframe, handleLayout } from "./utils/layoutUtil";
-import StrParser from "./utils/strParser";
 import GeneralRender from "./GeneralRender";
+import { makeHtmlBook } from "./libs/html";
+import GeneralParser from "./utils/generalParser";
 class TxtRender extends GeneralRender {
   txtBuffer: ArrayBuffer;
   encoding: string;
   bookStr: string;
   mode: string;
+  book: any;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
@@ -21,16 +22,16 @@ class TxtRender extends GeneralRender {
     this.chapterDocList = [];
     this.bookStr = "";
     this.element = "";
+    this.book = "";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
-      let text = new TextDecoder(this.encoding).decode(this.txtBuffer);
-      let bookStr = txtToHtml(text);
-      this.bookStr = bookStr;
       this.element = element;
-      let parser = new StrParser(this.bookStr);
-      this.chapterList = parser.getChapter();
-      this.chapterDocList = parser.getChapterDoc();
+      let text = new TextDecoder(this.encoding).decode(this.txtBuffer);
+      this.book = makeHtmlBook(text, true);
+      let parser = new GeneralParser(this.book);
+      this.chapterList = await parser.getChapter(this.book.toc);
+      this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
       handleLayout(element, this.mode);
       this.trigger("rendered");

@@ -1,5 +1,12 @@
 declare var window: any;
-
+export const getStyleNum = (value: string) => {
+  if (!value) return 0;
+  return parseInt(value.substr(0, value.length - 2));
+};
+export const convertStyleNum = (value: number) => {
+  if (!value) return 0;
+  return parseInt(value + "");
+};
 export const handleIframeHeight = async (
   element: HTMLElement,
   mode: string
@@ -50,24 +57,24 @@ export const handleIframeHeight = async (
     window._.isElement(lastItemD)
   ) {
     if (
-      lastItemA.clientHeight + (lastItemA as any).offsetTop >
-      lastItemP.clientHeight + (lastItemP as any).offsetTop
+      lastItemA.clientHeight + convertStyleNum((lastItemA as any).offsetTop) >
+      lastItemP.clientHeight + convertStyleNum((lastItemP as any).offsetTop)
     ) {
       lastItem = lastItemA;
     } else {
       lastItem = lastItemP;
     }
     if (
-      lastItemD.clientHeight + (lastItemD as any).offsetTop >
-      lastItem.clientHeight + (lastItem as any).offsetTop
+      lastItemD.clientHeight + convertStyleNum((lastItemD as any).offsetTop) >
+      lastItem.clientHeight + convertStyleNum((lastItem as any).offsetTop)
     ) {
       lastItem = lastItemD;
     }
   }
   if (window._.isElement(lastItemI)) {
     if (
-      lastItemI.clientHeight + (lastItemI as any).offsetTop >
-      lastItem.clientHeight + (lastItem as any).offsetTop
+      lastItemI.clientHeight + convertStyleNum((lastItemI as any).offsetTop) >
+      lastItem.clientHeight + convertStyleNum((lastItem as any).offsetTop)
     ) {
       lastItem = lastItemI;
     }
@@ -92,13 +99,14 @@ export const handleIframeHeight = async (
   let targetHeight =
     Math.max(
       window._.isElement(lastchild)
-        ? lastchild!.clientHeight + (lastchild as any).offsetTop
+        ? lastchild!.clientHeight +
+            convertStyleNum((lastchild as any).offsetTop)
         : 0,
       window._.isElement(lastEle)
-        ? lastEle.clientHeight + (lastEle as any).offsetTop
+        ? lastEle.clientHeight + convertStyleNum((lastEle as any).offsetTop)
         : 0,
       window._.isElement(lastItem)
-        ? lastItem.clientHeight + (lastItem as any).offsetTop
+        ? lastItem.clientHeight + convertStyleNum((lastItem as any).offsetTop)
         : 0
     ) +
     400 +
@@ -119,7 +127,33 @@ export const getAzw3Style = (doc: Element) => {
   }
   return style;
 };
-
+export const handleOneChapterDoc = async (item) => {
+  let chapterText = await (item.load
+    ? (await fetch(await item.load()).then((r) => r.blob())).text()
+    : "");
+  return handleImageMarker(chapterText);
+};
+export const getImageElement = (Element) => {
+  return Array.from(Element.querySelectorAll("img")) as HTMLElement[];
+};
+export const handleImageMarker = (bookStr) => {
+  let chapterDoc = new DOMParser().parseFromString(bookStr, "text/html") as any;
+  let imgDomList = getImageElement(chapterDoc);
+  if (imgDomList.length === 0) {
+    return bookStr;
+  } else {
+    for (let i = 0; i < imgDomList.length; i++) {
+      var newItem = document.createElement("address");
+      var textnode = document.createTextNode("img");
+      newItem.appendChild(textnode);
+      newItem.setAttribute("style", "visibility: hidden; position: absolute");
+      if (imgDomList[i].parentNode) {
+        (imgDomList[i].parentNode as any).insertBefore(newItem, imgDomList[i]);
+      }
+    }
+    return chapterDoc.documentElement.innerHTML;
+  }
+};
 export const createIframe = (element: HTMLElement, styleStr: string = "") => {
   var iframe = document.createElement("iframe");
   iframe.style.width = "100%";
@@ -131,12 +165,6 @@ export const createIframe = (element: HTMLElement, styleStr: string = "") => {
   iframe.style.verticalAlign = "baseline";
   element.innerHTML = "";
   element.appendChild(iframe);
-  if (styleStr && iframe.contentDocument) {
-    let style = iframe.contentDocument.createElement("style");
-    style.id = "azw3-style";
-    style.textContent = styleStr;
-    iframe.contentDocument.head.appendChild(style);
-  }
 };
 
 export const progressInfo = async () => {
@@ -153,7 +181,10 @@ export const progressInfo = async () => {
   }
   return {
     totalPage: parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") + 1,
-    currentPage: parseInt(doc.body.scrollLeft / doc.body.clientWidth + "") + 1,
+    currentPage:
+      parseInt(
+        convertStyleNum(doc.body.scrollLeft) / doc.body.clientWidth + ""
+      ) + 1,
   };
 };
 export const handleImageSize = (
@@ -209,7 +240,6 @@ export const handleImageSize = (
         : (element.offsetWidth - gap) / 2,
       maxWidth
     );
-    console.log(format);
     (maxWidth || maxHeight) &&
       item.setAttribute(
         "style",

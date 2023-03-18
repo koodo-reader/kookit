@@ -1,11 +1,29 @@
 import ChapterDoc from "../model/chapterDoc";
-import { handleIframeHeight, handleImageSize } from "./layoutUtil";
+import {
+  convertStyleNum,
+  handleIframeHeight,
+  handleImageSize,
+  handleOneChapterDoc,
+} from "./layoutUtil";
 import StorageUtil from "./storageUtil";
 import Chapter from "../model/chapter";
-import { cleanText, getBlockElement } from "./titleUtil";
 declare var window: any;
 
 let lock = false;
+export const getBlockElement = (Element) => {
+  return Array.from(
+    Element.querySelectorAll(
+      "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address"
+    )
+  ) as HTMLElement[];
+};
+
+export const cleanText = (str) => {
+  return str
+    .trim()
+    .replace(/(\r\n|\n|\r)/gm, "")
+    .substring(0, 100);
+};
 export const handleScrollPage = async (
   element: HTMLElement,
   flattenChapters: Chapter[],
@@ -90,9 +108,6 @@ export const handlePrevChapter = async (
     "prev"
   );
   if (!prevChapter) return;
-  StorageUtil.setKookitConfig("chapterTitle", prevChapter.title);
-  StorageUtil.setKookitConfig("chapterHref", prevChapter.href);
-  StorageUtil.setKookitConfig("chapterDocIndex", prevChapter.index.toString());
   StorageUtil.setKookitConfig("text", "prevChapter");
   await handleRenderChatper(
     prevChapter.index,
@@ -127,6 +142,7 @@ export const handleRenderChatper = async (
   }
   doc.body.innerHTML = "";
   doc.body.scrollTo(0, 0);
+
   if (chapterTitle && !chapterDocIndex) {
     chapterDocIndex = window._.findLastIndex(chapterDocList, {
       title: chapterTitle,
@@ -135,8 +151,21 @@ export const handleRenderChatper = async (
   if (chapterDocIndex === -1 || chapterDocIndex > chapterDocList.length - 1) {
     chapterDocIndex = 0;
   }
-  console.log(chapterDocIndex, chapterDocList);
-  doc.body.innerHTML = chapterDocList[chapterDocIndex].text;
+  doc.body.innerHTML = await handleOneChapterDoc(
+    chapterDocList[chapterDocIndex].text
+  );
+  if (StorageUtil.getKookitConfig("chapterDocIndex")) {
+    let lastChapterDocIndex = parseInt(
+      StorageUtil.getKookitConfig("chapterDocIndex")!
+    );
+    if (
+      chapterDocList[lastChapterDocIndex] &&
+      chapterDocList[lastChapterDocIndex].text &&
+      chapterDocList[lastChapterDocIndex].text.unload &&
+      lastChapterDocIndex !== parseInt(chapterDocIndex + "")
+    )
+      chapterDocList[lastChapterDocIndex].text.unload();
+  }
 
   let linkList = Array.from(doc.getElementsByTagName("link"));
   linkList.forEach((element: any) => {
@@ -152,16 +181,21 @@ export const handleRenderChatper = async (
       })
     );
   });
-  await Promise.all(styleSheetPromises);
+  try {
+    await Promise.all(styleSheetPromises);
+  } catch (error) {
+    console.log(error);
+  }
+
   StorageUtil.setKookitConfig("chapterTitle", chapterTitle);
   StorageUtil.setKookitConfig("chapterHref", chapterHref);
-  StorageUtil.setKookitConfig("chapterDocIndex", chapterDocIndex.toString());
+  StorageUtil.setKookitConfig("chapterDocIndex", chapterDocIndex + "");
   StorageUtil.setKookitConfig(
     "percentage",
     chapterDocIndex / chapterDocList.length + ""
   );
+  StorageUtil.setKookitConfig("text", "");
   await handleIframeHeight(element, mode);
-  console.log("asgsgsdgs");
   handleImageSize(element, mode, format);
   handleScrollPosition(element, mode, "", "", "");
 };
@@ -199,19 +233,23 @@ export const handleScrollPosition = async (
     });
     targetNode = targetNodeList[0];
     left = targetNode
-      ? targetNode.getBoundingClientRect().left
+      ? convertStyleNum(targetNode.offsetLeft) -
+        convertStyleNum(targetNode.marginLeft)
       : text === "prevChapter"
       ? doc.body.scrollWidth
       : 0;
-    top = targetNode ? targetNode.getBoundingClientRect().top : 0;
+    top = targetNode
+      ? convertStyleNum(targetNode.offsetTop) -
+        convertStyleNum(targetNode.marginTop)
+      : 0;
   } else if (href && href.indexOf("#") > -1) {
     let id = href.split("#").reverse()[0];
     targetNode = getCloestBlock(
       doc.body.querySelector("#" + id) || doc.body,
       element
     );
-    left = targetNode ? targetNode.offsetLeft : 0;
-    top = targetNode ? targetNode.offsetTop : 0;
+    left = targetNode ? convertStyleNum(targetNode.offsetLeft) : 0;
+    top = targetNode ? convertStyleNum(targetNode.offsetTop) : 0;
   }
 
   if (mode !== "scroll") {
@@ -220,15 +258,16 @@ export const handleScrollPosition = async (
     element.scrollTo(0, top);
   }
 };
-export const getStyleNum = (value: string) => {
-  return parseInt(value.substr(0, value.length - 2));
-};
+
 export const getCloestBlock = (targetNode, element) => {
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  let style = targetNode.currentStyle || window.getComputedStyle(targetNode);
   if (
-    parseInt(targetNode.offsetLeft - getStyleNum(style.marginLeft) + "") %
+    parseInt(
+      convertStyleNum(targetNode.offsetLeft) -
+        convertStyleNum(targetNode.marginLeft) +
+        ""
+    ) %
       ((parseInt(element.clientWidth) + gap) / 2) ===
     0
   ) {
@@ -255,10 +294,15 @@ export const handleTurnChapter = async (
   }
 
   if (
-    Math.abs(element.scrollHeight - element.scrollTop - element.clientHeight) <
-      10 &&
     Math.abs(
-      doc.body.scrollWidth - doc.body.scrollLeft - doc.body.clientWidth
+      element.scrollHeight -
+        convertStyleNum(element.scrollTop) -
+        element.clientHeight
+    ) < 10 &&
+    Math.abs(
+      doc.body.scrollWidth -
+        convertStyleNum(doc.body.scrollLeft) -
+        doc.body.clientWidth
     ) < 10
   ) {
     await handleNextChapter(
@@ -333,10 +377,7 @@ export const handleNextChapter = async (
     "next"
   );
   if (!nextChapter) return;
-  StorageUtil.setKookitConfig("chapterTitle", nextChapter.title);
-  StorageUtil.setKookitConfig("chapterHref", nextChapter.href);
-  StorageUtil.setKookitConfig("chapterDocIndex", nextChapter.index.toString());
-  StorageUtil.setKookitConfig("text", "");
+
   await handleRenderChatper(
     nextChapter.index,
     nextChapter.title,
@@ -370,23 +411,28 @@ export const getVisibleText = (element: HTMLElement, mode: string) => {
     .join(" ");
 };
 
-export const getSearchResult = (
+export const getSearchResult = async (
   keyword: string,
   chapterDocList: ChapterDoc[]
 ) => {
   let searchResult: { cfi: string; excerpt: string }[] = [];
   for (let i = 0; i < chapterDocList.length; i++) {
     let chapterDoc = new DOMParser().parseFromString(
-      chapterDocList[i].text,
+      await handleOneChapterDoc(chapterDocList[i].text),
       "text/html"
     );
     let nodeList = getBlockElement(chapterDoc.body);
     for (let j = 0; j < nodeList.length; j++) {
-      if (
-        ((nodeList[j] as HTMLElement).textContent || "").indexOf(keyword) > -1
-      ) {
+      let keyWordIndex = (
+        (nodeList[j] as HTMLElement).textContent || ""
+      ).indexOf(keyword);
+      if (keyWordIndex > -1) {
         searchResult.push({
-          excerpt: nodeList[j].textContent || "",
+          excerpt:
+            nodeList[j].textContent?.substring(
+              keyWordIndex - 100,
+              keyWordIndex + 100
+            ) || "",
           cfi: JSON.stringify({
             text: nodeList[j].textContent,
             chapterTitle: chapterDocList[i].title,
@@ -399,7 +445,12 @@ export const getSearchResult = (
       }
     }
   }
-  return searchResult;
+  for (let i = 0; i < chapterDocList.length; i++) {
+    if (chapterDocList[i].text && chapterDocList[i].text.unload) {
+      chapterDocList[i].text.unload();
+    }
+  }
+  return window._.uniq(searchResult, "excerpt");
 };
 export const isScrolledIntoView = (
   element: HTMLElement,

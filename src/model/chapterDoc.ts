@@ -1,6 +1,6 @@
 class ChapterDoc {
   title: string;
-  text: string;
+  text: any;
   href: string;
   constructor(title: string, href: string, text: string) {
     this.title = title;
