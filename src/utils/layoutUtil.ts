@@ -17,7 +17,7 @@ export const handleIframeHeight = async (
   if (!iframe) return;
 
   if (mode !== "scroll") {
-    iframe.height = element.offsetHeight + "px";
+    iframe.height = element.clientHeight + "px";
     return;
   }
   let doc = iframe.contentDocument;
@@ -116,17 +116,7 @@ export const handleIframeHeight = async (
   // if (!html) return;
   // html.setAttribute("style", `height: ${targetHeight}px`);
 };
-export const getAzw3Style = (doc: Element) => {
-  let style = "";
-  if (
-    doc.lastChild &&
-    doc.lastChild?.lastChild &&
-    !isElement(doc.lastChild?.lastChild)
-  ) {
-    style = doc.lastChild?.lastChild.textContent || "";
-  }
-  return style;
-};
+
 export const handleOneChapterDoc = async (item) => {
   let chapterText = await (item.load
     ? (await fetch(await item.load()).then((r) => r.blob())).text()
@@ -210,8 +200,8 @@ export const handleImageSize = (
     if (format.startsWith("CB") && mode === "scroll") {
       maxWidth = parentItem.offsetWidth;
     } else if (format.startsWith("CB") && mode === "single") {
-      maxHeight = element.offsetHeight;
-      maxWidth = element.offsetWidth;
+      maxHeight = element.clientHeight;
+      maxWidth = element.clientWidth;
     } else if (item.width && item.height) {
       let isImageScaleLargerThanElement =
         item.height / item.width >
@@ -231,13 +221,13 @@ export const handleImageSize = (
       maxWidth = parentItem.clientWidth;
       maxHeight = parentItem.clientHeight;
     } else {
-      maxWidth = element.offsetWidth;
-      maxHeight = element.offsetHeight;
+      maxWidth = element.clientWidth;
+      maxHeight = element.clientHeight;
     }
     maxWidth = Math.min(
       mode === "scroll" || mode === "single"
-        ? element.offsetWidth
-        : (element.offsetWidth - gap) / 2,
+        ? element.clientWidth
+        : (element.clientWidth - gap) / 2,
       maxWidth
     );
     (maxWidth || maxHeight) &&
@@ -275,7 +265,7 @@ export const handleLayout = (element: HTMLElement, mode: string) => {
   doc.body.setAttribute(
     "style",
     `width: auto;height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;max-width: inherit;column-fill: auto;column-gap: ${gap}px;column-count: 12;column-width: ${
-      (element.offsetWidth - gap) / scale
+      (element.clientWidth - gap) / scale
     }px;`
   );
 };

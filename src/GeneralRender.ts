@@ -20,6 +20,7 @@ class GeneralRender extends EventEmitter {
   format: string;
   book: any;
   chapterList: Chapter[];
+  flattenChapters: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
   constructor(mode: string, format: string) {
@@ -28,6 +29,7 @@ class GeneralRender extends EventEmitter {
     this.format = format;
     this.chapterList = [];
     this.chapterDocList = [];
+    this.flattenChapters = [];
     this.book = "";
     this.element = "";
   }
@@ -36,6 +38,20 @@ class GeneralRender extends EventEmitter {
       width: this.element.clientWidth,
       height: this.element.clientHeight,
     };
+  }
+  resolveChapter(href: string) {
+    let path = new URL(href).pathname;
+    let chapterIndex = -1;
+    this.flattenChapters.forEach((item, index) => {
+      if (item.href.indexOf(path.substring(1, path.length - 1)) > -1) {
+        chapterIndex = index;
+      }
+    });
+    if (chapterIndex > -1) {
+      return this.flattenChapters[chapterIndex];
+    } else {
+      return null;
+    }
   }
   flatChapter(chapters: any) {
     let newChapter: any = [];
@@ -47,6 +63,7 @@ class GeneralRender extends EventEmitter {
         newChapter.push(chapters[i]);
       }
     }
+    this.flattenChapters = newChapter;
     return newChapter;
   }
   getChapter() {
@@ -139,12 +156,7 @@ class GeneralRender extends EventEmitter {
         this.trigger
       );
     }
-    let isSliding =
-      StorageUtil.getReaderConfig("isSliding") === "yes" ? true : false;
-    if (isSliding) {
-      await new Promise((r) => setTimeout(r, 1000));
-    }
-    await handleRecord(this.element, this.mode);
+    await this.record();
   }
   async next() {
     this.trigger("page-changed");
@@ -183,12 +195,7 @@ class GeneralRender extends EventEmitter {
         this.trigger
       );
     }
-    let isSliding =
-      StorageUtil.getReaderConfig("isSliding") === "yes" ? true : false;
-    if (isSliding) {
-      await new Promise((r) => setTimeout(r, 1000));
-    }
-    await handleRecord(this.element, this.mode);
+    await this.record();
   }
   async prevChapter() {
     this.trigger("page-changed");
@@ -245,7 +252,11 @@ class GeneralRender extends EventEmitter {
     if (isSliding) {
       await new Promise((r) => setTimeout(r, 1000));
     }
-    await handleRecord(this.element, this.mode);
+    await handleRecord(
+      this.element,
+      this.mode,
+      this.flatChapter(this.chapterList)
+    );
   }
   getPosition() {
     return {

@@ -45,33 +45,6 @@ class GeneralParser {
     this.flattenChapters = this.flatChapter(this.chapterList);
     return this.chapterList;
   }
-  async getChapterDoc1() {
-    let sectionDocList: any[] = await Promise.all(
-      this.book.sections.map(async (item) => {
-        return item.load
-          ? (await fetch(await item.load()).then((r) => r.blob())).text()
-          : "";
-      })
-    );
-    const chapterIndexList = this.flattenChapters.map((item) => item.index);
-    return sectionDocList
-      .map((item) => handleImageMarker(item))
-      .map((item: string, index: number) => {
-        if (chapterIndexList.indexOf(index) > -1) {
-          return {
-            title: this.flattenChapters[chapterIndexList.indexOf(index)].title,
-            href: this.flattenChapters[chapterIndexList.indexOf(index)].href,
-            text: item,
-          };
-        } else {
-          return {
-            title: "",
-            href: "",
-            text: item,
-          };
-        }
-      }) as ChapterDoc[];
-  }
   async getChapterDoc() {
     const chapterIndexList = this.flattenChapters.map((item) => item.index);
     return this.book.sections.map((item: any, index: number) => {

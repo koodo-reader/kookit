@@ -21,7 +21,7 @@ export const getBlockElement = (Element) => {
 export const cleanText = (str) => {
   return str
     .trim()
-    .replace(/(\r\n|\n|\r)/gm, "")
+    .replace(/(\r\n|\n|\r|\t)/gm, "")
     .substring(0, 100);
 };
 export const handleScrollPage = async (
@@ -48,7 +48,7 @@ export const handleScrollPage = async (
   if (delta > 0) {
     doc.body.scrollBy({
       top: 0,
-      left: -element.offsetWidth - gap,
+      left: -element.clientWidth - gap,
       behavior: isSliding ? "smooth" : "auto",
     });
     // trigger("page-changed");
@@ -64,7 +64,7 @@ export const handleScrollPage = async (
 
     doc.body.scrollBy({
       top: 0,
-      left: element.offsetWidth + gap,
+      left: element.clientWidth + gap,
       behavior: isSliding ? "smooth" : "auto",
     });
   }
@@ -151,9 +151,12 @@ export const handleRenderChatper = async (
   if (chapterDocIndex === -1 || chapterDocIndex > chapterDocList.length - 1) {
     chapterDocIndex = 0;
   }
-  doc.body.innerHTML = await handleOneChapterDoc(
-    chapterDocList[chapterDocIndex].text
+
+  doc.body.innerHTML = await handleMultiChapter(
+    chapterDocList,
+    chapterDocIndex
   );
+
   if (StorageUtil.getKookitConfig("chapterDocIndex")) {
     let lastChapterDocIndex = parseInt(
       StorageUtil.getKookitConfig("chapterDocIndex")!
@@ -175,18 +178,26 @@ export const handleRenderChatper = async (
   });
   let styleSheetPromises: any = [];
   linkList.forEach((link: any) => {
-    styleSheetPromises.push(
-      new Promise((resolve, reject) => {
-        link.addEventListener("load", resolve);
-      })
-    );
+    if (!link.href.endsWith("null")) {
+      styleSheetPromises.push(
+        new Promise((resolve, reject) => {
+          link.addEventListener("load", resolve);
+        })
+      );
+    }
   });
   try {
-    await Promise.all(styleSheetPromises);
-  } catch (error) {
-    console.log(error);
+    await Promise.race([
+      Promise.all(styleSheetPromises),
+      new Promise((resolve, reject) => {
+        setTimeout(() => {
+          reject(new Error("Timeout"));
+        }, 1000);
+      }),
+    ]);
+  } catch (err) {
+    console.log(err);
   }
-
   StorageUtil.setKookitConfig("chapterTitle", chapterTitle);
   StorageUtil.setKookitConfig("chapterHref", chapterHref);
   StorageUtil.setKookitConfig("chapterDocIndex", chapterDocIndex + "");
@@ -198,6 +209,19 @@ export const handleRenderChatper = async (
   await handleIframeHeight(element, mode);
   handleImageSize(element, mode, format);
   handleScrollPosition(element, mode, "", "", "");
+};
+export const handleMultiChapter = async (
+  chapterDocList: ChapterDoc[],
+  chapterDocIndex: number
+) => {
+  let htmlText = "";
+  for (let index = chapterDocIndex; index < chapterDocList.length; index++) {
+    htmlText += await handleOneChapterDoc(chapterDocList[index].text);
+    if (chapterDocList[index + 1] && chapterDocList[index + 1].title) {
+      break;
+    }
+  }
+  return htmlText;
 };
 export const handleScrollPosition = async (
   element: HTMLElement,
@@ -315,7 +339,11 @@ export const handleTurnChapter = async (
     trigger("rendered");
   }
 };
-export const handleRecord = async (element: HTMLElement, mode: string) => {
+export const handleRecord = async (
+  element: HTMLElement,
+  mode: string,
+  flattenChapters: Chapter[]
+) => {
   if (lock) return;
   let pageArea = document.getElementById("page-area");
   if (!pageArea) return;
@@ -344,7 +372,7 @@ export const handleRecord = async (element: HTMLElement, mode: string) => {
       break;
     }
   }
-
+  handleHashChapter(visibleNode, flattenChapters);
   StorageUtil.setKookitConfig(
     "text",
     firstVisibleNode
@@ -358,6 +386,24 @@ export const handleRecord = async (element: HTMLElement, mode: string) => {
   setTimeout(() => {
     lock = false;
   }, 100);
+};
+export const handleHashChapter = (visibleNode, flattenChapters) => {
+  let chapterHref = StorageUtil.getKookitConfig("chapterHref") || "";
+  let lastIndexOfHash = chapterHref.lastIndexOf("#");
+  let beforeHash = chapterHref.substring(0, lastIndexOfHash);
+  let afterHash = chapterHref.substring(lastIndexOfHash + 1);
+  for (let index = 0; index < visibleNode.length; index++) {
+    const element = visibleNode[index];
+    if (afterHash && element.id) {
+      let newHref = beforeHash + "#" + element.id;
+      let newIndex = window._.findLastIndex(flattenChapters, {
+        href: newHref,
+      });
+      if (newIndex > -1) {
+        StorageUtil.setKookitConfig("chapterHref", newHref);
+      }
+    }
+  }
 };
 export const handleNextChapter = async (
   element: HTMLElement,
@@ -461,15 +507,15 @@ export const isScrolledIntoView = (
   var rect = el.getBoundingClientRect();
   if (mode !== "scroll" && el.textContent && el.textContent.trim()) {
     let elemLeft = rect.left;
-    isVisible = elemLeft > -10 && elemLeft <= element.offsetWidth;
+    isVisible = elemLeft > -10 && elemLeft <= element.clientWidth;
   } else if (el.textContent && el.textContent.trim()) {
     let elemTop = rect.top;
     isVisible =
       elemTop >= element.scrollTop &&
-      elemTop <= element.scrollTop + element.offsetHeight;
+      elemTop <= element.scrollTop + element.clientHeight;
   } else if (mode !== "scroll") {
     let elemLeft = rect.left;
-    isVisible = elemLeft >= 0 && elemLeft <= element.offsetWidth;
+    isVisible = elemLeft >= 0 && elemLeft <= element.clientWidth;
   }
   return isVisible;
 };

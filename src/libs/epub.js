@@ -66,7 +66,7 @@ const resolveURL = (url, relativeTo) => {
   try {
     if (relativeTo.includes(":")) return new URL(url, relativeTo);
     // the base needs to be a valid URL, so set a base URL and then remove it
-    const root = "whatever:///";
+    const root = "whatever://whatever/";
     return decodeURI(new URL(url, root + relativeTo).href.replace(root, ""));
   } catch (e) {
     console.warn(e);
@@ -591,6 +591,7 @@ class Loader {
       let doc = new DOMParser().parseFromString(str, mediaType);
       // change to HTML if it's not valid XHTML
       if (mediaType === MIME.XHTML && doc.querySelector("parsererror")) {
+        console.warn(doc.querySelector("parsererror").innerText);
         item.mediaType = MIME.HTML;
         doc = new DOMParser().parseFromString(str, item.mediaType);
       }
@@ -673,10 +674,19 @@ class Loader {
     );
     const w = window?.innerWidth ?? 800;
     const h = window?.innerHeight ?? 600;
-    const replacedVwVh = replacedImports
-      .replace(/(\d*\.?\d+)vw/g, (_, d) => (parseFloat(d) * w) / 100 + "px")
-      .replace(/(\d*\.?\d+)vh/g, (_, d) => (parseFloat(d) * h) / 100 + "px");
-    return replacedVwVh.replaceAll("-epub-", "");
+    return (
+      replacedImports
+        // unprefix as most of the props are (only) supported unprefixed
+        .replace(/-epub-/gi, "")
+        // replace vw and vh as they cause problems with layout
+        .replace(/(\d*\.?\d+)vw/gi, (_, d) => (parseFloat(d) * w) / 100 + "px")
+        .replace(/(\d*\.?\d+)vh/gi, (_, d) => (parseFloat(d) * h) / 100 + "px")
+        // `page-break-*` unsupported in columns; replace with `column-break-*`
+        .replace(
+          /page-break-(after|before|inside)/gi,
+          (_, x) => `-webkit-column-break-${x}`
+        )
+    );
   }
   // find & replace all possible relative paths for all assets without parsing
   replaceString(str, href, parents = []) {

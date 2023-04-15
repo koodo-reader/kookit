@@ -56,8 +56,10 @@ let keywords = [
   "集",
   "话",
   "篇",
+  " ",
+  "　",
 ];
-let containChars = ["[", "(", "。", "“", "‘", "；", ";"];
+let containChars = ["[", "(", "。", "；", ";"];
 let startWithChars = [
   "CHAPTER",
   "Chapter",
@@ -86,23 +88,21 @@ const getTitleElement = (Element) => {
     Element.querySelectorAll("h1,h2,h3,h4,h5,h6,title")
   ) as HTMLElement[];
 };
-
-const isTitle = (line, isStartWithKeyword = false) => {
+const cleanText = (str) => {
+  return str
+    .trim()
+    .replace(/(\r\n|\n|\r|\t)/gm, "")
+    .substring(0, 100);
+};
+const isTitle = (line: any) => {
   return (
     line &&
     !isContain(line) &&
     (isStartWithChars(line) ||
       (line.startsWith("第") && startWithDI(line)) ||
       (line.startsWith("卷") && startWithJUAN(line)) ||
-      (!isStartWithKeyword &&
-        line.contains("第") &&
-        (line[line.indexOf("第") - 1] === " " ||
-          line[line.indexOf("第") - 1] === "　" ||
-          line[line.indexOf("第") - 1] === "、" ||
-          line[line.indexOf("第") - 1] === "：" ||
-          line[line.indexOf("第") - 1] === ":") &&
-        startWithDI(line.substr(line.indexOf("第")))) ||
-      (!isStartWithKeyword && isStartWithNumAndChars(line)))
+      (line.contains("第") && startWithDI(line.substr(line.indexOf("第")))) ||
+      isStartWithNumAndChars(line))
   );
 };
 const isContain = (line: string) => {
@@ -133,25 +133,14 @@ const startWithDI = (line) => {
   let flag = false;
   for (let i = 0; i < keywords.length; i++) {
     if (
-      (line.indexOf(keywords[i]) > -1 &&
-        (line[line.indexOf(keywords[i]) + 1] === " " ||
-          line[line.indexOf(keywords[i]) + 1] === "　" ||
-          line[line.indexOf(keywords[i]) + 1] === "、" ||
-          line[line.indexOf(keywords[i]) + 1] === "：" ||
-          line.indexOf("章") > -1 ||
-          line[line.indexOf(keywords[i]) + 1] === ":")) ||
-      !line[line.indexOf(keywords[i]) + 1]
+      /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c\u96f6]+$/.test(
+        line.substring(1, line.indexOf(keywords[i])).trim()
+      ) ||
+      /^\d+$/.test(line.substring(1, line.indexOf(keywords[i])).trim())
     ) {
-      if (
-        /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c\u96f6]+$/.test(
-          line.substring(1, line.indexOf(keywords[i])).trim()
-        ) ||
-        /^\d+$/.test(line.substring(1, line.indexOf(keywords[i])).trim())
-      ) {
-        flag = true;
-      }
-      if (flag) break;
+      flag = true;
     }
+    if (flag) break;
   }
   return flag;
 };
@@ -206,24 +195,12 @@ const getChapterDoc = (bookStr: string) => {
 };
 const txtToHtml = (text: string) => {
   let html: string = "";
-  let isStartWithKeyword = false;
   let lines = text.split("\n");
   for (let item of lines) {
-    if ((item.trim() as any).slim()) {
-      if (isTitle((item.trim() as any).slim(), isStartWithKeyword)) {
-        //只要出现以第，chapter，CHAPTER开头的章节，就不再检测不以这些字开头的段落
-        if (
-          (item.trim() as any).slim().startsWith("第") ||
-          (item.trim() as any).slim().startsWith("Chapter") ||
-          (item.trim() as any).slim().startsWith("CHAPTER")
-        ) {
-          isStartWithKeyword = true;
-        }
-
-        html += `<h1>${item}</h1>`;
-      } else {
-        html += `<p>${item}</p>`;
-      }
+    if (cleanText(item).slim() && isTitle(cleanText(item).slim())) {
+      html += `<h1>${item}</h1>`;
+    } else {
+      html += `<p>${item}</p>`;
     }
   }
   if (html) {
