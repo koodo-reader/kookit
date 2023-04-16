@@ -453,10 +453,39 @@ export const getVisibleText = (element: HTMLElement, mode: string) => {
       ((s as HTMLElement).textContent || "").trim()
   );
   return (mode !== "scroll" ? visibleNode : nodeList)
-    .map((item) => item.textContent)
-    .join(" ");
+    .filter((item) => item.textContent !== "img")
+    .map((item) => item.textContent);
 };
+export const handleHighlightNode = (
+  element: HTMLElement,
+  mode: string,
+  text: string,
+  style: string
+) => {
+  let pageArea = document.getElementById("page-area");
+  if (!pageArea) return;
+  let iframe = pageArea.getElementsByTagName("iframe")[0];
+  if (!iframe) return;
+  let doc = iframe.contentDocument;
+  if (!doc) {
+    return;
+  }
+  let nodeList = getBlockElement(doc.body);
+  let nodes = nodeList.filter((s) => {
+    if (s.getAttribute("style") === style) {
+      s.setAttribute("style", "");
+    }
 
+    return (
+      isScrolledIntoView(element, s as HTMLElement, mode) &&
+      ((s as HTMLElement).textContent || "").trim() &&
+      (s as HTMLElement).textContent === text
+    );
+  });
+  if (nodes.length > 0) {
+    nodes[0].setAttribute("style", style);
+  }
+};
 export const getSearchResult = async (
   keyword: string,
   chapterDocList: ChapterDoc[]

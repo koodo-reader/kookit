@@ -101,7 +101,9 @@ const isTitle = (line: any) => {
     (isStartWithChars(line) ||
       (line.startsWith("第") && startWithDI(line)) ||
       (line.startsWith("卷") && startWithJUAN(line)) ||
-      (line.contains("第") && startWithDI(line.substr(line.indexOf("第")))) ||
+      (line.contains("第") &&
+        line.lastIndexOf("第") < 2 &&
+        startWithDI(line.substr(line.indexOf("第")))) ||
       isStartWithNumAndChars(line))
   );
 };

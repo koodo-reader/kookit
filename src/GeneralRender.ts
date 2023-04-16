@@ -12,6 +12,7 @@ import {
   handleRenderChatper,
   handleScrollPage,
   handleScrollPosition,
+  handleHighlightNode,
 } from "./utils/navigationUtil";
 import EventEmitter from "./utils/EventEmitter";
 
@@ -239,6 +240,9 @@ class GeneralRender extends EventEmitter {
   }
   visibleText() {
     return getVisibleText(this.element, this.mode);
+  }
+  highlightNode(text: string, style: string) {
+    handleHighlightNode(this.element, this.mode, text, style);
   }
   async doSearch(keyword: string) {
     return await getSearchResult(keyword, this.chapterDocList);
