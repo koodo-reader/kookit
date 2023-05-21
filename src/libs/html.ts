@@ -199,7 +199,12 @@ const txtToHtml = (text: string) => {
   let html: string = "";
   let lines = text.split("\n");
   for (let item of lines) {
-    if (cleanText(item).slim() && isTitle(cleanText(item).slim())) {
+    if (
+      cleanText(item).slim() &&
+      !item.startsWith(" ") &&
+      !item.startsWith("　") &&
+      isTitle(cleanText(item).slim())
+    ) {
       html += `<h1>${item}</h1>`;
     } else {
       html += `<p>${item}</p>`;

@@ -142,7 +142,6 @@ export const handleRenderChatper = async (
   }
   doc.body.innerHTML = "";
   doc.body.scrollTo(0, 0);
-
   if (chapterTitle && !chapterDocIndex) {
     chapterDocIndex = window._.findLastIndex(chapterDocList, {
       title: chapterTitle,
@@ -206,8 +205,8 @@ export const handleRenderChatper = async (
     chapterDocIndex / chapterDocList.length + ""
   );
   StorageUtil.setKookitConfig("text", "");
-  await handleIframeHeight(element, mode);
-  handleImageSize(element, mode, format);
+  await handleIframeHeight(element, mode, iframe, format);
+
   handleScrollPosition(element, mode, "", "", "");
 };
 export const handleMultiChapter = async (
@@ -238,7 +237,6 @@ export const handleScrollPosition = async (
   if (!doc) {
     return;
   }
-
   let top = 0;
   let left = 0;
   let targetNode = doc.body;
@@ -252,10 +250,11 @@ export const handleScrollPosition = async (
             window.ChineseS2T.t2s(cleanText(text)) ||
           cleanText((s as HTMLElement).textContent) ===
             window.ChineseS2T.s2t(cleanText(text))) &&
-        Math.abs(index - parseInt(count)) < 2
+        (Math.abs(index - parseInt(count)) < 2 || count === "search")
       );
     });
-    targetNode = targetNodeList[0];
+
+    targetNode = getCloestBlock(targetNodeList[0], element);
     left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
         convertStyleNum(targetNode.marginLeft)
@@ -496,7 +495,9 @@ export const getSearchResult = async (
       await handleOneChapterDoc(chapterDocList[i].text),
       "text/html"
     );
-    let nodeList = getBlockElement(chapterDoc.body);
+    let nodeList = getBlockElement(chapterDoc.body).filter(
+      (item) => !isParentBlock(item)
+    );
     for (let j = 0; j < nodeList.length; j++) {
       let keyWordIndex = (
         (nodeList[j] as HTMLElement).textContent || ""
@@ -513,7 +514,7 @@ export const getSearchResult = async (
             chapterTitle: chapterDocList[i].title,
             chapterDocIndex: i,
             chapterHref: chapterDocList[i].href,
-            count: j,
+            count: "search",
             percentage: i / chapterDocList.length,
           }),
         });
@@ -526,6 +527,20 @@ export const getSearchResult = async (
     }
   }
   return window._.uniq(searchResult, "excerpt");
+};
+export const isParentBlock = (myDiv: Element) => {
+  var children = myDiv.children;
+  let flag = false;
+  var blockRegex =
+    /^(address|blockquote|body|center|dir|div|dl|fieldset|form|h[1-6]|hr|isindex|menu|noframes|noscript|ol|p|pre|table|ul|dd|dt|frameset|li|tbody|td|tfoot|th|thead|tr|html)$/i;
+
+  for (var i = 0; i < children.length; i++) {
+    if (blockRegex.test(children[i].nodeName)) {
+      flag = true;
+      break;
+    }
+  }
+  return flag;
 };
 export const isScrolledIntoView = (
   element: HTMLElement,

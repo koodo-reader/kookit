@@ -9,13 +9,10 @@ export const convertStyleNum = (value: number) => {
 };
 export const handleIframeHeight = async (
   element: HTMLElement,
-  mode: string
+  mode: string,
+  iframe: any,
+  format: string
 ) => {
-  let pageArea = document.getElementById("page-area");
-  if (!pageArea) return;
-  let iframe = pageArea.getElementsByTagName("iframe")[0];
-  if (!iframe) return;
-
   if (mode !== "scroll") {
     iframe.height = element.clientHeight + "px";
     return;
@@ -24,97 +21,24 @@ export const handleIframeHeight = async (
   if (!doc) {
     return;
   }
-  var body = doc.body,
-    html = doc.documentElement;
-  iframe.height =
-    Math.max(
-      body.scrollHeight,
-      body.offsetHeight,
-      html.clientHeight,
-      html.scrollHeight,
-      html.offsetHeight
-    ) *
-      2 +
-    "px";
-  iframe.scrolling = "no";
-  await new Promise((r) => setTimeout(r, 1000));
 
-  let lastchild = body.lastElementChild;
-  let lastEle: any = body.lastChild;
-  let itemAs = body.getElementsByTagName("a");
-  let itemPs = body.getElementsByTagName("p");
-  let itemIs = body.getElementsByTagName("img");
-  let itemDs = body.getElementsByTagName("div");
-  let lastItemA = itemAs[itemAs.length - 1];
-  let lastItemP = itemPs[itemPs.length - 1];
-  let lastItemI = itemPs[itemIs.length - 1];
-  let lastItemD = itemDs[itemDs.length - 1];
+  await Promise.all(
+    Array.from(doc.images).map((img: any) => {
+      if (img.complete) return Promise.resolve(img.naturalHeight !== 0);
+      return new Promise((resolve) => {
+        img.addEventListener("load", () => resolve(true));
+        img.addEventListener("error", () => resolve(false));
+      });
+    })
+  ).then((results) => {
+    if (results.every((res) => res))
+      console.log("all images loaded successfully");
+    else console.log("some images failed to load, all finished loading");
+  });
+  handleImageSize(element, mode, format);
+  // await new Promise((r) => setTimeout(r, 1000));
 
-  let lastItem: any = lastItemP || lastItemA || lastItemI || lastItemD;
-  if (
-    window._.isElement(lastItemA) &&
-    window._.isElement(lastItemP) &&
-    window._.isElement(lastItemD)
-  ) {
-    if (
-      lastItemA.clientHeight + convertStyleNum((lastItemA as any).offsetTop) >
-      lastItemP.clientHeight + convertStyleNum((lastItemP as any).offsetTop)
-    ) {
-      lastItem = lastItemA;
-    } else {
-      lastItem = lastItemP;
-    }
-    if (
-      lastItemD.clientHeight + convertStyleNum((lastItemD as any).offsetTop) >
-      lastItem.clientHeight + convertStyleNum((lastItem as any).offsetTop)
-    ) {
-      lastItem = lastItemD;
-    }
-  }
-  if (window._.isElement(lastItemI)) {
-    if (
-      lastItemI.clientHeight + convertStyleNum((lastItemI as any).offsetTop) >
-      lastItem.clientHeight + convertStyleNum((lastItem as any).offsetTop)
-    ) {
-      lastItem = lastItemI;
-    }
-  }
-  let nodeHeight = 0;
-
-  if (!lastchild && !lastItem && !lastEle) return;
-  if (lastEle.nodeType === 3 && !lastchild && !lastItem) return;
-
-  if (lastEle.nodeType === 3) {
-    if (document.createRange) {
-      let range = document.createRange();
-      range.selectNodeContents(lastEle);
-      if (range.getBoundingClientRect) {
-        let rect = range.getBoundingClientRect();
-        if (rect) {
-          nodeHeight = rect.bottom - rect.top;
-        }
-      }
-    }
-  }
-  let targetHeight =
-    Math.max(
-      window._.isElement(lastchild)
-        ? lastchild!.clientHeight +
-            convertStyleNum((lastchild as any).offsetTop)
-        : 0,
-      window._.isElement(lastEle)
-        ? lastEle.clientHeight + convertStyleNum((lastEle as any).offsetTop)
-        : 0,
-      window._.isElement(lastItem)
-        ? lastItem.clientHeight + convertStyleNum((lastItem as any).offsetTop)
-        : 0
-    ) +
-    400 +
-    (lastEle.nodeType === 3 ? nodeHeight : 0);
-  iframe.height = targetHeight + "px";
-  // let html = doc.documentElement;
-  // if (!html) return;
-  // html.setAttribute("style", `height: ${targetHeight}px`);
+  iframe.height = doc.body.scrollHeight + "px";
 };
 
 export const handleOneChapterDoc = async (item) => {
@@ -150,8 +74,10 @@ export const createIframe = (element: HTMLElement, styleStr: string = "") => {
   iframe.style.border = "0";
   iframe.style.margin = "0";
   iframe.style.padding = "0";
+  iframe.style.minHeight = "calc(100% - 2px)";
   iframe.style.fontSize = "100%";
   iframe.style.font = "inherit";
+  iframe.scrolling = "no";
   iframe.style.verticalAlign = "baseline";
   element.innerHTML = "";
   element.appendChild(iframe);

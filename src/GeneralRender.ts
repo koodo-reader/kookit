@@ -41,17 +41,35 @@ class GeneralRender extends EventEmitter {
     };
   }
   resolveChapter(href: string) {
-    let path = new URL(href).pathname;
+    let path = new URL(href).pathname + new URL(href).hash;
+
     let chapterIndex = -1;
-    this.flattenChapters.forEach((item, index) => {
-      if (item.href.indexOf(path.substring(1, path.length - 1)) > -1) {
+    for (let index = 0; index < this.flattenChapters.length; index++) {
+      if (this.flattenChapters[index].href.includes(path.substring(1))) {
         chapterIndex = index;
+        break;
       }
-    });
+    }
+
     if (chapterIndex > -1) {
       return this.flattenChapters[chapterIndex];
     } else {
-      return null;
+      let pathWithoutHash = new URL(href).pathname;
+      for (let index = 0; index < this.flattenChapters.length; index++) {
+        if (
+          this.flattenChapters[index].href.includes(
+            pathWithoutHash.substring(1)
+          )
+        ) {
+          chapterIndex = index;
+          break;
+        }
+      }
+      if (chapterIndex > -1) {
+        return this.flattenChapters[chapterIndex];
+      } else {
+        return null;
+      }
     }
   }
   flatChapter(chapters: any) {
@@ -112,6 +130,7 @@ class GeneralRender extends EventEmitter {
     if (!doc) {
       return;
     }
+
     let targetNode = getCloestBlock(node, this.element);
     let left = targetNode ? convertStyleNum(targetNode.offsetLeft) : 0;
     let top = targetNode ? convertStyleNum(targetNode.offsetTop) : 0;
