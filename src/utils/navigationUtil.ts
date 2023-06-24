@@ -4,6 +4,7 @@ import {
   handleIframeHeight,
   handleImageSize,
   handleOneChapterDoc,
+  progressInfo,
 } from "./layoutUtil";
 import StorageUtil from "./storageUtil";
 import Chapter from "../model/chapter";
@@ -70,20 +71,37 @@ export const handleScrollPage = async (
   }
 };
 const findValidChapter = (
-  chapterDocIndex,
-  chapterHref,
-  flattenChapters,
-  flag
+  chapterDocIndex: number,
+  chapterHref: string,
+  chapterDocList: ChapterDoc[],
+  flag: string
 ) => {
-  let validChapters = flattenChapters.filter((item) => item.href);
+  let validChapters = chapterDocList;
   let currentChapterIndex = window._.findLastIndex(validChapters, {
-    index: chapterDocIndex,
     href: chapterHref,
   });
-  if (flag === "prev") {
-    return validChapters[currentChapterIndex - 1];
+  if (
+    chapterHref &&
+    window._.findLastIndex(validChapters, {
+      href: chapterHref,
+    }) > -1
+  ) {
+    currentChapterIndex = window._.findLastIndex(validChapters, {
+      href: chapterHref,
+    });
   } else {
-    return validChapters[currentChapterIndex + 1];
+    currentChapterIndex = chapterDocIndex;
+  }
+  if (flag === "prev") {
+    return {
+      ...validChapters[currentChapterIndex - 1],
+      index: currentChapterIndex - 1,
+    };
+  } else {
+    return {
+      ...validChapters[currentChapterIndex + 1],
+      index: currentChapterIndex + 1,
+    };
   }
 };
 export const handlePrevChapter = async (
@@ -93,21 +111,21 @@ export const handlePrevChapter = async (
   mode: string,
   format: string
 ) => {
-  let chapterTitle = StorageUtil.getKookitConfig("chapterTitle");
   let chapterDocIndex = parseInt(
     StorageUtil.getKookitConfig("chapterDocIndex") || "0"
   );
   let chapterHref = StorageUtil.getKookitConfig("chapterHref") || "";
-  if (chapterDocIndex === 0 || !chapterTitle) {
+  if (chapterDocIndex === 0) {
     return;
   }
   let prevChapter = findValidChapter(
     chapterDocIndex,
     chapterHref,
-    flattenChapters,
+    chapterDocList,
     "prev"
   );
   if (!prevChapter) return;
+
   StorageUtil.setKookitConfig("text", "prevChapter");
   await handleRenderChatper(
     prevChapter.index,
@@ -119,7 +137,7 @@ export const handlePrevChapter = async (
     format
   );
   if (prevChapter.href && prevChapter.href.indexOf("#") > -1) {
-    await handleScrollPosition(element, mode, "", "", prevChapter.href);
+    await handleScrollPosition(element, mode, "", "", prevChapter.href, "");
   }
 };
 
@@ -141,6 +159,7 @@ export const handleRenderChatper = async (
     return;
   }
   doc.body.innerHTML = "";
+  iframe.height = 0 + "px";
   doc.body.scrollTo(0, 0);
   if (chapterTitle && !chapterDocIndex) {
     chapterDocIndex = window._.findLastIndex(chapterDocList, {
@@ -151,11 +170,9 @@ export const handleRenderChatper = async (
     chapterDocIndex = 0;
   }
 
-  doc.body.innerHTML = await handleMultiChapter(
-    chapterDocList,
-    chapterDocIndex
+  doc.body.innerHTML = await handleOneChapterDoc(
+    chapterDocList[chapterDocIndex].text
   );
-
   if (StorageUtil.getKookitConfig("chapterDocIndex")) {
     let lastChapterDocIndex = parseInt(
       StorageUtil.getKookitConfig("chapterDocIndex")!
@@ -207,27 +224,16 @@ export const handleRenderChatper = async (
   StorageUtil.setKookitConfig("text", "");
   await handleIframeHeight(element, mode, iframe, format);
 
-  handleScrollPosition(element, mode, "", "", "");
+  handleScrollPosition(element, mode, "", "", "", "");
 };
-export const handleMultiChapter = async (
-  chapterDocList: ChapterDoc[],
-  chapterDocIndex: number
-) => {
-  let htmlText = "";
-  for (let index = chapterDocIndex; index < chapterDocList.length; index++) {
-    htmlText += await handleOneChapterDoc(chapterDocList[index].text);
-    if (chapterDocList[index + 1] && chapterDocList[index + 1].title) {
-      break;
-    }
-  }
-  return htmlText;
-};
+
 export const handleScrollPosition = async (
   element: HTMLElement,
   mode: string,
   text: string,
   count: string,
-  href: string
+  href: string,
+  page: string
 ) => {
   let pageArea = document.getElementById("page-area");
   if (!pageArea) return;
@@ -240,7 +246,12 @@ export const handleScrollPosition = async (
   let top = 0;
   let left = 0;
   let targetNode = doc.body;
-  if (text) {
+  if (page && mode !== "scroll") {
+    let section = Math.floor(element.clientWidth / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+    let pageWidth = element.clientWidth + gap;
+    left = pageWidth * (parseInt(page) - 1);
+  } else if (text) {
     let nodeList = getBlockElement(doc.body);
     let targetNodeList = nodeList.filter((s, index) => {
       return (
@@ -257,16 +268,25 @@ export const handleScrollPosition = async (
     targetNode = getCloestBlock(targetNodeList[0], element);
     left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
-        convertStyleNum(targetNode.marginLeft)
+        convertStyleNum(
+          targetNode.marginLeft ||
+            parseInt(getComputedStyle(targetNode).marginLeft)
+        )
       : text === "prevChapter"
       ? doc.body.scrollWidth
       : 0;
     top = targetNode
       ? convertStyleNum(targetNode.offsetTop) -
-        convertStyleNum(targetNode.marginTop)
+        convertStyleNum(
+          targetNode.marginTop ||
+            parseInt(getComputedStyle(targetNode).marginTop)
+        )
       : 0;
   } else if (href && href.indexOf("#") > -1) {
-    let id = href.split("#").reverse()[0];
+    let id = CSS.escape(href.split("#").reverse()[0]);
+    if (!doc.body.querySelector("#" + id)) {
+      return;
+    }
     targetNode = getCloestBlock(
       doc.body.querySelector("#" + id) || doc.body,
       element
@@ -274,7 +294,6 @@ export const handleScrollPosition = async (
     left = targetNode ? convertStyleNum(targetNode.offsetLeft) : 0;
     top = targetNode ? convertStyleNum(targetNode.offsetTop) : 0;
   }
-
   if (mode !== "scroll") {
     doc.body.scrollTo(left, 0);
   } else {
@@ -282,21 +301,30 @@ export const handleScrollPosition = async (
   }
 };
 
-export const getCloestBlock = (targetNode, element) => {
+export const getCloestBlock = (
+  targetNode: HTMLElement,
+  element: HTMLElement
+) => {
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
+
   if (
     parseInt(
       convertStyleNum(targetNode.offsetLeft) -
-        convertStyleNum(targetNode.marginLeft) +
+        convertStyleNum(
+          (targetNode as any).marginLeft ||
+            parseInt(getComputedStyle(targetNode).marginLeft)
+        ) +
         ""
     ) %
-      ((parseInt(element.clientWidth) + gap) / 2) ===
+      ((element.clientWidth + gap) / 2) ===
     0
   ) {
     return targetNode;
-  } else {
+  } else if (targetNode.parentElement) {
     return getCloestBlock(targetNode.parentElement, element);
+  } else {
+    return targetNode;
   }
 };
 export const handleTurnChapter = async (
@@ -372,15 +400,24 @@ export const handleRecord = async (
     }
   }
   handleHashChapter(visibleNode, flattenChapters);
-  StorageUtil.setKookitConfig(
-    "text",
-    firstVisibleNode
-      ? firstVisibleNode.textContent
+  if (firstVisibleNode) {
+    StorageUtil.setKookitConfig(
+      "text",
+      firstVisibleNode
         ? firstVisibleNode.textContent
+          ? firstVisibleNode.textContent
+          : ""
         : ""
-      : ""
-  );
-  StorageUtil.setKookitConfig("count", count + "");
+    );
+    StorageUtil.setKookitConfig("count", count + "");
+    StorageUtil.setKookitConfig("page", "");
+  } else {
+    StorageUtil.setKookitConfig(
+      "page",
+      (await progressInfo(mode))?.currentPage + ""
+    );
+  }
+
   lock = true;
   setTimeout(() => {
     lock = false;
@@ -415,10 +452,13 @@ export const handleNextChapter = async (
     StorageUtil.getKookitConfig("chapterDocIndex") || "0"
   );
   let chapterHref = StorageUtil.getKookitConfig("chapterHref") || "";
+  if (chapterDocIndex >= chapterDocList.length - 1) {
+    return;
+  }
   let nextChapter = findValidChapter(
     chapterDocIndex,
     chapterHref,
-    flattenChapters,
+    chapterDocList,
     "next"
   );
   if (!nextChapter) return;
@@ -432,8 +472,16 @@ export const handleNextChapter = async (
     mode,
     format
   );
-  if (nextChapter.href && nextChapter.href.indexOf("#") > -1) {
-    await handleScrollPosition(element, mode, "", "", nextChapter.href);
+  //适配Don Quijiote de la Mancha - (Miguel de Cervantes)的第4章和第五章翻页的bug
+  let nextChapterDocIndex = window._.findLastIndex(chapterDocList, {
+    href: chapterHref,
+  });
+  if (
+    nextChapter.href &&
+    nextChapter.href.indexOf("#") > -1 &&
+    nextChapterDocIndex === -1
+  ) {
+    await handleScrollPosition(element, mode, "", "", nextChapter.href, "");
   }
 };
 export const getVisibleText = (element: HTMLElement, mode: string) => {
@@ -445,7 +493,9 @@ export const getVisibleText = (element: HTMLElement, mode: string) => {
   if (!doc) {
     return;
   }
-  let nodeList = getBlockElement(doc.body);
+  let nodeList = getBlockElement(doc.body).filter(
+    (item) => !isParentBlock(item)
+  );
   let visibleNode = nodeList.filter(
     (s) =>
       isScrolledIntoView(element, s as HTMLElement, mode) &&

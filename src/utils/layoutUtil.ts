@@ -13,15 +13,10 @@ export const handleIframeHeight = async (
   iframe: any,
   format: string
 ) => {
-  if (mode !== "scroll") {
-    iframe.height = element.clientHeight + "px";
-    return;
-  }
   let doc = iframe.contentDocument;
   if (!doc) {
     return;
   }
-
   await Promise.all(
     Array.from(doc.images).map((img: any) => {
       if (img.complete) return Promise.resolve(img.naturalHeight !== 0);
@@ -32,13 +27,32 @@ export const handleIframeHeight = async (
     })
   ).then((results) => {
     if (results.every((res) => res))
-      console.log("all images loaded successfully");
+      console.log("all images loaded successfully!");
     else console.log("some images failed to load, all finished loading");
   });
   handleImageSize(element, mode, format);
   // await new Promise((r) => setTimeout(r, 1000));
-
-  iframe.height = doc.body.scrollHeight + "px";
+  if (mode !== "scroll") {
+    iframe.height = element.clientHeight + "px";
+    if (mode === "double") {
+      let section = Math.floor(element.clientWidth / 12);
+      let gap = section % 2 === 0 ? section : section - 1;
+      let pageWidth = (element.clientWidth + gap) / 2;
+      if (
+        ((doc.body.scrollWidth - doc.body.clientWidth) / pageWidth) % 2 ===
+        1
+      ) {
+        let tailElem = document.createElement("div");
+        tailElem.setAttribute(
+          "style",
+          "height: " + doc.body.clientHeight + "px"
+        );
+        doc.body.appendChild(tailElem);
+      }
+    }
+  } else {
+    iframe.height = doc.body.scrollHeight + "px";
+  }
 };
 
 export const handleOneChapterDoc = async (item) => {
@@ -48,7 +62,7 @@ export const handleOneChapterDoc = async (item) => {
   return handleImageMarker(chapterText);
 };
 export const getImageElement = (Element) => {
-  return Array.from(Element.querySelectorAll("img")) as HTMLElement[];
+  return Array.from(Element.querySelectorAll("img, image")) as HTMLElement[];
 };
 export const handleImageMarker = (bookStr) => {
   let chapterDoc = new DOMParser().parseFromString(bookStr, "text/html") as any;
@@ -63,6 +77,12 @@ export const handleImageMarker = (bookStr) => {
       newItem.setAttribute("style", "visibility: hidden; position: absolute");
       if (imgDomList[i].parentNode) {
         (imgDomList[i].parentNode as any).insertBefore(newItem, imgDomList[i]);
+        let pageArea = document.getElementById("page-area");
+        if (!pageArea) return;
+        (imgDomList[i].parentNode as any).setAttribute(
+          "style",
+          "max-width: 100%; max-height: " + pageArea.clientHeight + "px"
+        );
       }
     }
     return chapterDoc.documentElement.innerHTML;
@@ -78,12 +98,13 @@ export const createIframe = (element: HTMLElement, styleStr: string = "") => {
   iframe.style.fontSize = "100%";
   iframe.style.font = "inherit";
   iframe.scrolling = "no";
+  iframe.tabIndex = 0;
   iframe.style.verticalAlign = "baseline";
   element.innerHTML = "";
   element.appendChild(iframe);
 };
 
-export const progressInfo = async () => {
+export const progressInfo = async (mode: string) => {
   let pageArea = document.getElementById("page-area");
   if (!pageArea) return;
   let iframe = pageArea.getElementsByTagName("iframe")[0];
@@ -96,7 +117,10 @@ export const progressInfo = async () => {
     await new Promise((r) => setTimeout(r, 1000));
   }
   return {
-    totalPage: parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") + 1,
+    totalPage:
+      mode === "scroll"
+        ? 1
+        : parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") + 1,
     currentPage:
       parseInt(
         convertStyleNum(doc.body.scrollLeft) / doc.body.clientWidth + ""
@@ -118,7 +142,7 @@ export const handleImageSize = (
   }
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  let imgs = doc.getElementsByTagName("img") as any;
+  let imgs = doc.querySelectorAll("img, image") as any;
   for (let item of imgs) {
     let parentItem = item.parentElement;
     let maxHeight = 0;

@@ -41,11 +41,11 @@ class GeneralRender extends EventEmitter {
     };
   }
   resolveChapter(href: string) {
-    let path = new URL(href).pathname + new URL(href).hash;
+    let path = href;
 
     let chapterIndex = -1;
     for (let index = 0; index < this.flattenChapters.length; index++) {
-      if (this.flattenChapters[index].href.includes(path.substring(1))) {
+      if (this.flattenChapters[index].href.includes(path)) {
         chapterIndex = index;
         break;
       }
@@ -88,6 +88,9 @@ class GeneralRender extends EventEmitter {
   getChapter() {
     return this.chapterList;
   }
+  getChapterDoc() {
+    return this.chapterDocList;
+  }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
     await handleRenderChatper(
       parseInt(chapterDocIndex),
@@ -99,15 +102,21 @@ class GeneralRender extends EventEmitter {
       this.format
     );
     if (chapterHref && chapterHref.indexOf("#") > -1) {
-      await handleScrollPosition(this.element, this.mode, "", "", chapterHref);
+      await handleScrollPosition(
+        this.element,
+        this.mode,
+        "",
+        "",
+        chapterHref,
+        ""
+      );
     }
     await this.record();
     this.trigger("rendered");
   }
   async goToPosition(cfi: string) {
-    let { text, chapterDocIndex, chapterTitle, chapterHref, count } =
+    let { text, chapterDocIndex, chapterTitle, chapterHref, count, page } =
       JSON.parse(cfi);
-
     await handleRenderChatper(
       parseInt(chapterDocIndex),
       chapterTitle,
@@ -117,7 +126,7 @@ class GeneralRender extends EventEmitter {
       this.mode,
       this.format
     );
-    await handleScrollPosition(this.element, this.mode, text, count, "");
+    await handleScrollPosition(this.element, this.mode, text, count, "", page);
     await this.record();
     this.trigger("rendered");
   }
@@ -163,7 +172,13 @@ class GeneralRender extends EventEmitter {
         this.mode,
         this.format
       );
-      doc.body.scrollTo(doc.body.scrollWidth, 0);
+      let chapterDocIndex = parseInt(
+        StorageUtil.getKookitConfig("chapterDocIndex") || "0"
+      );
+      if (chapterDocIndex > 0) {
+        doc.body.scrollTo(doc.body.scrollWidth, 0);
+      }
+
       this.trigger("rendered");
     } else {
       await handleScrollPage(
@@ -267,7 +282,7 @@ class GeneralRender extends EventEmitter {
     return await getSearchResult(keyword, this.chapterDocList);
   }
   async getProgress() {
-    return await progressInfo();
+    return await progressInfo(this.mode);
   }
   async record() {
     let isSliding =
@@ -289,6 +304,7 @@ class GeneralRender extends EventEmitter {
       chapterHref: StorageUtil.getKookitConfig("chapterHref"),
       count: StorageUtil.getKookitConfig("count"),
       percentage: StorageUtil.getKookitConfig("percentage"),
+      page: StorageUtil.getKookitConfig("page"),
     };
   }
   setStyle(css: string) {

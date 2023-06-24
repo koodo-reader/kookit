@@ -31,10 +31,12 @@ export const makeHtmlBook = (bookStr: string, isTxt = false) => {
     load: () => load(item.index),
     unload: () => unload(item.index),
   }));
-  book.toc = chapterList.map((item) => ({
-    label: item.title,
-    href: "title" + item.index,
-  }));
+  book.toc = chapterList
+    .map((item) => ({
+      label: item.title,
+      href: "title" + item.index,
+    }))
+    .filter((item) => item.label !== "");
   book.rendition = { layout: "pre-paginated" };
   book.resolveHref = (href: string) => {
     return { index: parseInt(href.substring(5, href.length)) };
@@ -184,7 +186,6 @@ const getChapterDoc = (bookStr: string) => {
   let titleList: string[] = chapterStrList.map((item) => {
     return getHFromStr(item) || getTitleFromStr(item);
   });
-
   chapterDocList = chapterStrList.map((item, index) => {
     return {
       index: index,
@@ -238,7 +239,7 @@ const getTitlefromText = (bookDoc) => {
     return (
       item.childNodes.length === 1 &&
       item.childNodes[0].nodeType === Node.TEXT_NODE &&
-      isTitle(item.textContent)
+      isTitle(cleanText(item.textContent).slim())
     );
   });
   let h1TitleElements: any = [];

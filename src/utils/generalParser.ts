@@ -1,6 +1,5 @@
 import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
-import { handleImageMarker } from "./layoutUtil";
 
 class GeneralParser {
   book: any;
@@ -87,7 +86,7 @@ class GeneralParser {
         reader.onloadend = () => {
           resolve({
             name: metadata.title,
-            author: metadata.author[0].name,
+            author: metadata.author ? metadata.author[0].name : "",
             description: metadata.description,
             publisher: metadata.publisher,
             cover: reader.result,
