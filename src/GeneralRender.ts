@@ -1,11 +1,16 @@
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDoc";
-import { convertStyleNum, progressInfo } from "./utils/layoutUtil";
+import {
+  convertStyleNum,
+  getImageElement,
+  progressInfo,
+} from "./utils/layoutUtil";
 import StorageUtil from "./utils/storageUtil";
 import {
   getCloestBlock,
   getSearchResult,
   getVisibleText,
+  getAudioText,
   handleNextChapter,
   handlePrevChapter,
   handleRecord,
@@ -15,6 +20,9 @@ import {
   handleHighlightNode,
 } from "./utils/navigationUtil";
 import EventEmitter from "./utils/EventEmitter";
+import GeneralParser from "./utils/generalParser";
+import { mimetypeReverse } from "./utils/mimetype";
+declare var window: any;
 
 class GeneralRender extends EventEmitter {
   mode: string;
@@ -40,6 +48,72 @@ class GeneralRender extends EventEmitter {
       height: this.element.clientHeight,
     };
   }
+  getCache(book: any) {
+    return new Promise<ArrayBuffer | string>(async (resolve, reject) => {
+      let parser = new GeneralParser(book);
+      this.chapterList = await parser.getChapter(book.toc);
+      this.chapterDocList = await parser.getChapterDoc();
+      let toc = this.chapterList;
+      let sections = this.chapterDocList.map((item) => {
+        return { href: item.href, title: item.title };
+      });
+      let chapterTexts = await Promise.all(
+        this.chapterDocList.map(async (item) => {
+          let chapterText = "";
+          if (item.text.load) {
+            let blob = await fetch(await item.text.load()).then((r) =>
+              r.blob()
+            );
+            chapterText = await blob.text();
+          }
+          return chapterText;
+        })
+      );
+      let zip = new window.JSZip();
+      zip.file("toc.json", JSON.stringify(toc));
+      zip.file("sections.json", JSON.stringify(sections));
+      let chapters: any = [];
+      //todo get css, fonts and images blob
+      for (let index = 0; index < chapterTexts.length; index++) {
+        let chapterDoc = new DOMParser().parseFromString(
+          chapterTexts[index],
+          "text/html"
+        ) as any;
+
+        let imgDomList = getImageElement(chapterDoc) as any;
+        for (let subindex = 0; subindex < imgDomList.length; subindex++) {
+          let subImgZip = zip.folder("imgs/" + index);
+          let blob = await fetch(await imgDomList[subindex].src).then((r) =>
+            r.blob()
+          );
+          subImgZip.file(subindex + "." + mimetypeReverse[blob.type], blob);
+          imgDomList[subindex].src =
+            "imgs/" + index + "/" + subindex + "." + mimetypeReverse[blob.type];
+        }
+        let linkList = Array.from(chapterDoc.getElementsByTagName("link"));
+        linkList.forEach(async (link: any, subindex: number) => {
+          let subCssZip = zip.folder("css/" + index);
+          let blob = await fetch(await link.href).then((r) => r.blob());
+          subCssZip.file(subindex + "." + mimetypeReverse[blob.type], blob);
+          link.href =
+            "css/" + index + "/" + subindex + "." + mimetypeReverse[blob.type];
+        });
+        chapters.push(chapterDoc.documentElement.innerHTML);
+      }
+      let configZip = zip.folder("chapters");
+      for (let index = 0; index < chapters.length; index++) {
+        configZip.file(index + ".html", chapters[index]);
+      }
+      zip
+        .generateAsync({ type: "blob" })
+        .then(async (blob: any) => {
+          resolve(await new Response(blob).arrayBuffer());
+        })
+        .catch((err: any) => {
+          resolve("err");
+        });
+    });
+  }
   resolveChapter(href: string) {
     let path = href;
 
@@ -54,7 +128,7 @@ class GeneralRender extends EventEmitter {
     if (chapterIndex > -1) {
       return this.flattenChapters[chapterIndex];
     } else {
-      let pathWithoutHash = new URL(href).pathname;
+      let pathWithoutHash = href.split("#")[0];
       for (let index = 0; index < this.flattenChapters.length; index++) {
         if (
           this.flattenChapters[index].href.includes(
@@ -274,6 +348,9 @@ class GeneralRender extends EventEmitter {
   }
   visibleText() {
     return getVisibleText(this.element, this.mode);
+  }
+  audioText() {
+    return getAudioText(this.element, this.mode);
   }
   highlightNode(text: string, style: string) {
     handleHighlightNode(this.element, this.mode, text, style);

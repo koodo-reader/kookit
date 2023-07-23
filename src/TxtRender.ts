@@ -4,6 +4,7 @@ import { createIframe, handleLayout } from "./utils/layoutUtil";
 import GeneralRender from "./GeneralRender";
 import { makeHtmlBook } from "./libs/html";
 import GeneralParser from "./utils/generalParser";
+declare var window: any;
 class TxtRender extends GeneralRender {
   txtBuffer: ArrayBuffer;
   encoding: string;
@@ -27,17 +28,37 @@ class TxtRender extends GeneralRender {
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
       this.element = element;
-      let text = new TextDecoder(this.encoding).decode(this.txtBuffer);
-      this.book = makeHtmlBook(text, true);
+      if (!this.book) {
+        await this.parse();
+      }
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
       handleLayout(element, this.mode);
       this.trigger("rendered");
-
       resolve();
     });
+  }
+  async parse() {
+    let text = new TextDecoder(this.encoding || "utf8").decode(this.txtBuffer);
+    this.book = makeHtmlBook(text, true);
+  }
+  async preCache() {
+    if (!this.book) {
+      await this.parse();
+    }
+    return await this.getCache(this.book);
+  }
+
+  async getMetadata() {
+    const array = new Uint8Array(this.txtBuffer);
+    let bufferStr = "";
+    for (let i = 0; i < 100; ++i) {
+      bufferStr += String.fromCharCode(array[i]);
+    }
+    let charset = window.jschardet.detect(bufferStr).encoding || "utf-8";
+    return { charset: charset || "utf8" };
   }
 }
 

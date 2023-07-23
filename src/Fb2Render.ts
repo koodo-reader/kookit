@@ -23,11 +23,11 @@ class Fb2Render extends GeneralRender {
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
-      let blob = new Blob([this.fb2Buffer]);
-      this.book = await makeFB2(blob);
-      let parser = new GeneralParser(this.book);
       this.element = element;
-
+      if (!this.book) {
+        await this.parse();
+      }
+      let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
@@ -37,9 +37,20 @@ class Fb2Render extends GeneralRender {
       resolve();
     });
   }
-  async getMetadata() {
+  async parse() {
     let blob = new Blob([this.fb2Buffer]);
     this.book = await makeFB2(blob);
+  }
+  async preCache() {
+    if (!this.book) {
+      await this.parse();
+    }
+    return await this.getCache(this.book);
+  }
+  async getMetadata() {
+    if (!this.book) {
+      await this.parse();
+    }
     let parser = new GeneralParser(this.book);
     return await parser.getMetadata();
   }

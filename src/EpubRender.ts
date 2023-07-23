@@ -24,15 +24,11 @@ class EpubRender extends GeneralRender {
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
-      let blob = new Blob([this.epubBuffer]);
-      let file = new File([blob], "book", {
-        lastModified: new Date().getTime(),
-        type: blob.type,
-      });
-      const loader: any = await this.makeZipLoader(file);
-      this.book = await new EPUB(loader).init();
-      let parser = new GeneralParser(this.book);
       this.element = element;
+      if (!this.book) {
+        await this.parse();
+      }
+      let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
@@ -40,6 +36,21 @@ class EpubRender extends GeneralRender {
       this.trigger("rendered");
       resolve();
     });
+  }
+  async parse() {
+    let blob = new Blob([this.epubBuffer]);
+    let file = new File([blob], "book", {
+      lastModified: new Date().getTime(),
+      type: blob.type,
+    });
+    const loader: any = await this.makeZipLoader(file);
+    this.book = await new EPUB(loader).init();
+  }
+  async preCache() {
+    if (!this.book) {
+      await this.parse();
+    }
+    return await this.getCache(this.book);
   }
   async makeZipLoader(file) {
     const { ZipReader, BlobReader, TextWriter, BlobWriter } = window.zip;
@@ -57,14 +68,9 @@ class EpubRender extends GeneralRender {
     return { entries, loadText, loadBlob, getSize };
   }
   async getMetadata() {
-    let blob = new Blob([this.epubBuffer]);
-    let file = new File([blob], "book", {
-      lastModified: new Date().getTime(),
-      type: blob.type,
-    });
-
-    const loader: any = await this.makeZipLoader(file);
-    this.book = await new EPUB(loader).init();
+    if (!this.book) {
+      await this.parse();
+    }
     let parser = new GeneralParser(this.book);
     return await parser.getMetadata();
   }

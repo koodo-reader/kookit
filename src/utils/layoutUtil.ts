@@ -5,7 +5,7 @@ export const getStyleNum = (value: string) => {
 };
 export const convertStyleNum = (value: number) => {
   if (!value) return 0;
-  return parseInt(value + "");
+  return parseFloat(value + "");
 };
 export const handleIframeHeight = async (
   element: HTMLElement,
@@ -27,11 +27,11 @@ export const handleIframeHeight = async (
     })
   ).then((results) => {
     if (results.every((res) => res))
-      console.log("all images loaded successfully!");
+      console.log("all images loaded successfully!!");
     else console.log("some images failed to load, all finished loading");
   });
   handleImageSize(element, mode, format);
-  // await new Promise((r) => setTimeout(r, 1000));
+  handleTextStyle();
   if (mode !== "scroll") {
     iframe.height = element.clientHeight + "px";
     if (mode === "double") {
@@ -51,18 +51,45 @@ export const handleIframeHeight = async (
       }
     }
   } else {
+    //fix text blocked issue under scroll mode, don't ask me why
+    iframe.height = doc.body.scrollHeight + "px";
     iframe.height = doc.body.scrollHeight + "px";
   }
+  // await new Promise((r) => setTimeout(r, 1));
 };
 
 export const handleOneChapterDoc = async (item) => {
-  let chapterText = await (item.load
-    ? (await fetch(await item.load()).then((r) => r.blob())).text()
-    : "");
+  let chapterText = "";
+  if (item.load) {
+    let blob = await fetch(await item.load()).then((r) => r.blob());
+    chapterText = await blob.text();
+  }
+  if (item.loadAsset) {
+    chapterText = await handlePrecacheAssets(chapterText, item.loadAsset);
+  }
+
   return handleImageMarker(chapterText);
 };
 export const getImageElement = (Element) => {
   return Array.from(Element.querySelectorAll("img, image")) as HTMLElement[];
+};
+export const handlePrecacheAssets = async (bookStr, loadAsset) => {
+  let chapterDoc = new DOMParser().parseFromString(bookStr, "text/html") as any;
+  let imgDomList = getImageElement(chapterDoc) as any;
+  for (let subindex = 0; subindex < imgDomList.length; subindex++) {
+    if (imgDomList[subindex].src) {
+      imgDomList[subindex].src = await loadAsset(
+        imgDomList[subindex].getAttribute("src")
+      );
+    }
+  }
+  let linkList = Array.from(chapterDoc.getElementsByTagName("link"));
+  linkList.forEach(async (link: any) => {
+    if (link.getAttribute("href")) {
+      link.href = await loadAsset(link.getAttribute("href"));
+    }
+  });
+  return chapterDoc.documentElement.innerHTML;
 };
 export const handleImageMarker = (bookStr) => {
   let chapterDoc = new DOMParser().parseFromString(bookStr, "text/html") as any;
@@ -126,6 +153,23 @@ export const progressInfo = async (mode: string) => {
         convertStyleNum(doc.body.scrollLeft) / doc.body.clientWidth + ""
       ) + 1,
   };
+};
+export const handleTextStyle = () => {
+  let pageArea = document.getElementById("page-area");
+  if (!pageArea) return;
+  let iframe = pageArea.getElementsByTagName("iframe")[0];
+  if (!iframe) return;
+  let doc = iframe.contentDocument;
+  if (!doc) {
+    return;
+  }
+  let textNodes = doc.querySelectorAll(
+    "a, article, cite, code, div, li, p, pre, span, table"
+  ) as any;
+  for (let index = 0; index < textNodes.length; index++) {
+    const element = textNodes[index];
+    element.className = element.className + " kookit-text";
+  }
 };
 export const handleImageSize = (
   element: HTMLElement,

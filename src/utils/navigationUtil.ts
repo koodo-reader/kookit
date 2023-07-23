@@ -2,7 +2,6 @@ import ChapterDoc from "../model/chapterDoc";
 import {
   convertStyleNum,
   handleIframeHeight,
-  handleImageSize,
   handleOneChapterDoc,
   progressInfo,
 } from "./layoutUtil";
@@ -127,6 +126,7 @@ export const handlePrevChapter = async (
   if (!prevChapter) return;
 
   StorageUtil.setKookitConfig("text", "prevChapter");
+  StorageUtil.setKookitConfig("page", "");
   await handleRenderChatper(
     prevChapter.index,
     prevChapter.title,
@@ -136,9 +136,6 @@ export const handlePrevChapter = async (
     mode,
     format
   );
-  if (prevChapter.href && prevChapter.href.indexOf("#") > -1) {
-    await handleScrollPosition(element, mode, "", "", prevChapter.href, "");
-  }
 };
 
 export const handleRenderChatper = async (
@@ -161,7 +158,10 @@ export const handleRenderChatper = async (
   doc.body.innerHTML = "";
   iframe.height = 0 + "px";
   doc.body.scrollTo(0, 0);
-  if (chapterTitle && !chapterDocIndex) {
+  if (
+    (chapterTitle && !chapterDocIndex) ||
+    chapterTitle !== chapterDocList[chapterDocIndex].title
+  ) {
     chapterDocIndex = window._.findLastIndex(chapterDocList, {
       title: chapterTitle,
     });
@@ -169,23 +169,23 @@ export const handleRenderChatper = async (
   if (chapterDocIndex === -1 || chapterDocIndex > chapterDocList.length - 1) {
     chapterDocIndex = 0;
   }
-
   doc.body.innerHTML = await handleOneChapterDoc(
     chapterDocList[chapterDocIndex].text
   );
-  if (StorageUtil.getKookitConfig("chapterDocIndex")) {
-    let lastChapterDocIndex = parseInt(
-      StorageUtil.getKookitConfig("chapterDocIndex")!
-    );
-    if (
-      chapterDocList[lastChapterDocIndex] &&
-      chapterDocList[lastChapterDocIndex].text &&
-      chapterDocList[lastChapterDocIndex].text.unload &&
-      lastChapterDocIndex !== parseInt(chapterDocIndex + "")
-    )
-      chapterDocList[lastChapterDocIndex].text.unload();
-  }
+  await handleCssLink(doc);
+  StorageUtil.setKookitConfig("chapterTitle", chapterTitle);
+  StorageUtil.setKookitConfig("chapterHref", chapterHref);
+  StorageUtil.setKookitConfig("chapterDocIndex", chapterDocIndex + "");
+  StorageUtil.setKookitConfig(
+    "percentage",
+    chapterDocIndex / chapterDocList.length + ""
+  );
+  StorageUtil.setKookitConfig("text", "");
+  await handleIframeHeight(element, mode, iframe, format);
 
+  handleScrollPosition(element, mode, "", "", "", "");
+};
+export const handleCssLink = async (doc) => {
   let linkList = Array.from(doc.getElementsByTagName("link"));
   linkList.forEach((element: any) => {
     element.onload = () => {
@@ -214,19 +214,7 @@ export const handleRenderChatper = async (
   } catch (err) {
     console.log(err);
   }
-  StorageUtil.setKookitConfig("chapterTitle", chapterTitle);
-  StorageUtil.setKookitConfig("chapterHref", chapterHref);
-  StorageUtil.setKookitConfig("chapterDocIndex", chapterDocIndex + "");
-  StorageUtil.setKookitConfig(
-    "percentage",
-    chapterDocIndex / chapterDocList.length + ""
-  );
-  StorageUtil.setKookitConfig("text", "");
-  await handleIframeHeight(element, mode, iframe, format);
-
-  handleScrollPosition(element, mode, "", "", "", "");
 };
-
 export const handleScrollPosition = async (
   element: HTMLElement,
   mode: string,
@@ -255,22 +243,26 @@ export const handleScrollPosition = async (
     let nodeList = getBlockElement(doc.body);
     let targetNodeList = nodeList.filter((s, index) => {
       return (
-        cleanText((s as HTMLElement).textContent) &&
-        (cleanText((s as HTMLElement).textContent) === cleanText(text) ||
-          cleanText((s as HTMLElement).textContent) ===
-            window.ChineseS2T.t2s(cleanText(text)) ||
-          cleanText((s as HTMLElement).textContent) ===
-            window.ChineseS2T.s2t(cleanText(text))) &&
+        cleanText((s as HTMLElement).textContent).slim() &&
+        (cleanText((s as HTMLElement).textContent).slim() ===
+          cleanText(text).slim() ||
+          cleanText((s as HTMLElement).textContent).slim() ===
+            window.ChineseS2T.t2s(cleanText(text).slim()) ||
+          cleanText((s as HTMLElement).textContent).slim() ===
+            window.ChineseS2T.s2t(cleanText(text)).slim()) &&
         (Math.abs(index - parseInt(count)) < 2 || count === "search")
       );
     });
-
+    if (targetNodeList.length === 0) {
+      console.log("fail");
+      return;
+    }
     targetNode = getCloestBlock(targetNodeList[0], element);
     left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
         convertStyleNum(
           targetNode.marginLeft ||
-            parseInt(getComputedStyle(targetNode).marginLeft)
+            parseFloat(getComputedStyle(targetNode).marginLeft)
         )
       : text === "prevChapter"
       ? doc.body.scrollWidth
@@ -307,13 +299,12 @@ export const getCloestBlock = (
 ) => {
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-
   if (
     parseInt(
       convertStyleNum(targetNode.offsetLeft) -
         convertStyleNum(
           (targetNode as any).marginLeft ||
-            parseInt(getComputedStyle(targetNode).marginLeft)
+            parseFloat(getComputedStyle(targetNode).marginLeft)
         ) +
         ""
     ) %
@@ -399,8 +390,12 @@ export const handleRecord = async (
       break;
     }
   }
+
   handleHashChapter(visibleNode, flattenChapters);
-  if (firstVisibleNode) {
+  if (
+    firstVisibleNode &&
+    !isCurrentNodeFarFromParrent(firstVisibleNode, element)
+  ) {
     StorageUtil.setKookitConfig(
       "text",
       firstVisibleNode
@@ -422,6 +417,23 @@ export const handleRecord = async (
   setTimeout(() => {
     lock = false;
   }, 100);
+};
+export const isCurrentNodeFarFromParrent = (
+  targetNode: HTMLElement,
+  element: HTMLElement
+) => {
+  let section = Math.floor(element.clientWidth / 12);
+  let gap = section % 2 === 0 ? section : section - 1;
+  if (
+    Math.abs(
+      targetNode.offsetLeft - getCloestBlock(targetNode, element).offsetLeft
+    ) >
+    (element.clientWidth + gap) / 2
+  ) {
+    return true;
+  } else {
+    return false;
+  }
 };
 export const handleHashChapter = (visibleNode, flattenChapters) => {
   let chapterHref = StorageUtil.getKookitConfig("chapterHref") || "";
@@ -462,7 +474,7 @@ export const handleNextChapter = async (
     "next"
   );
   if (!nextChapter) return;
-
+  StorageUtil.setKookitConfig("page", "");
   await handleRenderChatper(
     nextChapter.index,
     nextChapter.title,
@@ -472,17 +484,35 @@ export const handleNextChapter = async (
     mode,
     format
   );
-  //适配Don Quijiote de la Mancha - (Miguel de Cervantes)的第4章和第五章翻页的bug
-  let nextChapterDocIndex = window._.findLastIndex(chapterDocList, {
-    href: chapterHref,
-  });
-  if (
-    nextChapter.href &&
-    nextChapter.href.indexOf("#") > -1 &&
-    nextChapterDocIndex === -1
-  ) {
-    await handleScrollPosition(element, mode, "", "", nextChapter.href, "");
+};
+export const getAudioText = (element: HTMLElement, mode: string) => {
+  let pageArea = document.getElementById("page-area");
+  if (!pageArea) return;
+  let iframe = pageArea.getElementsByTagName("iframe")[0];
+  if (!iframe) return;
+  let doc = iframe.contentDocument;
+  if (!doc) {
+    return;
   }
+  let nodeList = getBlockElement(doc.body).filter(
+    (item) => !isParentBlock(item)
+  );
+  let audioNode = nodeList.filter((s) =>
+    ((s as HTMLElement).textContent || "").trim()
+  );
+  let audioText = (mode !== "scroll" ? audioNode : nodeList)
+    .filter((item) => item.textContent !== "img")
+    .map((item) => item.textContent);
+  let firstSliceIndex = 0;
+  if (
+    getVisibleText(element, mode) &&
+    (getVisibleText(element, mode) as any).length > 0
+  ) {
+    let firstVisibleText = (getVisibleText(element, mode) as any)[0];
+    firstSliceIndex = audioText.indexOf(firstVisibleText);
+  }
+
+  return audioText.slice(firstSliceIndex);
 };
 export const getVisibleText = (element: HTMLElement, mode: string) => {
   let pageArea = document.getElementById("page-area");
@@ -501,6 +531,7 @@ export const getVisibleText = (element: HTMLElement, mode: string) => {
       isScrolledIntoView(element, s as HTMLElement, mode) &&
       ((s as HTMLElement).textContent || "").trim()
   );
+
   return (mode !== "scroll" ? visibleNode : nodeList)
     .filter((item) => item.textContent !== "img")
     .map((item) => item.textContent);
@@ -526,7 +557,6 @@ export const handleHighlightNode = (
     }
 
     return (
-      isScrolledIntoView(element, s as HTMLElement, mode) &&
       ((s as HTMLElement).textContent || "").trim() &&
       (s as HTMLElement).textContent === text
     );

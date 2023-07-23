@@ -46,21 +46,25 @@ class GeneralParser {
   }
   async getChapterDoc() {
     const chapterIndexList = this.flattenChapters.map((item) => item.index);
-    return this.book.sections.map((item: any, index: number) => {
-      if (chapterIndexList.indexOf(index) > -1) {
-        return {
-          title: this.flattenChapters[chapterIndexList.indexOf(index)].title,
-          href: this.flattenChapters[chapterIndexList.indexOf(index)].href,
-          text: item,
-        };
-      } else {
-        return {
-          title: "",
-          href: "",
-          text: item,
-        };
-      }
-    }) as ChapterDoc[];
+    return this.book.sections
+      .map((item: any, index: number) => {
+        if (chapterIndexList.indexOf(index) > -1) {
+          return {
+            title: this.flattenChapters[chapterIndexList.indexOf(index)].title,
+            href: this.flattenChapters[chapterIndexList.indexOf(index)].href,
+            text: item,
+          };
+        } else {
+          return {
+            title: "",
+            href: "",
+            text: item,
+          };
+        }
+      })
+      .filter((item: ChapterDoc) => {
+        return !item.text.linear;
+      }) as ChapterDoc[];
   }
 
   flatChapter(chapters: any) {

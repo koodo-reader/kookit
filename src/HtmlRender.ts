@@ -1,25 +1,25 @@
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDoc";
 import { createIframe, handleLayout } from "./utils/layoutUtil";
-import GeneralParser from "./utils/generalParser";
-import { isMOBI, MOBI } from "./libs/mobi.js";
 import GeneralRender from "./GeneralRender";
+import { makeHtmlBook } from "./libs/html";
+import GeneralParser from "./utils/generalParser";
+import { mimetype } from "./utils/mimetype";
 declare var window: any;
-class MobiRender extends GeneralRender {
-  mobiBuffer: ArrayBuffer;
+class HtmlRender extends GeneralRender {
+  htmlBuffer: ArrayBuffer;
   mode: string;
-  book: any;
-  metadata: any;
+  format: string;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(mobiBuffer: ArrayBuffer, mode: string) {
-    super(mode, "MOBI");
-    this.mobiBuffer = mobiBuffer;
+  constructor(htmlBuffer: ArrayBuffer, mode: string, format: string) {
+    super(mode, "MD");
+    this.htmlBuffer = htmlBuffer;
     this.mode = mode;
+    this.format = format;
     this.chapterList = [];
     this.chapterDocList = [];
-    this.book = "";
     this.element = "";
   }
   renderTo(element: HTMLElement) {
@@ -31,6 +31,7 @@ class MobiRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
+
       createIframe(element);
       handleLayout(element, this.mode);
       this.trigger("rendered");
@@ -38,16 +39,24 @@ class MobiRender extends GeneralRender {
     });
   }
   async parse() {
-    let blob = new Blob([this.mobiBuffer]);
-    let file = new File([blob], "book", {
-      lastModified: new Date().getTime(),
-      type: blob.type,
+    return new Promise<void>((resolve, reject) => {
+      var blob = new Blob([this.htmlBuffer], {
+        type: mimetype[this.format.toLocaleLowerCase()],
+      });
+      var reader = new FileReader();
+      reader.onload = async (evt) => {
+        let html = evt.target?.result as any;
+        if (this.format === "MHTML") {
+          html =
+            window.mhtml2html.convert(html).window.document.documentElement
+              .innerHTML;
+        }
+
+        this.book = makeHtmlBook(html, true);
+        resolve();
+      };
+      reader.readAsText(blob, "UTF-8");
     });
-    if (await isMOBI(file)) {
-      this.book = await new MOBI({ unzlib: window.fflate.unzlibSync }).open(
-        file
-      );
-    }
   }
   async preCache() {
     if (!this.book) {
@@ -55,12 +64,5 @@ class MobiRender extends GeneralRender {
     }
     return await this.getCache(this.book);
   }
-  async getMetadata() {
-    if (!this.book) {
-      await this.parse();
-    }
-    let parser = new GeneralParser(this.book);
-    return await parser.getMetadata();
-  }
 }
-export default MobiRender;
+export default HtmlRender;

@@ -1,25 +1,22 @@
 import Chapter from "./model/chapter";
 import ChapterDoc from "./model/chapterDoc";
 import { createIframe, handleLayout } from "./utils/layoutUtil";
-import GeneralParser from "./utils/generalParser";
-import { isMOBI, MOBI } from "./libs/mobi.js";
 import GeneralRender from "./GeneralRender";
+import { makeHtmlBook } from "./libs/html";
+import GeneralParser from "./utils/generalParser";
 declare var window: any;
-class MobiRender extends GeneralRender {
-  mobiBuffer: ArrayBuffer;
+class DocxRender extends GeneralRender {
+  docxBuffer: ArrayBuffer;
   mode: string;
-  book: any;
-  metadata: any;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(mobiBuffer: ArrayBuffer, mode: string) {
-    super(mode, "MOBI");
-    this.mobiBuffer = mobiBuffer;
+  constructor(docxBuffer: ArrayBuffer, mode: string) {
+    super(mode, "MD");
+    this.docxBuffer = docxBuffer;
     this.mode = mode;
     this.chapterList = [];
     this.chapterDocList = [];
-    this.book = "";
     this.element = "";
   }
   renderTo(element: HTMLElement) {
@@ -38,16 +35,15 @@ class MobiRender extends GeneralRender {
     });
   }
   async parse() {
-    let blob = new Blob([this.mobiBuffer]);
-    let file = new File([blob], "book", {
-      lastModified: new Date().getTime(),
-      type: blob.type,
+    return new Promise<void>((resolve, reject) => {
+      window.mammoth
+        .convertToHtml({ arrayBuffer: this.docxBuffer })
+        .then(async (res: any) => {
+          this.book = makeHtmlBook(res.value, true);
+
+          resolve();
+        });
     });
-    if (await isMOBI(file)) {
-      this.book = await new MOBI({ unzlib: window.fflate.unzlibSync }).open(
-        file
-      );
-    }
   }
   async preCache() {
     if (!this.book) {
@@ -55,12 +51,5 @@ class MobiRender extends GeneralRender {
     }
     return await this.getCache(this.book);
   }
-  async getMetadata() {
-    if (!this.book) {
-      await this.parse();
-    }
-    let parser = new GeneralParser(this.book);
-    return await parser.getMetadata();
-  }
 }
-export default MobiRender;
+export default DocxRender;
