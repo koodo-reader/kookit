@@ -77,7 +77,7 @@ export const handlePrecacheAssets = async (bookStr, loadAsset) => {
   let chapterDoc = new DOMParser().parseFromString(bookStr, "text/html") as any;
   let imgDomList = getImageElement(chapterDoc) as any;
   for (let subindex = 0; subindex < imgDomList.length; subindex++) {
-    if (imgDomList[subindex].src) {
+    if (imgDomList[subindex].getAttribute("src")) {
       imgDomList[subindex].src = await loadAsset(
         imgDomList[subindex].getAttribute("src")
       );

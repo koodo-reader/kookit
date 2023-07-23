@@ -83,20 +83,44 @@ class GeneralRender extends EventEmitter {
         let imgDomList = getImageElement(chapterDoc) as any;
         for (let subindex = 0; subindex < imgDomList.length; subindex++) {
           let subImgZip = zip.folder("imgs/" + index);
-          let blob = await fetch(await imgDomList[subindex].src).then((r) =>
-            r.blob()
-          );
-          subImgZip.file(subindex + "." + mimetypeReverse[blob.type], blob);
-          imgDomList[subindex].src =
-            "imgs/" + index + "/" + subindex + "." + mimetypeReverse[blob.type];
+          if (imgDomList[subindex].getAttribute("src")) {
+            try {
+              let blob = await fetch(
+                await imgDomList[subindex].getAttribute("src")
+              ).then((r) => r.blob());
+              subImgZip.file(subindex + "." + mimetypeReverse[blob.type], blob);
+              imgDomList[subindex].src =
+                "imgs/" +
+                index +
+                "/" +
+                subindex +
+                "." +
+                mimetypeReverse[blob.type];
+            } catch (error) {
+              console.log(error);
+            }
+          }
         }
         let linkList = Array.from(chapterDoc.getElementsByTagName("link"));
         linkList.forEach(async (link: any, subindex: number) => {
           let subCssZip = zip.folder("css/" + index);
-          let blob = await fetch(await link.href).then((r) => r.blob());
-          subCssZip.file(subindex + "." + mimetypeReverse[blob.type], blob);
-          link.href =
-            "css/" + index + "/" + subindex + "." + mimetypeReverse[blob.type];
+          if (link.getAttribute("href")) {
+            try {
+              let blob = await fetch(await link.getAttribute("href")).then(
+                (r) => r.blob()
+              );
+              subCssZip.file(subindex + "." + mimetypeReverse[blob.type], blob);
+              link.href =
+                "css/" +
+                index +
+                "/" +
+                subindex +
+                "." +
+                mimetypeReverse[blob.type];
+            } catch (error) {
+              console.log(error);
+            }
+          }
         });
         chapters.push(chapterDoc.documentElement.innerHTML);
       }
@@ -107,6 +131,7 @@ class GeneralRender extends EventEmitter {
       zip
         .generateAsync({ type: "blob" })
         .then(async (blob: any) => {
+          // window.saveAs(blob, "file.zip");
           resolve(await new Response(blob).arrayBuffer());
         })
         .catch((err: any) => {

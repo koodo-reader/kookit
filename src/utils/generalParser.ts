@@ -63,7 +63,12 @@ class GeneralParser {
         }
       })
       .filter((item: ChapterDoc) => {
-        return !item.text.linear;
+        //修复azw3空白页的问题
+        if (item.text.linear === "no") {
+          return false;
+        } else {
+          return true;
+        }
       }) as ChapterDoc[];
   }
 
