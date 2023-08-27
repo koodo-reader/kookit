@@ -33,7 +33,7 @@ export const makeHtmlBook = (bookStr: string, isTxt = false) => {
   }));
   book.toc = chapterList
     .map((item) => ({
-      label: item.title,
+      label: item.label,
       href: "title" + item.index,
     }))
     .filter((item) => item.label !== "");
@@ -176,7 +176,7 @@ const startWithJUAN = (line) => {
 const getChapterDoc = (bookStr: string) => {
   let chapterDocList: {
     index: number;
-    title: string;
+    label: string;
     text: any;
     href: string;
   }[] = [];
@@ -189,7 +189,7 @@ const getChapterDoc = (bookStr: string) => {
   chapterDocList = chapterStrList.map((item, index) => {
     return {
       index: index,
-      title: titleList[index],
+      label: titleList[index],
       text: item,
       href: "title" + index,
     };
@@ -238,11 +238,12 @@ const getTitlefromText = (bookDoc) => {
     );
   });
   let h1TitleElements: any = [];
-  titleElements.forEach((oldElement: any) => {
+  for (let index = 0; index < titleElements.length; index++) {
+    const oldElement: any = titleElements[index];
     const newElement = document.createElement("h1");
     newElement.innerHTML = oldElement.innerText;
     oldElement.parentNode.replaceChild(newElement, oldElement);
     h1TitleElements.push(newElement);
-  });
+  }
   return h1TitleElements;
 };

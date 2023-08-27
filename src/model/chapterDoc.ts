@@ -1,9 +1,9 @@
 class ChapterDoc {
-  title: string;
+  label: string;
   text: any;
   href: string;
-  constructor(title: string, href: string, text: string) {
-    this.title = title;
+  constructor(label: string, href: string, text: string) {
+    this.label = label;
     this.href = href;
     this.text = text;
   }

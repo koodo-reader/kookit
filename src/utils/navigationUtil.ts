@@ -129,7 +129,7 @@ export const handlePrevChapter = async (
   StorageUtil.setKookitConfig("page", "");
   await handleRenderChatper(
     prevChapter.index,
-    prevChapter.title,
+    prevChapter.label,
     prevChapter.href,
     chapterDocList,
     element,
@@ -160,10 +160,10 @@ export const handleRenderChatper = async (
   doc.body.scrollTo(0, 0);
   if (
     (chapterTitle && !chapterDocIndex) ||
-    chapterTitle !== chapterDocList[chapterDocIndex].title
+    chapterTitle !== chapterDocList[chapterDocIndex].label
   ) {
     chapterDocIndex = window._.findLastIndex(chapterDocList, {
-      title: chapterTitle,
+      label: chapterTitle,
     });
   }
   if (chapterDocIndex === -1 || chapterDocIndex > chapterDocList.length - 1) {
@@ -187,13 +187,15 @@ export const handleRenderChatper = async (
 };
 export const handleCssLink = async (doc) => {
   let linkList = Array.from(doc.getElementsByTagName("link"));
-  linkList.forEach((element: any) => {
-    element.onload = () => {
+  for (let index = 0; index < linkList.length; index++) {
+    const link: any = linkList[index];
+    link.onload = () => {
       console.log("finished");
     };
-  });
+  }
   let styleSheetPromises: any = [];
-  linkList.forEach((link: any) => {
+  for (let index = 0; index < linkList.length; index++) {
+    const link: any = linkList[index];
     if (!link.href.endsWith("null")) {
       styleSheetPromises.push(
         new Promise((resolve, reject) => {
@@ -201,7 +203,7 @@ export const handleCssLink = async (doc) => {
         })
       );
     }
-  });
+  }
   try {
     await Promise.race([
       Promise.all(styleSheetPromises),
@@ -254,7 +256,7 @@ export const handleScrollPosition = async (
       );
     });
     if (targetNodeList.length === 0) {
-      console.log("fail");
+      console.log("failed");
       return;
     }
     targetNode = getCloestBlock(targetNodeList[0], element);
@@ -390,7 +392,6 @@ export const handleRecord = async (
       break;
     }
   }
-
   handleHashChapter(visibleNode, flattenChapters);
   if (
     firstVisibleNode &&
@@ -477,7 +478,7 @@ export const handleNextChapter = async (
   StorageUtil.setKookitConfig("page", "");
   await handleRenderChatper(
     nextChapter.index,
-    nextChapter.title,
+    nextChapter.label,
     nextChapter.href,
     chapterDocList,
     element,
@@ -591,7 +592,7 @@ export const getSearchResult = async (
             ) || "",
           cfi: JSON.stringify({
             text: nodeList[j].textContent,
-            chapterTitle: chapterDocList[i].title,
+            chapterTitle: chapterDocList[i].label,
             chapterDocIndex: i,
             chapterHref: chapterDocList[i].href,
             count: "search",

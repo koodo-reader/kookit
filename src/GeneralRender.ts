@@ -46,6 +46,9 @@ class GeneralRender extends EventEmitter {
     return {
       width: this.element.clientWidth,
       height: this.element.clientHeight,
+      left: this.element.offsetLeft,
+      top: this.element.offsetTop,
+      scrollTop: this.element.scrollTop,
     };
   }
   getCache(book: any) {
@@ -54,8 +57,8 @@ class GeneralRender extends EventEmitter {
       this.chapterList = await parser.getChapter(book.toc);
       this.chapterDocList = await parser.getChapterDoc();
       let toc = this.chapterList;
-      let sections = this.chapterDocList.map((item) => {
-        return { href: item.href, title: item.title };
+      let sections = this.chapterDocList.map((item: ChapterDoc) => {
+        return { href: item.href, label: item.label };
       });
       let chapterTexts = await Promise.all(
         this.chapterDocList.map(async (item) => {
@@ -102,7 +105,8 @@ class GeneralRender extends EventEmitter {
           }
         }
         let linkList = Array.from(chapterDoc.getElementsByTagName("link"));
-        linkList.forEach(async (link: any, subindex: number) => {
+        for (let subindex = 0; subindex < linkList.length; subindex++) {
+          let link: any = linkList[subindex];
           let subCssZip = zip.folder("css/" + index);
           if (link.getAttribute("href")) {
             try {
@@ -121,7 +125,7 @@ class GeneralRender extends EventEmitter {
               console.log(error);
             }
           }
-        });
+        }
         chapters.push(chapterDoc.documentElement.innerHTML);
       }
       let configZip = zip.folder("chapters");

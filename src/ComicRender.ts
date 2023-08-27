@@ -192,7 +192,8 @@ class ComicRender extends GeneralRender {
   getRarEntries(Node) {
     const list = Object.keys(Node);
     let entries: any = [];
-    list.forEach((item) => {
+    for (let index = 0; index < list.length; index++) {
+      const item = list[index];
       if (Node[item].type === "dir") {
         entries = entries.concat(this.getRarEntries(Node[item].ls));
       } else {
@@ -202,7 +203,7 @@ class ComicRender extends GeneralRender {
           fileSize: Node[item].fileSize,
         });
       }
-    });
+    }
     return entries;
   }
   get7zEntries(FSNode: any) {
@@ -217,7 +218,8 @@ class ComicRender extends GeneralRender {
       );
     });
     let entries: any = [];
-    list.forEach((item) => {
+    for (let index = 0; index < list.length; index++) {
+      const item = list[index];
       if (contents[item].isFolder) {
         entries = entries.concat(this.get7zEntries(contents[item]));
       } else {
@@ -227,7 +229,7 @@ class ComicRender extends GeneralRender {
           size: contents[item].usedBytes,
         });
       }
-    });
+    }
     return entries;
   }
   async getMetadata() {

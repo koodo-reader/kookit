@@ -43,7 +43,7 @@ export const makeCacheBook = async (bookBuffer: ArrayBuffer) => {
     loadAsset: (url) => loadAsset(url),
   }));
   book.toc = toc.map((item: Chapter) => ({
-    label: item.title,
+    label: item.label,
     href: item.href,
     subitems: item.subitems,
   }));

@@ -84,11 +84,12 @@ export const handlePrecacheAssets = async (bookStr, loadAsset) => {
     }
   }
   let linkList = Array.from(chapterDoc.getElementsByTagName("link"));
-  linkList.forEach(async (link: any) => {
+  for (let index = 0; index < linkList.length; index++) {
+    const link: any = linkList[index];
     if (link.getAttribute("href")) {
       link.href = await loadAsset(link.getAttribute("href"));
     }
-  });
+  }
   return chapterDoc.documentElement.innerHTML;
 };
 export const handleImageMarker = (bookStr) => {
@@ -191,21 +192,28 @@ export const handleImageSize = (
     let parentItem = item.parentElement;
     let maxHeight = 0;
     let maxWidth = 0;
+    let width = item.getAttribute("width");
+    let height = item.getAttribute("height");
     if (format.startsWith("CB") && mode === "scroll") {
       maxWidth = parentItem.offsetWidth;
     } else if (format.startsWith("CB") && mode === "single") {
       maxHeight = element.clientHeight;
       maxWidth = element.clientWidth;
-    } else if (item.width && item.height) {
+    } else if (width && height) {
       let isImageScaleLargerThanElement =
-        item.height / item.width >
-        parentItem.clientHeight / parentItem.clientWidth;
+        height / width > parentItem.clientHeight / parentItem.clientWidth;
       if (isImageScaleLargerThanElement) {
         maxHeight = parentItem.clientHeight;
-        maxWidth = (maxHeight * item.width) / item.height;
+        maxWidth = parseInt((maxHeight * width) / height + "");
       } else {
         maxWidth = parentItem.clientWidth;
-        maxHeight = (maxWidth * item.height) / item.width;
+        maxHeight = parseInt((maxWidth * height) / width + "");
+      }
+      if (maxHeight > doc.body.clientHeight) {
+        maxWidth = parseInt(
+          maxWidth * (doc.body.clientHeight / maxHeight) + ""
+        );
+        maxHeight = doc.body.clientHeight;
       }
     } else if (
       parentItem &&
@@ -224,17 +232,43 @@ export const handleImageSize = (
         : (element.clientWidth - gap) / 2,
       maxWidth
     );
-    (maxWidth || maxHeight) &&
+    let marginTop = 0;
+    // if (mode !== "scroll") {
+    //   if (doc.body.clientHeight - element.offsetTop < maxHeight)
+    //     marginTop = doc.body.clientHeight - element.offsetTop;
+    // }
+    if (maxWidth || maxHeight) {
       item.setAttribute(
         "style",
-        `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${
-          maxHeight > 0 ? maxHeight + "px" : ""
-        }; ${
-          format.startsWith("CB")
-            ? "display: block; margin-left: auto; margin-right: auto;"
-            : ""
-        }`
+        item.getAttribute("style")
+          ? item.getAttribute("style")
+          : "" +
+              ";" +
+              `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${
+                maxHeight > 0 ? maxHeight + "px" : ""
+              };margin-top: ${marginTop + "px"}; ${
+                format.startsWith("CB")
+                  ? "display: block; margin-left: auto; margin-right: auto;"
+                  : ""
+              }`
       );
+      if (parentItem) {
+        parentItem.setAttribute(
+          "style",
+          parentItem.getAttribute("style")
+            ? parentItem.getAttribute("style")
+            : "" +
+                ";" +
+                `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${
+                  maxHeight > 0 ? maxHeight + "px" : ""
+                };margin-top: ${marginTop + "px"}; ${
+                  format.startsWith("CB")
+                    ? "display: block; margin-left: auto; margin-right: auto;"
+                    : ""
+                }`
+        );
+      }
+    }
   }
 };
 

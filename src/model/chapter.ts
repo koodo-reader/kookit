@@ -1,10 +1,10 @@
 class Chapter {
-  title: string;
+  label: string;
   href: string;
   index: number;
   subitems: any[];
-  constructor(title: string, href: string, index: number, subitems: any[]) {
-    this.title = title;
+  constructor(label: string, href: string, index: number, subitems: any[]) {
+    this.label = label;
     this.href = href;
     this.index = index;
     this.subitems = subitems;
