@@ -61,7 +61,7 @@ let keywords = [
   " ",
   "　",
 ];
-let containChars = ["[", "(", "。", "；", ";"];
+let containChars = ["[", "。", "；", ";"];
 let startWithChars = [
   "CHAPTER",
   "Chapter",
@@ -104,7 +104,7 @@ const isTitle = (line: any) => {
       (line.startsWith("第") && startWithDI(line)) ||
       (line.startsWith("卷") && startWithJUAN(line)) ||
       (line.contains("第") &&
-        line.lastIndexOf("第") < 2 &&
+        line.lastIndexOf("第") < 4 &&
         startWithDI(line.substr(line.indexOf("第")))) ||
       isStartWithNumAndChars(line))
   );

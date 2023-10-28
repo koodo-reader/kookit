@@ -160,7 +160,10 @@ export const handleRenderChatper = async (
   doc.body.scrollTo(0, 0);
   if (
     (chapterTitle && !chapterDocIndex) ||
-    chapterTitle !== chapterDocList[chapterDocIndex].label
+    (chapterDocList[chapterDocIndex].label &&
+      chapterTitle &&
+      chapterTitle !== chapterDocList[chapterDocIndex].label &&
+      chapterHref.indexOf("#") === -1)
   ) {
     chapterDocIndex = window._.findLastIndex(chapterDocList, {
       label: chapterTitle,
@@ -259,7 +262,7 @@ export const handleScrollPosition = async (
       console.log("failed");
       return;
     }
-    targetNode = getCloestBlock(targetNodeList[0], element);
+    targetNode = getCloestBlock(targetNodeList[0], element, mode);
     left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
         convertStyleNum(
@@ -283,10 +286,23 @@ export const handleScrollPosition = async (
     }
     targetNode = getCloestBlock(
       doc.body.querySelector("#" + id) || doc.body,
-      element
+      element,
+      mode
     );
-    left = targetNode ? convertStyleNum(targetNode.offsetLeft) : 0;
-    top = targetNode ? convertStyleNum(targetNode.offsetTop) : 0;
+    left = targetNode
+      ? convertStyleNum(targetNode.offsetLeft) -
+        convertStyleNum(
+          targetNode.marginLeft ||
+            parseFloat(getComputedStyle(targetNode).marginLeft)
+        )
+      : 0;
+    top = targetNode
+      ? convertStyleNum(targetNode.offsetTop) -
+        convertStyleNum(
+          targetNode.marginTop ||
+            parseInt(getComputedStyle(targetNode).marginTop)
+        )
+      : 0;
   }
   if (mode !== "scroll") {
     doc.body.scrollTo(left, 0);
@@ -297,11 +313,15 @@ export const handleScrollPosition = async (
 
 export const getCloestBlock = (
   targetNode: HTMLElement,
-  element: HTMLElement
+  element: HTMLElement,
+  mode: string
 ) => {
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  if (
+  if (mode === "scroll") {
+    return targetNode;
+  } else if (
+    mode !== "scroll" &&
     parseInt(
       convertStyleNum(targetNode.offsetLeft) -
         convertStyleNum(
@@ -311,11 +331,11 @@ export const getCloestBlock = (
         ""
     ) %
       ((element.clientWidth + gap) / 2) ===
-    0
+      0
   ) {
     return targetNode;
   } else if (targetNode.parentElement) {
-    return getCloestBlock(targetNode.parentElement, element);
+    return getCloestBlock(targetNode.parentElement, element, mode);
   } else {
     return targetNode;
   }
@@ -395,7 +415,7 @@ export const handleRecord = async (
   handleHashChapter(visibleNode, flattenChapters);
   if (
     firstVisibleNode &&
-    !isCurrentNodeFarFromParrent(firstVisibleNode, element)
+    !isCurrentNodeFarFromParrent(firstVisibleNode, element, mode)
   ) {
     StorageUtil.setKookitConfig(
       "text",
@@ -421,13 +441,15 @@ export const handleRecord = async (
 };
 export const isCurrentNodeFarFromParrent = (
   targetNode: HTMLElement,
-  element: HTMLElement
+  element: HTMLElement,
+  mode
 ) => {
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   if (
     Math.abs(
-      targetNode.offsetLeft - getCloestBlock(targetNode, element).offsetLeft
+      targetNode.offsetLeft -
+        getCloestBlock(targetNode, element, mode).offsetLeft
     ) >
     (element.clientWidth + gap) / 2
   ) {
@@ -613,7 +635,7 @@ export const isParentBlock = (myDiv: Element) => {
   var children = myDiv.children;
   let flag = false;
   var blockRegex =
-    /^(address|blockquote|body|center|dir|div|dl|fieldset|form|h[1-6]|hr|isindex|menu|noframes|noscript|ol|p|pre|table|ul|dd|dt|frameset|li|tbody|td|tfoot|th|thead|tr|html)$/i;
+    /^(address|section|blockquote|body|center|dir|div|dl|fieldset|form|h[1-6]|hr|isindex|menu|noframes|noscript|ol|p|pre|table|ul|dd|dt|frameset|li|tbody|td|tfoot|th|thead|tr|html)$/i;
 
   for (var i = 0; i < children.length; i++) {
     if (blockRegex.test(children[i].nodeName)) {

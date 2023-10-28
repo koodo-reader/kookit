@@ -18,19 +18,21 @@ export const handleIframeHeight = async (
     return;
   }
   await Promise.all(
-    Array.from(doc.images).map((img: any) => {
-      if (img.complete) return Promise.resolve(img.naturalHeight !== 0);
-      return new Promise((resolve) => {
-        img.addEventListener("load", () => resolve(true));
-        img.addEventListener("error", () => resolve(false));
-      });
-    })
+    Array.from([...doc.images, ...doc.querySelectorAll("image")]).map(
+      (img: any) => {
+        if (img.complete) return Promise.resolve(img.naturalHeight !== 0);
+        return new Promise((resolve) => {
+          img.addEventListener("load", () => resolve(true));
+          img.addEventListener("error", () => resolve(false));
+        });
+      }
+    )
   ).then((results) => {
     if (results.every((res) => res))
       console.log("all images loaded successfully!!");
     else console.log("some images failed to load, all finished loading");
   });
-  handleImageSize(element, mode, format);
+  await handleImageSize(element, mode, format);
   handleTextStyle();
   if (mode !== "scroll") {
     iframe.height = element.clientHeight + "px";
@@ -165,14 +167,20 @@ export const handleTextStyle = () => {
     return;
   }
   let textNodes = doc.querySelectorAll(
-    "a, article, cite, code, div, li, p, pre, span, table"
+    "a, article, cite, div, li, p, span, table, h1,h2,h3,h4, bold"
   ) as any;
   for (let index = 0; index < textNodes.length; index++) {
     const element = textNodes[index];
     element.className = element.className + " kookit-text";
   }
 };
-export const handleImageSize = (
+export const getImageMeta = async (url) => {
+  const img = new Image();
+  img.src = url;
+  await img.decode();
+  return img;
+};
+export const handleImageSize = async (
   element: HTMLElement,
   mode: string,
   format: string
@@ -192,8 +200,13 @@ export const handleImageSize = (
     let parentItem = item.parentElement;
     let maxHeight = 0;
     let maxWidth = 0;
-    let width = item.getAttribute("width");
-    let height = item.getAttribute("height");
+    let width = item.naturalWidth;
+    let height = item.naturalHeight;
+    if (item.tagName === "image") {
+      let img = await getImageMeta(item.getAttribute("xlink:href"));
+      width = img.naturalWidth;
+      height = img.naturalHeight;
+    }
     if (format.startsWith("CB") && mode === "scroll") {
       maxWidth = parentItem.offsetWidth;
     } else if (format.startsWith("CB") && mode === "single") {
@@ -237,6 +250,18 @@ export const handleImageSize = (
     //   if (doc.body.clientHeight - element.offsetTop < maxHeight)
     //     marginTop = doc.body.clientHeight - element.offsetTop;
     // }
+    if (width && height) {
+      if (width > height) {
+        maxHeight = maxWidth * (height / width);
+      } else {
+        if (maxHeight / maxWidth > height / width) {
+          maxHeight = maxWidth * (height / width);
+        } else {
+          maxWidth = maxHeight * (width / height);
+        }
+      }
+    }
+
     if (maxWidth || maxHeight) {
       item.setAttribute(
         "style",

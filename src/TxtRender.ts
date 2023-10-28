@@ -6,7 +6,7 @@ import { makeHtmlBook } from "./libs/html";
 import GeneralParser from "./utils/generalParser";
 declare var window: any;
 class TxtRender extends GeneralRender {
-  txtBuffer: ArrayBuffer;
+  text: string;
   encoding: string;
   bookStr: string;
   mode: string;
@@ -14,9 +14,9 @@ class TxtRender extends GeneralRender {
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(txtBuffer: ArrayBuffer, mode: string, encoding: string) {
+  constructor(text: string, mode: string, encoding: string) {
     super(mode, "TXT");
-    this.txtBuffer = txtBuffer;
+    this.text = text;
     this.encoding = encoding;
     this.mode = mode;
     this.chapterList = [];
@@ -41,8 +41,7 @@ class TxtRender extends GeneralRender {
     });
   }
   async parse() {
-    let text = new TextDecoder(this.encoding || "utf8").decode(this.txtBuffer);
-    this.book = makeHtmlBook(text, true);
+    this.book = makeHtmlBook(this.text, true);
   }
   async preCache() {
     if (!this.book) {
@@ -51,10 +50,10 @@ class TxtRender extends GeneralRender {
     return await this.getCache(this.book);
   }
 
-  async getMetadata() {
-    const array = new Uint8Array(this.txtBuffer);
+  async getMetadata(txtBuffer) {
+    const array = new Uint8Array(txtBuffer);
     let bufferStr = "";
-    for (let i = 0; i < 100; ++i) {
+    for (let i = 0; i < array.length; ++i) {
       bufferStr += String.fromCharCode(array[i]);
     }
     let charset = window.jschardet.detect(bufferStr).encoding || "utf-8";

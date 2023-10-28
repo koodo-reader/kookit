@@ -242,10 +242,23 @@ class GeneralRender extends EventEmitter {
     if (!doc) {
       return;
     }
-
-    let targetNode = getCloestBlock(node, this.element);
-    let left = targetNode ? convertStyleNum(targetNode.offsetLeft) : 0;
-    let top = targetNode ? convertStyleNum(targetNode.offsetTop) : 0;
+    console.log(node);
+    let targetNode = getCloestBlock(node, this.element, this.mode);
+    console.log(targetNode);
+    let left = targetNode
+      ? convertStyleNum(targetNode.offsetLeft) -
+        convertStyleNum(
+          targetNode.marginLeft ||
+            parseFloat(getComputedStyle(targetNode).marginLeft)
+        )
+      : 0;
+    let top = targetNode
+      ? convertStyleNum(targetNode.offsetTop) -
+        convertStyleNum(
+          targetNode.marginTop ||
+            parseInt(getComputedStyle(targetNode).marginTop)
+        )
+      : 0;
     if (this.mode !== "scroll") {
       doc.body.scrollTo(left, 0);
     } else {
