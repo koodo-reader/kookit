@@ -242,9 +242,7 @@ class GeneralRender extends EventEmitter {
     if (!doc) {
       return;
     }
-    console.log(node);
     let targetNode = getCloestBlock(node, this.element, this.mode);
-    console.log(targetNode);
     let left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
         convertStyleNum(

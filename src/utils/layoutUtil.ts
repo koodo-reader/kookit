@@ -62,10 +62,13 @@ export const handleIframeHeight = async (
 
 export const handleOneChapterDoc = async (item) => {
   let chapterText = "";
+  console.log(item);
+  // return;
   if (item.load) {
     let blob = await fetch(await item.load()).then((r) => r.blob());
     chapterText = await blob.text();
   }
+
   if (item.loadAsset) {
     chapterText = await handlePrecacheAssets(chapterText, item.loadAsset);
   }
@@ -107,12 +110,6 @@ export const handleImageMarker = (bookStr) => {
       newItem.setAttribute("style", "visibility: hidden; position: absolute");
       if (imgDomList[i].parentNode) {
         (imgDomList[i].parentNode as any).insertBefore(newItem, imgDomList[i]);
-        let pageArea = document.getElementById("page-area");
-        if (!pageArea) return;
-        (imgDomList[i].parentNode as any).setAttribute(
-          "style",
-          "max-width: 100%; max-height: " + pageArea.clientHeight + "px"
-        );
       }
     }
     return chapterDoc.documentElement.innerHTML;
@@ -245,11 +242,7 @@ export const handleImageSize = async (
         : (element.clientWidth - gap) / 2,
       maxWidth
     );
-    let marginTop = 0;
-    // if (mode !== "scroll") {
-    //   if (doc.body.clientHeight - element.offsetTop < maxHeight)
-    //     marginTop = doc.body.clientHeight - element.offsetTop;
-    // }
+
     if (width && height) {
       if (width > height) {
         maxHeight = maxWidth * (height / width);
@@ -271,28 +264,12 @@ export const handleImageSize = async (
               ";" +
               `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${
                 maxHeight > 0 ? maxHeight + "px" : ""
-              };margin-top: ${marginTop + "px"}; ${
+              }; ${
                 format.startsWith("CB")
                   ? "display: block; margin-left: auto; margin-right: auto;"
                   : ""
               }`
       );
-      if (parentItem) {
-        parentItem.setAttribute(
-          "style",
-          parentItem.getAttribute("style")
-            ? parentItem.getAttribute("style")
-            : "" +
-                ";" +
-                `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${
-                  maxHeight > 0 ? maxHeight + "px" : ""
-                };margin-top: ${marginTop + "px"}; ${
-                  format.startsWith("CB")
-                    ? "display: block; margin-left: auto; margin-right: auto;"
-                    : ""
-                }`
-        );
-      }
     }
   }
 };

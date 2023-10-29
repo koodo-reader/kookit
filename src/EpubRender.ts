@@ -63,7 +63,19 @@ class EpubRender extends GeneralRender {
       (name, ...args) =>
         map.has(name) ? f(map.get(name), ...args) : null;
     const loadText = load((entry) => entry.getData(new TextWriter()));
-    const loadBlob = load((entry, type) => entry.getData(new BlobWriter(type)));
+    const loadBlob = load((entry, type) => {
+      return new Promise<any>((resolve, reject) => {
+        entry
+          .getData(new BlobWriter(type))
+          .then((res) => {
+            resolve(res);
+          })
+          .catch((err) => {
+            resolve(new Blob());
+          });
+      });
+      // return entry.getData(new BlobWriter(type));
+    });
     const getSize = (name) => (map.get(name) as any)?.uncompressedSize ?? 0;
     return { entries, loadText, loadBlob, getSize };
   }
