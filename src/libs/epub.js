@@ -567,8 +567,10 @@ class Loader {
   async loadHref(href, base, parents = []) {
     if (isExternal(href)) return href;
     const path = resolveURL(href, base);
-    const item = this.manifest.find((item) => item.href === path);
-    if (!item) return href;
+    let item = this.manifest.find((item) => item.href === path);
+    if (!item) {
+      item = { href: path, mediaType: "" };
+    }
     return this.loadItem(item, parents.concat(base));
   }
   async loadReplaced(item, parents = []) {

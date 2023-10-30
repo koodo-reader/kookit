@@ -782,6 +782,20 @@ export class MOBI extends PDB {
 const mbpPagebreakRegex = /<\s*(?:mbp:)?pagebreak[^>]*>/gi;
 const fileposRegex = /<[^<>]+filepos=['"]{0,1}(\d+)[^<>]*>/gi;
 
+const getIndent = (el) => {
+  let x = 0;
+  while (el) {
+    const parent = el.parentElement;
+    if (parent) {
+      const tag = parent.tagName.toLowerCase();
+      if (tag === "p") x += 1.5;
+      else if (tag === "blockquote") x += 2;
+    }
+    el = parent;
+  }
+  return x;
+};
+
 class MOBI6 {
   parser = new DOMParser();
   serializer = new XMLSerializer();
@@ -830,32 +844,51 @@ class MOBI6 {
       size: section.end - section.start,
     }));
 
-    const fileposInNCX = [];
     try {
-      const ncx = await this.mobi.getNCX();
-      const map = ({ label, offset, children }) => {
-        const filepos = offset.toString().padStart(10, "0");
-        const href = `filepos:${filepos}`;
-        fileposInNCX.push(filepos);
-        label = unescapeHTML(label);
-        return { label, href, subitems: children?.map(map) };
-      };
-      this.toc = ncx?.map(map);
       this.landmarks = await this.getGuide();
-
-      // try to build TOC if there's no NCX
-      if (!this.toc) {
-        const tocHref = this.landmarks.find(({ type }) =>
-          type?.includes("toc")
-        )?.href;
-        if (tocHref) {
-          const { index } = this.resolveHref(tocHref);
-          const doc = await this.sections[index].createDocument();
-          this.toc = Array.from(doc.querySelectorAll("a[filepos]"), (a) => ({
-            label: a.innerText?.trim(),
-            href: `filepos:${a.getAttribute("filepos")}`,
-          }));
-        }
+      const tocHref = this.landmarks.find(({ type }) =>
+        type?.includes("toc")
+      )?.href;
+      if (tocHref) {
+        const { index } = this.resolveHref(tocHref);
+        const doc = await this.sections[index].createDocument();
+        let lastItem;
+        let lastLevel = 0;
+        let lastIndent = 0;
+        const lastLevelOfIndent = new Map();
+        const lastParentOfLevel = new Map();
+        this.toc = Array.from(doc.querySelectorAll("a[filepos]")).reduce(
+          (arr, a) => {
+            const indent = getIndent(a);
+            const item = {
+              label: a.innerText?.trim(),
+              href: `filepos:${a.getAttribute("filepos")}`,
+            };
+            const level =
+              indent > lastIndent
+                ? lastLevel + 1
+                : indent === lastIndent
+                ? lastLevel
+                : lastLevelOfIndent.get(indent) ?? Math.max(0, lastLevel - 1);
+            if (level > lastLevel) {
+              if (lastItem) {
+                lastItem.subitems ??= [];
+                lastItem.subitems.push(item);
+                lastParentOfLevel.set(level, lastItem);
+              } else arr.push(item);
+            } else {
+              const parent = lastParentOfLevel.get(level);
+              if (parent) parent.subitems.push(item);
+              else arr.push(item);
+            }
+            lastItem = item;
+            lastLevel = level;
+            lastIndent = indent;
+            lastLevelOfIndent.set(indent, level);
+            return arr;
+          },
+          []
+        );
       }
     } catch (e) {
       console.warn(e);
@@ -865,9 +898,7 @@ class MOBI6 {
     // which will be used to insert anchor elements
     // because only then can they be referenced in the DOM
     this.#fileposList = [
-      ...new Set(
-        fileposInNCX.concat(Array.from(str.matchAll(fileposRegex), (m) => m[1]))
-      ),
+      ...new Set(Array.from(str.matchAll(fileposRegex), (m) => m[1])),
     ]
       .map((filepos) => ({ filepos, number: Number(filepos) }))
       .sort((a, b) => a.number - b.number);
@@ -987,6 +1018,10 @@ class MOBI6 {
   isExternal(uri) {
     return /^(?!blob|filepos)\w+:/i.test(uri);
   }
+  destroy() {
+    for (const url of this.#resourceCache.values()) URL.revokeObjectURL(url);
+    for (const url of this.#cache.values()) URL.revokeObjectURL(url);
+  }
 }
 
 // handlers for `kindle:` uris
@@ -1026,8 +1061,19 @@ const replaceSeries = async (str, regex, f) => {
   return str.replace(regex, () => results.shift());
 };
 
+const getPageSpread = (properties) => {
+  for (const p of properties) {
+    if (p === "page-spread-left" || p === "rendition:page-spread-left")
+      return "left";
+    if (p === "page-spread-right" || p === "rendition:page-spread-right")
+      return "right";
+    if (p === "rendition:page-spread-center") return "center";
+  }
+};
+
 class KF8 {
   parser = new DOMParser();
+  serializer = new XMLSerializer();
   #cache = new Map();
   #fragmentOffsets = new Map();
   #fragmentSelectors = new Map();
@@ -1038,8 +1084,8 @@ class KF8 {
   #rawTail = new Uint8Array();
   #lastLoadedHead = -1;
   #lastLoadedTail = -1;
-  #checkType = true;
   #type = MIME.XHTML;
+  #inlineMap = new Map();
   constructor(mobi) {
     this.mobi = mobi;
   }
@@ -1093,22 +1139,24 @@ class KF8 {
       return arr.concat({ skel, frags, fragEnd, length, totalLength });
     }, []);
 
-    /*
-        const resources = await this.getResourcesByMagic(['RESC', 'PAGE'])
-        if (resources.RESC) {
-            const buf = await this.mobi.loadRecord(resources.RESC)
-            const str = this.mobi.decode(buf.slice(16)).replace(/\0/g, '')
-            // the RESC record lacks the root `<package>` element
-            // but seem to be otherwise valid XML
-            const index = str.search(/\?>/)
-            const xmlStr = `<package>${str.slice(index)}</package>`
-            const opf = this.parser.parseFromString(xmlStr, MIME.XML)
-        }*/
-
-    // insert cover page for CFI compatibility with KindleUnpack,
-    // which will pretty much always insert a cover page;
-    // it will not be accessible in any way, so just insert a dummy section
-    this.#sections.unshift({ frags: [] });
+    const resources = await this.getResourcesByMagic(["RESC", "PAGE"]);
+    const pageSpreads = new Map();
+    if (resources.RESC) {
+      const buf = await this.mobi.loadRecord(resources.RESC);
+      const str = this.mobi.decode(buf.slice(16)).replace(/\0/g, "");
+      // the RESC record lacks the root `<package>` element
+      // but seem to be otherwise valid XML
+      const index = str.search(/\?>/);
+      const xmlStr = `<package>${str.slice(index)}</package>`;
+      const opf = this.parser.parseFromString(xmlStr, MIME.XML);
+      for (const $itemref of opf.querySelectorAll("spine > itemref")) {
+        const i = parseInt($itemref.getAttribute("skelid"));
+        pageSpreads.set(
+          i,
+          getPageSpread($itemref.getAttribute("properties")?.split(" ") ?? [])
+        );
+      }
+    }
 
     this.sections = this.#sections.map((section, index) =>
       section.frags.length
@@ -1117,6 +1165,7 @@ class KF8 {
             load: () => this.loadSection(section),
             createDocument: () => this.createDocument(section),
             size: section.length,
+            pageSpread: pageSpreads.get(index),
           }
         : { linear: "no" }
     );
@@ -1192,12 +1241,22 @@ class KF8 {
     const result = [MIME.XHTML, MIME.HTML, MIME.CSS, MIME.SVG].includes(type)
       ? await this.replaceResources(this.mobi.decode(raw))
       : raw;
-    return new Blob([result], { type });
+    const doc =
+      type === MIME.SVG ? this.parser.parseFromString(result, type) : null;
+    return [
+      new Blob([result], { type }),
+      // SVG wrappers need to be inlined
+      // as browsers don't allow external resources when loading SVG as an image
+      doc?.getElementsByTagNameNS("http://www.w3.org/2000/svg", "image")?.length
+        ? doc.documentElement
+        : null,
+    ];
   }
   async loadResource(str) {
     if (this.#cache.has(str)) return this.#cache.get(str);
-    const blob = await this.loadResourceBlob(str);
-    const url = URL.createObjectURL(blob);
+    const [blob, inline] = await this.loadResourceBlob(str);
+    const url = inline ? str : URL.createObjectURL(blob);
+    if (inline) this.#inlineMap.set(url, inline);
     this.#cache.set(str, url);
     return url;
   }
@@ -1270,18 +1329,21 @@ class KF8 {
   async loadSection(section) {
     if (this.#cache.has(section)) return this.#cache.get(section);
     const str = await this.loadText(section);
+    const replaced = await this.replaceResources(str);
 
     // by default, type is XHTML; change to HTML if it's not valid XHTML
-    if (
-      this.#checkType &&
-      this.parser.parseFromString(str, this.#type).querySelector("parsererror")
-    )
+    let doc = this.parser.parseFromString(replaced, this.#type);
+    if (doc.querySelector("parsererror")) {
       this.#type = MIME.HTML;
-    // let's just check it once for now
-    if (this.#checkType) this.#checkType = false;
-
-    const replaced = await this.replaceResources(str);
-    const url = URL.createObjectURL(new Blob([replaced], { type: this.#type }));
+      doc = this.parser.parseFromString(replaced, this.#type);
+    }
+    for (const [url, node] of this.#inlineMap) {
+      for (const el of doc.querySelectorAll(`img[src="${url}"]`))
+        el.replaceWith(node);
+    }
+    const url = URL.createObjectURL(
+      new Blob([this.serializer.serializeToString(doc)], { type: this.#type })
+    );
     this.#cache.set(section, url);
     return url;
   }
@@ -1328,5 +1390,8 @@ class KF8 {
   }
   isExternal(uri) {
     return /^(?!blob|kindle)\w+:/i.test(uri);
+  }
+  destroy() {
+    for (const url of this.#cache.values()) URL.revokeObjectURL(url);
   }
 }
