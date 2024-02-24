@@ -52,7 +52,7 @@ class HtmlRender extends GeneralRender {
               .innerHTML;
         }
 
-        this.book = makeHtmlBook(html, true);
+        this.book = makeHtmlBook(html, false);
         resolve();
       };
       reader.readAsText(blob, "UTF-8");

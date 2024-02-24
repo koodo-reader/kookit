@@ -160,7 +160,8 @@ export const handleRenderChatper = async (
   doc.body.scrollTo(0, 0);
   if (
     (chapterTitle && !chapterDocIndex) ||
-    (chapterDocList[chapterDocIndex].label &&
+    (chapterDocList[chapterDocIndex] &&
+      chapterDocList[chapterDocIndex].label &&
       chapterTitle &&
       chapterTitle !== chapterDocList[chapterDocIndex].label &&
       chapterHref.indexOf("#") === -1)

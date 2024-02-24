@@ -17,10 +17,15 @@ class GeneralParser {
       this.chapterList = await Promise.all<Chapter>(
         toc.map(async (item) => {
           let index = -1;
-          index =
-            item.href && (await this.book.resolveHref(item.href))
-              ? (await this.book.resolveHref(item.href)).index
-              : -1;
+          try {
+            index =
+              item.href && (await this.book.resolveHref(item.href))
+                ? (await this.book.resolveHref(item.href)).index
+                : -1;
+          } catch (error) {
+            console.log(error);
+          }
+
           return {
             label: item.label ? item.label : index,
             href: item.href,
@@ -46,30 +51,21 @@ class GeneralParser {
   }
   async getChapterDoc() {
     const chapterIndexList = this.flattenChapters.map((item) => item.index);
-    return this.book.sections
-      .map((item: any, index: number) => {
-        if (chapterIndexList.indexOf(index) > -1) {
-          return {
-            label: this.flattenChapters[chapterIndexList.indexOf(index)].label,
-            href: this.flattenChapters[chapterIndexList.indexOf(index)].href,
-            text: item,
-          };
-        } else {
-          return {
-            label: "",
-            href: "",
-            text: item,
-          };
-        }
-      })
-      .filter((item: ChapterDoc) => {
-        //修复azw3空白页的问题
-        if (item.text.linear === "no") {
-          return false;
-        } else {
-          return true;
-        }
-      }) as ChapterDoc[];
+    return this.book.sections.map((item: any, index: number) => {
+      if (chapterIndexList.indexOf(index) > -1) {
+        return {
+          label: this.flattenChapters[chapterIndexList.indexOf(index)].label,
+          href: this.flattenChapters[chapterIndexList.indexOf(index)].href,
+          text: item,
+        };
+      } else {
+        return {
+          label: "",
+          href: "",
+          text: item,
+        };
+      }
+    }) as ChapterDoc[];
   }
 
   flatChapter(chapters: any) {

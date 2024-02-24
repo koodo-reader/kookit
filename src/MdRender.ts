@@ -40,7 +40,7 @@ class MdRender extends GeneralRender {
       var reader = new FileReader();
       reader.onload = async (evt) => {
         let docStr = window.marked(evt.target?.result as any);
-        this.book = makeHtmlBook(docStr, true);
+        this.book = makeHtmlBook(docStr, false);
 
         resolve();
       };

@@ -39,7 +39,7 @@ class DocxRender extends GeneralRender {
       window.mammoth
         .convertToHtml({ arrayBuffer: this.docxBuffer })
         .then(async (res: any) => {
-          this.book = makeHtmlBook(res.value, true);
+          this.book = makeHtmlBook(res.value, false);
 
           resolve();
         });

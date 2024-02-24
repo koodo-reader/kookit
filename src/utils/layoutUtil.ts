@@ -62,7 +62,6 @@ export const handleIframeHeight = async (
 
 export const handleOneChapterDoc = async (item) => {
   let chapterText = "";
-  console.log(item);
   // return;
   if (item.load) {
     let blob = await fetch(await item.load()).then((r) => r.blob());
@@ -164,7 +163,7 @@ export const handleTextStyle = () => {
     return;
   }
   let textNodes = doc.querySelectorAll(
-    "a, article, cite, div, li, p, span, table, h1,h2,h3,h4, bold"
+    "a, article, cite, div, li, p, span, pre, table, bold, body, html"
   ) as any;
   for (let index = 0; index < textNodes.length; index++) {
     const element = textNodes[index];
@@ -236,12 +235,19 @@ export const handleImageSize = async (
       maxWidth = element.clientWidth;
       maxHeight = element.clientHeight;
     }
-    maxWidth = Math.min(
-      mode === "scroll" || mode === "single"
-        ? element.clientWidth
-        : (element.clientWidth - gap) / 2,
-      maxWidth
-    );
+    if (maxWidth) {
+      maxWidth = Math.min(
+        mode === "scroll" || mode === "single"
+          ? element.clientWidth
+          : (element.clientWidth - gap) / 2,
+        maxWidth
+      );
+    } else {
+      maxWidth =
+        mode === "scroll" || mode === "single"
+          ? element.clientWidth
+          : (element.clientWidth - gap) / 2;
+    }
 
     if (width && height) {
       if (width > height) {
@@ -254,21 +260,18 @@ export const handleImageSize = async (
         }
       }
     }
-
     if (maxWidth || maxHeight) {
       item.setAttribute(
         "style",
-        item.getAttribute("style")
-          ? item.getAttribute("style")
-          : "" +
-              ";" +
-              `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${
-                maxHeight > 0 ? maxHeight + "px" : ""
-              }; ${
-                format.startsWith("CB")
-                  ? "display: block; margin-left: auto; margin-right: auto;"
-                  : ""
-              }`
+        item.getAttribute("style") +
+          ";" +
+          `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${
+            maxHeight > 0 ? maxHeight + "px" : ""
+          }; margin: 0 auto; ${
+            format.startsWith("CB")
+              ? "display: block; margin-left: auto; margin-right: auto;"
+              : ""
+          }`
       );
     }
   }

@@ -29,7 +29,6 @@ class MobiRender extends GeneralRender {
         await this.parse();
       }
       let parser = new GeneralParser(this.book);
-      console.log(parser);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
@@ -48,7 +47,6 @@ class MobiRender extends GeneralRender {
       this.book = await new MOBI({ unzlib: window.fflate.unzlibSync }).open(
         file
       );
-      console.log(this.book);
     }
   }
   async preCache() {

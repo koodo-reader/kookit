@@ -186,6 +186,7 @@ const getChapterDoc = (bookStr: string) => {
   let titleList: string[] = chapterStrList.map((item) => {
     return getHFromStr(item) || getTitleFromStr(item);
   });
+
   chapterDocList = chapterStrList.map((item, index) => {
     return {
       index: index,
@@ -213,7 +214,7 @@ const txtToHtml = (text: string) => {
   }
 };
 const getHFromStr = (str) => {
-  const regex = /<h[1-6]>([\s\S]*?)<\/h[1-6]>/; // 匹配第一个h1标签里的内容，支持换行符和其他特殊字符
+  const regex = /<h[1-6][^>]*>(.*?)<\/h[1-6]>/; // 匹配第一个h1标签里的内容，支持换行符和其他特殊字符
   const match = regex.exec(str);
   const content = match
     ? match[1].replace(/&lt;/g, "<").replace(/&gt;/g, ">")
@@ -221,7 +222,7 @@ const getHFromStr = (str) => {
   return content; // 输出：This\nis\na\nheading
 };
 const getTitleFromStr = (str) => {
-  const regex = /<title>([\s\S]*?)<\/title>/; // 匹配第一个h1标签里的内容，支持换行符和其他特殊字符
+  const regex = /<title[^>]*>(.*?)<\/title>/; // 匹配第一个h1标签里的内容，支持换行符和其他特殊字符
   const match = regex.exec(str);
   const content = match
     ? match[1].replace(/&lt;/g, "<").replace(/&gt;/g, ">")

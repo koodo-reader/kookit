@@ -424,7 +424,7 @@ const huffcdic = async (mobi, loadRecord) => {
   const decompress = (byteArray) => {
     let output = new Uint8Array();
     const bitLength = byteArray.byteLength * 8;
-    for (let i = 0; i < bitLength; ) {
+    for (let i = 0; i < bitLength;) {
       const bits = Number(read32Bits(byteArray, i));
       let [found, codeLength, value] = table1[bits >>> 24];
       if (!found) {
@@ -469,7 +469,7 @@ const getIndexData = async (indxIndex, loadRecord) => {
   for (let i = 0; i < indx.numCncx; i++) {
     const record = await loadRecord(indxIndex + indx.numRecords + i + 1);
     const array = new Uint8Array(record);
-    for (let pos = 0; pos < array.byteLength; ) {
+    for (let pos = 0; pos < array.byteLength;) {
       const index = pos;
       const { value, length } = getVarLen(array, pos);
       pos += length;
@@ -699,10 +699,10 @@ export class MOBI extends PDB {
       compression === 1
         ? (f) => f
         : compression === 2
-        ? decompressPalmDOC
-        : compression === 17480
-        ? await huffcdic(mobi, this.loadRecord.bind(this))
-        : null;
+          ? decompressPalmDOC
+          : compression === 17480
+            ? await huffcdic(mobi, this.loadRecord.bind(this))
+            : null;
     if (!this.#decompress) throw new Error("Unknown compression type");
 
     // set up function for removing trailing bytes
@@ -770,8 +770,8 @@ export class MOBI extends PDB {
       exth?.coverOffset < 0xffffffff
         ? exth?.coverOffset
         : exth?.thumbnailOffset < 0xffffffff
-        ? exth?.thumbnailOffset
-        : null;
+          ? exth?.thumbnailOffset
+          : null;
     if (offset != null) {
       const buf = await this.loadResource(offset);
       return new Blob([buf]);
@@ -868,8 +868,8 @@ class MOBI6 {
               indent > lastIndent
                 ? lastLevel + 1
                 : indent === lastIndent
-                ? lastLevel
-                : lastLevelOfIndent.get(indent) ?? Math.max(0, lastLevel - 1);
+                  ? lastLevel
+                  : lastLevelOfIndent.get(indent) ?? Math.max(0, lastLevel - 1);
             if (level > lastLevel) {
               if (lastItem) {
                 lastItem.subitems ??= [];
@@ -1106,7 +1106,7 @@ class KF8 {
       ]);
       this.#tables.fdstTable = fdstTable;
       this.#fullRawLength = fdstTable[fdstTable.length - 1][1];
-    } catch {}
+    } catch { }
 
     const skelTable = (await getIndexData(kf8.skel, loadRecord)).table.map(
       ({ name, tagMap }, index) => ({
@@ -1161,12 +1161,12 @@ class KF8 {
     this.sections = this.#sections.map((section, index) =>
       section.frags.length
         ? {
-            id: index,
-            load: () => this.loadSection(section),
-            createDocument: () => this.createDocument(section),
-            size: section.length,
-            pageSpread: pageSpreads.get(index),
-          }
+          id: index,
+          load: () => this.loadSection(section),
+          createDocument: () => this.createDocument(section),
+          size: section.length,
+          pageSpread: pageSpreads.get(index),
+        }
         : { linear: "no" }
     );
 
@@ -1216,7 +1216,7 @@ class KF8 {
         const magic = await this.mobi.loadMagic(i);
         const match = keys.find((key) => key === magic);
         if (match) results[match] = i;
-      } catch {}
+      } catch { }
     }
     return results;
   }
