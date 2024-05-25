@@ -61,7 +61,8 @@ let keywords = [
   " ",
   "　",
 ];
-let containChars = ["[", "。", "；", ";"];
+let containChars = [];
+// let containChars = ["[", "。", "；", ";"];
 let startWithChars = [
   "CHAPTER",
   "Chapter",

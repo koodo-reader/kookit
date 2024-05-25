@@ -98,21 +98,26 @@ class GeneralParser {
           });
         };
       } catch (error) {
-        let author =
-          metadata.author && metadata.author[0] && metadata.author[0].name
-            ? metadata.author[0].name
-            : metadata.author && metadata.author[0]
-            ? metadata.author[0]
-            : metadata.author
-            ? metadata.author
-            : "";
-        resolve({
-          name: metadata.title,
-          author: author,
-          description: metadata.description,
-          publisher: metadata.publisher,
-          cover: "",
-        });
+        try {
+          let author =
+            metadata.author && metadata.author[0] && metadata.author[0].name
+              ? metadata.author[0].name
+              : metadata.author && metadata.author[0]
+              ? metadata.author[0]
+              : metadata.author
+              ? metadata.author
+              : "";
+          resolve({
+            name: metadata.title,
+            author: author,
+            description: metadata.description,
+            publisher: metadata.publisher,
+            cover: "",
+          });
+        } catch (error) {
+          console.log(error);
+          reject(error);
+        }
       }
     });
   }

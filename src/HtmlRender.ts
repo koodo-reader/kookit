@@ -34,28 +34,32 @@ class HtmlRender extends GeneralRender {
 
       createIframe(element);
       handleLayout(element, this.mode);
-      this.trigger("rendered");
       resolve();
     });
   }
   async parse() {
     return new Promise<void>((resolve, reject) => {
-      var blob = new Blob([this.htmlBuffer], {
-        type: mimetype[this.format.toLocaleLowerCase()],
-      });
-      var reader = new FileReader();
-      reader.onload = async (evt) => {
-        let html = evt.target?.result as any;
-        if (this.format === "MHTML") {
-          html =
-            window.mhtml2html.convert(html).window.document.documentElement
-              .innerHTML;
-        }
+      try {
+        var blob = new Blob([this.htmlBuffer], {
+          type: mimetype[this.format.toLocaleLowerCase()],
+        });
+        var reader = new FileReader();
+        reader.onload = async (evt) => {
+          let html = evt.target?.result as any;
+          if (this.format === "MHTML") {
+            html =
+              window.mhtml2html.convert(html).window.document.documentElement
+                .innerHTML;
+          }
 
-        this.book = makeHtmlBook(html, false);
-        resolve();
-      };
-      reader.readAsText(blob, "UTF-8");
+          this.book = makeHtmlBook(html, false);
+          resolve();
+        };
+        reader.readAsText(blob, "UTF-8");
+      } catch (error) {
+        console.log(error);
+        reject(error);
+      }
     });
   }
   async preCache() {

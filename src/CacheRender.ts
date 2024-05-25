@@ -28,7 +28,6 @@ class CacheRender extends GeneralRender {
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
       handleLayout(element, this.mode);
-      this.trigger("rendered");
       resolve();
     });
   }

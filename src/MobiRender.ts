@@ -33,20 +33,24 @@ class MobiRender extends GeneralRender {
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
       handleLayout(element, this.mode);
-      this.trigger("rendered");
       resolve();
     });
   }
   async parse() {
-    let blob = new Blob([this.mobiBuffer]);
-    let file = new File([blob], "book", {
-      lastModified: new Date().getTime(),
-      type: blob.type,
-    });
-    if (await isMOBI(file)) {
-      this.book = await new MOBI({ unzlib: window.fflate.unzlibSync }).open(
-        file
-      );
+    try {
+      let blob = new Blob([this.mobiBuffer]);
+      let file = new File([blob], "book", {
+        lastModified: new Date().getTime(),
+        type: blob.type,
+      });
+      if (await isMOBI(file)) {
+        this.book = await new MOBI({ unzlib: window.fflate.unzlibSync }).open(
+          file
+        );
+      }
+    } catch (error) {
+      console.log(error);
+      throw error;
     }
   }
   async preCache() {
@@ -56,11 +60,16 @@ class MobiRender extends GeneralRender {
     return await this.getCache(this.book);
   }
   async getMetadata() {
-    if (!this.book) {
-      await this.parse();
+    try {
+      if (!this.book) {
+        await this.parse();
+      }
+      let parser = new GeneralParser(this.book);
+      return await parser.getMetadata();
+    } catch (error) {
+      console.log(error);
+      throw error;
     }
-    let parser = new GeneralParser(this.book);
-    return await parser.getMetadata();
   }
 }
 export default MobiRender;

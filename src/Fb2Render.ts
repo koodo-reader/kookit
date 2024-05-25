@@ -33,13 +33,17 @@ class Fb2Render extends GeneralRender {
       createIframe(element);
 
       handleLayout(element, this.mode);
-      this.trigger("rendered");
       resolve();
     });
   }
   async parse() {
-    let blob = new Blob([this.fb2Buffer]);
-    this.book = await makeFB2(blob);
+    try {
+      let blob = new Blob([this.fb2Buffer]);
+      this.book = await makeFB2(blob);
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
   async preCache() {
     if (!this.book) {
@@ -48,11 +52,16 @@ class Fb2Render extends GeneralRender {
     return await this.getCache(this.book);
   }
   async getMetadata() {
-    if (!this.book) {
-      await this.parse();
+    try {
+      if (!this.book) {
+        await this.parse();
+      }
+      let parser = new GeneralParser(this.book);
+      return await parser.getMetadata();
+    } catch (error) {
+      console.log(error);
+      throw error;
     }
-    let parser = new GeneralParser(this.book);
-    return await parser.getMetadata();
   }
 }
 export default Fb2Render;

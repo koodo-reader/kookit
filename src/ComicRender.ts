@@ -31,43 +31,52 @@ class ComicRender extends GeneralRender {
       this.element = element;
       createIframe(element);
       if (!this.book) {
-        await this.parse();
+        try {
+          await this.parse();
+        } catch (error) {
+          console.log(error);
+          reject(error);
+        }
       }
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
       handleLayout(element, this.mode);
-      this.trigger("rendered");
       resolve();
     });
   }
   async parse() {
-    let blob = new Blob([this.comicBuffer]);
-    let file = new File([blob], "book." + this.format.toLocaleLowerCase(), {
-      lastModified: new Date().getTime(),
-      type: blob.type,
-    });
-    if (this.format === "CBZ") {
-      const loader: any = await this.makeZipLoader(file);
-      this.book = makeComicBook(loader, file);
-    } else if (this.format === "CBT") {
-      const loader: any = await this.makeTarLoader();
-      this.book = makeComicBook(loader, file);
-    } else if (this.format === "CBR") {
-      this.rpc = await window.RPC.new("./lib/libunrar/worker.js", {
-        loaded: function () {
-          console.log("loaded");
-        },
-        progressShow: function (fileName, fileSize, progress) {
-          console.log(progress);
-        },
+    try {
+      let blob = new Blob([this.comicBuffer]);
+      let file = new File([blob], "book." + this.format.toLocaleLowerCase(), {
+        lastModified: new Date().getTime(),
+        type: blob.type,
       });
-      await new Promise((r) => setTimeout(r, 200));
-      const loader: any = await this.makeRarLoader();
-      this.book = makeComicBook(loader, file);
-    } else if (this.format === "CB7") {
-      const loader: any = await this.make7zLoader();
-      this.book = makeComicBook(loader, file);
+      if (this.format === "CBZ") {
+        const loader: any = await this.makeZipLoader(file);
+        this.book = makeComicBook(loader, file);
+      } else if (this.format === "CBT") {
+        const loader: any = await this.makeTarLoader();
+        this.book = makeComicBook(loader, file);
+      } else if (this.format === "CBR") {
+        this.rpc = await window.RPC.new("./lib/libunrar/worker.js", {
+          loaded: function () {
+            console.log("loaded");
+          },
+          progressShow: function (fileName, fileSize, progress) {
+            console.log(progress);
+          },
+        });
+        await new Promise((r) => setTimeout(r, 200));
+        const loader: any = await this.makeRarLoader();
+        this.book = makeComicBook(loader, file);
+      } else if (this.format === "CB7") {
+        const loader: any = await this.make7zLoader();
+        this.book = makeComicBook(loader, file);
+      }
+    } catch (error) {
+      console.log(error);
+      throw error;
     }
   }
   async preCache() {
@@ -144,6 +153,7 @@ class ComicRender extends GeneralRender {
           });
         })
         .catch((err) => {
+          reject(err);
           console.log(err);
         });
     });
@@ -234,18 +244,23 @@ class ComicRender extends GeneralRender {
   }
   async getMetadata() {
     return new Promise<any>(async (resolve, reject) => {
-      if (!this.book) {
-        await this.parse();
-      }
+      try {
+        if (!this.book) {
+          await this.parse();
+        }
 
-      const coverBlob = await this.book.getCover();
-      var reader = new FileReader();
-      reader.readAsDataURL(coverBlob);
-      reader.onloadend = () => {
-        resolve({
-          cover: reader.result,
-        });
-      };
+        const coverBlob = await this.book.getCover();
+        var reader = new FileReader();
+        reader.readAsDataURL(coverBlob);
+        reader.onloadend = () => {
+          resolve({
+            cover: reader.result,
+          });
+        };
+      } catch (error) {
+        console.log(error);
+        reject(error);
+      }
     });
   }
 }

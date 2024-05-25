@@ -217,6 +217,7 @@ class GeneralRender extends EventEmitter {
     await this.record();
     this.trigger("rendered");
   }
+  async getNodeFromChapter(text: string) {}
   async goToPosition(cfi: string) {
     let { text, chapterDocIndex, chapterTitle, chapterHref, count, page } =
       JSON.parse(cfi);
@@ -287,12 +288,11 @@ class GeneralRender extends EventEmitter {
         this.format
       );
       let chapterDocIndex = parseInt(
-        StorageUtil.getKookitConfig("chapterDocIndex") || "0"
+        StorageUtil.getKookitConfig("chapterDocIndex") || "-1"
       );
-      if (chapterDocIndex > 0) {
+      if (chapterDocIndex > -1) {
         doc.body.scrollTo(doc.body.scrollWidth, 0);
       }
-
       this.trigger("rendered");
     } else {
       await handleScrollPage(

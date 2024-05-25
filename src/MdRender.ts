@@ -30,21 +30,25 @@ class MdRender extends GeneralRender {
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
       handleLayout(element, this.mode);
-      this.trigger("rendered");
       resolve();
     });
   }
   async parse() {
     return new Promise<void>((resolve, reject) => {
-      var blob = new Blob([this.mdBuffer], { type: "text/plain" });
-      var reader = new FileReader();
-      reader.onload = async (evt) => {
-        let docStr = window.marked(evt.target?.result as any);
-        this.book = makeHtmlBook(docStr, false);
+      try {
+        var blob = new Blob([this.mdBuffer], { type: "text/plain" });
+        var reader = new FileReader();
+        reader.onload = async (evt) => {
+          let docStr = window.marked(evt.target?.result as any);
+          this.book = makeHtmlBook(docStr, false);
 
-        resolve();
-      };
-      reader.readAsText(blob, "UTF-8");
+          resolve();
+        };
+        reader.readAsText(blob, "UTF-8");
+      } catch (error) {
+        console.log(error);
+        reject(error);
+      }
     });
   }
   async preCache() {

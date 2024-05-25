@@ -256,7 +256,9 @@ export const handleScrollPosition = async (
             window.ChineseS2T.t2s(cleanText(text).slim()) ||
           cleanText((s as HTMLElement).textContent).slim() ===
             window.ChineseS2T.s2t(cleanText(text)).slim()) &&
-        (Math.abs(index - parseInt(count)) < 2 || count === "search")
+        (Math.abs(index - parseInt(count)) < 2 ||
+          count === "search" ||
+          count === "ignore")
       );
     });
     if (targetNodeList.length === 0) {

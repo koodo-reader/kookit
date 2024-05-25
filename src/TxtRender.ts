@@ -36,12 +36,16 @@ class TxtRender extends GeneralRender {
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
       handleLayout(element, this.mode);
-      this.trigger("rendered");
       resolve();
     });
   }
   async parse() {
-    this.book = makeHtmlBook(this.text, true);
+    try {
+      this.book = makeHtmlBook(this.text, true);
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
   async preCache() {
     if (!this.book) {
@@ -51,13 +55,18 @@ class TxtRender extends GeneralRender {
   }
 
   async getMetadata(txtBuffer) {
-    const array = new Uint8Array(txtBuffer);
-    let bufferStr = "";
-    for (let i = 0; i < array.length; ++i) {
-      bufferStr += String.fromCharCode(array[i]);
+    try {
+      const array = new Uint8Array(txtBuffer);
+      let bufferStr = "";
+      for (let i = 0; i < array.length; ++i) {
+        bufferStr += String.fromCharCode(array[i]);
+      }
+      let charset = window.jschardet.detect(bufferStr).encoding;
+      return { charset: charset || "gb2312" };
+    } catch (error) {
+      console.log(error);
+      throw error;
     }
-    let charset = window.jschardet.detect(bufferStr).encoding || "utf-8";
-    return { charset: charset || "utf8" };
   }
 }
 

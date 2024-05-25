@@ -33,7 +33,6 @@ class EpubRender extends GeneralRender {
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
       handleLayout(element, this.mode);
-      this.trigger("rendered");
       resolve();
     });
   }
@@ -43,8 +42,13 @@ class EpubRender extends GeneralRender {
       lastModified: new Date().getTime(),
       type: blob.type,
     });
-    const loader: any = await this.makeZipLoader(file);
-    this.book = await new EPUB(loader).init();
+    try {
+      const loader: any = await this.makeZipLoader(file);
+      this.book = await new EPUB(loader).init();
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
   async preCache() {
     if (!this.book) {
@@ -55,7 +59,12 @@ class EpubRender extends GeneralRender {
   async makeZipLoader(file) {
     const { ZipReader, BlobReader, TextWriter, BlobWriter } = window.zip;
     window.zip.configure({ useWebWorkers: false });
-    const reader = new ZipReader(new BlobReader(file));
+    let reader: any;
+    try {
+      reader = new ZipReader(new BlobReader(file));
+    } catch (error) {
+      throw error;
+    }
     const entries = await reader.getEntries();
     const map = new Map(entries.map((entry) => [entry.filename, entry]));
     const load =
@@ -80,11 +89,16 @@ class EpubRender extends GeneralRender {
     return { entries, loadText, loadBlob, getSize };
   }
   async getMetadata() {
-    if (!this.book) {
-      await this.parse();
+    try {
+      if (!this.book) {
+        await this.parse();
+      }
+      let parser = new GeneralParser(this.book);
+      return await parser.getMetadata();
+    } catch (error) {
+      console.log(error);
+      throw error;
     }
-    let parser = new GeneralParser(this.book);
-    return await parser.getMetadata();
   }
 }
 export default EpubRender;

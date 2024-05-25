@@ -30,19 +30,23 @@ class DocxRender extends GeneralRender {
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
       handleLayout(element, this.mode);
-      this.trigger("rendered");
       resolve();
     });
   }
   async parse() {
     return new Promise<void>((resolve, reject) => {
-      window.mammoth
-        .convertToHtml({ arrayBuffer: this.docxBuffer })
-        .then(async (res: any) => {
-          this.book = makeHtmlBook(res.value, false);
+      try {
+        window.mammoth
+          .convertToHtml({ arrayBuffer: this.docxBuffer })
+          .then(async (res: any) => {
+            this.book = makeHtmlBook(res.value, false);
 
-          resolve();
-        });
+            resolve();
+          });
+      } catch (error) {
+        console.log(error);
+        reject(error);
+      }
     });
   }
   async preCache() {
