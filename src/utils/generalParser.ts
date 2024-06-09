@@ -28,7 +28,7 @@ class GeneralParser {
 
           return {
             label: item.label ? item.label : index,
-            href: item.href,
+            href: item.href ? item.href : "title" + index,
             index: index,
             subitems: item.subitems ? await this.getChapter(item.subitems) : [],
           } as Chapter;
@@ -39,7 +39,7 @@ class GeneralParser {
         this.book.sections.map(async (item, index) => {
           return {
             label: item.label ? item.label : index,
-            href: item.href || "",
+            href: item.href ? item.href : "title" + index,
             index: index,
             subitems: item.subitems ? await this.getChapter(item.subitems) : [],
           } as Chapter;

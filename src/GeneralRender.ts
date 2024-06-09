@@ -18,10 +18,13 @@ import {
   handleScrollPage,
   handleScrollPosition,
   handleHighlightNode,
+  getBlockElement,
+  cleanText,
 } from "./utils/navigationUtil";
 import EventEmitter from "./utils/EventEmitter";
 import GeneralParser from "./utils/generalParser";
 import { mimetypeReverse } from "./utils/mimetype";
+import CFI from "epub-cfi-resolver";
 declare var window: any;
 
 class GeneralRender extends EventEmitter {
@@ -171,7 +174,21 @@ class GeneralRender extends EventEmitter {
       if (chapterIndex > -1) {
         return this.flattenChapters[chapterIndex];
       } else {
-        return null;
+        for (let index = 0; index < this.chapterDocList.length; index++) {
+          if (
+            this.chapterDocList[index].text &&
+            this.chapterDocList[index].text.id &&
+            (this.chapterDocList[index].text.id + "").includes(path)
+          ) {
+            chapterIndex = index;
+            break;
+          }
+        }
+        if (chapterIndex > -1) {
+          return { label: "", href: "", index: chapterIndex };
+        } else {
+          return null;
+        }
       }
     }
   }
@@ -193,6 +210,28 @@ class GeneralRender extends EventEmitter {
   }
   getChapterDoc() {
     return this.chapterDocList;
+  }
+  async goToPercentage(percentage: number) {
+    if (this.flattenChapters.length > 0) {
+      let chapterIndex =
+        percentage === 1
+          ? this.flattenChapters.length - 1
+          : Math.floor(this.flattenChapters.length * percentage);
+      await this.goToChapter(
+        this.flattenChapters[chapterIndex].index.toString(),
+        this.flattenChapters[chapterIndex].href,
+        this.flattenChapters[chapterIndex].label
+      );
+    }
+  }
+  async goToChapterIndex(targetChapterIndex: number) {
+    if (this.flattenChapters.length > 0) {
+      await this.goToChapter(
+        this.flattenChapters[targetChapterIndex].index,
+        this.flattenChapters[targetChapterIndex].href,
+        this.flattenChapters[targetChapterIndex].label
+      );
+    }
   }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
     await handleRenderChatper(
@@ -217,10 +256,10 @@ class GeneralRender extends EventEmitter {
     await this.record();
     this.trigger("rendered");
   }
-  async getNodeFromChapter(text: string) {}
-  async goToPosition(cfi: string) {
-    let { text, chapterDocIndex, chapterTitle, chapterHref, count, page } =
-      JSON.parse(cfi);
+  async goToPosition(bookLocationStr: string) {
+    let { text, chapterDocIndex, chapterTitle, chapterHref, count, page, cfi } =
+      JSON.parse(bookLocationStr);
+
     await handleRenderChatper(
       parseInt(chapterDocIndex),
       chapterTitle,
@@ -230,6 +269,26 @@ class GeneralRender extends EventEmitter {
       this.mode,
       this.format
     );
+    if (cfi) {
+      // parsing
+      var cfiInfo = new CFI(cfi, {
+        flattenRange: false, // default is false
+      });
+      let pageArea = document.getElementById("page-area");
+      if (!pageArea) return;
+      let iframe = pageArea.getElementsByTagName("iframe")[0];
+      if (!iframe) return;
+      let doc: any = iframe.contentDocument;
+      if (!doc) {
+        return;
+      }
+      var bookmark = cfiInfo.resolve(doc, {
+        range: false, // default is false
+      });
+      count = "ignore";
+      text = bookmark.node.textContent;
+    }
+
     await handleScrollPosition(this.element, this.mode, text, count, "", page);
     await this.record();
     this.trigger("rendered");
@@ -255,7 +314,7 @@ class GeneralRender extends EventEmitter {
       ? convertStyleNum(targetNode.offsetTop) -
         convertStyleNum(
           targetNode.marginTop ||
-            parseInt(getComputedStyle(targetNode).marginTop)
+            parseFloat(getComputedStyle(targetNode).marginTop)
         )
       : 0;
     if (this.mode !== "scroll") {
@@ -318,12 +377,18 @@ class GeneralRender extends EventEmitter {
       return;
     }
     if (
-      Math.abs(
+      (Math.abs(
         doc.body.scrollWidth -
           convertStyleNum(doc.body.scrollLeft) -
           doc.body.clientWidth
-      ) < 10 ||
-      this.mode === "scroll"
+      ) < 10 &&
+        this.mode !== "scroll") ||
+      (Math.abs(
+        this.element.scrollHeight -
+          convertStyleNum(this.element.scrollTop) -
+          this.element.clientHeight
+      ) < 10 &&
+        this.mode === "scroll")
     ) {
       await handleNextChapter(
         this.element,
@@ -333,6 +398,35 @@ class GeneralRender extends EventEmitter {
         this.format
       );
       this.trigger("rendered");
+    } else if (this.mode === "scroll") {
+      let visibleText = getVisibleText(this.element, this.mode) || [];
+      let text = visibleText[visibleText.length - 1] || "";
+      let nodeList = getBlockElement(doc.body).filter((s, index) => {
+        return cleanText((s as HTMLElement).textContent).slim();
+      });
+      let nodeIndex = 0;
+      for (let index = 0; index < nodeList.length; index++) {
+        const s = nodeList[index];
+        if (
+          cleanText((s as HTMLElement).textContent).slim() ===
+            cleanText(text).slim() ||
+          cleanText((s as HTMLElement).textContent).slim() ===
+            window.ChineseS2T.t2s(cleanText(text).slim()) ||
+          cleanText((s as HTMLElement).textContent).slim() ===
+            window.ChineseS2T.s2t(cleanText(text)).slim()
+        ) {
+          nodeIndex = index;
+          break;
+        }
+      }
+      await handleScrollPosition(
+        this.element,
+        "scroll",
+        nodeList[nodeIndex].textContent || "",
+        "next",
+        "",
+        ""
+      );
     } else {
       await handleScrollPage(
         this.element,

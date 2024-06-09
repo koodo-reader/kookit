@@ -375,6 +375,11 @@ chalk@^4.0.0:
     ansi-styles "^4.1.0"
     supports-color "^7.1.0"
 
+chardet@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/chardet/-/chardet-2.0.0.tgz#24a74bd3954965ba2d30f490a915fc3cf053051f"
+  integrity sha512-xVgPpulCooDjY6zH4m9YW3jbkaBe3FKIAvF5sj5t7aBNsVl2ljIE+xwJ4iNgiDZHFQvNIpjdKdVOQvvk5ZfxbQ==
+
 color-convert@^1.9.0:
   version "1.9.3"
   resolved "https://registry.yarnpkg.com/color-convert/-/color-convert-1.9.3.tgz#bb71850690e1f136567de629d2d5471deda4c1e8"
@@ -473,6 +478,11 @@ enquirer@^2.3.5:
   integrity sha512-yjNnPr315/FjS4zIsUxYguYUPP2e1NK4d7E7ZOLiyYCcbFBiTMyID+2wvm2w6+pZ/odMA7cRkjhsPbltwBOrLg==
   dependencies:
     ansi-colors "^4.1.1"
+
+epub-cfi-resolver@0.0.12:
+  version "0.0.12"
+  resolved "https://registry.yarnpkg.com/epub-cfi-resolver/-/epub-cfi-resolver-0.0.12.tgz#4aad13edc62d6fe311c1050b5df49e380466ce91"
+  integrity sha512-h4MQ77tTqcLjkbY/nf2D3T5g5iokrG/5cHKjTPJWTcDtw0pLC+6aARHB0ls3mAUFkcrw1+xWyJ7KZPWx9E7jPg==
 
 escape-string-regexp@^1.0.5:
   version "1.0.5"

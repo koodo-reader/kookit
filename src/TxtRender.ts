@@ -4,6 +4,7 @@ import { createIframe, handleLayout } from "./utils/layoutUtil";
 import GeneralRender from "./GeneralRender";
 import { makeHtmlBook } from "./libs/html";
 import GeneralParser from "./utils/generalParser";
+import chardet from "chardet";
 declare var window: any;
 class TxtRender extends GeneralRender {
   text: string;
@@ -57,12 +58,8 @@ class TxtRender extends GeneralRender {
   async getMetadata(txtBuffer) {
     try {
       const array = new Uint8Array(txtBuffer);
-      let bufferStr = "";
-      for (let i = 0; i < array.length; ++i) {
-        bufferStr += String.fromCharCode(array[i]);
-      }
-      let charset = window.jschardet.detect(bufferStr).encoding;
-      return { charset: charset || "gb2312" };
+      let charset = chardet.detect(array);
+      return { charset: charset || "utf8" };
     } catch (error) {
       console.log(error);
       throw error;

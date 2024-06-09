@@ -1,8 +1,10 @@
 import ChapterDoc from "../model/chapterDoc";
 import {
+  convertComputedNum,
   convertStyleNum,
   handleIframeHeight,
   handleOneChapterDoc,
+  handlePageWidth,
   progressInfo,
 } from "./layoutUtil";
 import StorageUtil from "./storageUtil";
@@ -45,10 +47,11 @@ export const handleScrollPage = async (
   }
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
+  const width = convertComputedNum(getComputedStyle(element).width);
   if (delta > 0) {
     doc.body.scrollBy({
       top: 0,
-      left: -element.clientWidth - gap,
+      left: -width - gap,
       behavior: isSliding ? "smooth" : "auto",
     });
     // trigger("page-changed");
@@ -64,7 +67,7 @@ export const handleScrollPage = async (
 
     doc.body.scrollBy({
       top: 0,
-      left: element.clientWidth + gap,
+      left: width + gap,
       behavior: isSliding ? "smooth" : "auto",
     });
   }
@@ -186,7 +189,7 @@ export const handleRenderChatper = async (
   );
   StorageUtil.setKookitConfig("text", "");
   await handleIframeHeight(element, mode, iframe, format);
-
+  mode !== "scroll" && handlePageWidth(element, mode, iframe);
   handleScrollPosition(element, mode, "", "", "", "");
 };
 export const handleCssLink = async (doc) => {
@@ -243,7 +246,8 @@ export const handleScrollPosition = async (
   if (page && mode !== "scroll") {
     let section = Math.floor(element.clientWidth / 12);
     let gap = section % 2 === 0 ? section : section - 1;
-    let pageWidth = element.clientWidth + gap;
+    const width = convertComputedNum(getComputedStyle(element).width);
+    let pageWidth = width + gap;
     left = pageWidth * (parseInt(page) - 1);
   } else if (text) {
     let nodeList = getBlockElement(doc.body);
@@ -258,7 +262,8 @@ export const handleScrollPosition = async (
             window.ChineseS2T.s2t(cleanText(text)).slim()) &&
         (Math.abs(index - parseInt(count)) < 2 ||
           count === "search" ||
-          count === "ignore")
+          count === "ignore" ||
+          count === "next")
       );
     });
     if (targetNodeList.length === 0) {
@@ -279,7 +284,7 @@ export const handleScrollPosition = async (
       ? convertStyleNum(targetNode.offsetTop) -
         convertStyleNum(
           targetNode.marginTop ||
-            parseInt(getComputedStyle(targetNode).marginTop)
+            parseFloat(getComputedStyle(targetNode).marginTop)
         )
       : 0;
   } else if (href && href.indexOf("#") > -1) {
@@ -303,7 +308,7 @@ export const handleScrollPosition = async (
       ? convertStyleNum(targetNode.offsetTop) -
         convertStyleNum(
           targetNode.marginTop ||
-            parseInt(getComputedStyle(targetNode).marginTop)
+            parseFloat(getComputedStyle(targetNode).marginTop)
         )
       : 0;
   }
@@ -526,7 +531,7 @@ export const getAudioText = (element: HTMLElement, mode: string) => {
   let audioNode = nodeList.filter((s) =>
     ((s as HTMLElement).textContent || "").trim()
   );
-  let audioText = (mode !== "scroll" ? audioNode : nodeList)
+  let audioText = audioNode
     .filter((item) => item.textContent !== "img")
     .map((item) => item.textContent);
   let firstSliceIndex = 0;
@@ -558,7 +563,7 @@ export const getVisibleText = (element: HTMLElement, mode: string) => {
       ((s as HTMLElement).textContent || "").trim()
   );
 
-  return (mode !== "scroll" ? visibleNode : nodeList)
+  return visibleNode
     .filter((item) => item.textContent !== "img")
     .map((item) => item.textContent);
 };
@@ -658,7 +663,7 @@ export const isScrolledIntoView = (
   if (mode !== "scroll" && el.textContent && el.textContent.trim()) {
     let elemLeft = rect.left;
     isVisible = elemLeft > -10 && elemLeft <= element.clientWidth;
-  } else if (el.textContent && el.textContent.trim()) {
+  } else if (mode === "scroll" && el.textContent && el.textContent.trim()) {
     let elemTop = rect.top;
     isVisible =
       elemTop >= element.scrollTop &&

@@ -97,9 +97,11 @@ const cleanText = (str) => {
     .replace(/(\r\n|\n|\r|\t)/gm, "")
     .substring(0, 100);
 };
+
 const isTitle = (line: any) => {
   return (
     line &&
+    line.length < 40 &&
     !isContain(line) &&
     (isStartWithChars(line) ||
       (line.startsWith("第") && startWithDI(line)) ||

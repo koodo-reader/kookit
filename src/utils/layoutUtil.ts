@@ -1,11 +1,45 @@
-declare var window: any;
-export const getStyleNum = (value: string) => {
-  if (!value) return 0;
-  return parseInt(value.substr(0, value.length - 2));
-};
 export const convertStyleNum = (value: number) => {
   if (!value) return 0;
   return parseFloat(value + "");
+};
+export const convertComputedNum = (value: string) => {
+  return parseFloat(value.substring(0, value.length - 2));
+};
+export const handlePageWidth = (
+  element: HTMLElement,
+  mode: string,
+  iframe: any
+) => {
+  let doc = iframe.contentDocument;
+  if (!doc) {
+    return;
+  }
+  let columnElements = Array.from(doc.querySelectorAll(".kookit-text"));
+  //获取包含文字的元素
+  let columnElement;
+  for (let index = 0; index < columnElements.length; index++) {
+    const element: any = columnElements[index];
+    if (
+      element.tagName !== "BODY" &&
+      element.outerText &&
+      element.outerText.trim() !== ""
+    ) {
+      columnElement = element;
+      break;
+    }
+  }
+  if (!columnElement) return;
+  const columnWidth = convertComputedNum(getComputedStyle(columnElement).width);
+  let section = Math.floor(element.clientWidth / 12);
+  let gap = section % 2 === 0 ? section : section - 1;
+  let scale = mode === "double" ? 2 : 1;
+  element.setAttribute(
+    "style",
+    element.getAttribute("style") +
+      "width:" +
+      (mode === "double" ? columnWidth * scale + gap : columnWidth) +
+      "px; "
+  );
 };
 export const handleIframeHeight = async (
   element: HTMLElement,
@@ -163,7 +197,7 @@ export const handleTextStyle = () => {
     return;
   }
   let textNodes = doc.querySelectorAll(
-    "a, article, cite, div, li, p, span, pre, table, bold, body, html"
+    "a, article, cite, div, li, p, span, pre, table, bold, body"
   ) as any;
   for (let index = 0; index < textNodes.length; index++) {
     const element = textNodes[index];
@@ -297,7 +331,7 @@ export const handleLayout = (element: HTMLElement, mode: string) => {
   let gap = section % 2 === 0 ? section : section - 1;
   doc.body.setAttribute(
     "style",
-    `width: auto;height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;max-width: inherit;column-fill: auto;column-gap: ${gap}px;column-count: 12;column-width: ${
+    `width: auto;height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
       (element.clientWidth - gap) / scale
     }px;`
   );

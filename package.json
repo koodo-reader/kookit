@@ -2,7 +2,6 @@
   "name": "kookit",
   "version": "1.0.4",
   "description": "Ebook render for mobi, azw3, txt and more",
-  "author": "Troye Guo <guo362429@gmail.com>",
   "homepage": "https://github.com/troyeguo/koodo-render",
   "repository": {
     "type": "git",
@@ -47,7 +46,10 @@
     "typedoc": "^0.21.9",
     "typescript": "^4.4.2"
   },
-  "dependencies": {},
+  "dependencies": {
+    "chardet": "^2.0.0",
+    "epub-cfi-resolver": "0.0.12"
+  },
   "bugs": {
     "url": "https://github.com/troyeguo/koodo-render/issues"
   },
