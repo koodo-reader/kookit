@@ -479,11 +479,6 @@ enquirer@^2.3.5:
   dependencies:
     ansi-colors "^4.1.1"
 
-epub-cfi-resolver@0.0.12:
-  version "0.0.12"
-  resolved "https://registry.yarnpkg.com/epub-cfi-resolver/-/epub-cfi-resolver-0.0.12.tgz#4aad13edc62d6fe311c1050b5df49e380466ce91"
-  integrity sha512-h4MQ77tTqcLjkbY/nf2D3T5g5iokrG/5cHKjTPJWTcDtw0pLC+6aARHB0ls3mAUFkcrw1+xWyJ7KZPWx9E7jPg==
-
 escape-string-regexp@^1.0.5:
   version "1.0.5"
   resolved "https://registry.yarnpkg.com/escape-string-regexp/-/escape-string-regexp-1.0.5.tgz#1b61c0562190a8dff6ae3bb2cf0200ca130b86d4"

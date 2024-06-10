@@ -47,8 +47,7 @@
     "typescript": "^4.4.2"
   },
   "dependencies": {
-    "chardet": "^2.0.0",
-    "epub-cfi-resolver": "0.0.12"
+    "chardet": "^2.0.0"
   },
   "bugs": {
     "url": "https://github.com/troyeguo/koodo-render/issues"

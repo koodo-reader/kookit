@@ -35,15 +35,15 @@ const filterAttribute = (attr, value, isList) =>
   isList
     ? (el) => el.getAttribute(attr)?.split(/\s/)?.includes(value)
     : typeof value === "function"
-    ? (el) => value(el.getAttribute(attr))
-    : (el) => el.getAttribute(attr) === value;
+      ? (el) => value(el.getAttribute(attr))
+      : (el) => el.getAttribute(attr) === value;
 
 const getAttributes =
   (...xs) =>
-  (el) =>
-    el
-      ? Object.fromEntries(xs.map((x) => [camel(x), el.getAttribute(x)]))
-      : null;
+    (el) =>
+      el
+        ? Object.fromEntries(xs.map((x) => [camel(x), el.getAttribute(x)]))
+        : null;
 
 const getElementText = (el) => whitespacePreLine(el?.textContent);
 
@@ -87,9 +87,9 @@ const pathRelative = (from, to) => {
   return i < 0
     ? ""
     : Array(as.length - i)
-        .fill("..")
-        .concat(bs.slice(i))
-        .join("/");
+      .fill("..")
+      .concat(bs.slice(i))
+      .join("/");
 };
 
 const pathDirname = (str) => str.slice(0, str.lastIndexOf("/") + 1);
@@ -195,7 +195,7 @@ const getMetadata = (opf) => {
       const filter =
         type === "meta"
           ? (el) =>
-              el.namespaceURI === NS.OPF && el.getAttribute("property") === name
+            el.namespaceURI === NS.OPF && el.getAttribute("property") === name
           : (el) => el.namespaceURI === NS.DC && el.localName === name;
       return [
         camel(name),
@@ -312,13 +312,13 @@ const parseSMIL = (doc, resolve = (f) => f) => {
     const $audio = $($par, "audio");
     return $audio
       ? {
-          id,
-          audio: {
-            src: resolveHref($audio.getAttribute("src")),
-            clipBegin: parseClock($audio.getAttribute("clipBegin")),
-            clipEnd: parseClock($audio.getAttribute("clipEnd")),
-          },
-        }
+        id,
+        audio: {
+          src: resolveHref($audio.getAttribute("src")),
+          clipBegin: parseClock($audio.getAttribute("clipBegin")),
+          clipEnd: parseClock($audio.getAttribute("clipEnd")),
+        },
+      }
       : { id };
   });
 };
@@ -337,7 +337,7 @@ const getUUID = (opf) => {
 const getIdentifier = (opf) =>
   getElementText(
     opf.getElementById(opf.documentElement.getAttribute("unique-identifier")) ??
-      opf.getElementsByTagNameNS(NS.DC, "identifier")[0]
+    opf.getElementsByTagNameNS(NS.DC, "identifier")[0]
   );
 
 // https://www.w3.org/publishing/epub32/epub-ocf.html#sec-resource-obfuscation

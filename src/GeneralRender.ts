@@ -24,7 +24,7 @@ import {
 import EventEmitter from "./utils/EventEmitter";
 import GeneralParser from "./utils/generalParser";
 import { mimetypeReverse } from "./utils/mimetype";
-import CFI from "epub-cfi-resolver";
+import { CFI } from "./libs/cfi";
 declare var window: any;
 
 class GeneralRender extends EventEmitter {
@@ -270,10 +270,7 @@ class GeneralRender extends EventEmitter {
       this.format
     );
     if (cfi) {
-      // parsing
-      var cfiInfo = new CFI(cfi, {
-        flattenRange: false, // default is false
-      });
+      const cfiInfo = new CFI(cfi, {});
       let pageArea = document.getElementById("page-area");
       if (!pageArea) return;
       let iframe = pageArea.getElementsByTagName("iframe")[0];
@@ -282,11 +279,13 @@ class GeneralRender extends EventEmitter {
       if (!doc) {
         return;
       }
-      var bookmark = cfiInfo.resolve(doc, {
-        range: false, // default is false
-      });
+      const { node, offset } = cfiInfo.resolve(doc, {});
+
+      if (!node) {
+        return;
+      }
       count = "ignore";
-      text = bookmark.node.textContent;
+      text = node.textContent;
     }
 
     await handleScrollPosition(this.element, this.mode, text, count, "", page);
