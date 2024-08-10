@@ -148,7 +148,7 @@ class GeneralRender extends EventEmitter {
   }
   resolveChapter(href: string) {
     let path = href;
-
+    console.log(this.flattenChapters, path);
     let chapterIndex = -1;
     for (let index = 0; index < this.flattenChapters.length; index++) {
       if (this.flattenChapters[index].href.includes(path)) {
@@ -234,6 +234,7 @@ class GeneralRender extends EventEmitter {
     }
   }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
+    console.log(chapterDocIndex, chapterHref, chapterTitle);
     await handleRenderChatper(
       parseInt(chapterDocIndex),
       chapterTitle,
@@ -375,6 +376,7 @@ class GeneralRender extends EventEmitter {
     if (!doc) {
       return;
     }
+    console.log(1);
     if (
       (Math.abs(
         doc.body.scrollWidth -
@@ -389,6 +391,7 @@ class GeneralRender extends EventEmitter {
       ) < 10 &&
         this.mode === "scroll")
     ) {
+      console.log(2);
       await handleNextChapter(
         this.element,
         this.flatChapter(this.chapterList),
@@ -398,34 +401,11 @@ class GeneralRender extends EventEmitter {
       );
       this.trigger("rendered");
     } else if (this.mode === "scroll") {
-      let visibleText = getVisibleText(this.element, this.mode) || [];
-      let text = visibleText[visibleText.length - 1] || "";
-      let nodeList = getBlockElement(doc.body).filter((s, index) => {
-        return cleanText((s as HTMLElement).textContent).slim();
+      this.element.scrollBy({
+        left: 0,
+        top: this.element.clientHeight - 50,
+        behavior: "smooth",
       });
-      let nodeIndex = 0;
-      for (let index = 0; index < nodeList.length; index++) {
-        const s = nodeList[index];
-        if (
-          cleanText((s as HTMLElement).textContent).slim() ===
-            cleanText(text).slim() ||
-          cleanText((s as HTMLElement).textContent).slim() ===
-            window.ChineseS2T.t2s(cleanText(text).slim()) ||
-          cleanText((s as HTMLElement).textContent).slim() ===
-            window.ChineseS2T.s2t(cleanText(text)).slim()
-        ) {
-          nodeIndex = index;
-          break;
-        }
-      }
-      await handleScrollPosition(
-        this.element,
-        "scroll",
-        nodeList[nodeIndex].textContent || "",
-        "next",
-        "",
-        ""
-      );
     } else {
       await handleScrollPage(
         this.element,
@@ -526,7 +506,10 @@ class GeneralRender extends EventEmitter {
     if (!doc) {
       return;
     }
-    doc.body.setAttribute("style", css + doc.body.getAttribute("style"));
+    doc.documentElement.setAttribute(
+      "style",
+      css + doc.documentElement.getAttribute("style")
+    );
   }
 }
 export default GeneralRender;

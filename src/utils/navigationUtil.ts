@@ -176,9 +176,11 @@ export const handleRenderChatper = async (
   if (chapterDocIndex === -1 || chapterDocIndex > chapterDocList.length - 1) {
     chapterDocIndex = 0;
   }
-  doc.body.innerHTML = await handleOneChapterDoc(
+  console.log(chapterDocList[chapterDocIndex]);
+  doc.documentElement.innerHTML = await handleOneChapterDoc(
     chapterDocList[chapterDocIndex].text
   );
+  console.log(doc.body.innerHTML, "doc.body.innerHTML");
   await handleCssLink(doc);
   StorageUtil.setKookitConfig("chapterTitle", chapterTitle);
   StorageUtil.setKookitConfig("chapterHref", chapterHref);
@@ -496,6 +498,7 @@ export const handleNextChapter = async (
   );
   let chapterHref = StorageUtil.getKookitConfig("chapterHref") || "";
   if (chapterDocIndex >= chapterDocList.length - 1) {
+    StorageUtil.setKookitConfig("percentage", "1");
     return;
   }
   let nextChapter = findValidChapter(
@@ -504,7 +507,9 @@ export const handleNextChapter = async (
     chapterDocList,
     "next"
   );
+  console.log(3);
   if (!nextChapter) return;
+  console.log(4);
   StorageUtil.setKookitConfig("page", "");
   await handleRenderChatper(
     nextChapter.index,
@@ -644,7 +649,13 @@ export const isParentBlock = (myDiv: Element) => {
   let flag = false;
   var blockRegex =
     /^(address|section|blockquote|body|center|dir|div|dl|fieldset|form|h[1-6]|hr|isindex|menu|noframes|noscript|ol|p|pre|table|ul|dd|dt|frameset|li|tbody|td|tfoot|th|thead|tr|html)$/i;
-
+  let blockElementList = Array.from(children).filter((item) =>
+    blockRegex.test(item.nodeName)
+  );
+  // some elements might contain image and image subtitle
+  if (blockElementList.length < 3) {
+    return false;
+  }
   for (var i = 0; i < children.length; i++) {
     if (blockRegex.test(children[i].nodeName)) {
       flag = true;

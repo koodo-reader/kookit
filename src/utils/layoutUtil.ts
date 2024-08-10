@@ -83,7 +83,7 @@ export const handleIframeHeight = async (
           "style",
           "height: " + doc.body.clientHeight + "px"
         );
-        doc.body.appendChild(tailElem);
+        doc.documentElement.appendChild(tailElem);
       }
     }
   } else {
@@ -101,7 +101,7 @@ export const handleOneChapterDoc = async (item) => {
     let blob = await fetch(await item.load()).then((r) => r.blob());
     chapterText = await blob.text();
   }
-
+  console.log(chapterText);
   if (item.loadAsset) {
     chapterText = await handlePrecacheAssets(chapterText, item.loadAsset);
   }
@@ -128,6 +128,7 @@ export const handlePrecacheAssets = async (bookStr, loadAsset) => {
       link.href = await loadAsset(link.getAttribute("href"));
     }
   }
+  console.log(chapterDoc.documentElement.innerHTML);
   return chapterDoc.documentElement.innerHTML;
 };
 export const handleImageMarker = (bookStr) => {
@@ -145,6 +146,7 @@ export const handleImageMarker = (bookStr) => {
         (imgDomList[i].parentNode as any).insertBefore(newItem, imgDomList[i]);
       }
     }
+    console.log(chapterDoc.documentElement.innerHTML);
     return chapterDoc.documentElement.innerHTML;
   }
 };
@@ -201,7 +203,9 @@ export const handleTextStyle = () => {
   ) as any;
   for (let index = 0; index < textNodes.length; index++) {
     const element = textNodes[index];
-    element.className = element.className + " kookit-text";
+    if (element.className.indexOf("kookit-text") === -1) {
+      element.className = element.className + " kookit-text";
+    }
   }
 };
 export const getImageMeta = async (url) => {
@@ -329,7 +333,7 @@ export const handleLayout = (element: HTMLElement, mode: string) => {
   let scale = mode === "double" ? 2 : 1;
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  doc.body.setAttribute(
+  doc.documentElement.setAttribute(
     "style",
     `width: auto;height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
       (element.clientWidth - gap) / scale

@@ -16,7 +16,7 @@ export const makeHtmlBook = (bookStr: string, isTxt = false) => {
     chapterDomList[i].parentNode &&
       chapterDomList[i].parentNode!.insertBefore(newItem, chapterDomList[i]);
   }
-  const chapterList = getChapterDoc(bookDoc.body.innerHTML);
+  const chapterList = getChapterDoc(bookDoc.documentElement.innerHTML);
   const load = async (index: number) => {
     const page = URL.createObjectURL(
       new Blob([chapterList[index].text], { type: "text/html" })
@@ -120,7 +120,8 @@ const isStartWithChars = (line: string) => {
     startWithChars.filter(
       (item) =>
         line.startsWith(item) ||
-        line.startsWith((window as any).ChineseS2T.s2t(item))
+        line.startsWith((window as any).ChineseS2T.s2t(item)) ||
+        line.startsWith((window as any).ChineseS2T.t2s(item))
     ).length > 0
   );
 };
