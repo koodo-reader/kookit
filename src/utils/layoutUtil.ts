@@ -298,14 +298,6 @@ export const handleLayout = (element: HTMLElement, mode: string) => {
   let scale = mode === "double" ? 2 : 1;
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  console.log(
-    element.clientWidth,
-    "element.clientWidth",
-    (element.clientWidth - gap) / scale,
-    "column widht",
-    gap,
-    "gap"
-  );
   doc.body.setAttribute(
     "style",
     `width: auto;height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${

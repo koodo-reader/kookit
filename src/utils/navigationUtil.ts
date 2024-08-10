@@ -47,7 +47,6 @@ export const handleScrollPage = async (
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   const width = element.clientWidth;
-  console.log(-width - gap, "-width - gap");
   if (delta > 0) {
     doc.body.scrollBy({
       top: 0,
