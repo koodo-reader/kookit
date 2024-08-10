@@ -5,42 +5,6 @@ export const convertStyleNum = (value: number) => {
 export const convertComputedNum = (value: string) => {
   return parseFloat(value.substring(0, value.length - 2));
 };
-export const handlePageWidth = (
-  element: HTMLElement,
-  mode: string,
-  iframe: any
-) => {
-  let doc = iframe.contentDocument;
-  if (!doc) {
-    return;
-  }
-  let columnElements = Array.from(doc.querySelectorAll(".kookit-text"));
-  //获取包含文字的元素
-  let columnElement;
-  for (let index = 0; index < columnElements.length; index++) {
-    const element: any = columnElements[index];
-    if (
-      element.tagName !== "BODY" &&
-      element.outerText &&
-      element.outerText.trim() !== ""
-    ) {
-      columnElement = element;
-      break;
-    }
-  }
-  if (!columnElement) return;
-  const columnWidth = convertComputedNum(getComputedStyle(columnElement).width);
-  let section = Math.floor(element.clientWidth / 12);
-  let gap = section % 2 === 0 ? section : section - 1;
-  let scale = mode === "double" ? 2 : 1;
-  element.setAttribute(
-    "style",
-    element.getAttribute("style") +
-      "width:" +
-      (mode === "double" ? columnWidth * scale + gap : columnWidth) +
-      "px; "
-  );
-};
 export const handleIframeHeight = async (
   element: HTMLElement,
   mode: string,
@@ -81,9 +45,13 @@ export const handleIframeHeight = async (
         let tailElem = document.createElement("div");
         tailElem.setAttribute(
           "style",
-          "height: " + doc.body.clientHeight + "px"
+          "height: " +
+            doc.body.clientHeight +
+            "px; display: inline-block; width: " +
+            pageWidth +
+            "px"
         );
-        doc.documentElement.appendChild(tailElem);
+        doc.body.appendChild(tailElem);
       }
     }
   } else {
@@ -101,7 +69,6 @@ export const handleOneChapterDoc = async (item) => {
     let blob = await fetch(await item.load()).then((r) => r.blob());
     chapterText = await blob.text();
   }
-  console.log(chapterText);
   if (item.loadAsset) {
     chapterText = await handlePrecacheAssets(chapterText, item.loadAsset);
   }
@@ -128,7 +95,6 @@ export const handlePrecacheAssets = async (bookStr, loadAsset) => {
       link.href = await loadAsset(link.getAttribute("href"));
     }
   }
-  console.log(chapterDoc.documentElement.innerHTML);
   return chapterDoc.documentElement.innerHTML;
 };
 export const handleImageMarker = (bookStr) => {
@@ -146,7 +112,6 @@ export const handleImageMarker = (bookStr) => {
         (imgDomList[i].parentNode as any).insertBefore(newItem, imgDomList[i]);
       }
     }
-    console.log(chapterDoc.documentElement.innerHTML);
     return chapterDoc.documentElement.innerHTML;
   }
 };
@@ -333,7 +298,15 @@ export const handleLayout = (element: HTMLElement, mode: string) => {
   let scale = mode === "double" ? 2 : 1;
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  doc.documentElement.setAttribute(
+  console.log(
+    element.clientWidth,
+    "element.clientWidth",
+    (element.clientWidth - gap) / scale,
+    "column widht",
+    gap,
+    "gap"
+  );
+  doc.body.setAttribute(
     "style",
     `width: auto;height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
       (element.clientWidth - gap) / scale

@@ -17,7 +17,6 @@ class GeneralParser {
       this.chapterList = await Promise.all<Chapter>(
         toc.map(async (item) => {
           let index = -1;
-          console.log(await this.book.resolveHref(item.href));
           try {
             index =
               item.href && (await this.book.resolveHref(item.href))
@@ -52,7 +51,6 @@ class GeneralParser {
   }
   async getChapterDoc() {
     const chapterIndexList = this.flattenChapters.map((item) => item.index);
-    console.log(this.book.sections, chapterIndexList);
     return this.book.sections.map((item: any, index: number) => {
       if (chapterIndexList.indexOf(index) > -1) {
         return {

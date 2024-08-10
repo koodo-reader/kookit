@@ -16,7 +16,7 @@ export const makeHtmlBook = (bookStr: string, isTxt = false) => {
     chapterDomList[i].parentNode &&
       chapterDomList[i].parentNode!.insertBefore(newItem, chapterDomList[i]);
   }
-  const chapterList = getChapterDoc(bookDoc.documentElement.innerHTML);
+  const chapterList = getChapterDoc(bookDoc.body.innerHTML);
   const load = async (index: number) => {
     const page = URL.createObjectURL(
       new Blob([chapterList[index].text], { type: "text/html" })

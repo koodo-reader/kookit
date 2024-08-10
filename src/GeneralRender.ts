@@ -148,7 +148,6 @@ class GeneralRender extends EventEmitter {
   }
   resolveChapter(href: string) {
     let path = href;
-    console.log(this.flattenChapters, path);
     let chapterIndex = -1;
     for (let index = 0; index < this.flattenChapters.length; index++) {
       if (this.flattenChapters[index].href.includes(path)) {
@@ -234,7 +233,6 @@ class GeneralRender extends EventEmitter {
     }
   }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
-    console.log(chapterDocIndex, chapterHref, chapterTitle);
     await handleRenderChatper(
       parseInt(chapterDocIndex),
       chapterTitle,
@@ -376,7 +374,6 @@ class GeneralRender extends EventEmitter {
     if (!doc) {
       return;
     }
-    console.log(1);
     if (
       (Math.abs(
         doc.body.scrollWidth -
@@ -391,7 +388,6 @@ class GeneralRender extends EventEmitter {
       ) < 10 &&
         this.mode === "scroll")
     ) {
-      console.log(2);
       await handleNextChapter(
         this.element,
         this.flatChapter(this.chapterList),
@@ -506,10 +502,7 @@ class GeneralRender extends EventEmitter {
     if (!doc) {
       return;
     }
-    doc.documentElement.setAttribute(
-      "style",
-      css + doc.documentElement.getAttribute("style")
-    );
+    doc.body.setAttribute("style", css + doc.body.getAttribute("style"));
   }
 }
 export default GeneralRender;

@@ -4,7 +4,6 @@ import {
   convertStyleNum,
   handleIframeHeight,
   handleOneChapterDoc,
-  handlePageWidth,
   progressInfo,
 } from "./layoutUtil";
 import StorageUtil from "./storageUtil";
@@ -47,7 +46,8 @@ export const handleScrollPage = async (
   }
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  const width = convertComputedNum(getComputedStyle(element).width);
+  const width = element.clientWidth;
+  console.log(-width - gap, "-width - gap");
   if (delta > 0) {
     doc.body.scrollBy({
       top: 0,
@@ -176,11 +176,9 @@ export const handleRenderChatper = async (
   if (chapterDocIndex === -1 || chapterDocIndex > chapterDocList.length - 1) {
     chapterDocIndex = 0;
   }
-  console.log(chapterDocList[chapterDocIndex]);
-  doc.documentElement.innerHTML = await handleOneChapterDoc(
+  doc.body.innerHTML = await handleOneChapterDoc(
     chapterDocList[chapterDocIndex].text
   );
-  console.log(doc.body.innerHTML, "doc.body.innerHTML");
   await handleCssLink(doc);
   StorageUtil.setKookitConfig("chapterTitle", chapterTitle);
   StorageUtil.setKookitConfig("chapterHref", chapterHref);
@@ -191,7 +189,6 @@ export const handleRenderChatper = async (
   );
   StorageUtil.setKookitConfig("text", "");
   await handleIframeHeight(element, mode, iframe, format);
-  mode !== "scroll" && handlePageWidth(element, mode, iframe);
   handleScrollPosition(element, mode, "", "", "", "");
 };
 export const handleCssLink = async (doc) => {
@@ -507,9 +504,7 @@ export const handleNextChapter = async (
     chapterDocList,
     "next"
   );
-  console.log(3);
   if (!nextChapter) return;
-  console.log(4);
   StorageUtil.setKookitConfig("page", "");
   await handleRenderChatper(
     nextChapter.index,
