@@ -11,8 +11,13 @@ class DocxRender extends GeneralRender {
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(docxBuffer: ArrayBuffer, mode: string) {
-    super(mode, "MD");
+  constructor(
+    docxBuffer: ArrayBuffer,
+    mode: string,
+    animation: string,
+    id: string
+  ) {
+    super(mode, "DOCX", animation);
     this.docxBuffer = docxBuffer;
     this.mode = mode;
     this.chapterList = [];

@@ -31,11 +31,10 @@ export const handleScrollPage = async (
   chapterDocList: ChapterDoc[],
   mode: string,
   format: string,
+  animation: string,
   delta: number,
   trigger: (status: string) => void
 ) => {
-  let isSliding =
-    StorageUtil.getReaderConfig("isSliding") === "yes" ? true : false;
   let pageArea = document.getElementById("page-area");
   if (!pageArea) return;
   let iframe = pageArea.getElementsByTagName("iframe")[0];
@@ -51,7 +50,7 @@ export const handleScrollPage = async (
     doc.body.scrollBy({
       top: 0,
       left: -width - gap,
-      behavior: isSliding ? "smooth" : "auto",
+      behavior: animation === "sliding" ? "smooth" : "auto",
     });
     // trigger("page-changed");
   } else if (delta < 0) {
@@ -63,11 +62,10 @@ export const handleScrollPage = async (
       format,
       trigger
     );
-
     doc.body.scrollBy({
       top: 0,
       left: width + gap,
-      behavior: isSliding ? "smooth" : "auto",
+      behavior: animation === "sliding" ? "smooth" : "auto",
     });
   }
 };

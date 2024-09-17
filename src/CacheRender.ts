@@ -11,8 +11,8 @@ class CacheRender extends GeneralRender {
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(cacheBuffer: ArrayBuffer, mode: string) {
-    super(mode, "CACHE");
+  constructor(cacheBuffer: ArrayBuffer, mode: string, animation: string) {
+    super(mode, "CACHE", animation);
     this.cacheBuffer = cacheBuffer;
     this.mode = mode;
     this.chapterList = [];

@@ -13,8 +13,13 @@ class HtmlRender extends GeneralRender {
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(htmlBuffer: ArrayBuffer, mode: string, format: string) {
-    super(mode, "MD");
+  constructor(
+    htmlBuffer: ArrayBuffer,
+    mode: string,
+    format: string,
+    animation: string
+  ) {
+    super(mode, format, animation);
     this.htmlBuffer = htmlBuffer;
     this.mode = mode;
     this.format = format;

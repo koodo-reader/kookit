@@ -15,8 +15,8 @@ class TxtRender extends GeneralRender {
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(text: string, mode: string, encoding: string) {
-    super(mode, "TXT");
+  constructor(text: string, mode: string, encoding: string, animation: string) {
+    super(mode, "TXT", animation);
     this.text = text;
     this.encoding = encoding;
     this.mode = mode;

@@ -15,8 +15,13 @@ class ComicRender extends GeneralRender {
   chapterDocList: ChapterDoc[];
   element: any;
   rpc: any;
-  constructor(comicBuffer: ArrayBuffer, mode: string, format: string) {
-    super(mode, format);
+  constructor(
+    comicBuffer: ArrayBuffer,
+    mode: string,
+    format: string,
+    animation: string
+  ) {
+    super(mode, format, animation);
     this.comicBuffer = comicBuffer;
     this.mode = mode;
     this.format = format;

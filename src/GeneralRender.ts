@@ -30,28 +30,37 @@ declare var window: any;
 class GeneralRender extends EventEmitter {
   mode: string;
   format: string;
+  animation: string;
   book: any;
+  location: any;
   chapterList: Chapter[];
   flattenChapters: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(mode: string, format: string) {
+  constructor(mode: string, format: string, animation: string) {
     super();
     this.mode = mode;
+    this.animation = animation;
     this.format = format;
     this.chapterList = [];
     this.chapterDocList = [];
     this.flattenChapters = [];
     this.book = "";
     this.element = "";
+    this.location = {};
   }
   getPageSize() {
+    let scale = this.mode === "double" ? 2 : 1;
+    let section = Math.floor(this.element.clientWidth / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
     return {
       width: this.element.clientWidth,
       height: this.element.clientHeight,
       left: this.element.offsetLeft,
       top: this.element.offsetTop,
       scrollTop: this.element.scrollTop,
+      sectionWidth: (this.element.clientWidth - gap) / scale,
+      gap: gap,
     };
   }
   getCache(book: any) {
@@ -258,7 +267,7 @@ class GeneralRender extends EventEmitter {
   async goToPosition(bookLocationStr: string) {
     let { text, chapterDocIndex, chapterTitle, chapterHref, count, page, cfi } =
       JSON.parse(bookLocationStr);
-
+    this.location = JSON.parse(bookLocationStr);
     await handleRenderChatper(
       parseInt(chapterDocIndex),
       chapterTitle,
@@ -327,6 +336,7 @@ class GeneralRender extends EventEmitter {
     this.element.innerHTML = "";
   }
   async prev() {
+    console.log(this, "sfasfsd");
     this.trigger("page-changed");
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;
@@ -358,6 +368,7 @@ class GeneralRender extends EventEmitter {
         this.chapterDocList,
         this.mode,
         this.format,
+        this.animation,
         1,
         this.trigger
       );
@@ -409,6 +420,7 @@ class GeneralRender extends EventEmitter {
         this.chapterDocList,
         this.mode,
         this.format,
+        this.animation,
         -1,
         this.trigger
       );
@@ -471,9 +483,7 @@ class GeneralRender extends EventEmitter {
     return await progressInfo(this.mode);
   }
   async record() {
-    let isSliding =
-      StorageUtil.getReaderConfig("isSliding") === "yes" ? true : false;
-    if (isSliding) {
+    if (this.animation === "sliding") {
       await new Promise((r) => setTimeout(r, 1000));
     }
     await handleRecord(
