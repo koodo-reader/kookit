@@ -158,6 +158,7 @@ export const handleRenderChatper = async (
   if (!doc) {
     return;
   }
+
   doc.body.innerHTML = "";
   iframe.height = 0 + "px";
   doc.body.scrollTo(0, 0);
@@ -176,11 +177,29 @@ export const handleRenderChatper = async (
   if (chapterDocIndex === -1 || chapterDocIndex > chapterDocList.length - 1) {
     chapterDocIndex = 0;
   }
+
   doc.body.innerHTML = await handleOneChapterDoc(
     chapterDocList[chapterDocIndex].text
   );
-  console.log(doc.documentElement);
-  await chapterDocList[chapterDocIndex].text.render(doc, 1);
+  if (format === "PDF") {
+    let { width, height } = await chapterDocList[
+      chapterDocIndex
+    ].text.getDimension();
+    let columnNum = mode === "double" ? 2 : 1;
+    let section = Math.floor(element.clientWidth / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+    let viewWidth = (element.clientWidth - gap) / columnNum;
+    if (mode === "single") {
+      viewWidth = element.clientWidth;
+    }
+    let viewHeight = element.clientHeight;
+    let scale = Math.min(viewWidth / width, viewHeight / height);
+    if (mode === "scroll") {
+      scale = viewWidth / width;
+    }
+    await chapterDocList[chapterDocIndex].text.render(doc, scale);
+  }
+
   await handleCssLink(doc);
   tempLocation.chapterTitle = chapterTitle;
   tempLocation.chapterHref = chapterHref;

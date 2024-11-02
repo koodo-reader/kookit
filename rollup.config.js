@@ -43,7 +43,7 @@ export default [
     input: "src/index.ts",
     output: [{
       name: "Kookit",
-      file: "D:\\Project\\kookit\\dist\\kookit.mjs",
+      file: "D:\\Project\\koodo-reader\\public\\lib\\kookit\\kookit.mjs",
       format: "es",
     }],
     plugins: [

@@ -1,4 +1,4 @@
-const pdfjsPath = path => new URL(`/test/pdfjs/${path}`, import.meta.url).toString()
+const pdfjsPath = path => new URL(`/lib/pdfjs/${path}`, import.meta.url).toString()
 
 const pdfjsLib = window.pdfjsLib
 
@@ -6,7 +6,6 @@ const fetchText = async url => await (await fetch(url)).text()
 
 // https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/text_layer_builder.css
 const textLayerBuilderCSS = async () => await fetchText(pdfjsPath('text_layer_builder.css'))
-
 // https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/annotation_layer_builder.css
 const annotationLayerBuilderCSS = async () => await fetchText(pdfjsPath('annotation_layer_builder.css'))
 
@@ -88,9 +87,9 @@ const renderPage = async (page, getImageBlob) => {
         ${await textLayerBuilderCSS()}
         ${await annotationLayerBuilderCSS()}
         </style>
-        <div id="canvas"></div>
         <div class="textLayer"></div>
         <div class="annotationLayer"></div>
+        <div id="canvas"></div>
     `], { type: 'text/html' }))
   return src
 }
@@ -147,6 +146,10 @@ export const makePDF = async file => {
     },
     render: async (doc, scale) => await render(await pdf.getPage(i + 1), doc, scale),
     size: 1000,
+    getDimension: async () => {
+      let viewport = (await pdf.getPage(i + 1)).getViewport({ scale: 1 })
+      return { width: viewport.width, height: viewport.height }
+    },
   }))
   book.isExternal = uri => /^\w+:/i.test(uri)
   book.resolveHref = async href => {

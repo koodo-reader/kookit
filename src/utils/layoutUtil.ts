@@ -31,7 +31,10 @@ export const handleIframeHeight = async (
     else console.log("some images failed to load, all finished loading");
   });
   await handleImageSize(element, mode, format);
-  handleTextStyle();
+  if (format !== "PDF") {
+    handleTextStyle();
+  }
+
   if (mode !== "scroll") {
     iframe.height = element.clientHeight + "px";
     if (mode === "double") {
@@ -73,7 +76,7 @@ export const handleOneChapterDoc = async (item) => {
   if (item.loadAsset) {
     chapterText = await handlePrecacheAssets(chapterText, item.loadAsset);
   }
-
+  console.log(chapterText);
   return handleImageMarker(chapterText);
 };
 export const getImageElement = (Element) => {
