@@ -13,9 +13,7 @@ class EpubRender extends GeneralRender {
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(epubBuffer: ArrayBuffer, mode: string, animation: string,
-    id: string) {
-    console.log("safsfsdfds", animation);
+  constructor(epubBuffer: ArrayBuffer, mode: string, animation: string) {
     super(mode, "EPUB", animation);
     this.epubBuffer = epubBuffer;
     this.mode = mode;

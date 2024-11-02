@@ -11,12 +11,7 @@ class MdRender extends GeneralRender {
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(
-    mdBuffer: ArrayBuffer,
-    mode: string,
-    animation: string,
-    id: string
-  ) {
+  constructor(mdBuffer: ArrayBuffer, mode: string, animation: string) {
     super(mode, "MD", animation);
     this.mdBuffer = mdBuffer;
     this.mode = mode;

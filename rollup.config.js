@@ -26,8 +26,8 @@ export default [
     input: "src/index.ts",
     output: [{
       name: "Kookit",
-      file: "D:\\Project\\koodo-reader\\public\\lib\\kookit\\kookit.min.js",
-      format: "umd",
+      file: "D:\\Project\\koodo-reader\\public\\lib\\kookit\\kookit.min.mjs",
+      format: "es",
     }],
     plugins: [
       resolve({ browser: true }),
@@ -43,8 +43,8 @@ export default [
     input: "src/index.ts",
     output: [{
       name: "Kookit",
-      file: "D:\\Project\\koodo-reader\\public\\lib\\kookit\\kookit.js",
-      format: "umd",
+      file: "D:\\Project\\kookit\\dist\\kookit.mjs",
+      format: "es",
     }],
     plugins: [
       resolve({ browser: true }),

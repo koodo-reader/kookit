@@ -1,5 +1,6 @@
 import EpubRender from "./EpubRender";
 import MobiRender from "./MobiRender";
+import PdfRender from "./PdfRender";
 import TxtRender from "./TxtRender";
 import ComicRender from "./ComicRender";
 import Fb2Render from "./Fb2Render";
@@ -14,6 +15,7 @@ export {
   CacheRender,
   EpubRender,
   MobiRender,
+  PdfRender,
   TxtRender,
   ComicRender,
   Fb2Render,

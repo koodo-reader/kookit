@@ -4,7 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="./index.css" />
-    <script src="../dist/kookit.umd.js"></script>
+    <script type="module">
+      import "./pdfjs/pdf.min.mjs";
+      // import * as pdfjsWorker from "./pdfjs/pdf.worker.mjs";
+      console.log(window);
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "./pdfjs/pdf.worker.min.mjs";
+      import * as Kookit from "../dist/kookit.mjs";
+      window.Kookit = Kookit;
+    </script>
+    <!-- <script src="../dist/kookit.umd.js"></script> -->
     <script src="https://cdn.bootcdn.net/ajax/libs/localforage/1.9.0/localforage.js"></script>
     <!-- <script src="./jszip.min.js"></script> -->
     <script src="./fflate.min.js"></script>
@@ -47,7 +55,7 @@
 
       const renderFunc = async () => {
         localforage.getItem("book").then(async (result) => {
-          const { EpubRender } = Kookit;
+          const { PdfRender } = Kookit;
           console.log(result);
           var loaded = function () {
             console.log("loaded");
@@ -102,7 +110,7 @@
           // await rendition.renderTo(
           //   document.getElementsByClassName("ebook-viewer")[0]
           // );
-          let rendition = new EpubRender(result, "double");
+          let rendition = new PdfRender(result, "scroll", "sliding");
           await rendition.renderTo(
             document.getElementsByClassName("ebook-viewer")[0]
           );
@@ -123,6 +131,7 @@
             console.log("rendered from html");
           });
           chapterList.forEach((item) => {
+            console.log(item);
             let li = document.createElement("li");
             li.innerText = item.label;
             li.addEventListener("click", (e) => {

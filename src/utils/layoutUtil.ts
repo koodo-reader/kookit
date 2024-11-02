@@ -66,6 +66,7 @@ export const handleOneChapterDoc = async (item) => {
   let chapterText = "";
   // return;
   if (item.load) {
+    console.log(await item.load(), "load");
     let blob = await fetch(await item.load()).then((r) => r.blob());
     chapterText = await blob.text();
   }

@@ -33,7 +33,8 @@ export const handleScrollPage = async (
   format: string,
   animation: string,
   delta: number,
-  trigger: (status: string) => void
+  trigger: (status: string) => void,
+  tempLocation: any
 ) => {
   let pageArea = document.getElementById("page-area");
   if (!pageArea) return;
@@ -60,7 +61,8 @@ export const handleScrollPage = async (
       chapterDocList,
       mode,
       format,
-      trigger
+      trigger,
+      tempLocation
     );
     doc.body.scrollBy({
       top: 0,
@@ -108,12 +110,11 @@ export const handlePrevChapter = async (
   flattenChapters: Chapter[],
   chapterDocList: ChapterDoc[],
   mode: string,
-  format: string
+  format: string,
+  tempLocation: any
 ) => {
-  let chapterDocIndex = parseInt(
-    StorageUtil.getKookitConfig("chapterDocIndex") || "0"
-  );
-  let chapterHref = StorageUtil.getKookitConfig("chapterHref") || "";
+  let chapterDocIndex = parseInt(tempLocation.chapterDocIndex || "0");
+  let chapterHref = tempLocation.chapterHref || "";
   if (chapterDocIndex === 0) {
     return;
   }
@@ -125,8 +126,8 @@ export const handlePrevChapter = async (
   );
   if (!prevChapter) return;
 
-  StorageUtil.setKookitConfig("text", "prevChapter");
-  StorageUtil.setKookitConfig("page", "");
+  tempLocation.text = "prevChapter";
+  tempLocation.page = "";
   await handleRenderChatper(
     prevChapter.index,
     prevChapter.label,
@@ -134,7 +135,8 @@ export const handlePrevChapter = async (
     chapterDocList,
     element,
     mode,
-    format
+    format,
+    tempLocation
   );
 };
 
@@ -145,7 +147,8 @@ export const handleRenderChatper = async (
   chapterDocList: ChapterDoc[],
   element: HTMLElement,
   mode: string,
-  format: string
+  format: string,
+  tempLocation: any
 ) => {
   let pageArea = document.getElementById("page-area");
   if (!pageArea) return;
@@ -176,15 +179,14 @@ export const handleRenderChatper = async (
   doc.body.innerHTML = await handleOneChapterDoc(
     chapterDocList[chapterDocIndex].text
   );
+  console.log(doc.documentElement);
+  await chapterDocList[chapterDocIndex].text.render(doc, 1);
   await handleCssLink(doc);
-  StorageUtil.setKookitConfig("chapterTitle", chapterTitle);
-  StorageUtil.setKookitConfig("chapterHref", chapterHref);
-  StorageUtil.setKookitConfig("chapterDocIndex", chapterDocIndex + "");
-  StorageUtil.setKookitConfig(
-    "percentage",
-    chapterDocIndex / chapterDocList.length + ""
-  );
-  StorageUtil.setKookitConfig("text", "");
+  tempLocation.chapterTitle = chapterTitle;
+  tempLocation.chapterHref = chapterHref;
+  tempLocation.chapterDocIndex = chapterDocIndex + "";
+  tempLocation.percentage = chapterDocIndex / chapterDocList.length + "";
+  tempLocation.text = "";
   await handleIframeHeight(element, mode, iframe, format);
   handleScrollPosition(element, mode, "", "", "", "");
 };
@@ -350,7 +352,8 @@ export const handleTurnChapter = async (
   chapterDocList: ChapterDoc[],
   mode: string,
   format: string,
-  trigger: (status: string) => void
+  trigger: (status: string) => void,
+  tempLocation: any
 ) => {
   let pageArea = document.getElementById("page-area");
   if (!pageArea) return;
@@ -378,7 +381,8 @@ export const handleTurnChapter = async (
       flattenChapters,
       chapterDocList,
       mode,
-      format
+      format,
+      tempLocation
     );
     trigger("rendered");
   }
@@ -386,7 +390,8 @@ export const handleTurnChapter = async (
 export const handleRecord = async (
   element: HTMLElement,
   mode: string,
-  flattenChapters: Chapter[]
+  flattenChapters: Chapter[],
+  tempLocation: any
 ) => {
   if (lock) return;
   let pageArea = document.getElementById("page-area");
@@ -416,26 +421,20 @@ export const handleRecord = async (
       break;
     }
   }
-  handleHashChapter(visibleNode, flattenChapters);
+  handleHashChapter(visibleNode, flattenChapters, tempLocation);
   if (
     firstVisibleNode &&
     !isCurrentNodeFarFromParrent(firstVisibleNode, element, mode)
   ) {
-    StorageUtil.setKookitConfig(
-      "text",
-      firstVisibleNode
+    tempLocation.text = firstVisibleNode
+      ? firstVisibleNode.textContent
         ? firstVisibleNode.textContent
-          ? firstVisibleNode.textContent
-          : ""
         : ""
-    );
-    StorageUtil.setKookitConfig("count", count + "");
-    StorageUtil.setKookitConfig("page", "");
+      : "";
+    tempLocation.count = count + "";
+    tempLocation.page = "";
   } else {
-    StorageUtil.setKookitConfig(
-      "page",
-      (await progressInfo(mode))?.currentPage + ""
-    );
+    tempLocation.page = (await progressInfo(mode))?.currentPage + "";
   }
 
   lock = true;
@@ -462,8 +461,12 @@ export const isCurrentNodeFarFromParrent = (
     return false;
   }
 };
-export const handleHashChapter = (visibleNode, flattenChapters) => {
-  let chapterHref = StorageUtil.getKookitConfig("chapterHref") || "";
+export const handleHashChapter = (
+  visibleNode,
+  flattenChapters,
+  tempLocation
+) => {
+  let chapterHref = tempLocation.chapterHref || "";
   let lastIndexOfHash = chapterHref.lastIndexOf("#");
   let beforeHash = chapterHref.substring(0, lastIndexOfHash);
   let afterHash = chapterHref.substring(lastIndexOfHash + 1);
@@ -475,7 +478,7 @@ export const handleHashChapter = (visibleNode, flattenChapters) => {
         href: newHref,
       });
       if (newIndex > -1) {
-        StorageUtil.setKookitConfig("chapterHref", newHref);
+        tempLocation.chapterHref = newHref;
       }
     }
   }
@@ -485,14 +488,13 @@ export const handleNextChapter = async (
   flattenChapters: Chapter[],
   chapterDocList: ChapterDoc[],
   mode: string,
-  format: string
+  format: string,
+  tempLocation: any
 ) => {
-  let chapterDocIndex = parseInt(
-    StorageUtil.getKookitConfig("chapterDocIndex") || "0"
-  );
-  let chapterHref = StorageUtil.getKookitConfig("chapterHref") || "";
+  let chapterDocIndex = parseInt(tempLocation.chapterDocIndex || "0");
+  let chapterHref = tempLocation.chapterHref || "";
   if (chapterDocIndex >= chapterDocList.length - 1) {
-    StorageUtil.setKookitConfig("percentage", "1");
+    tempLocation.percentage = "1";
     return;
   }
   let nextChapter = findValidChapter(
@@ -502,7 +504,7 @@ export const handleNextChapter = async (
     "next"
   );
   if (!nextChapter) return;
-  StorageUtil.setKookitConfig("page", "");
+  tempLocation.page = "";
   await handleRenderChatper(
     nextChapter.index,
     nextChapter.label,
@@ -510,7 +512,8 @@ export const handleNextChapter = async (
     chapterDocList,
     element,
     mode,
-    format
+    format,
+    tempLocation
   );
 };
 export const getAudioText = (element: HTMLElement, mode: string) => {
