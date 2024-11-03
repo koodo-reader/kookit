@@ -191,9 +191,12 @@ export const handleRenderChatper = async (
       chapterTitle !== chapterDocList[chapterDocIndex].label &&
       chapterHref.indexOf("#") === -1)
   ) {
-    chapterDocIndex = window._.findLastIndex(chapterDocList, {
+    let tempChapterDocIndex = window._.findLastIndex(chapterDocList, {
       label: chapterTitle,
     });
+    if (tempChapterDocIndex !== -1) {
+      chapterDocIndex = tempChapterDocIndex;
+    }
   }
   if (chapterDocIndex === -1 || chapterDocIndex > chapterDocList.length - 1) {
     chapterDocIndex = 0;
