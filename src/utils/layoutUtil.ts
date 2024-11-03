@@ -69,14 +69,12 @@ export const handleOneChapterDoc = async (item) => {
   let chapterText = "";
   // return;
   if (item.load) {
-    console.log(await item.load(), "load");
     let blob = await fetch(await item.load()).then((r) => r.blob());
     chapterText = await blob.text();
   }
   if (item.loadAsset) {
     chapterText = await handlePrecacheAssets(chapterText, item.loadAsset);
   }
-  console.log(chapterText);
   return handleImageMarker(chapterText);
 };
 export const getImageElement = (Element) => {

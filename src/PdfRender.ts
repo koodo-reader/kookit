@@ -4,7 +4,8 @@ import { createIframe, handleLayout } from "./utils/layoutUtil.js";
 import GeneralParser from "./utils/generalParser.js";
 import { isPDF, makePDF } from "./libs/pdf.js";
 import GeneralRender from "./GeneralRender.js";
-declare var window: any;
+import { clearHighlight, showPDFHighlight } from "./utils/noteUtil.js";
+import { getPdfScale } from "./utils/navigationUtil.js";
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
   mode: string;
@@ -63,12 +64,146 @@ class PdfRender extends GeneralRender {
         await this.parse();
       }
       let parser = new GeneralParser(this.book);
-      console.log(parser);
       return await parser.getMetadata();
     } catch (error) {
       console.log(error);
       throw error;
     }
+  }
+  async getHightlightCoords(pageIndex: number) {
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe || !iframe.contentWindow) return;
+    let doc = iframe.contentDocument;
+    if (!doc) return;
+
+    var selectionRects = doc.getSelection()!.getRangeAt(0).getClientRects();
+
+    let page = await this.chapterDocList[pageIndex].text.getPage();
+    let scale = await getPdfScale(
+      this.element,
+      this.mode,
+      this.chapterDocList,
+      pageIndex
+    );
+    var viewport = page.getViewport({ scale: scale });
+    let canvas = doc.querySelector("canvas");
+    var pageRect: any = canvas?.getClientRects()[0];
+
+    let tempRect: {
+      bottom: number;
+      top: number;
+      left: number;
+      right: number;
+    }[] = [];
+    for (let i = 0; i < selectionRects.length; i++) {
+      if (i === 0) {
+        tempRect.push({
+          bottom: selectionRects[i].bottom,
+          top: selectionRects[i].top,
+          left: selectionRects[i].left,
+          right: selectionRects[i].right,
+        });
+      } else if (
+        Math.abs(
+          tempRect[tempRect.length - 1].bottom - selectionRects[i].bottom
+        ) < 5
+      ) {
+        if (tempRect[tempRect.length - 1].left > selectionRects[i].left) {
+          tempRect[tempRect.length - 1].left = selectionRects[i].left;
+        }
+        if (tempRect[tempRect.length - 1].right < selectionRects[i].right) {
+          tempRect[tempRect.length - 1].right = selectionRects[i].right;
+        }
+      } else {
+        tempRect.push({
+          bottom: selectionRects[i].bottom,
+          top: selectionRects[i].top,
+          left: selectionRects[i].left,
+          right: selectionRects[i].right,
+        });
+      }
+    }
+    var selected = tempRect.map(function (r: any) {
+      return viewport
+        .convertToPdfPoint(r.left - pageRect.x, r.top - pageRect.y)
+        .concat(
+          viewport.convertToPdfPoint(
+            r.right - pageRect.x,
+            r.bottom - pageRect.y
+          )
+        );
+    });
+    return { page: pageIndex, coords: selected };
+  }
+  async renderHighlighters(notes: any[], handleNoteClick: any) {
+    clearHighlight();
+    for (let index = 0; index < notes.length; index++) {
+      const item = notes[index];
+
+      let pageArea = document.getElementById("page-area");
+      if (!pageArea) return;
+      let iframe = pageArea.getElementsByTagName("iframe")[0];
+      if (!iframe || !iframe.contentWindow) return;
+      let iWin: any =
+        iframe.contentWindow || iframe.contentDocument?.defaultView;
+
+      let selected = JSON.parse(item.range);
+      var pageIndex = selected.page;
+      let page = await this.chapterDocList[pageIndex].text.getPage();
+      let scale = await getPdfScale(
+        this.element,
+        this.mode,
+        this.chapterDocList,
+        pageIndex
+      );
+      try {
+        showPDFHighlight(
+          selected,
+          item.color,
+          item.key,
+          handleNoteClick,
+          page,
+          scale
+        );
+      } catch (e) {
+        console.warn(
+          e,
+          "Exception has been caught when restore character ranges."
+        );
+        return;
+      }
+      if (!iWin || !iWin.getSelection()) return;
+      iWin.getSelection()?.empty();
+    }
+  }
+  async createOneNote(item: any, handleNoteClick: any) {
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe || !iframe.contentWindow) return;
+    let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
+
+    let selected = JSON.parse(item.range);
+    var pageIndex = selected.page;
+    let page = await this.chapterDocList[pageIndex].text.getPage();
+    let scale = await getPdfScale(
+      this.element,
+      this.mode,
+      this.chapterDocList,
+      pageIndex
+    );
+    showPDFHighlight(
+      selected,
+      item.color,
+      item.key,
+      handleNoteClick,
+      page,
+      scale
+    );
+    if (!iWin || !iWin.getSelection()) return;
+    iWin.getSelection()?.empty();
   }
 }
 export default PdfRender;

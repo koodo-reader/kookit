@@ -5,7 +5,6 @@ import {
   getImageElement,
   progressInfo,
 } from "./utils/layoutUtil";
-import StorageUtil from "./utils/storageUtil";
 import {
   getCloestBlock,
   getSearchResult,
@@ -25,6 +24,7 @@ import EventEmitter from "./utils/EventEmitter";
 import GeneralParser from "./utils/generalParser";
 import { mimetypeReverse } from "./utils/mimetype";
 import { CFI } from "./libs/cfi";
+import { clearHighlight, showNoteHighlight } from "./utils/noteUtil";
 declare var window: any;
 
 class GeneralRender extends EventEmitter {
@@ -511,6 +511,51 @@ class GeneralRender extends EventEmitter {
       return;
     }
     doc.body.setAttribute("style", css + doc.body.getAttribute("style"));
+  }
+  async renderHighlighters(notes: any[], handleNoteClick: any) {
+    clearHighlight();
+    for (let index = 0; index < notes.length; index++) {
+      const item = notes[index];
+      try {
+        showNoteHighlight(
+          JSON.parse(item.range),
+          item.color,
+          item.key,
+          handleNoteClick
+        );
+        // highlighter.highlightSelection(classes[item.color]);
+      } catch (e) {
+        console.warn(
+          e,
+          "Exception has been caught when restore character ranges."
+        );
+        return;
+      }
+    }
+  }
+  removeOneNote(key: string, format: string) {
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe || !iframe.contentWindow) return;
+    let doc = iframe.contentDocument;
+    if (!doc) return;
+    const elements = doc.querySelectorAll(".kookit-note");
+    for (let index = 0; index < elements.length; index++) {
+      const element: any = elements[index];
+      const dataKey = element.getAttribute("data-key");
+      if (dataKey === key) {
+        element.parentNode.removeChild(element);
+      }
+    }
+  }
+  async createOneNote(item: any, handleNoteClick: any) {
+    showNoteHighlight(
+      JSON.parse(item.range),
+      item.color,
+      item.key,
+      handleNoteClick
+    );
   }
 }
 export default GeneralRender;

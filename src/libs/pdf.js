@@ -11,9 +11,10 @@ const annotationLayerBuilderCSS = async () => await fetchText(pdfjsPath('annotat
 
 const render = async (page, doc, zoom) => {
   const scale = zoom * devicePixelRatio
-  doc.documentElement.style.transform = `scale(${1 / devicePixelRatio})`
-  doc.documentElement.style.transformOrigin = 'top left'
-  doc.documentElement.style.setProperty('--scale-factor', scale)
+  let docLayer = doc.querySelector('.docLayer')
+  docLayer.style.transform = `scale(${1 / devicePixelRatio})`
+  docLayer.style.transformOrigin = 'top left'
+  docLayer.style.setProperty('--scale-factor', scale)
   const viewport = page.getViewport({ scale })
 
   // the canvas must be in the `PDFDocument`'s `ownerDocument`
@@ -87,9 +88,13 @@ const renderPage = async (page, getImageBlob) => {
         ${await textLayerBuilderCSS()}
         ${await annotationLayerBuilderCSS()}
         </style>
-        <div class="textLayer"></div>
-        <div class="annotationLayer"></div>
-        <div id="canvas"></div>
+        <div class="noteLayer"></div>
+        <div class="docLayer">
+            <div class="textLayer"></div>
+            <div class="annotationLayer"></div>
+            <div id="canvas"></div>
+        </div>
+
     `], { type: 'text/html' }))
   return src
 }
@@ -150,6 +155,9 @@ export const makePDF = async file => {
       let viewport = (await pdf.getPage(i + 1)).getViewport({ scale: 1 })
       return { width: viewport.width, height: viewport.height }
     },
+    getPage: async () => {
+      return await pdf.getPage(i + 1)
+    }
   }))
   book.isExternal = uri => /^\w+:/i.test(uri)
   book.resolveHref = async href => {

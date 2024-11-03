@@ -139,7 +139,29 @@ export const handlePrevChapter = async (
     tempLocation
   );
 };
-
+export const getPdfScale = async (
+  element: HTMLElement,
+  mode: string,
+  chapterDocList: ChapterDoc[],
+  chapterDocIndex: number
+) => {
+  let { width, height } = await chapterDocList[
+    chapterDocIndex
+  ].text.getDimension();
+  let columnNum = mode === "double" ? 2 : 1;
+  let section = Math.floor(element.clientWidth / 12);
+  let gap = section % 2 === 0 ? section : section - 1;
+  let viewWidth = (element.clientWidth - gap) / columnNum;
+  if (mode === "single") {
+    viewWidth = element.clientWidth;
+  }
+  let viewHeight = element.clientHeight;
+  let scale = Math.min(viewWidth / width, viewHeight / height);
+  if (mode === "scroll") {
+    scale = viewWidth / width;
+  }
+  return scale;
+};
 export const handleRenderChatper = async (
   chapterDocIndex: number,
   chapterTitle: string,
@@ -182,21 +204,12 @@ export const handleRenderChatper = async (
     chapterDocList[chapterDocIndex].text
   );
   if (format === "PDF") {
-    let { width, height } = await chapterDocList[
+    let scale = await getPdfScale(
+      element,
+      mode,
+      chapterDocList,
       chapterDocIndex
-    ].text.getDimension();
-    let columnNum = mode === "double" ? 2 : 1;
-    let section = Math.floor(element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
-    let viewWidth = (element.clientWidth - gap) / columnNum;
-    if (mode === "single") {
-      viewWidth = element.clientWidth;
-    }
-    let viewHeight = element.clientHeight;
-    let scale = Math.min(viewWidth / width, viewHeight / height);
-    if (mode === "scroll") {
-      scale = viewWidth / width;
-    }
+    );
     await chapterDocList[chapterDocIndex].text.render(doc, scale);
   }
 
