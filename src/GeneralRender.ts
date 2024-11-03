@@ -512,6 +512,20 @@ class GeneralRender extends EventEmitter {
     }
     doc.body.setAttribute("style", css + doc.body.getAttribute("style"));
   }
+  async getHightlightCoords(pageIndex: number) {
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe) return;
+    let doc = iframe.contentDocument;
+    if (!doc) {
+      return;
+    }
+    let charRange = window.rangy
+      .getSelection(iframe)
+      .saveCharacterRanges(doc.body)[0];
+    return charRange;
+  }
   async renderHighlighters(notes: any[], handleNoteClick: any) {
     clearHighlight();
     for (let index = 0; index < notes.length; index++) {

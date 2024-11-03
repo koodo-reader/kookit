@@ -20,12 +20,14 @@ const render = async (page, doc, zoom) => {
   // the canvas must be in the `PDFDocument`'s `ownerDocument`
   // (`globalThis.document` by default); that's where the fonts are loaded
   const canvas = document.createElement('canvas')
+  docLayer.style.width = `${viewport.width}px`
+  docLayer.style.height = `${viewport.height}px`
   canvas.height = viewport.height
   canvas.width = viewport.width
   const canvasContext = canvas.getContext('2d')
   await page.render({ canvasContext, viewport }).promise
   doc.querySelector('#canvas').replaceChildren(doc.adoptNode(canvas))
-
+  docLayer.style.overflow = 'hidden'
   const container = doc.querySelector('.textLayer')
   const textLayer = new pdfjsLib.TextLayer({
     textContentSource: await page.streamTextContent(),

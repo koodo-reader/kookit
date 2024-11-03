@@ -6,7 +6,6 @@ import {
   handleOneChapterDoc,
   progressInfo,
 } from "./layoutUtil";
-import StorageUtil from "./storageUtil";
 import Chapter from "../model/chapter";
 declare var window: any;
 

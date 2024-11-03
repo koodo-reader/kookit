@@ -57,6 +57,9 @@ export const handleIframeHeight = async (
         doc.body.appendChild(tailElem);
       }
     }
+  } else if (format === "PDF") {
+    let docLayer = doc.querySelector(".docLayer");
+    iframe.height = docLayer.getBoundingClientRect().height + "px";
   } else {
     //fix text blocked issue under scroll mode, don't ask me why
     iframe.height = doc.body.scrollHeight + "px";
