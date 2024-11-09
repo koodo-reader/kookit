@@ -216,6 +216,13 @@ export const handleRenderChatper = async (
   }
 
   await handleCssLink(doc);
+  if (
+    tempLocation.chapterDocIndex &&
+    chapterDocList[tempLocation.chapterDocIndex].text &&
+    chapterDocList[tempLocation.chapterDocIndex].text.unload
+  ) {
+    chapterDocList[tempLocation.chapterDocIndex].text.unload();
+  }
   tempLocation.chapterTitle = chapterTitle;
   tempLocation.chapterHref = chapterHref;
   tempLocation.chapterDocIndex = chapterDocIndex + "";

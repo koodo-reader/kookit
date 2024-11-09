@@ -1,4 +1,4 @@
-const pdfjsPath = path => new URL(`/lib/pdfjs/${path}`, import.meta.url).toString()
+const pdfjsPath = path => `./lib/pdfjs/${path}`
 
 const pdfjsLib = window.pdfjsLib
 
@@ -11,7 +11,7 @@ const annotationLayerBuilderCSS = async () => await fetchText(pdfjsPath('annotat
 
 const render = async (page, doc, zoom) => {
   const scale = zoom * devicePixelRatio
-  let docLayer = doc.querySelector('.docLayer')
+  let docLayer = doc.querySelector('.koodoPDFLayer')
   docLayer.style.transform = `scale(${1 / devicePixelRatio})`
   docLayer.style.transformOrigin = 'top left'
   docLayer.style.setProperty('--scale-factor', scale)
@@ -91,7 +91,7 @@ const renderPage = async (page, getImageBlob) => {
         ${await annotationLayerBuilderCSS()}
         </style>
         <div class="noteLayer"></div>
-        <div class="docLayer">
+        <div class="koodoPDFLayer">
             <div class="textLayer"></div>
             <div class="annotationLayer"></div>
             <div id="canvas"></div>
@@ -145,10 +145,11 @@ export const makePDF = async file => {
   book.sections = Array.from({ length: pdf.numPages }).map((_, i) => ({
     id: i,
     load: async () => {
-      const cached = cache.get(i)
+      const cached = cache.get(0)
       if (cached) return cached
       const url = await renderPage(await pdf.getPage(i + 1))
-      cache.set(i, url)
+      console.log(url)
+      cache.set(0, url)
       return url
     },
     render: async (doc, scale) => await render(await pdf.getPage(i + 1), doc, scale),
