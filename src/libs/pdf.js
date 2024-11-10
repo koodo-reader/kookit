@@ -103,7 +103,7 @@ const renderPage = async (page, getImageBlob) => {
 
 const makeTOCItem = item => ({
   label: item.title,
-  href: JSON.stringify(item.dest),
+  href: item.dest ? JSON.stringify(item.dest) : null,
   subitems: item.items.length ? item.items.map(makeTOCItem) : null,
 })
 
@@ -145,12 +145,17 @@ export const makePDF = async file => {
   book.sections = Array.from({ length: pdf.numPages }).map((_, i) => ({
     id: i,
     load: async () => {
-      const cached = cache.get(0)
+      const cached = cache.get(i)
       if (cached) return cached
       const url = await renderPage(await pdf.getPage(i + 1))
       console.log(url)
-      cache.set(0, url)
+      cache.set(i, url)
       return url
+    },
+    unload: async () => {
+      let page = await pdf.getPage(i + 1)
+      console.log(page)
+      page.cleanup()
     },
     render: async (doc, scale) => await render(await pdf.getPage(i + 1), doc, scale),
     size: 1000,

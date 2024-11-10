@@ -76,30 +76,27 @@ const findValidChapter = (
   chapterDocList: ChapterDoc[],
   flag: string
 ) => {
-  let validChapters = chapterDocList;
-  let currentChapterIndex = window._.findLastIndex(validChapters, {
+  let currentChapterIndex = window._.findLastIndex(chapterDocList, {
     href: chapterHref,
   });
   if (
     chapterHref &&
-    window._.findLastIndex(validChapters, {
+    window._.findLastIndex(chapterDocList, {
       href: chapterHref,
     }) > -1
   ) {
-    currentChapterIndex = window._.findLastIndex(validChapters, {
-      href: chapterHref,
-    });
+    //nothing
   } else {
     currentChapterIndex = chapterDocIndex;
   }
   if (flag === "prev") {
     return {
-      ...validChapters[currentChapterIndex - 1],
+      ...chapterDocList[currentChapterIndex - 1],
       index: currentChapterIndex - 1,
     };
   } else {
     return {
-      ...validChapters[currentChapterIndex + 1],
+      ...chapterDocList[currentChapterIndex + 1],
       index: currentChapterIndex + 1,
     };
   }
