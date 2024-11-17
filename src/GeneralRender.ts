@@ -266,9 +266,17 @@ class GeneralRender extends EventEmitter {
     this.trigger("rendered");
   }
   async goToPosition(bookLocationStr: string) {
-    this.tempLocation = JSON.parse(bookLocationStr);
+    let bookLocation = JSON.parse(bookLocationStr);
+    this.tempLocation = {
+      text: bookLocation.text,
+      chapterTitle: bookLocation.chapterTitle,
+      chapterDocIndex: bookLocation.chapterDocIndex,
+      chapterHref: bookLocation.chapterHref,
+      count: bookLocation.count,
+      page: bookLocation.page,
+    };
     let { text, chapterTitle, chapterDocIndex, chapterHref, count, page, cfi } =
-      this.tempLocation;
+      bookLocation;
     await handleRenderChatper(
       parseInt(chapterDocIndex),
       chapterTitle,
