@@ -75,27 +75,23 @@ let startWithChars = [
   "后序",
 ];
 let startWithNumAndChars = [" ", "　", "、", "·", ".", "：", ":"];
-(String as any).prototype.contains = function (str) {
-  return this.indexOf(str) > -1;
-};
-(String.prototype as any).slim = function () {
-  return this.split("")
-    .filter(
-      (item: string) =>
-        item !== "=" && item !== "-" && item !== "_" && item !== "+"
-    )
-    .join("");
-};
+
 const getTitleElement = (Element) => {
   return Array.from(
     Element.querySelectorAll("h1,h2,h3,h4,h5,h6,title")
   ) as HTMLElement[];
 };
-const cleanText = (str) => {
+export const cleanText = (str) => {
   return str
     .trim()
     .replace(/(\r\n|\n|\r|\t)/gm, "")
-    .substring(0, 100);
+    .substring(0, 100)
+    .split("")
+    .filter(
+      (item: string) =>
+        item !== "=" && item !== "-" && item !== "_" && item !== "+"
+    )
+    .join("");
 };
 
 const isTitle = (line: any) => {
@@ -106,7 +102,7 @@ const isTitle = (line: any) => {
     (isStartWithChars(line) ||
       (line.startsWith("第") && startWithDI(line)) ||
       (line.startsWith("卷") && startWithJUAN(line)) ||
-      (line.contains("第") &&
+      (line.indexOf("第") > -1 &&
         line.lastIndexOf("第") < 4 &&
         startWithDI(line.substr(line.indexOf("第")))) ||
       isStartWithNumAndChars(line))
@@ -205,8 +201,8 @@ const txtToHtml = (text: string) => {
   let html: string = "";
   let lines = text.split("\n");
   for (let item of lines) {
-    if (cleanText(item).slim() && isTitle(cleanText(item).slim())) {
-      html += `<h1>${cleanText(item).slim()}</h1>`;
+    if (cleanText(item) && isTitle(cleanText(item))) {
+      html += `<h1>${cleanText(item)}</h1>`;
     } else {
       html += `<p>${item}</p>`;
     }
@@ -239,7 +235,7 @@ const getTitlefromText = (bookDoc) => {
     return (
       item.childNodes.length === 1 &&
       item.childNodes[0].nodeType === Node.TEXT_NODE &&
-      isTitle(cleanText(item.textContent).slim())
+      isTitle(cleanText(item.textContent))
     );
   });
   let h1TitleElements: any = [];

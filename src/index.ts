@@ -8,9 +8,6 @@ import CacheRender from "./CacheRender";
 import DocxRender from "./DocxRender";
 import MdRender from "./MdRender";
 import HtmlRender from "./HtmlRender";
-declare var window: any;
-window.e = window.eval;
-window.a = window.atob;
 export {
   CacheRender,
   EpubRender,

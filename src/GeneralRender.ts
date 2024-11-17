@@ -17,8 +17,6 @@ import {
   handleScrollPage,
   handleScrollPosition,
   handleHighlightNode,
-  getBlockElement,
-  cleanText,
 } from "./utils/navigationUtil";
 import EventEmitter from "./utils/EventEmitter";
 import GeneralParser from "./utils/generalParser";

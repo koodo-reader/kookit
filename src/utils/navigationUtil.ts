@@ -7,6 +7,7 @@ import {
   progressInfo,
 } from "./layoutUtil";
 import Chapter from "../model/chapter";
+import { cleanText } from "../libs/html";
 declare var window: any;
 
 let lock = false;
@@ -18,12 +19,6 @@ export const getBlockElement = (Element) => {
   ) as HTMLElement[];
 };
 
-export const cleanText = (str) => {
-  return str
-    .trim()
-    .replace(/(\r\n|\n|\r|\t)/gm, "")
-    .substring(0, 100);
-};
 export const handleScrollPage = async (
   element: HTMLElement,
   flattenChapters: Chapter[],
@@ -287,15 +282,20 @@ export const handleScrollPosition = async (
     left = pageWidth * (parseInt(page) - 1);
   } else if (text) {
     let nodeList = getBlockElement(doc.body);
+    console.log("nodeList", nodeList.length);
     let targetNodeList = nodeList.filter((s, index) => {
+      console.log(
+        cleanText((s as HTMLElement).textContent),
+        cleanText(text),
+        index
+      );
       return (
-        cleanText((s as HTMLElement).textContent).slim() &&
-        (cleanText((s as HTMLElement).textContent).slim() ===
-          cleanText(text).slim() ||
-          cleanText((s as HTMLElement).textContent).slim() ===
-            window.ChineseS2T.t2s(cleanText(text).slim()) ||
-          cleanText((s as HTMLElement).textContent).slim() ===
-            window.ChineseS2T.s2t(cleanText(text)).slim()) &&
+        cleanText((s as HTMLElement).textContent) &&
+        (cleanText((s as HTMLElement).textContent) === cleanText(text) ||
+          cleanText((s as HTMLElement).textContent) ===
+            window.ChineseS2T.t2s(cleanText(text)) ||
+          cleanText((s as HTMLElement).textContent) ===
+            window.ChineseS2T.s2t(cleanText(text))) &&
         (Math.abs(index - parseInt(count)) < 2 ||
           count === "search" ||
           count === "ignore" ||
