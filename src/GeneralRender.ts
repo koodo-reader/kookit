@@ -303,8 +303,27 @@ class GeneralRender extends EventEmitter {
       if (!node) {
         return;
       }
+      let element: Element | null = null;
+      let currentNode: Node | null = node;
+
+      while (currentNode) {
+        const temp: Element = currentNode as Element;
+        if (
+          temp.tagName &&
+          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address".indexOf(
+            temp.tagName.toLowerCase()
+          ) > -1
+        ) {
+          element = temp;
+          break;
+        }
+        currentNode = currentNode.parentNode;
+      }
+      if (!element) {
+        return;
+      }
       count = "ignore";
-      text = node.textContent;
+      text = element.textContent;
     }
 
     await handleScrollPosition(this.element, this.mode, text, count, "", page);
