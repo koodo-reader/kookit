@@ -298,6 +298,7 @@ class GeneralRender extends EventEmitter {
         return;
       }
       const { node, offset } = cfiInfo.resolve(doc, {});
+      console.log(node, offset);
 
       if (!node) {
         return;
