@@ -32,7 +32,7 @@ class GeneralRender extends EventEmitter {
   format: string;
   animation: string;
   book: any;
-  location: any;
+  tempLocation: any;
   chapterList: Chapter[];
   flattenChapters: Chapter[];
   chapterDocList: ChapterDoc[];
@@ -47,7 +47,7 @@ class GeneralRender extends EventEmitter {
     this.flattenChapters = [];
     this.book = "";
     this.element = "";
-    this.location = {};
+    this.tempLocation = {};
   }
   getPageSize() {
     let scale = this.mode === "double" ? 2 : 1;
@@ -249,7 +249,8 @@ class GeneralRender extends EventEmitter {
       this.chapterDocList,
       this.element,
       this.mode,
-      this.format
+      this.format,
+      this.tempLocation
     );
     if (chapterHref && chapterHref.indexOf("#") > -1) {
       await handleScrollPosition(
@@ -265,9 +266,9 @@ class GeneralRender extends EventEmitter {
     this.trigger("rendered");
   }
   async goToPosition(bookLocationStr: string) {
-    let { text, chapterDocIndex, chapterTitle, chapterHref, count, page, cfi } =
-      JSON.parse(bookLocationStr);
-    this.location = JSON.parse(bookLocationStr);
+    this.tempLocation = JSON.parse(bookLocationStr);
+    let { text, chapterTitle, chapterDocIndex, chapterHref, count, page, cfi } =
+      this.tempLocation;
     await handleRenderChatper(
       parseInt(chapterDocIndex),
       chapterTitle,
@@ -275,7 +276,8 @@ class GeneralRender extends EventEmitter {
       this.chapterDocList,
       this.element,
       this.mode,
-      this.format
+      this.format,
+      this.tempLocation
     );
     if (cfi) {
       const cfiInfo = new CFI(cfi, {});
@@ -336,7 +338,6 @@ class GeneralRender extends EventEmitter {
     this.element.innerHTML = "";
   }
   async prev() {
-    console.log(this, "sfasfsd");
     this.trigger("page-changed");
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return;
@@ -352,11 +353,10 @@ class GeneralRender extends EventEmitter {
         this.flatChapter(this.chapterList),
         this.chapterDocList,
         this.mode,
-        this.format
+        this.format,
+        this.tempLocation
       );
-      let chapterDocIndex = parseInt(
-        StorageUtil.getKookitConfig("chapterDocIndex") || "-1"
-      );
+      let chapterDocIndex = parseInt(this.tempLocation.chapterDocIndex || "-1");
       if (chapterDocIndex > -1) {
         doc.body.scrollTo(doc.body.scrollWidth, 0);
       }
@@ -370,7 +370,8 @@ class GeneralRender extends EventEmitter {
         this.format,
         this.animation,
         1,
-        this.trigger
+        this.trigger,
+        this.tempLocation
       );
     }
     await this.record();
@@ -404,7 +405,8 @@ class GeneralRender extends EventEmitter {
         this.flatChapter(this.chapterList),
         this.chapterDocList,
         this.mode,
-        this.format
+        this.format,
+        this.tempLocation
       );
       this.trigger("rendered");
     } else if (this.mode === "scroll") {
@@ -422,7 +424,8 @@ class GeneralRender extends EventEmitter {
         this.format,
         this.animation,
         -1,
-        this.trigger
+        this.trigger,
+        this.tempLocation
       );
     }
     await this.record();
@@ -442,7 +445,8 @@ class GeneralRender extends EventEmitter {
       this.flatChapter(this.chapterList),
       this.chapterDocList,
       this.mode,
-      this.format
+      this.format,
+      this.tempLocation
     );
     await this.record();
     this.trigger("rendered");
@@ -462,7 +466,8 @@ class GeneralRender extends EventEmitter {
       this.flatChapter(this.chapterList),
       this.chapterDocList,
       this.mode,
-      this.format
+      this.format,
+      this.tempLocation
     );
     await this.record();
     this.trigger("rendered");
@@ -489,19 +494,12 @@ class GeneralRender extends EventEmitter {
     await handleRecord(
       this.element,
       this.mode,
-      this.flatChapter(this.chapterList)
+      this.flatChapter(this.chapterList),
+      this.tempLocation
     );
   }
   getPosition() {
-    return {
-      text: StorageUtil.getKookitConfig("text"),
-      chapterTitle: StorageUtil.getKookitConfig("chapterTitle"),
-      chapterDocIndex: StorageUtil.getKookitConfig("chapterDocIndex"),
-      chapterHref: StorageUtil.getKookitConfig("chapterHref"),
-      count: StorageUtil.getKookitConfig("count"),
-      percentage: StorageUtil.getKookitConfig("percentage"),
-      page: StorageUtil.getKookitConfig("page"),
-    };
+    return this.tempLocation;
   }
   setStyle(css: string) {
     let pageArea = document.getElementById("page-area");
