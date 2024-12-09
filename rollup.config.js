@@ -42,6 +42,7 @@ export default [
         },
       }), // 压缩代码
     ],
+    external: ['mammoth', 'jszip', 'underscore', 'marked', 'chinese-s2t', 'mhtml2html', 'js-untar', 'fflate', '@zip.js/zip.js', 'rangy'],
   },
   {
     input: "src/index.ts",
@@ -58,6 +59,7 @@ export default [
       json(),
       typescript({ tsconfig: "./tsconfig.json" }),
     ],
+    external: ['mammoth', 'jszip', 'underscore', 'marked', 'chinese-s2t', 'mhtml2html', 'js-untar', 'fflate', '@zip.js/zip.js', 'rangy'],
   },
   // CommonJS (for Node) and ES module (for bundlers) build.
   // (We could have three entries in the configuration array

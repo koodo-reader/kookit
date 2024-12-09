@@ -1,10 +1,11 @@
 import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
 import { mimetype } from "../utils/mimetype";
+import JSZip from "jszip";
+import _ from "underscore";
 
-declare var window: any;
 export const makeCacheBook = async (bookBuffer: ArrayBuffer) => {
-  let zip = await window.JSZip.loadAsync(bookBuffer);
+  let zip = await JSZip.loadAsync(bookBuffer);
   var tocZip = zip.file("toc.json");
   let toc = [];
   if (tocZip) {
@@ -28,7 +29,7 @@ export const makeCacheBook = async (bookBuffer: ArrayBuffer) => {
   book.getCover = () => "";
   const loadAsset = async (url: string) => {
     var assetZip = zip.file(url);
-    let asset = "";
+    let asset: any;
     if (assetZip) {
       asset = await assetZip.async("arraybuffer");
     }
@@ -49,7 +50,7 @@ export const makeCacheBook = async (bookBuffer: ArrayBuffer) => {
   }));
   book.rendition = { layout: "pre-paginated" };
   book.resolveHref = (href: string) => {
-    return { index: window._.findLastIndex(sections, { href }) };
+    return { index: _.findLastIndex(sections, { href }) };
   };
   book.splitTOCHref = (href) => [href, null];
   book.getTOCFragment = (doc) => doc.documentElement;

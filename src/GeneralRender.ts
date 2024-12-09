@@ -23,6 +23,7 @@ import GeneralParser from "./utils/generalParser";
 import { mimetypeReverse } from "./utils/mimetype";
 import { CFI } from "./libs/cfi";
 import { clearHighlight, showNoteHighlight } from "./utils/noteUtil";
+import JSZip from "jszip";
 declare var window: any;
 
 class GeneralRender extends EventEmitter {
@@ -82,7 +83,7 @@ class GeneralRender extends EventEmitter {
           return chapterText;
         })
       );
-      let zip = new window.JSZip();
+      let zip = new JSZip();
       zip.file("toc.json", JSON.stringify(toc));
       zip.file("sections.json", JSON.stringify(sections));
       let chapters: any = [];
@@ -96,6 +97,9 @@ class GeneralRender extends EventEmitter {
         let imgDomList = getImageElement(chapterDoc) as any;
         for (let subindex = 0; subindex < imgDomList.length; subindex++) {
           let subImgZip = zip.folder("imgs/" + index);
+          if (!subImgZip) {
+            break;
+          }
           if (imgDomList[subindex].getAttribute("src")) {
             try {
               let blob = await fetch(
@@ -118,6 +122,9 @@ class GeneralRender extends EventEmitter {
         for (let subindex = 0; subindex < linkList.length; subindex++) {
           let link: any = linkList[subindex];
           let subCssZip = zip.folder("css/" + index);
+          if (!subCssZip) {
+            break;
+          }
           if (link.getAttribute("href")) {
             try {
               let blob = await fetch(await link.getAttribute("href")).then(
@@ -139,13 +146,15 @@ class GeneralRender extends EventEmitter {
         chapters.push(chapterDoc.documentElement.innerHTML);
       }
       let configZip = zip.folder("chapters");
+      if (!configZip) {
+        return;
+      }
       for (let index = 0; index < chapters.length; index++) {
         configZip.file(index + ".html", chapters[index]);
       }
       zip
         .generateAsync({ type: "blob" })
         .then(async (blob: any) => {
-          // window.saveAs(blob, "file.zip");
           resolve(await new Response(blob).arrayBuffer());
         })
         .catch((err: any) => {
@@ -264,9 +273,17 @@ class GeneralRender extends EventEmitter {
     this.trigger("rendered");
   }
   async goToPosition(bookLocationStr: string) {
-    this.tempLocation = JSON.parse(bookLocationStr);
+    let bookLocation = JSON.parse(bookLocationStr);
+    this.tempLocation = {
+      text: bookLocation.text,
+      chapterTitle: bookLocation.chapterTitle,
+      chapterDocIndex: bookLocation.chapterDocIndex,
+      chapterHref: bookLocation.chapterHref,
+      count: bookLocation.count,
+      page: bookLocation.page,
+    };
     let { text, chapterTitle, chapterDocIndex, chapterHref, count, page, cfi } =
-      this.tempLocation;
+      bookLocation;
     await handleRenderChatper(
       parseInt(chapterDocIndex),
       chapterTitle,
@@ -288,12 +305,32 @@ class GeneralRender extends EventEmitter {
         return;
       }
       const { node, offset } = cfiInfo.resolve(doc, {});
+      console.log(node, offset);
 
       if (!node) {
         return;
       }
+      let element: Element | null = null;
+      let currentNode: Node | null = node;
+
+      while (currentNode) {
+        const temp: Element = currentNode as Element;
+        if (
+          temp.tagName &&
+          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address".indexOf(
+            temp.tagName.toLowerCase()
+          ) > -1
+        ) {
+          element = temp;
+          break;
+        }
+        currentNode = currentNode.parentNode;
+      }
+      if (!element) {
+        return;
+      }
       count = "ignore";
-      text = node.textContent;
+      text = element.textContent;
     }
 
     await handleScrollPosition(this.element, this.mode, text, count, "", page);

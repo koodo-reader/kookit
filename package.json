@@ -33,8 +33,8 @@
     "@rollup/plugin-commonjs": "^20.0.0",
     "@rollup/plugin-json": "^4.1.0",
     "@rollup/plugin-node-resolve": "^13.0.4",
-    "@rollup/plugin-typescript": "^8.2.5",
     "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^8.2.5",
     "@types/iconv-lite": "^0.0.1",
     "@types/node": "^16.11.2",
     "eslint": "^7.32.0",
@@ -47,7 +47,17 @@
     "typescript": "^4.4.2"
   },
   "dependencies": {
-    "chardet": "^2.0.0"
+    "7z-wasm": "^1.1.0",
+    "@zip.js/zip.js": "^2.7.54",
+    "chardet": "^2.0.0",
+    "chinese-s2t": "^1.0.0",
+    "fflate": "^0.8.2",
+    "js-untar": "^2.0.0",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.8.0",
+    "marked": "^15.0.3",
+    "mhtml2html": "^3.0.0",
+    "underscore": "^1.13.7"
   },
   "bugs": {
     "url": "https://github.com/troyeguo/koodo-render/issues"

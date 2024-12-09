@@ -4,6 +4,8 @@ import { createIframe, handleLayout } from "./utils/layoutUtil";
 import GeneralParser from "./utils/generalParser";
 import { makeComicBook } from "./libs/comic-book";
 import GeneralRender from "./GeneralRender";
+import untar from "js-untar";
+import { ZipReader, BlobReader, TextWriter, BlobWriter } from "@zip.js/zip.js";
 declare var window: any;
 
 class ComicRender extends GeneralRender {
@@ -91,8 +93,6 @@ class ComicRender extends GeneralRender {
     return await this.getCache(this.book);
   }
   async makeZipLoader(file) {
-    const { ZipReader, BlobReader, TextWriter, BlobWriter } = window.zip;
-    window.zip.configure({ useWebWorkers: false });
     const reader = new ZipReader(new BlobReader(file));
     const entries = await reader.getEntries();
     const map = new Map(entries.map((entry) => [entry.filename, entry]));
@@ -106,7 +106,7 @@ class ComicRender extends GeneralRender {
     return { entries, loadText, loadBlob, getSize };
   }
   async makeTarLoader() {
-    const entries = await window.untar(this.comicBuffer);
+    const entries = await untar(this.comicBuffer);
     const map = new Map(entries.map((entry) => [entry.name, entry]));
     const load =
       (f) =>

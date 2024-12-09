@@ -5,7 +5,7 @@ import GeneralRender from "./GeneralRender";
 import { makeHtmlBook } from "./libs/html";
 import GeneralParser from "./utils/generalParser";
 import { mimetype } from "./utils/mimetype";
-declare var window: any;
+import mhtml2html from "mhtml2html";
 class HtmlRender extends GeneralRender {
   htmlBuffer: ArrayBuffer;
   mode: string;
@@ -52,8 +52,9 @@ class HtmlRender extends GeneralRender {
         reader.onload = async (evt) => {
           let html = evt.target?.result as any;
           if (this.format === "MHTML") {
+            console.log(mhtml2html.convert(html));
             html =
-              window.mhtml2html.convert(html).window.document.documentElement
+              mhtml2html.convert(html).window.document.documentElement
                 .innerHTML;
           }
 

@@ -4,7 +4,7 @@ import { createIframe, handleLayout } from "./utils/layoutUtil";
 import GeneralRender from "./GeneralRender";
 import { makeHtmlBook } from "./libs/html";
 import GeneralParser from "./utils/generalParser";
-declare var window: any;
+import { marked } from "marked";
 class MdRender extends GeneralRender {
   mdBuffer: ArrayBuffer;
   mode: string;
@@ -39,7 +39,7 @@ class MdRender extends GeneralRender {
         var blob = new Blob([this.mdBuffer], { type: "text/plain" });
         var reader = new FileReader();
         reader.onload = async (evt) => {
-          let docStr = window.marked(evt.target?.result as any);
+          let docStr = await marked(evt.target?.result as any);
           this.book = makeHtmlBook(docStr, false);
 
           resolve();

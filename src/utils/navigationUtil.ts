@@ -8,8 +8,9 @@ import {
 } from "./layoutUtil";
 import Chapter from "../model/chapter";
 import { cleanText } from "../libs/html";
+import Chinese from "chinese-s2t";
+import _ from "underscore";
 declare var window: any;
-
 let lock = false;
 export const getBlockElement = (Element) => {
   return Array.from(
@@ -71,12 +72,12 @@ const findValidChapter = (
   chapterDocList: ChapterDoc[],
   flag: string
 ) => {
-  let currentChapterIndex = window._.findLastIndex(chapterDocList, {
+  let currentChapterIndex = _.findLastIndex(chapterDocList, {
     href: chapterHref,
   });
   if (
     chapterHref &&
-    window._.findLastIndex(chapterDocList, {
+    _.findLastIndex(chapterDocList, {
       href: chapterHref,
     }) > -1
   ) {
@@ -183,7 +184,7 @@ export const handleRenderChatper = async (
       chapterTitle !== chapterDocList[chapterDocIndex].label &&
       chapterHref.indexOf("#") === -1)
   ) {
-    let tempChapterDocIndex = window._.findLastIndex(chapterDocList, {
+    let tempChapterDocIndex = _.findLastIndex(chapterDocList, {
       label: chapterTitle,
     });
     if (tempChapterDocIndex !== -1) {
@@ -293,9 +294,9 @@ export const handleScrollPosition = async (
         cleanText((s as HTMLElement).textContent) &&
         (cleanText((s as HTMLElement).textContent) === cleanText(text) ||
           cleanText((s as HTMLElement).textContent) ===
-            window.ChineseS2T.t2s(cleanText(text)) ||
+            Chinese.t2s(cleanText(text)) ||
           cleanText((s as HTMLElement).textContent) ===
-            window.ChineseS2T.s2t(cleanText(text))) &&
+            Chinese.s2t(cleanText(text))) &&
         (Math.abs(index - parseInt(count)) < 2 ||
           count === "search" ||
           count === "ignore" ||
@@ -512,7 +513,7 @@ export const handleHashChapter = (
     const element = visibleNode[index];
     if (afterHash && element.id) {
       let newHref = beforeHash + "#" + element.id;
-      let newIndex = window._.findLastIndex(flattenChapters, {
+      let newIndex = _.findLastIndex(flattenChapters, {
         href: newHref,
       });
       if (newIndex > -1) {
@@ -675,7 +676,7 @@ export const getSearchResult = async (
       chapterDocList[i].text.unload();
     }
   }
-  return window._.uniq(searchResult, "excerpt");
+  return _.uniq(searchResult, "excerpt");
 };
 export const isParentBlock = (myDiv: Element) => {
   var children = myDiv.children;

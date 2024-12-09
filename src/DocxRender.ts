@@ -4,7 +4,8 @@ import { createIframe, handleLayout } from "./utils/layoutUtil";
 import GeneralRender from "./GeneralRender";
 import { makeHtmlBook } from "./libs/html";
 import GeneralParser from "./utils/generalParser";
-declare var window: any;
+import mammoth from "mammoth";
+
 class DocxRender extends GeneralRender {
   docxBuffer: ArrayBuffer;
   mode: string;
@@ -36,7 +37,7 @@ class DocxRender extends GeneralRender {
   async parse() {
     return new Promise<void>((resolve, reject) => {
       try {
-        window.mammoth
+        mammoth
           .convertToHtml({ arrayBuffer: this.docxBuffer })
           .then(async (res: any) => {
             this.book = makeHtmlBook(res.value, false);

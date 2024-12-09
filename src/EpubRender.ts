@@ -4,7 +4,7 @@ import { createIframe, handleLayout } from "./utils/layoutUtil";
 import GeneralParser from "./utils/generalParser";
 import { EPUB } from "./libs/epub";
 import GeneralRender from "./GeneralRender";
-declare var window: any;
+import { ZipReader, BlobReader, TextWriter, BlobWriter } from "@zip.js/zip.js";
 
 class EpubRender extends GeneralRender {
   epubBuffer: ArrayBuffer;
@@ -57,8 +57,6 @@ class EpubRender extends GeneralRender {
     return await this.getCache(this.book);
   }
   async makeZipLoader(file) {
-    const { ZipReader, BlobReader, TextWriter, BlobWriter } = window.zip;
-    window.zip.configure({ useWebWorkers: false });
     let reader: any;
     try {
       reader = new ZipReader(new BlobReader(file));

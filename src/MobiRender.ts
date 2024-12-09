@@ -4,7 +4,8 @@ import { createIframe, handleLayout } from "./utils/layoutUtil";
 import GeneralParser from "./utils/generalParser";
 import { isMOBI, MOBI } from "./libs/mobi.js";
 import GeneralRender from "./GeneralRender";
-declare var window: any;
+import { unzlibSync } from "fflate";
+
 class MobiRender extends GeneralRender {
   mobiBuffer: ArrayBuffer;
   mode: string;
@@ -44,9 +45,7 @@ class MobiRender extends GeneralRender {
         type: blob.type,
       });
       if (await isMOBI(file)) {
-        this.book = await new MOBI({ unzlib: window.fflate.unzlibSync }).open(
-          file
-        );
+        this.book = await new MOBI({ unzlib: unzlibSync }).open(file);
       }
     } catch (error) {
       console.log(error);
