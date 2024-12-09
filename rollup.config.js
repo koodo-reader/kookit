@@ -1,7 +1,7 @@
 import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import typescript from "@rollup/plugin-typescript";
-import { uglify } from "rollup-plugin-uglify";
+import terser from '@rollup/plugin-terser';
 import json from "@rollup/plugin-json";
 export default [
   //browser-friendly UMD build
@@ -26,7 +26,7 @@ export default [
     input: "src/index.ts",
     output: [{
       name: "Kookit",
-      file: "D:\\Project\\koodo-reader\\public\\lib\\kookit\\kookit.min.mjs",
+      file: "D:\\Project\\koodo-reader\\src\\assets\\lib\\kookit.min.js",
       format: "es",
     }],
     plugins: [
@@ -36,14 +36,18 @@ export default [
       }),
       json(),
       typescript({ tsconfig: "./tsconfig.json" }),
-      uglify(),
+      terser({
+        format: {
+          comments: false, // 移除所有注释
+        },
+      }), // 压缩代码
     ],
   },
   {
     input: "src/index.ts",
     output: [{
       name: "Kookit",
-      file: "D:\\Project\\koodo-reader\\public\\lib\\kookit\\kookit.mjs",
+      file: "D:\\Project\\koodo-reader\\src\\assets\\lib\\kookit.js",
       format: "es",
     }],
     plugins: [
