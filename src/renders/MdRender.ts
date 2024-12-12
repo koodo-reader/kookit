@@ -1,9 +1,9 @@
-import Chapter from "./model/chapter";
-import ChapterDoc from "./model/chapterDoc";
-import { createIframe, handleLayout } from "./utils/layoutUtil";
+import Chapter from "../model/chapter";
+import ChapterDoc from "../model/chapterDoc";
+import { createIframe, handleLayout } from "../utils/layoutUtil";
 import GeneralRender from "./GeneralRender";
-import { makeHtmlBook } from "./libs/html";
-import GeneralParser from "./utils/generalParser";
+import { makeHtmlBook } from "../libs/html";
+import GeneralParser from "../utils/generalParser";
 import { marked } from "marked";
 class MdRender extends GeneralRender {
   mdBuffer: ArrayBuffer;

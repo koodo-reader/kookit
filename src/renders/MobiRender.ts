@@ -1,20 +1,22 @@
-import Chapter from "./model/chapter";
-import ChapterDoc from "./model/chapterDoc";
-import { createIframe, handleLayout } from "./utils/layoutUtil";
-import GeneralParser from "./utils/generalParser";
-import { makeFB2 } from "./libs/fb2";
+import Chapter from "../model/chapter";
+import ChapterDoc from "../model/chapterDoc";
+import { createIframe, handleLayout } from "../utils/layoutUtil";
+import GeneralParser from "../utils/generalParser";
+import { isMOBI, MOBI } from "../libs/mobi.js";
 import GeneralRender from "./GeneralRender";
+import { unzlibSync } from "fflate";
 
-class Fb2Render extends GeneralRender {
-  fb2Buffer: ArrayBuffer;
+class MobiRender extends GeneralRender {
+  mobiBuffer: ArrayBuffer;
   mode: string;
   book: any;
+  metadata: any;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(fb2Buffer: ArrayBuffer, mode: string, animation: string) {
-    super(mode, "FB2", animation);
-    this.fb2Buffer = fb2Buffer;
+  constructor(mobiBuffer: ArrayBuffer, mode: string, animation: string) {
+    super(mode, "MOBI", animation);
+    this.mobiBuffer = mobiBuffer;
     this.mode = mode;
     this.chapterList = [];
     this.chapterDocList = [];
@@ -31,15 +33,20 @@ class Fb2Render extends GeneralRender {
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
-
       handleLayout(element, this.mode);
       resolve();
     });
   }
   async parse() {
     try {
-      let blob = new Blob([this.fb2Buffer]);
-      this.book = await makeFB2(blob);
+      let blob = new Blob([this.mobiBuffer]);
+      let file = new File([blob], "book", {
+        lastModified: new Date().getTime(),
+        type: blob.type,
+      });
+      if (await isMOBI(file)) {
+        this.book = await new MOBI({ unzlib: unzlibSync }).open(file);
+      }
     } catch (error) {
       console.log(error);
       throw error;
@@ -64,4 +71,4 @@ class Fb2Render extends GeneralRender {
     }
   }
 }
-export default Fb2Render;
+export default MobiRender;

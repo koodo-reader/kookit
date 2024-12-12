@@ -1,8 +1,8 @@
-import Chapter from "./model/chapter";
-import ChapterDoc from "./model/chapterDoc";
-import { createIframe, handleLayout } from "./utils/layoutUtil";
-import GeneralParser from "./utils/generalParser";
-import { makeComicBook } from "./libs/comic-book";
+import Chapter from "../model/chapter";
+import ChapterDoc from "../model/chapterDoc";
+import { createIframe, handleLayout } from "../utils/layoutUtil";
+import GeneralParser from "../utils/generalParser";
+import { makeComicBook } from "../libs/comic-book";
 import GeneralRender from "./GeneralRender";
 import untar from "js-untar";
 import { ZipReader, BlobReader, TextWriter, BlobWriter } from "@zip.js/zip.js";

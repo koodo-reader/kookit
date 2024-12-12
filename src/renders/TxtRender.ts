@@ -1,27 +1,30 @@
-import Chapter from "./model/chapter";
-import ChapterDoc from "./model/chapterDoc";
-import { createIframe, handleLayout } from "./utils/layoutUtil";
-import GeneralParser from "./utils/generalParser";
-import { isMOBI, MOBI } from "./libs/mobi.js";
+import Chapter from "../model/chapter";
+import ChapterDoc from "../model/chapterDoc";
+import { createIframe, handleLayout } from "../utils/layoutUtil";
 import GeneralRender from "./GeneralRender";
-import { unzlibSync } from "fflate";
-
-class MobiRender extends GeneralRender {
-  mobiBuffer: ArrayBuffer;
+import { makeHtmlBook } from "../libs/html";
+import GeneralParser from "../utils/generalParser";
+import chardet from "chardet";
+declare var window: any;
+class TxtRender extends GeneralRender {
+  text: string;
+  encoding: string;
+  bookStr: string;
   mode: string;
   book: any;
-  metadata: any;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(mobiBuffer: ArrayBuffer, mode: string, animation: string) {
-    super(mode, "MOBI", animation);
-    this.mobiBuffer = mobiBuffer;
+  constructor(text: string, mode: string, encoding: string, animation: string) {
+    super(mode, "TXT", animation);
+    this.text = text;
+    this.encoding = encoding;
     this.mode = mode;
     this.chapterList = [];
     this.chapterDocList = [];
-    this.book = "";
+    this.bookStr = "";
     this.element = "";
+    this.book = "";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -39,14 +42,7 @@ class MobiRender extends GeneralRender {
   }
   async parse() {
     try {
-      let blob = new Blob([this.mobiBuffer]);
-      let file = new File([blob], "book", {
-        lastModified: new Date().getTime(),
-        type: blob.type,
-      });
-      if (await isMOBI(file)) {
-        this.book = await new MOBI({ unzlib: unzlibSync }).open(file);
-      }
+      this.book = makeHtmlBook(this.text, true);
     } catch (error) {
       console.log(error);
       throw error;
@@ -58,17 +54,17 @@ class MobiRender extends GeneralRender {
     }
     return await this.getCache(this.book);
   }
-  async getMetadata() {
+
+  async getMetadata(txtBuffer) {
     try {
-      if (!this.book) {
-        await this.parse();
-      }
-      let parser = new GeneralParser(this.book);
-      return await parser.getMetadata();
+      const array = new Uint8Array(txtBuffer);
+      let charset = chardet.detect(array);
+      return { charset: charset || "utf8" };
     } catch (error) {
       console.log(error);
       throw error;
     }
   }
 }
-export default MobiRender;
+
+export default TxtRender;

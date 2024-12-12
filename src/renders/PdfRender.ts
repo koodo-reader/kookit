@@ -1,11 +1,11 @@
-import Chapter from "./model/chapter.js";
-import ChapterDoc from "./model/chapterDoc.js";
-import { createIframe, handleLayout } from "./utils/layoutUtil.js";
-import GeneralParser from "./utils/generalParser.js";
-import { isPDF, makePDF } from "./libs/pdf.js";
+import Chapter from "../model/chapter.js";
+import ChapterDoc from "../model/chapterDoc.js";
+import { createIframe, handleLayout } from "../utils/layoutUtil.js";
+import GeneralParser from "../utils/generalParser.js";
+import { isPDF, makePDF } from "../libs/pdf.js";
 import GeneralRender from "./GeneralRender.js";
-import { clearHighlight, showPDFHighlight } from "./utils/noteUtil.js";
-import { getPdfScale } from "./utils/navigationUtil.js";
+import { clearHighlight, showPDFHighlight } from "../utils/noteUtil.js";
+import { getPdfScale } from "../utils/navigationUtil.js";
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
   mode: string;

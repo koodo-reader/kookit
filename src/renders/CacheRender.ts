@@ -1,9 +1,9 @@
-import Chapter from "./model/chapter";
-import ChapterDoc from "./model/chapterDoc";
-import { createIframe, handleLayout } from "./utils/layoutUtil";
+import Chapter from "../model/chapter";
+import ChapterDoc from "../model/chapterDoc";
+import { createIframe, handleLayout } from "../utils/layoutUtil";
 import GeneralRender from "./GeneralRender";
-import { makeCacheBook } from "./libs/cache";
-import GeneralParser from "./utils/generalParser";
+import { makeCacheBook } from "../libs/cache";
+import GeneralParser from "../utils/generalParser";
 
 class CacheRender extends GeneralRender {
   cacheBuffer: ArrayBuffer;

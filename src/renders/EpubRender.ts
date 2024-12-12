@@ -1,8 +1,8 @@
-import Chapter from "./model/chapter";
-import ChapterDoc from "./model/chapterDoc";
-import { createIframe, handleLayout } from "./utils/layoutUtil";
-import GeneralParser from "./utils/generalParser";
-import { EPUB } from "./libs/epub";
+import Chapter from "../model/chapter";
+import ChapterDoc from "../model/chapterDoc";
+import { createIframe, handleLayout } from "../utils/layoutUtil";
+import GeneralParser from "../utils/generalParser";
+import { EPUB } from "../libs/epub";
 import GeneralRender from "./GeneralRender";
 import { ZipReader, BlobReader, TextWriter, BlobWriter } from "@zip.js/zip.js";
 

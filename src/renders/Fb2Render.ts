@@ -1,30 +1,25 @@
-import Chapter from "./model/chapter";
-import ChapterDoc from "./model/chapterDoc";
-import { createIframe, handleLayout } from "./utils/layoutUtil";
+import Chapter from "../model/chapter";
+import ChapterDoc from "../model/chapterDoc";
+import { createIframe, handleLayout } from "../utils/layoutUtil";
+import GeneralParser from "../utils/generalParser";
+import { makeFB2 } from "../libs/fb2";
 import GeneralRender from "./GeneralRender";
-import { makeHtmlBook } from "./libs/html";
-import GeneralParser from "./utils/generalParser";
-import chardet from "chardet";
-declare var window: any;
-class TxtRender extends GeneralRender {
-  text: string;
-  encoding: string;
-  bookStr: string;
+
+class Fb2Render extends GeneralRender {
+  fb2Buffer: ArrayBuffer;
   mode: string;
   book: any;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
-  constructor(text: string, mode: string, encoding: string, animation: string) {
-    super(mode, "TXT", animation);
-    this.text = text;
-    this.encoding = encoding;
+  constructor(fb2Buffer: ArrayBuffer, mode: string, animation: string) {
+    super(mode, "FB2", animation);
+    this.fb2Buffer = fb2Buffer;
     this.mode = mode;
     this.chapterList = [];
     this.chapterDocList = [];
-    this.bookStr = "";
-    this.element = "";
     this.book = "";
+    this.element = "";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -36,13 +31,15 @@ class TxtRender extends GeneralRender {
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
+
       handleLayout(element, this.mode);
       resolve();
     });
   }
   async parse() {
     try {
-      this.book = makeHtmlBook(this.text, true);
+      let blob = new Blob([this.fb2Buffer]);
+      this.book = await makeFB2(blob);
     } catch (error) {
       console.log(error);
       throw error;
@@ -54,17 +51,17 @@ class TxtRender extends GeneralRender {
     }
     return await this.getCache(this.book);
   }
-
-  async getMetadata(txtBuffer) {
+  async getMetadata() {
     try {
-      const array = new Uint8Array(txtBuffer);
-      let charset = chardet.detect(array);
-      return { charset: charset || "utf8" };
+      if (!this.book) {
+        await this.parse();
+      }
+      let parser = new GeneralParser(this.book);
+      return await parser.getMetadata();
     } catch (error) {
       console.log(error);
       throw error;
     }
   }
 }
-
-export default TxtRender;
+export default Fb2Render;

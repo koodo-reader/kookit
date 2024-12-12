@@ -1,10 +1,10 @@
-import Chapter from "./model/chapter";
-import ChapterDoc from "./model/chapterDoc";
+import Chapter from "../model/chapter";
+import ChapterDoc from "../model/chapterDoc";
 import {
   convertStyleNum,
   getImageElement,
   progressInfo,
-} from "./utils/layoutUtil";
+} from "../utils/layoutUtil";
 import {
   getCloestBlock,
   getSearchResult,
@@ -17,12 +17,12 @@ import {
   handleScrollPage,
   handleScrollPosition,
   handleHighlightNode,
-} from "./utils/navigationUtil";
-import EventEmitter from "./utils/EventEmitter";
-import GeneralParser from "./utils/generalParser";
-import { mimetypeReverse } from "./utils/mimetype";
-import { CFI } from "./libs/cfi";
-import { clearHighlight, showNoteHighlight } from "./utils/noteUtil";
+} from "../utils/navigationUtil";
+import EventEmitter from "../utils/EventEmitter";
+import GeneralParser from "../utils/generalParser";
+import { mimetypeReverse } from "../utils/mimetype";
+import { CFI } from "../libs/cfi";
+import { clearHighlight, showNoteHighlight } from "../utils/noteUtil";
 import JSZip from "jszip";
 declare var window: any;
 

@@ -1,10 +1,10 @@
-import Chapter from "./model/chapter";
-import ChapterDoc from "./model/chapterDoc";
-import { createIframe, handleLayout } from "./utils/layoutUtil";
+import Chapter from "../model/chapter";
+import ChapterDoc from "../model/chapterDoc";
+import { createIframe, handleLayout } from "../utils/layoutUtil";
 import GeneralRender from "./GeneralRender";
-import { makeHtmlBook } from "./libs/html";
-import GeneralParser from "./utils/generalParser";
-import { mimetype } from "./utils/mimetype";
+import { makeHtmlBook } from "../libs/html";
+import GeneralParser from "../utils/generalParser";
+import { mimetype } from "../utils/mimetype";
 import mhtml2html from "mhtml2html";
 class HtmlRender extends GeneralRender {
   htmlBuffer: ArrayBuffer;
