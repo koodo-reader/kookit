@@ -5,26 +5,12 @@ import GeneralRender from "./GeneralRender";
 import { makeHtmlBook } from "../libs/html";
 import GeneralParser from "../utils/generalParser";
 import chardet from "chardet";
-declare var window: any;
+import { getCache } from "../libs/cache.js";
 class TxtRender extends GeneralRender {
   text: string;
-  encoding: string;
-  bookStr: string;
-  mode: string;
-  book: any;
-  chapterList: Chapter[];
-  chapterDocList: ChapterDoc[];
-  element: any;
-  constructor(text: string, mode: string, encoding: string, animation: string) {
+  constructor(text: string, mode: string, animation: string) {
     super(mode, "TXT", animation);
     this.text = text;
-    this.encoding = encoding;
-    this.mode = mode;
-    this.chapterList = [];
-    this.chapterDocList = [];
-    this.bookStr = "";
-    this.element = "";
-    this.book = "";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -54,7 +40,7 @@ class TxtRender extends GeneralRender {
     if (!this.book) {
       await this.parse();
     }
-    return await this.getCache(this.book);
+    return await getCache(this.book);
   }
 
   async getMetadata(txtBuffer) {

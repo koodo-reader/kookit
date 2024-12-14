@@ -6,13 +6,9 @@ import { makeHtmlBook } from "../libs/html";
 import GeneralParser from "../utils/generalParser";
 import { mimetype } from "../utils/mimetype";
 import mhtml2html from "mhtml2html";
+import { getCache } from "../libs/cache.js";
 class HtmlRender extends GeneralRender {
   htmlBuffer: ArrayBuffer;
-  mode: string;
-  format: string;
-  chapterList: Chapter[];
-  chapterDocList: ChapterDoc[];
-  element: any;
   constructor(
     htmlBuffer: ArrayBuffer,
     mode: string,
@@ -21,11 +17,6 @@ class HtmlRender extends GeneralRender {
   ) {
     super(mode, format, animation);
     this.htmlBuffer = htmlBuffer;
-    this.mode = mode;
-    this.format = format;
-    this.chapterList = [];
-    this.chapterDocList = [];
-    this.element = "";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -73,7 +64,7 @@ class HtmlRender extends GeneralRender {
     if (!this.book) {
       await this.parse();
     }
-    return await this.getCache(this.book);
+    return await getCache(this.book);
   }
 }
 export default HtmlRender;

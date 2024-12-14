@@ -1,10 +1,6 @@
 import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
-import {
-  convertStyleNum,
-  getImageElement,
-  progressInfo,
-} from "../utils/layoutUtil";
+import { convertStyleNum, progressInfo } from "../utils/layoutUtil";
 import {
   getCloestBlock,
   getSearchResult,
@@ -19,11 +15,8 @@ import {
   handleHighlightNode,
 } from "../utils/navigationUtil";
 import EventEmitter from "../utils/EventEmitter";
-import GeneralParser from "../utils/generalParser";
-import { mimetypeReverse } from "../utils/mimetype";
 import { CFI } from "../libs/cfi";
 import { clearHighlight, showNoteHighlight } from "../utils/noteUtil";
-import JSZip from "jszip";
 declare var window: any;
 
 class GeneralRender extends EventEmitter {
@@ -61,106 +54,6 @@ class GeneralRender extends EventEmitter {
       sectionWidth: (this.element.clientWidth - gap) / scale,
       gap: gap,
     };
-  }
-  getCache(book: any) {
-    return new Promise<ArrayBuffer | string>(async (resolve, reject) => {
-      let parser = new GeneralParser(book);
-      this.chapterList = await parser.getChapter(book.toc);
-      this.chapterDocList = await parser.getChapterDoc();
-      let toc = this.chapterList;
-      let sections = this.chapterDocList.map((item: ChapterDoc) => {
-        return { href: item.href, label: item.label };
-      });
-      let chapterTexts = await Promise.all(
-        this.chapterDocList.map(async (item) => {
-          let chapterText = "";
-          if (item.text.load) {
-            let blob = await fetch(await item.text.load()).then((r) =>
-              r.blob()
-            );
-            chapterText = await blob.text();
-          }
-          return chapterText;
-        })
-      );
-      let zip = new JSZip();
-      zip.file("toc.json", JSON.stringify(toc));
-      zip.file("sections.json", JSON.stringify(sections));
-      let chapters: any = [];
-      //todo get css, fonts and images blob
-      for (let index = 0; index < chapterTexts.length; index++) {
-        let chapterDoc = new DOMParser().parseFromString(
-          chapterTexts[index],
-          "text/html"
-        ) as any;
-
-        let imgDomList = getImageElement(chapterDoc) as any;
-        for (let subindex = 0; subindex < imgDomList.length; subindex++) {
-          let subImgZip = zip.folder("imgs/" + index);
-          if (!subImgZip) {
-            break;
-          }
-          if (imgDomList[subindex].getAttribute("src")) {
-            try {
-              let blob = await fetch(
-                await imgDomList[subindex].getAttribute("src")
-              ).then((r) => r.blob());
-              subImgZip.file(subindex + "." + mimetypeReverse[blob.type], blob);
-              imgDomList[subindex].src =
-                "imgs/" +
-                index +
-                "/" +
-                subindex +
-                "." +
-                mimetypeReverse[blob.type];
-            } catch (error) {
-              console.log(error);
-            }
-          }
-        }
-        let linkList = Array.from(chapterDoc.getElementsByTagName("link"));
-        for (let subindex = 0; subindex < linkList.length; subindex++) {
-          let link: any = linkList[subindex];
-          let subCssZip = zip.folder("css/" + index);
-          if (!subCssZip) {
-            break;
-          }
-          if (link.getAttribute("href")) {
-            try {
-              let blob = await fetch(await link.getAttribute("href")).then(
-                (r) => r.blob()
-              );
-              subCssZip.file(subindex + "." + mimetypeReverse[blob.type], blob);
-              link.href =
-                "css/" +
-                index +
-                "/" +
-                subindex +
-                "." +
-                mimetypeReverse[blob.type];
-            } catch (error) {
-              console.log(error);
-            }
-          }
-        }
-        chapters.push(chapterDoc.documentElement.innerHTML);
-      }
-      let configZip = zip.folder("chapters");
-      if (!configZip) {
-        return;
-      }
-      for (let index = 0; index < chapters.length; index++) {
-        configZip.file(index + ".html", chapters[index]);
-      }
-      zip
-        .generateAsync({ type: "blob" })
-        .then(async (blob: any) => {
-          resolve(await new Response(blob).arrayBuffer());
-        })
-        .catch((err: any) => {
-          resolve("err");
-        });
-    });
   }
   resolveChapter(href: string) {
     let path = href;
@@ -250,8 +143,8 @@ class GeneralRender extends EventEmitter {
   }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
     let doc = this.getDocument();
-    let win = this.getWindow();
-    if (!doc || !win) return;
+    let iframe = this.getIframe();
+    if (!doc || !iframe) return;
     await handleRenderChatper(
       parseInt(chapterDocIndex),
       chapterTitle,
@@ -262,7 +155,7 @@ class GeneralRender extends EventEmitter {
       this.format,
       this.tempLocation,
       doc,
-      win
+      iframe
     );
     if (chapterHref && chapterHref.indexOf("#") > -1) {
       await handleScrollPosition(
@@ -280,8 +173,8 @@ class GeneralRender extends EventEmitter {
   }
   async goToPosition(bookLocationStr: string) {
     let doc = this.getDocument();
-    let win = this.getWindow();
-    if (!doc || !win) return;
+    let iframe = this.getIframe();
+    if (!doc || !iframe) return;
     let bookLocation = JSON.parse(bookLocationStr);
     this.tempLocation = {
       text: bookLocation.text,
@@ -303,7 +196,7 @@ class GeneralRender extends EventEmitter {
       this.format,
       this.tempLocation,
       doc,
-      win
+      iframe
     );
     if (cfi) {
       const cfiInfo = new CFI(cfi, {});
@@ -363,7 +256,7 @@ class GeneralRender extends EventEmitter {
     }
     return doc;
   }
-  getWindow() {
+  getIframe() {
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return null;
     let iframe = pageArea.getElementsByTagName("iframe")[0];
@@ -404,8 +297,8 @@ class GeneralRender extends EventEmitter {
   async prev() {
     this.trigger("page-changed");
     let doc = this.getDocument();
-    let win = this.getWindow();
-    if (!doc || !win) {
+    let iframe = this.getIframe();
+    if (!doc || !iframe) {
       return;
     }
     if (this.mode === "scroll" || convertStyleNum(doc.body.scrollLeft) === 0) {
@@ -417,7 +310,7 @@ class GeneralRender extends EventEmitter {
         this.format,
         this.tempLocation,
         doc,
-        win
+        iframe
       );
       let chapterDocIndex = parseInt(this.tempLocation.chapterDocIndex || "-1");
       if (chapterDocIndex > -1) {
@@ -432,8 +325,8 @@ class GeneralRender extends EventEmitter {
   async next() {
     this.trigger("page-changed");
     let doc = this.getDocument();
-    let win = this.getWindow();
-    if (!doc || !win) {
+    let iframe = this.getIframe();
+    if (!doc || !iframe) {
       return;
     }
     if (
@@ -459,7 +352,7 @@ class GeneralRender extends EventEmitter {
         this.format,
         this.tempLocation,
         doc,
-        win
+        iframe
       );
       this.trigger("rendered");
     } else if (this.mode === "scroll") {
@@ -478,8 +371,8 @@ class GeneralRender extends EventEmitter {
   async prevChapter() {
     this.trigger("page-changed");
     let doc = this.getDocument();
-    let win = this.getWindow();
-    if (!doc || !win) return;
+    let iframe = this.getIframe();
+    if (!doc || !iframe) return;
     await handlePrevChapter(
       this.element,
       this.flatChapter(this.chapterList),
@@ -488,7 +381,7 @@ class GeneralRender extends EventEmitter {
       this.format,
       this.tempLocation,
       doc,
-      win
+      iframe
     );
     await this.record();
     this.trigger("rendered");
@@ -496,8 +389,8 @@ class GeneralRender extends EventEmitter {
   async nextChapter() {
     this.trigger("page-changed");
     let doc = this.getDocument();
-    let win = this.getWindow();
-    if (!doc || !win) return;
+    let iframe = this.getIframe();
+    if (!doc || !iframe) return;
     await handleNextChapter(
       this.element,
       this.flatChapter(this.chapterList),
@@ -506,7 +399,7 @@ class GeneralRender extends EventEmitter {
       this.format,
       this.tempLocation,
       doc,
-      win
+      iframe
     );
     await this.record();
     this.trigger("rendered");
@@ -558,17 +451,17 @@ class GeneralRender extends EventEmitter {
   }
   async getHightlightCoords(pageIndex: number) {
     let doc = this.getDocument();
-    let win = this.getWindow();
-    if (!doc || !win) return;
+    let iframe = this.getIframe();
+    if (!doc || !iframe) return;
     let charRange = window.rangy
-      .getSelection(win)
+      .getSelection(iframe)
       .saveCharacterRanges(doc.body)[0];
     return charRange;
   }
   async renderHighlighters(notes: any[], handleNoteClick: any) {
     let doc = this.getDocument();
-    let win = this.getWindow();
-    if (!doc || !win) return;
+    let iframe = this.getIframe();
+    if (!doc || !iframe) return;
     clearHighlight(doc);
     for (let index = 0; index < notes.length; index++) {
       const item = notes[index];
@@ -579,7 +472,7 @@ class GeneralRender extends EventEmitter {
           item.key,
           handleNoteClick,
           doc,
-          win
+          iframe
         );
         // highlighter.highlightSelection(classes[item.color]);
       } catch (e) {
@@ -605,15 +498,15 @@ class GeneralRender extends EventEmitter {
   }
   async createOneNote(item: any, handleNoteClick: any) {
     let doc = this.getDocument();
-    let win = this.getWindow();
-    if (!doc || !win) return;
+    let iframe = this.getIframe();
+    if (!doc || !iframe) return;
     showNoteHighlight(
       JSON.parse(item.range),
       item.color,
       item.key,
       handleNoteClick,
       doc,
-      win
+      iframe
     );
   }
 }

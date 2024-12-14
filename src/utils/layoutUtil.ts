@@ -5,11 +5,11 @@ export const convertStyleNum = (value: number) => {
 export const convertComputedNum = (value: string) => {
   return parseFloat(value.substring(0, value.length - 2));
 };
-export const handleWinHeight = async (
+export const handleIframeHeight = async (
   element: HTMLElement,
   mode: string,
   format: string,
-  win: any,
+  iframe: any,
   doc: Document
 ) => {
   await Promise.all(
@@ -33,7 +33,7 @@ export const handleWinHeight = async (
   }
 
   if (mode !== "scroll") {
-    win.height = element.clientHeight + "px";
+    iframe.height = element.clientHeight + "px";
     if (mode === "double") {
       let section = Math.floor(element.clientWidth / 12);
       let gap = section % 2 === 0 ? section : section - 1;
@@ -57,26 +57,30 @@ export const handleWinHeight = async (
   } else if (format === "PDF") {
     let docLayer = doc.querySelector(".koodoPDFLayer");
     if (!docLayer) return;
-    win.height = docLayer.getBoundingClientRect().height + 100 + "px";
+    iframe.height = docLayer.getBoundingClientRect().height + 100 + "px";
   } else {
     //fix text blocked issue under scroll mode, don't ask me why
-    win.height = doc.body.scrollHeight + "px";
-    win.height = doc.body.scrollHeight + 300 + "px";
+    iframe.height = doc.body.scrollHeight + "px";
+    iframe.height = doc.body.scrollHeight + 300 + "px";
   }
   // await new Promise((r) => setTimeout(r, 1));
 };
 
-export const handleOneChapterDoc = async (item) => {
+export const handleOneChapterDoc = async (item, isSearch: boolean) => {
   let chapterText = "";
   // return;
   if (item.load) {
     let blob = await fetch(await item.load()).then((r) => r.blob());
     chapterText = await blob.text();
   }
+  if (isSearch) {
+    return chapterText;
+  }
   if (item.loadAsset) {
     chapterText = await handlePrecacheAssets(chapterText, item.loadAsset);
   }
-  return handleImageMarker(chapterText);
+  chapterText = handleImageMarker(chapterText);
+  return chapterText;
 };
 export const getImageElement = (Element) => {
   return Array.from(Element.querySelectorAll("img, image")) as HTMLElement[];

@@ -5,22 +5,12 @@ import GeneralParser from "../utils/generalParser";
 import { EPUB } from "../libs/epub";
 import GeneralRender from "./GeneralRender";
 import { ZipReader, BlobReader, TextWriter, BlobWriter } from "@zip.js/zip.js";
-
+import { getCache } from "../libs/cache.js";
 class EpubRender extends GeneralRender {
   epubBuffer: ArrayBuffer;
-  mode: string;
-  book: any;
-  chapterList: Chapter[];
-  chapterDocList: ChapterDoc[];
-  element: any;
   constructor(epubBuffer: ArrayBuffer, mode: string, animation: string) {
     super(mode, "EPUB", animation);
     this.epubBuffer = epubBuffer;
-    this.mode = mode;
-    this.chapterList = [];
-    this.chapterDocList = [];
-    this.book = "";
-    this.element = "";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -56,7 +46,7 @@ class EpubRender extends GeneralRender {
     if (!this.book) {
       await this.parse();
     }
-    return await this.getCache(this.book);
+    return await getCache(this.book);
   }
   async makeZipLoader(file) {
     let reader: any;

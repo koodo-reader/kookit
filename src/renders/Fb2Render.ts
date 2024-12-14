@@ -4,22 +4,12 @@ import { createIframe, handleLayout } from "../utils/layoutUtil";
 import GeneralParser from "../utils/generalParser";
 import { makeFB2 } from "../libs/fb2";
 import GeneralRender from "./GeneralRender";
-
+import { getCache } from "../libs/cache.js";
 class Fb2Render extends GeneralRender {
   fb2Buffer: ArrayBuffer;
-  mode: string;
-  book: any;
-  chapterList: Chapter[];
-  chapterDocList: ChapterDoc[];
-  element: any;
   constructor(fb2Buffer: ArrayBuffer, mode: string, animation: string) {
     super(mode, "FB2", animation);
     this.fb2Buffer = fb2Buffer;
-    this.mode = mode;
-    this.chapterList = [];
-    this.chapterDocList = [];
-    this.book = "";
-    this.element = "";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -51,7 +41,7 @@ class Fb2Render extends GeneralRender {
     if (!this.book) {
       await this.parse();
     }
-    return await this.getCache(this.book);
+    return await getCache(this.book);
   }
   async getMetadata() {
     try {

@@ -45,6 +45,28 @@ export default [
     external: ['mammoth', 'jszip', 'underscore', 'marked', 'chinese-s2t', 'mhtml2html', 'js-untar', 'fflate', '@zip.js/zip.js', 'rangy'],
   },
   {
+    input: "src/mobile.ts",
+    output: [{
+      name: "Kookit",
+      file: "D:\\Project\\koodo-reader-expo\\assets\\lib\\kookit-mobile.min.txt",
+      format: "umd",
+    }],
+    plugins: [
+      resolve({ browser: true }),
+      commonjs({
+        include: [/node_modules/],
+      }),
+      json(),
+      typescript({ tsconfig: "./tsconfig.json" }),
+      terser({
+        format: {
+          comments: false,
+        },
+      }),
+    ],
+    // external: ['mammoth', 'jszip', 'underscore', 'marked', 'chinese-s2t', 'mhtml2html', 'js-untar', 'fflate', '@zip.js/zip.js', 'rangy'],
+  },
+  {
     input: "src/index.ts",
     output: [{
       name: "Kookit",

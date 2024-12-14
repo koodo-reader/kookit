@@ -19,15 +19,15 @@ export const showNoteHighlight = (
   noteKey: string,
   handleNoteClick: any,
   doc: Document,
-  win: any
+  iframe: any
 ) => {
   let colorCode = classes[colorIndex];
-  let iWin: any = win.contentWindow || win.contentDocument?.defaultView;
+  let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
   let temp = range;
   temp = [temp];
   // sleep(500);
 
-  window.rangy.getSelection(win).restoreCharacterRanges(doc, temp);
+  window.rangy.getSelection(iframe).restoreCharacterRanges(doc, temp);
   let sel = doc!.getSelection();
   if (!sel) return;
   let newRange = sel.getRangeAt(0);

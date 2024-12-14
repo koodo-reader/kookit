@@ -6,22 +6,12 @@ import { isPDF, makePDF } from "../libs/pdf.js";
 import GeneralRender from "./GeneralRender.js";
 import { clearHighlight, showPDFHighlight } from "../utils/noteUtil.js";
 import { getPdfScale } from "../utils/navigationUtil.js";
+import { getCache } from "../libs/cache.js";
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
-  mode: string;
-  book: any;
-  metadata: any;
-  chapterList: Chapter[];
-  chapterDocList: ChapterDoc[];
-  element: any;
   constructor(pdfBuffer: ArrayBuffer, mode: string, animation: string) {
     super(mode, "PDF", animation);
     this.pdfBuffer = pdfBuffer;
-    this.mode = mode;
-    this.chapterList = [];
-    this.chapterDocList = [];
-    this.book = "";
-    this.element = "";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -58,7 +48,7 @@ class PdfRender extends GeneralRender {
     if (!this.book) {
       await this.parse();
     }
-    return await this.getCache(this.book);
+    return await getCache(this.book);
   }
   async getMetadata() {
     try {
@@ -136,11 +126,11 @@ class PdfRender extends GeneralRender {
     return { page: pageIndex, coords: selected };
   }
   async renderHighlighters(notes: any[], handleNoteClick: any) {
-    let win = this.getWindow();
+    let iframe = this.getIframe();
     let doc = this.getDocument();
-    if (!doc || !win) return;
+    if (!doc || !iframe) return;
     clearHighlight(doc);
-    let iWin: any = win.contentWindow || win.contentDocument?.defaultView;
+    let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
     for (let index = 0; index < notes.length; index++) {
       const item = notes[index];
 
@@ -175,10 +165,10 @@ class PdfRender extends GeneralRender {
     }
   }
   async createOneNote(item: any, handleNoteClick: any) {
-    let win = this.getWindow();
+    let iframe = this.getIframe();
     let doc = this.getDocument();
-    if (!doc || !win) return;
-    let iWin: any = win.contentWindow || win.contentDocument?.defaultView;
+    if (!doc || !iframe) return;
+    let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
 
     let selected = JSON.parse(item.range);
     var pageIndex = selected.page;

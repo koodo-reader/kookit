@@ -5,23 +5,12 @@ import GeneralParser from "../utils/generalParser";
 import { isMOBI, MOBI } from "../libs/mobi.js";
 import GeneralRender from "./GeneralRender";
 import { unzlibSync } from "fflate";
-
+import { getCache } from "../libs/cache.js";
 class MobiRender extends GeneralRender {
   mobiBuffer: ArrayBuffer;
-  mode: string;
-  book: any;
-  metadata: any;
-  chapterList: Chapter[];
-  chapterDocList: ChapterDoc[];
-  element: any;
   constructor(mobiBuffer: ArrayBuffer, mode: string, animation: string) {
     super(mode, "MOBI", animation);
     this.mobiBuffer = mobiBuffer;
-    this.mode = mode;
-    this.chapterList = [];
-    this.chapterDocList = [];
-    this.book = "";
-    this.element = "";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -58,7 +47,7 @@ class MobiRender extends GeneralRender {
     if (!this.book) {
       await this.parse();
     }
-    return await this.getCache(this.book);
+    return await getCache(this.book);
   }
   async getMetadata() {
     try {

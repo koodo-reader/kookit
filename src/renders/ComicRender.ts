@@ -6,6 +6,7 @@ import { makeComicBook } from "../libs/comic-book";
 import GeneralRender from "./GeneralRender";
 import untar from "js-untar";
 import { ZipReader, BlobReader, TextWriter, BlobWriter } from "@zip.js/zip.js";
+import { getCache } from "../libs/cache.js";
 declare var window: any;
 
 class ComicRender extends GeneralRender {
@@ -92,7 +93,7 @@ class ComicRender extends GeneralRender {
     if (!this.book) {
       await this.parse();
     }
-    return await this.getCache(this.book);
+    return await getCache(this.book);
   }
   async makeZipLoader(file) {
     const reader = new ZipReader(new BlobReader(file));

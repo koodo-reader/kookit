@@ -2,7 +2,7 @@ import ChapterDoc from "../model/chapterDoc";
 import {
   convertComputedNum,
   convertStyleNum,
-  handleWinHeight,
+  handleIframeHeight,
   handleOneChapterDoc,
   progressInfo,
 } from "./layoutUtil";
@@ -84,7 +84,7 @@ export const handlePrevChapter = async (
   format: string,
   tempLocation: any,
   doc: Document,
-  win: any
+  iframe: any
 ) => {
   let chapterDocIndex = parseInt(tempLocation.chapterDocIndex || "0");
   let chapterHref = tempLocation.chapterHref || "";
@@ -111,7 +111,7 @@ export const handlePrevChapter = async (
     format,
     tempLocation,
     doc,
-    win
+    iframe
   );
 };
 export const getPdfScale = async (
@@ -147,10 +147,10 @@ export const handleRenderChatper = async (
   format: string,
   tempLocation: any,
   doc: Document,
-  win: any
+  iframe: any
 ) => {
   doc.body.innerHTML = "";
-  win.height = 0 + "px";
+  iframe.height = 0 + "px";
   doc.body.scrollTo(0, 0);
   if (
     (chapterTitle && !chapterDocIndex) ||
@@ -172,7 +172,8 @@ export const handleRenderChatper = async (
   }
 
   doc.body.innerHTML = await handleOneChapterDoc(
-    chapterDocList[chapterDocIndex].text
+    chapterDocList[chapterDocIndex].text,
+    false
   );
   if (format === "PDF") {
     let scale = await getPdfScale(
@@ -197,7 +198,7 @@ export const handleRenderChatper = async (
   tempLocation.chapterDocIndex = chapterDocIndex + "";
   tempLocation.percentage = chapterDocIndex / chapterDocList.length + "";
   tempLocation.text = "";
-  await handleWinHeight(element, mode, format, win, doc);
+  await handleIframeHeight(element, mode, format, iframe, doc);
   handleScrollPosition(element, mode, "", "", "", "", doc);
 };
 export const handleCssLink = async (doc) => {
@@ -445,7 +446,7 @@ export const handleNextChapter = async (
   format: string,
   tempLocation: any,
   doc: Document,
-  win: any
+  iframe: any
 ) => {
   let chapterDocIndex = parseInt(tempLocation.chapterDocIndex || "0");
   let chapterHref = tempLocation.chapterHref || "";
@@ -471,7 +472,7 @@ export const handleNextChapter = async (
     format,
     tempLocation,
     doc,
-    win
+    iframe
   );
 };
 export const getAudioText = (
@@ -546,7 +547,7 @@ export const getSearchResult = async (
   let searchResult: { cfi: string; excerpt: string }[] = [];
   for (let i = 0; i < chapterDocList.length; i++) {
     let chapterDoc = new DOMParser().parseFromString(
-      await handleOneChapterDoc(chapterDocList[i].text),
+      await handleOneChapterDoc(chapterDocList[i].text, true),
       "text/html"
     );
     let nodeList = getBlockElement(chapterDoc.body).filter(

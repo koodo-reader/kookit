@@ -1,8 +1,10 @@
 import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
-import { mimetype } from "../utils/mimetype";
+import GeneralParser from "../utils/generalParser";
+import { mimetype, mimetypeReverse } from "../utils/mimetype";
 import JSZip from "jszip";
 import _ from "underscore";
+import { getImageElement } from "../utils/layoutUtil";
 
 export const makeCacheBook = async (bookBuffer: ArrayBuffer) => {
   let zip = await JSZip.loadAsync(bookBuffer);
@@ -55,4 +57,102 @@ export const makeCacheBook = async (bookBuffer: ArrayBuffer) => {
   book.splitTOCHref = (href) => [href, null];
   book.getTOCFragment = (doc) => doc.documentElement;
   return book;
+};
+export const getCache = (book: any) => {
+  return new Promise<ArrayBuffer | string>(async (resolve, reject) => {
+    let parser = new GeneralParser(book);
+    let chapterList = await parser.getChapter(book.toc);
+    let chapterDocList = await parser.getChapterDoc();
+    let toc = chapterList;
+    let sections = chapterDocList.map((item: ChapterDoc) => {
+      return { href: item.href, label: item.label };
+    });
+    let chapterTexts = await Promise.all(
+      chapterDocList.map(async (item) => {
+        let chapterText = "";
+        if (item.text.load) {
+          let blob = await fetch(await item.text.load()).then((r) => r.blob());
+          chapterText = await blob.text();
+        }
+        return chapterText;
+      })
+    );
+    let zip = new JSZip();
+    zip.file("toc.json", JSON.stringify(toc));
+    zip.file("sections.json", JSON.stringify(sections));
+    let chapters: any = [];
+    //todo get css, fonts and images blob
+    for (let index = 0; index < chapterTexts.length; index++) {
+      let chapterDoc = new DOMParser().parseFromString(
+        chapterTexts[index],
+        "text/html"
+      ) as any;
+
+      let imgDomList = getImageElement(chapterDoc) as any;
+      for (let subindex = 0; subindex < imgDomList.length; subindex++) {
+        let subImgZip = zip.folder("imgs/" + index);
+        if (!subImgZip) {
+          break;
+        }
+        if (imgDomList[subindex].getAttribute("src")) {
+          try {
+            let blob = await fetch(
+              await imgDomList[subindex].getAttribute("src")
+            ).then((r) => r.blob());
+            subImgZip.file(subindex + "." + mimetypeReverse[blob.type], blob);
+            imgDomList[subindex].src =
+              "imgs/" +
+              index +
+              "/" +
+              subindex +
+              "." +
+              mimetypeReverse[blob.type];
+          } catch (error) {
+            console.log(error);
+          }
+        }
+      }
+      let linkList = Array.from(chapterDoc.getElementsByTagName("link"));
+      for (let subindex = 0; subindex < linkList.length; subindex++) {
+        let link: any = linkList[subindex];
+        let subCssZip = zip.folder("css/" + index);
+        if (!subCssZip) {
+          break;
+        }
+        if (link.getAttribute("href")) {
+          try {
+            let blob = await fetch(await link.getAttribute("href")).then((r) =>
+              r.blob()
+            );
+            subCssZip.file(subindex + "." + mimetypeReverse[blob.type], blob);
+            link.href =
+              "css/" +
+              index +
+              "/" +
+              subindex +
+              "." +
+              mimetypeReverse[blob.type];
+          } catch (error) {
+            console.log(error);
+          }
+        }
+      }
+      chapters.push(chapterDoc.documentElement.innerHTML);
+    }
+    let configZip = zip.folder("chapters");
+    if (!configZip) {
+      return;
+    }
+    for (let index = 0; index < chapters.length; index++) {
+      configZip.file(index + ".html", chapters[index]);
+    }
+    zip
+      .generateAsync({ type: "blob" })
+      .then(async (blob: any) => {
+        resolve(await new Response(blob).arrayBuffer());
+      })
+      .catch((err: any) => {
+        resolve("err");
+      });
+  });
 };
