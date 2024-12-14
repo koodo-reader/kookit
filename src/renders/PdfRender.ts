@@ -33,7 +33,9 @@ class PdfRender extends GeneralRender {
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
-      handleLayout(element, this.mode);
+      let doc = this.getDocument();
+      if (!doc) return;
+      handleLayout(element, this.mode, doc);
       resolve();
     });
   }
@@ -71,11 +73,7 @@ class PdfRender extends GeneralRender {
     }
   }
   async getHightlightCoords(pageIndex: number) {
-    let pageArea = document.getElementById("page-area");
-    if (!pageArea) return;
-    let iframe = pageArea.getElementsByTagName("iframe")[0];
-    if (!iframe || !iframe.contentWindow) return;
-    let doc = iframe.contentDocument;
+    let doc = this.getDocument();
     if (!doc) return;
 
     var selectionRects = doc.getSelection()!.getRangeAt(0).getClientRects();
@@ -138,16 +136,13 @@ class PdfRender extends GeneralRender {
     return { page: pageIndex, coords: selected };
   }
   async renderHighlighters(notes: any[], handleNoteClick: any) {
-    clearHighlight();
+    let win = this.getWindow();
+    let doc = this.getDocument();
+    if (!doc || !win) return;
+    clearHighlight(doc);
+    let iWin: any = win.contentWindow || win.contentDocument?.defaultView;
     for (let index = 0; index < notes.length; index++) {
       const item = notes[index];
-
-      let pageArea = document.getElementById("page-area");
-      if (!pageArea) return;
-      let iframe = pageArea.getElementsByTagName("iframe")[0];
-      if (!iframe || !iframe.contentWindow) return;
-      let iWin: any =
-        iframe.contentWindow || iframe.contentDocument?.defaultView;
 
       let selected = JSON.parse(item.range);
       var pageIndex = selected.page;
@@ -165,7 +160,8 @@ class PdfRender extends GeneralRender {
           item.key,
           handleNoteClick,
           page,
-          scale
+          scale,
+          doc
         );
       } catch (e) {
         console.warn(
@@ -179,11 +175,10 @@ class PdfRender extends GeneralRender {
     }
   }
   async createOneNote(item: any, handleNoteClick: any) {
-    let pageArea = document.getElementById("page-area");
-    if (!pageArea) return;
-    let iframe = pageArea.getElementsByTagName("iframe")[0];
-    if (!iframe || !iframe.contentWindow) return;
-    let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
+    let win = this.getWindow();
+    let doc = this.getDocument();
+    if (!doc || !win) return;
+    let iWin: any = win.contentWindow || win.contentDocument?.defaultView;
 
     let selected = JSON.parse(item.range);
     var pageIndex = selected.page;
@@ -200,7 +195,8 @@ class PdfRender extends GeneralRender {
       item.key,
       handleNoteClick,
       page,
-      scale
+      scale,
+      doc
     );
     if (!iWin || !iWin.getSelection()) return;
     iWin.getSelection()?.empty();

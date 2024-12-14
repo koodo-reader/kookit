@@ -2,7 +2,7 @@ import ChapterDoc from "../model/chapterDoc";
 import {
   convertComputedNum,
   convertStyleNum,
-  handleIframeHeight,
+  handleWinHeight,
   handleOneChapterDoc,
   progressInfo,
 } from "./layoutUtil";
@@ -10,7 +10,6 @@ import Chapter from "../model/chapter";
 import { cleanText } from "../libs/html";
 import Chinese from "chinese-s2t";
 import _ from "underscore";
-declare var window: any;
 let lock = false;
 export const getBlockElement = (Element) => {
   return Array.from(
@@ -22,27 +21,15 @@ export const getBlockElement = (Element) => {
 
 export const handleScrollPage = async (
   element: HTMLElement,
-  flattenChapters: Chapter[],
-  chapterDocList: ChapterDoc[],
-  mode: string,
-  format: string,
   animation: string,
   delta: number,
-  trigger: (status: string) => void,
-  tempLocation: any
+  doc: Document
 ) => {
-  let pageArea = document.getElementById("page-area");
-  if (!pageArea) return;
-  let iframe = pageArea.getElementsByTagName("iframe")[0];
-  if (!iframe) return;
-  let doc = iframe.contentDocument;
-  if (!doc) {
-    return;
-  }
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   const width = element.clientWidth;
   if (delta > 0) {
+    // previous page
     doc.body.scrollBy({
       top: 0,
       left: -width - gap,
@@ -50,15 +37,7 @@ export const handleScrollPage = async (
     });
     // trigger("page-changed");
   } else if (delta < 0) {
-    await handleTurnChapter(
-      element,
-      flattenChapters,
-      chapterDocList,
-      mode,
-      format,
-      trigger,
-      tempLocation
-    );
+    // next page
     doc.body.scrollBy({
       top: 0,
       left: width + gap,
@@ -103,7 +82,9 @@ export const handlePrevChapter = async (
   chapterDocList: ChapterDoc[],
   mode: string,
   format: string,
-  tempLocation: any
+  tempLocation: any,
+  doc: Document,
+  win: any
 ) => {
   let chapterDocIndex = parseInt(tempLocation.chapterDocIndex || "0");
   let chapterHref = tempLocation.chapterHref || "";
@@ -128,7 +109,9 @@ export const handlePrevChapter = async (
     element,
     mode,
     format,
-    tempLocation
+    tempLocation,
+    doc,
+    win
   );
 };
 export const getPdfScale = async (
@@ -162,19 +145,12 @@ export const handleRenderChatper = async (
   element: HTMLElement,
   mode: string,
   format: string,
-  tempLocation: any
+  tempLocation: any,
+  doc: Document,
+  win: any
 ) => {
-  let pageArea = document.getElementById("page-area");
-  if (!pageArea) return;
-  let iframe = pageArea.getElementsByTagName("iframe")[0];
-  if (!iframe) return;
-  let doc = iframe.contentDocument;
-  if (!doc) {
-    return;
-  }
-
   doc.body.innerHTML = "";
-  iframe.height = 0 + "px";
+  win.height = 0 + "px";
   doc.body.scrollTo(0, 0);
   if (
     (chapterTitle && !chapterDocIndex) ||
@@ -221,8 +197,8 @@ export const handleRenderChatper = async (
   tempLocation.chapterDocIndex = chapterDocIndex + "";
   tempLocation.percentage = chapterDocIndex / chapterDocList.length + "";
   tempLocation.text = "";
-  await handleIframeHeight(element, mode, iframe, format);
-  handleScrollPosition(element, mode, "", "", "", "");
+  await handleWinHeight(element, mode, format, win, doc);
+  handleScrollPosition(element, mode, "", "", "", "", doc);
 };
 export const handleCssLink = async (doc) => {
   let linkList = Array.from(doc.getElementsByTagName("link"));
@@ -262,19 +238,12 @@ export const handleScrollPosition = async (
   text: string,
   count: string,
   href: string,
-  page: string
+  page: string,
+  doc: Document
 ) => {
-  let pageArea = document.getElementById("page-area");
-  if (!pageArea) return;
-  let iframe = pageArea.getElementsByTagName("iframe")[0];
-  if (!iframe) return;
-  let doc: any = iframe.contentDocument;
-  if (!doc) {
-    return;
-  }
   let top = 0;
   let left = 0;
-  let targetNode = doc.body;
+  let targetNode: any = doc.body;
   if (page && mode !== "scroll") {
     let section = Math.floor(element.clientWidth / 12);
     let gap = section % 2 === 0 ? section : section - 1;
@@ -283,13 +252,7 @@ export const handleScrollPosition = async (
     left = pageWidth * (parseInt(page) - 1);
   } else if (text) {
     let nodeList = getBlockElement(doc.body);
-    console.log("nodeList", nodeList.length);
     let targetNodeList = nodeList.filter((s, index) => {
-      console.log(
-        cleanText((s as HTMLElement).textContent),
-        cleanText(text),
-        index
-      );
       return (
         cleanText((s as HTMLElement).textContent) &&
         (cleanText((s as HTMLElement).textContent) === cleanText(text) ||
@@ -385,62 +348,14 @@ export const getCloestBlock = (
     return targetNode;
   }
 };
-export const handleTurnChapter = async (
-  element: HTMLElement,
-  flattenChapters: Chapter[],
-  chapterDocList: ChapterDoc[],
-  mode: string,
-  format: string,
-  trigger: (status: string) => void,
-  tempLocation: any
-) => {
-  let pageArea = document.getElementById("page-area");
-  if (!pageArea) return;
-  let iframe = pageArea.getElementsByTagName("iframe")[0];
-  if (!iframe) return;
-  let doc = iframe.contentDocument;
-  if (!doc) {
-    return;
-  }
-
-  if (
-    Math.abs(
-      element.scrollHeight -
-        convertStyleNum(element.scrollTop) -
-        element.clientHeight
-    ) < 10 &&
-    Math.abs(
-      doc.body.scrollWidth -
-        convertStyleNum(doc.body.scrollLeft) -
-        doc.body.clientWidth
-    ) < 10
-  ) {
-    await handleNextChapter(
-      element,
-      flattenChapters,
-      chapterDocList,
-      mode,
-      format,
-      tempLocation
-    );
-    trigger("rendered");
-  }
-};
 export const handleRecord = async (
   element: HTMLElement,
   mode: string,
   flattenChapters: Chapter[],
-  tempLocation: any
+  tempLocation: any,
+  doc: Document
 ) => {
   if (lock) return;
-  let pageArea = document.getElementById("page-area");
-  if (!pageArea) return;
-  let iframe = pageArea.getElementsByTagName("iframe")[0];
-  if (!iframe) return;
-  let doc = iframe.contentDocument;
-  if (!doc) {
-    return;
-  }
   let nodeList = getBlockElement(doc.body);
   let visibleNode = nodeList.filter(
     (s) =>
@@ -473,7 +388,7 @@ export const handleRecord = async (
     tempLocation.count = count + "";
     tempLocation.page = "";
   } else {
-    tempLocation.page = (await progressInfo(mode))?.currentPage + "";
+    tempLocation.page = (await progressInfo(mode, doc))?.currentPage + "";
   }
 
   lock = true;
@@ -528,7 +443,9 @@ export const handleNextChapter = async (
   chapterDocList: ChapterDoc[],
   mode: string,
   format: string,
-  tempLocation: any
+  tempLocation: any,
+  doc: Document,
+  win: any
 ) => {
   let chapterDocIndex = parseInt(tempLocation.chapterDocIndex || "0");
   let chapterHref = tempLocation.chapterHref || "";
@@ -552,18 +469,16 @@ export const handleNextChapter = async (
     element,
     mode,
     format,
-    tempLocation
+    tempLocation,
+    doc,
+    win
   );
 };
-export const getAudioText = (element: HTMLElement, mode: string) => {
-  let pageArea = document.getElementById("page-area");
-  if (!pageArea) return;
-  let iframe = pageArea.getElementsByTagName("iframe")[0];
-  if (!iframe) return;
-  let doc = iframe.contentDocument;
-  if (!doc) {
-    return;
-  }
+export const getAudioText = (
+  element: HTMLElement,
+  mode: string,
+  doc: Document
+) => {
   let nodeList = getBlockElement(doc.body).filter(
     (item) => !isParentBlock(item)
   );
@@ -575,24 +490,20 @@ export const getAudioText = (element: HTMLElement, mode: string) => {
     .map((item) => item.textContent);
   let firstSliceIndex = 0;
   if (
-    getVisibleText(element, mode) &&
-    (getVisibleText(element, mode) as any).length > 0
+    getVisibleText(element, mode, doc) &&
+    (getVisibleText(element, mode, doc) as any).length > 0
   ) {
-    let firstVisibleText = (getVisibleText(element, mode) as any)[0];
+    let firstVisibleText = (getVisibleText(element, mode, doc) as any)[0];
     firstSliceIndex = audioText.indexOf(firstVisibleText);
   }
 
   return audioText.slice(firstSliceIndex);
 };
-export const getVisibleText = (element: HTMLElement, mode: string) => {
-  let pageArea = document.getElementById("page-area");
-  if (!pageArea) return;
-  let iframe = pageArea.getElementsByTagName("iframe")[0];
-  if (!iframe) return;
-  let doc = iframe.contentDocument;
-  if (!doc) {
-    return;
-  }
+export const getVisibleText = (
+  element: HTMLElement,
+  mode: string,
+  doc: Document
+) => {
   let nodeList = getBlockElement(doc.body).filter(
     (item) => !isParentBlock(item)
   );
@@ -610,16 +521,9 @@ export const handleHighlightNode = (
   element: HTMLElement,
   mode: string,
   text: string,
-  style: string
+  style: string,
+  doc: Document
 ) => {
-  let pageArea = document.getElementById("page-area");
-  if (!pageArea) return;
-  let iframe = pageArea.getElementsByTagName("iframe")[0];
-  if (!iframe) return;
-  let doc = iframe.contentDocument;
-  if (!doc) {
-    return;
-  }
   let nodeList = getBlockElement(doc.body);
   let nodes = nodeList.filter((s) => {
     if (s.getAttribute("style") === style) {

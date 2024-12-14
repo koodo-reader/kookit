@@ -5,16 +5,13 @@ export const convertStyleNum = (value: number) => {
 export const convertComputedNum = (value: string) => {
   return parseFloat(value.substring(0, value.length - 2));
 };
-export const handleIframeHeight = async (
+export const handleWinHeight = async (
   element: HTMLElement,
   mode: string,
-  iframe: any,
-  format: string
+  format: string,
+  win: any,
+  doc: Document
 ) => {
-  let doc = iframe.contentDocument;
-  if (!doc) {
-    return;
-  }
   await Promise.all(
     Array.from([...doc.images, ...doc.querySelectorAll("image")]).map(
       (img: any) => {
@@ -30,13 +27,13 @@ export const handleIframeHeight = async (
       console.log("all images loaded successfully!!");
     else console.log("some images failed to load, all finished loading");
   });
-  await handleImageSize(element, mode, format);
+  await handleImageSize(element, mode, format, doc);
   if (format !== "PDF") {
-    handleTextStyle();
+    handleTextStyle(doc);
   }
 
   if (mode !== "scroll") {
-    iframe.height = element.clientHeight + "px";
+    win.height = element.clientHeight + "px";
     if (mode === "double") {
       let section = Math.floor(element.clientWidth / 12);
       let gap = section % 2 === 0 ? section : section - 1;
@@ -59,11 +56,12 @@ export const handleIframeHeight = async (
     }
   } else if (format === "PDF") {
     let docLayer = doc.querySelector(".koodoPDFLayer");
-    iframe.height = docLayer.getBoundingClientRect().height + 100 + "px";
+    if (!docLayer) return;
+    win.height = docLayer.getBoundingClientRect().height + 100 + "px";
   } else {
     //fix text blocked issue under scroll mode, don't ask me why
-    iframe.height = doc.body.scrollHeight + "px";
-    iframe.height = doc.body.scrollHeight + 300 + "px";
+    win.height = doc.body.scrollHeight + "px";
+    win.height = doc.body.scrollHeight + 300 + "px";
   }
   // await new Promise((r) => setTimeout(r, 1));
 };
@@ -136,15 +134,7 @@ export const createIframe = (element: HTMLElement, styleStr: string = "") => {
   element.appendChild(iframe);
 };
 
-export const progressInfo = async (mode: string) => {
-  let pageArea = document.getElementById("page-area");
-  if (!pageArea) return;
-  let iframe = pageArea.getElementsByTagName("iframe")[0];
-  if (!iframe) return;
-  let doc = iframe.contentDocument;
-  if (!doc) {
-    return;
-  }
+export const progressInfo = async (mode: string, doc: Document) => {
   if (parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") === 1) {
     await new Promise((r) => setTimeout(r, 1000));
   }
@@ -159,15 +149,7 @@ export const progressInfo = async (mode: string) => {
       ) + 1,
   };
 };
-export const handleTextStyle = () => {
-  let pageArea = document.getElementById("page-area");
-  if (!pageArea) return;
-  let iframe = pageArea.getElementsByTagName("iframe")[0];
-  if (!iframe) return;
-  let doc = iframe.contentDocument;
-  if (!doc) {
-    return;
-  }
+export const handleTextStyle = (doc: Document) => {
   let textNodes = doc.querySelectorAll(
     "a, article, cite, div, li, p, span, pre, table, bold, body"
   ) as any;
@@ -187,16 +169,9 @@ export const getImageMeta = async (url) => {
 export const handleImageSize = async (
   element: HTMLElement,
   mode: string,
-  format: string
+  format: string,
+  doc: Document
 ) => {
-  let pageArea = document.getElementById("page-area");
-  if (!pageArea) return;
-  let iframe = pageArea.getElementsByTagName("iframe")[0];
-  if (!iframe) return;
-  let doc = iframe.contentDocument;
-  if (!doc) {
-    return;
-  }
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   let imgs = doc.querySelectorAll("img, image") as any;
@@ -285,15 +260,11 @@ export const handleImageSize = async (
   }
 };
 
-export const handleLayout = (element: HTMLElement, mode: string) => {
-  let pageArea = document.getElementById("page-area");
-  if (!pageArea) return;
-  let iframe = pageArea.getElementsByTagName("iframe")[0];
-  if (!iframe) return;
-  let doc = iframe.contentDocument;
-  if (!doc) {
-    return;
-  }
+export const handleLayout = (
+  element: HTMLElement,
+  mode: string,
+  doc: Document
+) => {
   let style = doc.createElement("style");
   style.id = "default-style";
   style.textContent =

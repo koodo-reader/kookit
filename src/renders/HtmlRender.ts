@@ -38,7 +38,9 @@ class HtmlRender extends GeneralRender {
       this.chapterDocList = await parser.getChapterDoc();
 
       createIframe(element);
-      handleLayout(element, this.mode);
+      let doc = this.getDocument();
+      if (!doc) return;
+      handleLayout(element, this.mode, doc);
       resolve();
     });
   }
@@ -52,7 +54,6 @@ class HtmlRender extends GeneralRender {
         reader.onload = async (evt) => {
           let html = evt.target?.result as any;
           if (this.format === "MHTML") {
-            console.log(mhtml2html.convert(html));
             html =
               mhtml2html.convert(html).window.document.documentElement
                 .innerHTML;

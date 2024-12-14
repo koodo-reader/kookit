@@ -32,7 +32,9 @@ class Fb2Render extends GeneralRender {
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
 
-      handleLayout(element, this.mode);
+      let doc = this.getDocument();
+      if (!doc) return;
+      handleLayout(element, this.mode, doc);
       resolve();
     });
   }

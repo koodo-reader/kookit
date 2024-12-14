@@ -17,22 +17,17 @@ export const showNoteHighlight = (
   range: any,
   colorIndex: number,
   noteKey: string,
-  handleNoteClick: any
+  handleNoteClick: any,
+  doc: Document,
+  win: any
 ) => {
   let colorCode = classes[colorIndex];
-  let pageArea = document.getElementById("page-area");
-  if (!pageArea) return;
-  let iframe = pageArea.getElementsByTagName("iframe")[0];
-  if (!iframe || !iframe.contentWindow) return;
-  let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
-  let doc = iframe.contentDocument;
-  if (!doc) return;
-
+  let iWin: any = win.contentWindow || win.contentDocument?.defaultView;
   let temp = range;
   temp = [temp];
   // sleep(500);
 
-  window.rangy.getSelection(iframe).restoreCharacterRanges(doc, temp);
+  window.rangy.getSelection(win).restoreCharacterRanges(doc, temp);
   let sel = doc!.getSelection();
   if (!sel) return;
   let newRange = sel.getRangeAt(0);
@@ -49,14 +44,9 @@ export const showPDFHighlight = (
   noteKey: string,
   handleNoteClick: any,
   page: any,
-  scale: number
+  scale: number,
+  doc: Document
 ) => {
-  let pageArea = document.getElementById("page-area");
-  if (!pageArea) return;
-  let iframe = pageArea.getElementsByTagName("iframe")[0];
-  if (!iframe || !iframe.contentWindow) return;
-  let doc = iframe.contentDocument;
-  if (!doc) return;
   let colorCode = classes[colorIndex];
   let pageElement: any = doc.querySelector(".noteLayer");
   var viewport = page.getViewport({ scale: scale });
@@ -67,24 +57,24 @@ export const showPDFHighlight = (
     newNode?.setAttribute(
       "style",
       "position: absolute;" +
-      (colorCode.indexOf("color") > -1
-        ? "background-color: "
-        : "border-bottom: ") +
-      (colorCode.indexOf("color") > -1
-        ? pdfColors[colorCode.split("-")[1]]
-        : `2px solid ${lines[colorCode.split("-")[1]]}`) +
-      "; left:" +
-      Math.min(bounds[0], bounds[2]) +
-      "px; top:" +
-      Math.min(bounds[1], bounds[3]) +
-      "px;" +
-      "width:" +
-      Math.abs(bounds[0] - bounds[2]) +
-      "px; height:" +
-      Math.abs(bounds[1] - bounds[3]) +
-      "px; z-index: 1;opacity: " +
-      (colorCode.indexOf("color") > -1 ? 0.3 : 1) +
-      ";"
+        (colorCode.indexOf("color") > -1
+          ? "background-color: "
+          : "border-bottom: ") +
+        (colorCode.indexOf("color") > -1
+          ? pdfColors[colorCode.split("-")[1]]
+          : `2px solid ${lines[colorCode.split("-")[1]]}`) +
+        "; left:" +
+        Math.min(bounds[0], bounds[2]) +
+        "px; top:" +
+        Math.min(bounds[1], bounds[3]) +
+        "px;" +
+        "width:" +
+        Math.abs(bounds[0] - bounds[2]) +
+        "px; height:" +
+        Math.abs(bounds[1] - bounds[3]) +
+        "px; z-index: 1;opacity: " +
+        (colorCode.indexOf("color") > -1 ? 0.3 : 1) +
+        ";"
     );
     newNode?.setAttribute("data-key", noteKey);
     newNode?.setAttribute("class", "kookit-note");
@@ -103,13 +93,7 @@ export const showPDFHighlight = (
   });
 };
 
-export const clearHighlight = () => {
-  let pageArea = document.getElementById("page-area");
-  if (!pageArea) return;
-  let iframe = pageArea.getElementsByTagName("iframe")[0];
-  if (!iframe || !iframe.contentWindow) return;
-  let doc = iframe.contentDocument;
-  if (!doc) return;
+export const clearHighlight = (doc: Document) => {
   const elements = doc.querySelectorAll(".kookit-note");
   for (let index = 0; index < elements.length; index++) {
     const element: any = elements[index];
@@ -131,22 +115,22 @@ export const highlightRange = (
     newNode?.setAttribute(
       "style",
       "position: absolute;" +
-      (colorCode.indexOf("color") > -1
-        ? "background-color: "
-        : "border-bottom: ") +
-      (colorCode.indexOf("color") > -1
-        ? colors[colorCode.split("-")[1]] + ";opacity: 1"
-        : `2px solid ${lines[colorCode.split("-")[1]]}`) +
-      ";left:" +
-      (Math.min(rect.left, rect.x) + doc.body.scrollLeft) +
-      "px; top:" +
-      (Math.min(rect.top, rect.y) + doc.body.scrollTop) +
-      "px;" +
-      "width:" +
-      rect.width +
-      "px; height:" +
-      rect.height +
-      "px; z-index:-1;"
+        (colorCode.indexOf("color") > -1
+          ? "background-color: "
+          : "border-bottom: ") +
+        (colorCode.indexOf("color") > -1
+          ? colors[colorCode.split("-")[1]] + ";opacity: 1"
+          : `2px solid ${lines[colorCode.split("-")[1]]}`) +
+        ";left:" +
+        (Math.min(rect.left, rect.x) + doc.body.scrollLeft) +
+        "px; top:" +
+        (Math.min(rect.top, rect.y) + doc.body.scrollTop) +
+        "px;" +
+        "width:" +
+        rect.width +
+        "px; height:" +
+        rect.height +
+        "px; z-index:-1;"
     );
     newNode.setAttribute("class", " kookit-note");
     newNode.setAttribute("data-key", noteKey);
@@ -157,16 +141,16 @@ export const highlightRange = (
     clickNode?.setAttribute(
       "style",
       "position: absolute;" +
-      "left:" +
-      (Math.min(rect.left, rect.x) + doc.body.scrollLeft) +
-      "px; top:" +
-      (Math.min(rect.top, rect.y) + doc.body.scrollTop) +
-      "px;" +
-      "width:" +
-      rect.width +
-      "px; height:" +
-      rect.height +
-      "px; z-index:1;"
+        "left:" +
+        (Math.min(rect.left, rect.x) + doc.body.scrollLeft) +
+        "px; top:" +
+        (Math.min(rect.top, rect.y) + doc.body.scrollTop) +
+        "px;" +
+        "width:" +
+        rect.width +
+        "px; height:" +
+        rect.height +
+        "px; z-index:1;"
     );
     clickNode.setAttribute("class", " kookit-note");
     clickNode.setAttribute("data-key", noteKey);

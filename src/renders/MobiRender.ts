@@ -33,7 +33,9 @@ class MobiRender extends GeneralRender {
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
-      handleLayout(element, this.mode);
+      let doc = this.getDocument();
+      if (!doc) return;
+      handleLayout(element, this.mode, doc);
       resolve();
     });
   }

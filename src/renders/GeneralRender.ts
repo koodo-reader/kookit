@@ -249,6 +249,9 @@ class GeneralRender extends EventEmitter {
     }
   }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
+    let doc = this.getDocument();
+    let win = this.getWindow();
+    if (!doc || !win) return;
     await handleRenderChatper(
       parseInt(chapterDocIndex),
       chapterTitle,
@@ -257,7 +260,9 @@ class GeneralRender extends EventEmitter {
       this.element,
       this.mode,
       this.format,
-      this.tempLocation
+      this.tempLocation,
+      doc,
+      win
     );
     if (chapterHref && chapterHref.indexOf("#") > -1) {
       await handleScrollPosition(
@@ -266,13 +271,17 @@ class GeneralRender extends EventEmitter {
         "",
         "",
         chapterHref,
-        ""
+        "",
+        doc
       );
     }
     await this.record();
     this.trigger("rendered");
   }
   async goToPosition(bookLocationStr: string) {
+    let doc = this.getDocument();
+    let win = this.getWindow();
+    if (!doc || !win) return;
     let bookLocation = JSON.parse(bookLocationStr);
     this.tempLocation = {
       text: bookLocation.text,
@@ -292,15 +301,13 @@ class GeneralRender extends EventEmitter {
       this.element,
       this.mode,
       this.format,
-      this.tempLocation
+      this.tempLocation,
+      doc,
+      win
     );
     if (cfi) {
       const cfiInfo = new CFI(cfi, {});
-      let pageArea = document.getElementById("page-area");
-      if (!pageArea) return;
-      let iframe = pageArea.getElementsByTagName("iframe")[0];
-      if (!iframe) return;
-      let doc: any = iframe.contentDocument;
+      let doc = this.getDocument();
       if (!doc) {
         return;
       }
@@ -333,16 +340,38 @@ class GeneralRender extends EventEmitter {
       text = element.textContent;
     }
 
-    await handleScrollPosition(this.element, this.mode, text, count, "", page);
+    await handleScrollPosition(
+      this.element,
+      this.mode,
+      text,
+      count,
+      "",
+      page,
+      doc
+    );
     await this.record();
     this.trigger("rendered");
   }
-  async goToNode(node: any) {
+  getDocument(): Document | null {
     let pageArea = document.getElementById("page-area");
-    if (!pageArea) return;
+    if (!pageArea) return null;
     let iframe = pageArea.getElementsByTagName("iframe")[0];
-    if (!iframe) return;
+    if (!iframe) return null;
     let doc: any = iframe.contentDocument;
+    if (!doc) {
+      return null;
+    }
+    return doc;
+  }
+  getWindow() {
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return null;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe) return null;
+    return iframe;
+  }
+  async goToNode(node: any) {
+    let doc = this.getDocument();
     if (!doc) {
       return;
     }
@@ -374,12 +403,9 @@ class GeneralRender extends EventEmitter {
   }
   async prev() {
     this.trigger("page-changed");
-    let pageArea = document.getElementById("page-area");
-    if (!pageArea) return;
-    let iframe = pageArea.getElementsByTagName("iframe")[0];
-    if (!iframe) return;
-    let doc = iframe.contentDocument;
-    if (!doc) {
+    let doc = this.getDocument();
+    let win = this.getWindow();
+    if (!doc || !win) {
       return;
     }
     if (this.mode === "scroll" || convertStyleNum(doc.body.scrollLeft) === 0) {
@@ -389,7 +415,9 @@ class GeneralRender extends EventEmitter {
         this.chapterDocList,
         this.mode,
         this.format,
-        this.tempLocation
+        this.tempLocation,
+        doc,
+        win
       );
       let chapterDocIndex = parseInt(this.tempLocation.chapterDocIndex || "-1");
       if (chapterDocIndex > -1) {
@@ -397,28 +425,15 @@ class GeneralRender extends EventEmitter {
       }
       this.trigger("rendered");
     } else {
-      await handleScrollPage(
-        this.element,
-        this.flatChapter(this.chapterList),
-        this.chapterDocList,
-        this.mode,
-        this.format,
-        this.animation,
-        1,
-        this.trigger,
-        this.tempLocation
-      );
+      await handleScrollPage(this.element, this.animation, 1, doc);
     }
     await this.record();
   }
   async next() {
     this.trigger("page-changed");
-    let pageArea = document.getElementById("page-area");
-    if (!pageArea) return;
-    let iframe = pageArea.getElementsByTagName("iframe")[0];
-    if (!iframe) return;
-    let doc = iframe.contentDocument;
-    if (!doc) {
+    let doc = this.getDocument();
+    let win = this.getWindow();
+    if (!doc || !win) {
       return;
     }
     if (
@@ -435,134 +450,126 @@ class GeneralRender extends EventEmitter {
       ) < 10 &&
         this.mode === "scroll")
     ) {
+      // if the last page
       await handleNextChapter(
         this.element,
         this.flatChapter(this.chapterList),
         this.chapterDocList,
         this.mode,
         this.format,
-        this.tempLocation
+        this.tempLocation,
+        doc,
+        win
       );
       this.trigger("rendered");
     } else if (this.mode === "scroll") {
+      // scroll mode under normal condition
       this.element.scrollBy({
         left: 0,
         top: this.element.clientHeight - 50,
         behavior: "smooth",
       });
     } else {
-      await handleScrollPage(
-        this.element,
-        this.flatChapter(this.chapterList),
-        this.chapterDocList,
-        this.mode,
-        this.format,
-        this.animation,
-        -1,
-        this.trigger,
-        this.tempLocation
-      );
+      // single and double mode under normal condition
+      await handleScrollPage(this.element, this.animation, -1, doc);
     }
     await this.record();
   }
   async prevChapter() {
     this.trigger("page-changed");
-    let pageArea = document.getElementById("page-area");
-    if (!pageArea) return;
-    let iframe = pageArea.getElementsByTagName("iframe")[0];
-    if (!iframe) return;
-    let doc = iframe.contentDocument;
-    if (!doc) {
-      return;
-    }
+    let doc = this.getDocument();
+    let win = this.getWindow();
+    if (!doc || !win) return;
     await handlePrevChapter(
       this.element,
       this.flatChapter(this.chapterList),
       this.chapterDocList,
       this.mode,
       this.format,
-      this.tempLocation
+      this.tempLocation,
+      doc,
+      win
     );
     await this.record();
     this.trigger("rendered");
   }
   async nextChapter() {
     this.trigger("page-changed");
-    let pageArea = document.getElementById("page-area");
-    if (!pageArea) return;
-    let iframe = pageArea.getElementsByTagName("iframe")[0];
-    if (!iframe) return;
-    let doc = iframe.contentDocument;
-    if (!doc) {
-      return;
-    }
+    let doc = this.getDocument();
+    let win = this.getWindow();
+    if (!doc || !win) return;
     await handleNextChapter(
       this.element,
       this.flatChapter(this.chapterList),
       this.chapterDocList,
       this.mode,
       this.format,
-      this.tempLocation
+      this.tempLocation,
+      doc,
+      win
     );
     await this.record();
     this.trigger("rendered");
   }
   visibleText() {
-    return getVisibleText(this.element, this.mode);
+    let doc = this.getDocument();
+    if (!doc) return "";
+    return getVisibleText(this.element, this.mode, doc);
   }
   audioText() {
-    return getAudioText(this.element, this.mode);
+    let doc = this.getDocument();
+    if (!doc) return "";
+    return getAudioText(this.element, this.mode, doc);
   }
   highlightNode(text: string, style: string) {
-    handleHighlightNode(this.element, this.mode, text, style);
+    let doc = this.getDocument();
+    if (!doc) return;
+    handleHighlightNode(this.element, this.mode, text, style, doc);
   }
   async doSearch(keyword: string) {
     return await getSearchResult(keyword, this.chapterDocList);
   }
   async getProgress() {
-    return await progressInfo(this.mode);
+    let doc = this.getDocument();
+    if (!doc) return;
+    return await progressInfo(this.mode, doc);
   }
   async record() {
     if (this.animation === "sliding") {
       await new Promise((r) => setTimeout(r, 1000));
     }
+    let doc = this.getDocument();
+    if (!doc) return;
     await handleRecord(
       this.element,
       this.mode,
       this.flatChapter(this.chapterList),
-      this.tempLocation
+      this.tempLocation,
+      doc
     );
   }
   getPosition() {
     return this.tempLocation;
   }
   setStyle(css: string) {
-    let pageArea = document.getElementById("page-area");
-    if (!pageArea) return;
-    let iframe = pageArea.getElementsByTagName("iframe")[0];
-    if (!iframe) return;
-    let doc = iframe.contentDocument;
-    if (!doc) {
-      return;
-    }
+    let doc = this.getDocument();
+    if (!doc) return;
     doc.body.setAttribute("style", css + doc.body.getAttribute("style"));
   }
   async getHightlightCoords(pageIndex: number) {
-    let pageArea = document.getElementById("page-area");
-    if (!pageArea) return;
-    let iframe = pageArea.getElementsByTagName("iframe")[0];
-    if (!iframe) return;
-    let doc = iframe.contentDocument;
-    if (!doc) {
-      return;
-    }
+    let doc = this.getDocument();
+    let win = this.getWindow();
+    if (!doc || !win) return;
     let charRange = window.rangy
-      .getSelection(iframe)
+      .getSelection(win)
       .saveCharacterRanges(doc.body)[0];
     return charRange;
   }
   async renderHighlighters(notes: any[], handleNoteClick: any) {
-    clearHighlight();
+    let doc = this.getDocument();
+    let win = this.getWindow();
+    if (!doc || !win) return;
+    clearHighlight(doc);
     for (let index = 0; index < notes.length; index++) {
       const item = notes[index];
       try {
@@ -570,7 +577,9 @@ class GeneralRender extends EventEmitter {
           JSON.parse(item.range),
           item.color,
           item.key,
-          handleNoteClick
+          handleNoteClick,
+          doc,
+          win
         );
         // highlighter.highlightSelection(classes[item.color]);
       } catch (e) {
@@ -583,11 +592,7 @@ class GeneralRender extends EventEmitter {
     }
   }
   removeOneNote(key: string, format: string) {
-    let pageArea = document.getElementById("page-area");
-    if (!pageArea) return;
-    let iframe = pageArea.getElementsByTagName("iframe")[0];
-    if (!iframe || !iframe.contentWindow) return;
-    let doc = iframe.contentDocument;
+    let doc = this.getDocument();
     if (!doc) return;
     const elements = doc.querySelectorAll(".kookit-note");
     for (let index = 0; index < elements.length; index++) {
@@ -599,11 +604,16 @@ class GeneralRender extends EventEmitter {
     }
   }
   async createOneNote(item: any, handleNoteClick: any) {
+    let doc = this.getDocument();
+    let win = this.getWindow();
+    if (!doc || !win) return;
     showNoteHighlight(
       JSON.parse(item.range),
       item.color,
       item.key,
-      handleNoteClick
+      handleNoteClick,
+      doc,
+      win
     );
   }
 }
