@@ -138,10 +138,11 @@ export const createIframe = (element: HTMLElement, styleStr: string = "") => {
   element.appendChild(iframe);
 };
 
-export const progressInfo = async (mode: string, doc: Document) => {
-  if (parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") === 1) {
-    await new Promise((r) => setTimeout(r, 1000));
-  }
+export const progressInfo = (mode: string, doc: Document) => {
+  //TODO 是否有必要保留延时
+  // if (parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") === 1) {
+  //   await new Promise((r) => setTimeout(r, 1000));
+  // }
   return {
     totalPage:
       mode === "scroll"

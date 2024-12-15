@@ -1,5 +1,3 @@
-import Chapter from "../model/chapter.js";
-import ChapterDoc from "../model/chapterDoc.js";
 import { createIframe, handleLayout } from "../utils/layoutUtil.js";
 import GeneralParser from "../utils/generalParser.js";
 import { isPDF, makePDF } from "../libs/pdf.js";

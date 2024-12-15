@@ -1,4 +1,5 @@
-declare var window: any;
+import rangy from "rangy/lib/rangy-core.js";
+import "rangy/lib/rangy-textrange";
 export const classes = [
   "color-0",
   "color-1",
@@ -21,13 +22,14 @@ export const showNoteHighlight = (
   doc: Document,
   iframe: any
 ) => {
+  rangy.init();
   let colorCode = classes[colorIndex];
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
   let temp = range;
   temp = [temp];
   // sleep(500);
 
-  window.rangy.getSelection(iframe).restoreCharacterRanges(doc, temp);
+  rangy.getSelection(iframe).restoreCharacterRanges(doc, temp);
   let sel = doc!.getSelection();
   if (!sel) return;
   let newRange = sel.getRangeAt(0);

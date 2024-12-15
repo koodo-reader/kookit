@@ -42,7 +42,8 @@ export default [
         },
       }), // 压缩代码
     ],
-    external: ['mammoth', 'jszip', 'underscore', 'marked', 'chinese-s2t', 'mhtml2html', 'js-untar', 'fflate', '@zip.js/zip.js', 'rangy'],
+
+    external: ['mammoth', 'jszip', 'underscore', 'marked', 'chinese-s2t', 'mhtml2html', 'js-untar', 'fflate', '@zip.js/zip.js', 'rangy/lib/rangy-core.js', 'rangy/lib/rangy-textrange'],
   },
   {
     input: "src/mobile.ts",

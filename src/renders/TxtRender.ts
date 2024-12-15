@@ -1,5 +1,3 @@
-import Chapter from "../model/chapter";
-import ChapterDoc from "../model/chapterDoc";
 import { createIframe, handleLayout } from "../utils/layoutUtil";
 import GeneralRender from "./GeneralRender";
 import { makeHtmlBook } from "../libs/html";

@@ -10,6 +10,7 @@ import Chapter from "../model/chapter";
 import { cleanText } from "../libs/html";
 import Chinese from "chinese-s2t";
 import _ from "underscore";
+declare var window: any;
 let lock = false;
 export const getBlockElement = (Element) => {
   return Array.from(
@@ -23,11 +24,29 @@ export const handleScrollPage = async (
   element: HTMLElement,
   animation: string,
   delta: number,
-  doc: Document
+  doc: Document,
+  flipToNextPage: () => void,
+  flipToPrevPage: () => void
 ) => {
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   const width = element.clientWidth;
+  if (animation === "flip") {
+    let bookDiv = document.getElementById("book");
+    if (bookDiv) {
+      bookDiv.style.display = "block";
+      if (delta > 0) {
+        flipToPrevPage();
+      } else if (delta < 0) {
+        flipToNextPage();
+      }
+      console.log("first");
+      setTimeout(() => {
+        if (!bookDiv) return {};
+        bookDiv.style.display = "none";
+      }, 1000);
+    }
+  }
   if (delta > 0) {
     // previous page
     doc.body.scrollBy({
@@ -316,7 +335,7 @@ export const handleScrollPosition = async (
   if (mode !== "scroll") {
     doc.body.scrollTo(left, 0);
   } else {
-    element.scrollTo(0, top);
+    targetNode.scrollIntoView();
   }
 };
 
@@ -623,4 +642,104 @@ export const isScrolledIntoView = (
     isVisible = elemLeft >= 0 && elemLeft <= element.clientWidth;
   }
   return isVisible;
+};
+export const addTouchEvent = (doc: Document, iframe: any) => {
+  let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
+  let touchStartTime = 0;
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let lastTouchEnd = 0;
+  const swipeThreshold = 30; // Minimum distance in pixels to be considered a swipe
+  const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
+
+  let onTouchEnd = function (event) {
+    console.log("touchend");
+    let now = new Date().getTime();
+    if (now - lastTouchEnd <= 300) {
+      event.preventDefault();
+      return;
+    }
+    lastTouchEnd = now;
+    const touch = event.changedTouches[0];
+    const touchEndTime = Date.now();
+    const touchEndX = touch.screenX;
+    const touchEndY = touch.screenY;
+    const timeDiff = touchEndTime - touchStartTime;
+    const distX = touchEndX - touchStartX;
+    const distY = touchEndY - touchStartY;
+    if (
+      timeDiff < timeThreshold &&
+      Math.abs(distX) < swipeThreshold &&
+      Math.abs(distY) < swipeThreshold
+    ) {
+      var width = window.screen.width;
+      var height = window.screen.height;
+
+      var cellWidth = width / 3;
+      var cellHeight = height / 3;
+
+      var col = Math.floor(touchEndX / cellWidth);
+      var row = Math.floor(touchEndY / cellHeight);
+
+      var result = "";
+
+      if (
+        (row === 0 && (col === 0 || col === 1)) || // Top-left and Top-middle
+        (row === 1 && col === 0) || // Middle-left
+        (row === 2 && col === 0) || // Bottom-left
+        (row === 0 && col === 1) // Middle-top
+      ) {
+        result = "left";
+      } else if (row === 1 && col === 1) {
+        result = "center";
+      } else if (
+        (row === 0 && col === 2) || // Top-right
+        (row === 1 && col === 2) || // Middle-right
+        (row === 2 && col === 2) || // Bottom-right
+        (row === 2 && col === 1) // Middle-bottom
+      ) {
+        result = "right";
+      }
+      window.ReactNativeWebView.postMessage(JSON.stringify({ event: result }));
+    } else if (
+      Math.abs(distX) >= swipeThreshold ||
+      Math.abs(distY) >= swipeThreshold
+    ) {
+      console.log("Swipe detected");
+    }
+  };
+  let onTouchStart = function (event) {
+    const target: any = event.target;
+    if (!target) return;
+    if (target.tagName === "IMG") {
+      const imgSrc = target.src;
+      window.ReactNativeWebView.postMessage(
+        JSON.stringify({ event: "view-image", imgSrc: imgSrc })
+      );
+    }
+    if (event.touches.length > 1) {
+      event.preventDefault();
+    }
+    const touch = event.touches[0];
+    touchStartTime = Date.now();
+    touchStartX = touch.screenX;
+    touchStartY = touch.screenY;
+  };
+
+  doc.body.ontouchend = onTouchEnd;
+  doc.body.ontouchstart = onTouchStart;
+  iWin.ontouchend = onTouchEnd;
+  iWin.ontouchstart = onTouchStart;
+
+  doc.body.oncontextmenu = function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    var selectedText = iWin.getSelection().toString();
+    if (selectedText) {
+      window.ReactNativeWebView.postMessage(
+        JSON.stringify({ event: "select", selectedText: selectedText })
+      );
+    }
+    return false;
+  };
 };

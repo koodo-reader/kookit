@@ -17,7 +17,9 @@ import {
 import EventEmitter from "../utils/EventEmitter";
 import { CFI } from "../libs/cfi";
 import { clearHighlight, showNoteHighlight } from "../utils/noteUtil";
-declare var window: any;
+import { addPageAnimation } from "../utils/animationUtil";
+import rangy from "rangy/lib/rangy-core.js";
+import "rangy/lib/rangy-textrange";
 
 class GeneralRender extends EventEmitter {
   mode: string;
@@ -29,6 +31,8 @@ class GeneralRender extends EventEmitter {
   flattenChapters: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
+  flipToNextPage: () => void;
+  flipToPrevPage: () => void;
   constructor(mode: string, format: string, animation: string) {
     super();
     this.mode = mode;
@@ -40,6 +44,8 @@ class GeneralRender extends EventEmitter {
     this.book = "";
     this.element = "";
     this.tempLocation = {};
+    this.flipToNextPage = () => {};
+    this.flipToPrevPage = () => {};
   }
   getPageSize() {
     let scale = this.mode === "double" ? 2 : 1;
@@ -232,7 +238,6 @@ class GeneralRender extends EventEmitter {
       count = "ignore";
       text = element.textContent;
     }
-
     await handleScrollPosition(
       this.element,
       this.mode,
@@ -244,13 +249,14 @@ class GeneralRender extends EventEmitter {
     );
     await this.record();
     this.trigger("rendered");
+    // this.addPageAnimation();
   }
   getDocument(): Document | null {
     let pageArea = document.getElementById("page-area");
     if (!pageArea) return null;
     let iframe = pageArea.getElementsByTagName("iframe")[0];
     if (!iframe) return null;
-    let doc: any = iframe.contentDocument;
+    let doc = iframe.contentDocument;
     if (!doc) {
       return null;
     }
@@ -318,7 +324,14 @@ class GeneralRender extends EventEmitter {
       }
       this.trigger("rendered");
     } else {
-      await handleScrollPage(this.element, this.animation, 1, doc);
+      await handleScrollPage(
+        this.element,
+        this.animation,
+        1,
+        doc,
+        this.flipToNextPage,
+        this.flipToPrevPage
+      );
     }
     await this.record();
   }
@@ -329,6 +342,12 @@ class GeneralRender extends EventEmitter {
     if (!doc || !iframe) {
       return;
     }
+    console.log(
+      doc.body.scrollWidth -
+        convertStyleNum(doc.body.scrollLeft) -
+        doc.body.clientWidth,
+      "doc.body.scrollWidth - convertStyleNum(doc.body.scrollLeft) - doc.body.clientWidth"
+    );
     if (
       (Math.abs(
         doc.body.scrollWidth -
@@ -364,7 +383,14 @@ class GeneralRender extends EventEmitter {
       });
     } else {
       // single and double mode under normal condition
-      await handleScrollPage(this.element, this.animation, -1, doc);
+      await handleScrollPage(
+        this.element,
+        this.animation,
+        -1,
+        doc,
+        this.flipToNextPage,
+        this.flipToPrevPage
+      );
     }
     await this.record();
   }
@@ -422,10 +448,10 @@ class GeneralRender extends EventEmitter {
   async doSearch(keyword: string) {
     return await getSearchResult(keyword, this.chapterDocList);
   }
-  async getProgress() {
+  getProgress() {
     let doc = this.getDocument();
     if (!doc) return;
-    return await progressInfo(this.mode, doc);
+    return progressInfo(this.mode, doc);
   }
   async record() {
     if (this.animation === "sliding") {
@@ -450,12 +476,11 @@ class GeneralRender extends EventEmitter {
     doc.body.setAttribute("style", css + doc.body.getAttribute("style"));
   }
   async getHightlightCoords(pageIndex: number) {
+    rangy.init();
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
-    let charRange = window.rangy
-      .getSelection(iframe)
-      .saveCharacterRanges(doc.body)[0];
+    let charRange = rangy.getSelection(iframe).saveCharacterRanges(doc.body)[0];
     return charRange;
   }
   async renderHighlighters(notes: any[], handleNoteClick: any) {
@@ -476,7 +501,7 @@ class GeneralRender extends EventEmitter {
         );
         // highlighter.highlightSelection(classes[item.color]);
       } catch (e) {
-        console.warn(
+        console.log(
           e,
           "Exception has been caught when restore character ranges."
         );
@@ -509,5 +534,16 @@ class GeneralRender extends EventEmitter {
       iframe
     );
   }
+  addPageAnimation = () => {
+    if (this.animation === "flip") {
+      let progressInfo = this.getProgress();
+      if (!progressInfo) return;
+      const pageAnimation = addPageAnimation(progressInfo.totalPage);
+      if (pageAnimation) {
+        this.flipToNextPage = pageAnimation.flipToNextPage;
+        this.flipToPrevPage = pageAnimation.flipToPrevPage;
+      }
+    }
+  };
 }
 export default GeneralRender;
