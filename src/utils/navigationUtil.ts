@@ -509,11 +509,9 @@ export const getAudioText = (
     .filter((item) => item.textContent !== "img")
     .map((item) => item.textContent);
   let firstSliceIndex = 0;
-  if (
-    getVisibleText(element, mode, doc) &&
-    (getVisibleText(element, mode, doc) as any).length > 0
-  ) {
-    let firstVisibleText = (getVisibleText(element, mode, doc) as any)[0];
+  let visibleText = getVisibleText(element, mode, doc);
+  if (visibleText && visibleText.length > 0) {
+    let firstVisibleText = visibleText[0];
     firstSliceIndex = audioText.indexOf(firstVisibleText);
   }
 
@@ -667,6 +665,13 @@ export const addTouchEvent = (doc: Document, iframe: any) => {
     const timeDiff = touchEndTime - touchStartTime;
     const distX = touchEndX - touchStartX;
     const distY = touchEndY - touchStartY;
+    var selectedText = iWin.getSelection().toString();
+    if (selectedText) {
+      window.ReactNativeWebView.postMessage(
+        JSON.stringify({ event: "select-text", selectedText: selectedText })
+      );
+      return;
+    }
     if (
       timeDiff < timeThreshold &&
       Math.abs(distX) < swipeThreshold &&
@@ -734,10 +739,25 @@ export const addTouchEvent = (doc: Document, iframe: any) => {
   doc.body.oncontextmenu = function (event) {
     event.preventDefault();
     event.stopPropagation();
+    console.log(JSON.stringify({ event }));
     var selectedText = iWin.getSelection().toString();
     if (selectedText) {
+      var range = iWin.getSelection().getRangeAt(0);
+      var rect = range.getBoundingClientRect();
+      var position = {
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        screenWidth: window.innerWidth,
+        screenHeight: window.innerHeight,
+      };
       window.ReactNativeWebView.postMessage(
-        JSON.stringify({ event: "select", selectedText: selectedText })
+        JSON.stringify({
+          event: "select-text",
+          selectedText: selectedText,
+          position: position,
+        })
       );
     }
     return false;

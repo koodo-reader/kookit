@@ -47,13 +47,13 @@ class MobileRender extends GeneralRender {
         overflow-wrap: break-word;
         overflow-x: hidden;
         text-align: justify;
-        font-family: "Ubuntu-Regular" !important;
+        font-family: "LXGW WenKai TC" !important;
       }
 
     `;
     doc.head.appendChild(defaultStyle);
   }
-  displayFont(fontName: string, fontBase64: string) {
+  displayFontBase64(fontName: string, fontBase64: string) {
     let doc = this.getDocument();
     if (!doc) return;
     const fontFaceCSS =
@@ -69,6 +69,32 @@ class MobileRender extends GeneralRender {
     styleElement.type = "text/css";
     styleElement.appendChild(document.createTextNode(fontFaceCSS));
     doc.head.appendChild(styleElement);
+  }
+  async displayFontUrl(fontName: string, fontUrl: string) {
+    let doc = this.getDocument();
+    if (!doc) return;
+    // 使用 FontFace API 创建字体
+    const font = new FontFace(fontName, `url(${fontUrl})`);
+
+    // 加载字体并监听加载完成事件
+    let loadedFont = await font.load();
+    // 将加载的字体添加到文档的字体集合中
+    document.fonts.add(loadedFont);
+    console.log("Font loaded successfully");
+    const fontFaceCSS =
+      "@font-face {" +
+      "  font-family: '" +
+      fontName +
+      "';" +
+      "  src: url('" +
+      fontUrl +
+      "') format('truetype');" +
+      "}";
+    const styleElement = document.createElement("style");
+    styleElement.type = "text/css";
+    styleElement.appendChild(document.createTextNode(fontFaceCSS));
+    doc.head.appendChild(styleElement);
+    // console.log("displayFontUrl", fontName, fontUrl);
   }
   addTouchEvent() {
     let doc = this.getDocument();
