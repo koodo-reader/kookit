@@ -300,30 +300,28 @@ class GeneralRender extends EventEmitter {
       const { node, offset } = cfiInfo.resolve(doc, {});
       console.log(node, offset);
 
-      if (!node) {
-        return;
-      }
-      let element: Element | null = null;
-      let currentNode: Node | null = node;
+      if (node) {
+        let element: Element | null = null;
+        let currentNode: Node | null = node;
 
-      while (currentNode) {
-        const temp: Element = currentNode as Element;
-        if (
-          temp.tagName &&
-          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address".indexOf(
-            temp.tagName.toLowerCase()
-          ) > -1
-        ) {
-          element = temp;
-          break;
+        while (currentNode) {
+          const temp: Element = currentNode as Element;
+          if (
+            temp.tagName &&
+            "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address".indexOf(
+              temp.tagName.toLowerCase()
+            ) > -1
+          ) {
+            element = temp;
+            break;
+          }
+          currentNode = currentNode.parentNode;
         }
-        currentNode = currentNode.parentNode;
+        if (element) {
+          count = "ignore";
+          text = element.textContent;
+        }
       }
-      if (!element) {
-        return;
-      }
-      count = "ignore";
-      text = element.textContent;
     }
 
     await handleScrollPosition(this.element, this.mode, text, count, "", page);
