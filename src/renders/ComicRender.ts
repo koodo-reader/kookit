@@ -24,7 +24,7 @@ class ComicRender extends GeneralRender {
     format: string,
     animation: string
   ) {
-    super(mode, format, animation);
+    super({mode, format, animation});
     this.comicBuffer = comicBuffer;
     this.mode = mode;
     this.format = format;

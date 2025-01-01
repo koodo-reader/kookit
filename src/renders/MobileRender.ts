@@ -8,8 +8,14 @@ declare var window: any;
 class MobileRender extends GeneralRender {
   toc: any[];
   sections: any[];
-  constructor(toc: any[], sections: any[], mode: string, animation: string) {
-    super(mode, "CACHE", animation);
+  constructor(
+    toc: any[],
+    sections: any[],
+    mode: string,
+    animation: string,
+    convertChinese: string
+  ) {
+    super({ mode, format: "CACHE", animation, convertChinese });
     this.toc = toc;
     this.sections = sections;
   }
@@ -34,23 +40,12 @@ class MobileRender extends GeneralRender {
       resolve();
     });
   }
-  setStyle() {
+  setStyle(css: string) {
     let doc = this.getDocument();
     if (!doc) return;
 
     var defaultStyle = document.createElement("style");
-    defaultStyle.innerHTML = `
-      body{
-        margin: 0;
-        font-size: 60px;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-        overflow-x: hidden;
-        text-align: justify;
-        font-family: "LXGW WenKai TC" !important;
-      }
-
-    `;
+    defaultStyle.innerHTML = css;
     doc.head.appendChild(defaultStyle);
   }
   displayFontBase64(fontName: string, fontBase64: string) {

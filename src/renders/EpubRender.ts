@@ -7,7 +7,7 @@ import { getCache } from "../libs/cache.js";
 class EpubRender extends GeneralRender {
   epubBuffer: ArrayBuffer;
   constructor(epubBuffer: ArrayBuffer, mode: string, animation: string) {
-    super(mode, "EPUB", animation);
+    super({ mode, format: "EPUB", animation });
     this.epubBuffer = epubBuffer;
   }
   renderTo(element: HTMLElement) {

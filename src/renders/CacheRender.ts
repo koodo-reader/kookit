@@ -6,7 +6,7 @@ import GeneralParser from "../utils/generalParser";
 class CacheRender extends GeneralRender {
   cacheBuffer: ArrayBuffer;
   constructor(cacheBuffer: ArrayBuffer, mode: string, animation: string) {
-    super(mode, "CACHE", animation);
+    super({ mode, format: "CACHE", animation });
     this.cacheBuffer = cacheBuffer;
   }
   renderTo(element: HTMLElement) {

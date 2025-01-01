@@ -13,7 +13,7 @@ class HtmlRender extends GeneralRender {
     format: string,
     animation: string
   ) {
-    super(mode, format, animation);
+    super({ mode, format, animation });
     this.htmlBuffer = htmlBuffer;
   }
   renderTo(element: HTMLElement) {

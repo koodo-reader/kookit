@@ -7,7 +7,7 @@ import { getCache } from "../libs/cache.js";
 class TxtRender extends GeneralRender {
   text: string;
   constructor(text: string, mode: string, animation: string) {
-    super(mode, "TXT", animation);
+    super({ mode, format: "TXT", animation });
     this.text = text;
   }
   renderTo(element: HTMLElement) {

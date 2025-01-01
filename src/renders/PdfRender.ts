@@ -8,7 +8,7 @@ import { getCache } from "../libs/cache.js";
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
   constructor(pdfBuffer: ArrayBuffer, mode: string, animation: string) {
-    super(mode, "PDF", animation);
+    super({ mode, format: "PDF", animation });
     this.pdfBuffer = pdfBuffer;
   }
   renderTo(element: HTMLElement) {

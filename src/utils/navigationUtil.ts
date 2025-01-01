@@ -31,7 +31,7 @@ export const handleScrollPage = async (
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   const width = element.clientWidth;
-  if (animation === "flip") {
+  if (animation === "mimical") {
     let bookDiv = document.getElementById("book");
     if (bookDiv) {
       bookDiv.style.display = "block";

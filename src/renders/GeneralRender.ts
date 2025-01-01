@@ -20,11 +20,12 @@ import { clearHighlight, showNoteHighlight } from "../utils/noteUtil";
 import { addPageAnimation } from "../utils/animationUtil";
 import rangy from "rangy/lib/rangy-core.js";
 import "rangy/lib/rangy-textrange";
-
+import Chinese from "chinese-s2t";
 class GeneralRender extends EventEmitter {
   mode: string;
   format: string;
   animation: string;
+  convertChinese: string | undefined;
   book: any;
   tempLocation: any;
   chapterList: Chapter[];
@@ -33,11 +34,17 @@ class GeneralRender extends EventEmitter {
   element: any;
   flipToNextPage: () => void;
   flipToPrevPage: () => void;
-  constructor(mode: string, format: string, animation: string) {
+  constructor(config: {
+    mode: string;
+    format: string;
+    animation: string;
+    convertChinese?: string;
+  }) {
     super();
-    this.mode = mode;
-    this.animation = animation;
-    this.format = format;
+    this.mode = config.mode;
+    this.animation = config.animation;
+    this.format = config.format;
+    this.convertChinese = config.convertChinese;
     this.chapterList = [];
     this.chapterDocList = [];
     this.flattenChapters = [];
@@ -532,8 +539,35 @@ class GeneralRender extends EventEmitter {
       iframe
     );
   }
+  tsTransform = () => {
+    let doc = this.getDocument();
+    if (!doc) return;
+    if (this.convertChinese === "Simplified To Traditional") {
+      doc
+        .querySelectorAll(
+          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address"
+        )
+        .forEach((item) => {
+          item.innerHTML = item.innerHTML
+            .split("")
+            .map((item) => Chinese.s2t(item))
+            .join("");
+        });
+    } else if (this.convertChinese === "Traditional To Simplified") {
+      doc
+        .querySelectorAll(
+          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address"
+        )
+        .forEach((item) => {
+          item.innerHTML = item.innerHTML
+            .split("")
+            .map((item) => Chinese.t2s(item))
+            .join("");
+        });
+    }
+  };
   addPageAnimation = () => {
-    if (this.animation === "flip") {
+    if (this.animation === "mimical") {
       let progressInfo = this.getProgress();
       if (!progressInfo) return;
       const pageAnimation = addPageAnimation(progressInfo.totalPage);

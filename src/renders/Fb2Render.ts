@@ -6,7 +6,7 @@ import { getCache } from "../libs/cache.js";
 class Fb2Render extends GeneralRender {
   fb2Buffer: ArrayBuffer;
   constructor(fb2Buffer: ArrayBuffer, mode: string, animation: string) {
-    super(mode, "FB2", animation);
+    super({ mode, format: "FB2", animation });
     this.fb2Buffer = fb2Buffer;
   }
   renderTo(element: HTMLElement) {
