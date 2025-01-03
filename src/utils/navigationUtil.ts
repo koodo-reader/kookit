@@ -373,7 +373,8 @@ export const handleRecord = async (
   mode: string,
   flattenChapters: Chapter[],
   tempLocation: any,
-  doc: Document
+  doc: Document,
+  targetNode: HTMLElement | null
 ) => {
   if (lock) return;
   let nodeList = getBlockElement(doc.body);
@@ -383,6 +384,58 @@ export const handleRecord = async (
       ((s as HTMLElement).textContent || "").trim()
   );
   let firstVisibleNode: any = visibleNode[0] as HTMLElement;
+  if (targetNode) {
+    firstVisibleNode = targetNode;
+  }
+  let count = 0;
+
+  for (let i = 0; i < nodeList.length; i++) {
+    if (
+      isScrolledIntoView(element, nodeList[i], mode) &&
+      firstVisibleNode &&
+      nodeList[i].innerHTML === firstVisibleNode.innerHTML
+    ) {
+      count = i;
+      break;
+    }
+  }
+  handleHashChapter(visibleNode, flattenChapters, tempLocation);
+  if (
+    firstVisibleNode &&
+    !isCurrentNodeFarFromParrent(firstVisibleNode, element, mode)
+  ) {
+    tempLocation.text = firstVisibleNode
+      ? firstVisibleNode.textContent
+        ? firstVisibleNode.textContent
+        : ""
+      : "";
+    tempLocation.count = count + "";
+    tempLocation.page = "";
+  } else {
+    tempLocation.page = (await progressInfo(mode, doc))?.currentPage + "";
+  }
+
+  lock = true;
+  setTimeout(() => {
+    lock = false;
+  }, 100);
+};
+export const handleRecordByNode = async (
+  element: HTMLElement,
+  mode: string,
+  flattenChapters: Chapter[],
+  tempLocation: any,
+  doc: Document,
+  node: HTMLElement
+) => {
+  if (lock) return;
+  let nodeList = getBlockElement(doc.body);
+  let visibleNode = nodeList.filter(
+    (s) =>
+      isScrolledIntoView(element, s as HTMLElement, mode) &&
+      ((s as HTMLElement).textContent || "").trim()
+  );
+  let firstVisibleNode: any = node;
   let count = 0;
 
   for (let i = 0; i < nodeList.length; i++) {

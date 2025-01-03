@@ -13,11 +13,7 @@ export const makeCacheBook = async (toc, sections) => {
   const book: any = {};
   book.getCover = () => "";
   const loadAsset = async (url: string) => {
-    if (url.endsWith(".css")) {
-      return fetchStyle(url);
-    } else {
-      return fetchImage(url);
-    }
+    return url;
   };
   book.sections = sections.map((item: ChapterDoc, index: number) => ({
     id: item.href,
@@ -47,38 +43,6 @@ const fetchChapter = (index: number) => {
       let data = event.data;
       if (data && data.event === "fetch-chapter") {
         resolve(event.data.chapter);
-      }
-    });
-  });
-};
-const fetchImage = (url: string) => {
-  return new Promise<string>((resolve, reject) => {
-    window.ReactNativeWebView.postMessage(
-      JSON.stringify({ event: "fetch-image", url: url })
-    );
-    document.addEventListener("message", (event: any) => {
-      let data = event.data;
-      if (data && data.event === "fetch-image") {
-        resolve(event.data.chapter);
-      }
-    });
-  });
-};
-const fetchStyle = (url: string) => {
-  return new Promise<string>((resolve, reject) => {
-    window.ReactNativeWebView.postMessage(
-      JSON.stringify({ event: "fetch-style", url: url })
-    );
-    document.addEventListener("message", (event: any) => {
-      let data = event.data;
-      if (data && data.event === "fetch-style") {
-        resolve(
-          URL.createObjectURL(
-            new Blob([event.data.style], {
-              type: mimetype[url.split(".").reverse()[0]],
-            })
-          )
-        );
       }
     });
   });

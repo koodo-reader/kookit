@@ -13,9 +13,10 @@ class MobileRender extends GeneralRender {
     sections: any[],
     mode: string,
     animation: string,
-    convertChinese: string
+    convertChinese: string,
+    isBionic: string
   ) {
-    super({ mode, format: "CACHE", animation, convertChinese });
+    super({ mode, format: "CACHE", animation, convertChinese, isBionic });
     this.toc = toc;
     this.sections = sections;
   }

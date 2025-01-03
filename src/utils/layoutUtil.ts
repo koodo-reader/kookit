@@ -302,3 +302,13 @@ export const isElement = (obj) => {
     );
   }
 };
+export function getSelectedElement(doc: Document) {
+  const selection = doc.getSelection();
+  if (!selection) return null;
+  if (selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0);
+    const selectedElement = range.startContainer.parentElement;
+    return selectedElement;
+  }
+  return null;
+}

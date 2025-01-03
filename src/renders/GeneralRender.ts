@@ -1,6 +1,10 @@
 import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
-import { convertStyleNum, progressInfo } from "../utils/layoutUtil";
+import {
+  convertStyleNum,
+  getSelectedElement,
+  progressInfo,
+} from "../utils/layoutUtil";
 import {
   getCloestBlock,
   getSearchResult,
@@ -21,11 +25,13 @@ import { addPageAnimation } from "../utils/animationUtil";
 import rangy from "rangy/lib/rangy-core.js";
 import "rangy/lib/rangy-textrange";
 import Chinese from "chinese-s2t";
+import { processDocumentBody } from "../utils/bionicUtil";
 class GeneralRender extends EventEmitter {
   mode: string;
   format: string;
   animation: string;
   convertChinese: string | undefined;
+  isBionic: string | undefined;
   book: any;
   tempLocation: any;
   chapterList: Chapter[];
@@ -39,12 +45,14 @@ class GeneralRender extends EventEmitter {
     format: string;
     animation: string;
     convertChinese?: string;
+    isBionic?: string;
   }) {
     super();
     this.mode = config.mode;
     this.animation = config.animation;
     this.format = config.format;
     this.convertChinese = config.convertChinese;
+    this.isBionic = config.isBionic;
     this.chapterList = [];
     this.chapterDocList = [];
     this.flattenChapters = [];
@@ -155,6 +163,7 @@ class GeneralRender extends EventEmitter {
     }
   }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
+    console.log(chapterDocIndex, chapterHref, chapterTitle);
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -347,12 +356,6 @@ class GeneralRender extends EventEmitter {
     if (!doc || !iframe) {
       return;
     }
-    console.log(
-      doc.body.scrollWidth -
-        convertStyleNum(doc.body.scrollLeft) -
-        doc.body.clientWidth,
-      "doc.body.scrollWidth - convertStyleNum(doc.body.scrollLeft) - doc.body.clientWidth"
-    );
     if (
       (Math.abs(
         doc.body.scrollWidth -
@@ -469,16 +472,32 @@ class GeneralRender extends EventEmitter {
       this.mode,
       this.flatChapter(this.chapterList),
       this.tempLocation,
-      doc
+      doc,
+      null
     );
   }
   getPosition() {
     return this.tempLocation;
   }
+  async getNotePosition() {
+    let doc = this.getDocument();
+    if (!doc) return;
+    let selectedElement = getSelectedElement(doc);
+    if (!selectedElement) return;
+    await handleRecord(
+      this.element,
+      this.mode,
+      this.flatChapter(this.chapterList),
+      this.tempLocation,
+      doc,
+      selectedElement
+    );
+    return this.tempLocation;
+  }
   setStyle(css: string) {
     let doc = this.getDocument();
     if (!doc) return;
-    doc.body.setAttribute("style", css + doc.body.getAttribute("style"));
+    doc.body.setAttribute("style", css);
   }
   async getHightlightCoords(pageIndex: number) {
     rangy.init();
@@ -564,6 +583,13 @@ class GeneralRender extends EventEmitter {
             .map((item) => Chinese.t2s(item))
             .join("");
         });
+    }
+  };
+  bionicReadingProcess = () => {
+    let doc = this.getDocument();
+    if (!doc) return;
+    if (this.isBionic === "yes") {
+      processDocumentBody(doc);
     }
   };
   addPageAnimation = () => {
