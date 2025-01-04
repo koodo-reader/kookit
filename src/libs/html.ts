@@ -1,3 +1,5 @@
+import Chinese from "chinese-s2t";
+
 export const makeHtmlBook = (bookStr: string, isTxt = false) => {
   const bookDoc = new DOMParser().parseFromString(
     isTxt ? txtToHtml(bookStr) : bookStr,
@@ -116,8 +118,8 @@ const isStartWithChars = (line: string) => {
     startWithChars.filter(
       (item) =>
         line.startsWith(item) ||
-        line.startsWith((window as any).ChineseS2T.s2t(item)) ||
-        line.startsWith((window as any).ChineseS2T.t2s(item))
+        line.startsWith(Chinese.s2t(item)) ||
+        line.startsWith(Chinese.t2s(item))
     ).length > 0
   );
 };

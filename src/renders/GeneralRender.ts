@@ -451,7 +451,7 @@ class GeneralRender extends EventEmitter {
   highlightNode(text: string, style: string) {
     let doc = this.getDocument();
     if (!doc) return;
-    handleHighlightNode(this.element, this.mode, text, style, doc);
+    handleHighlightNode(text, style, doc);
   }
   async doSearch(keyword: string) {
     return await getSearchResult(keyword, this.chapterDocList);

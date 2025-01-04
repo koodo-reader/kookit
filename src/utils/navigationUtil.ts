@@ -307,6 +307,8 @@ export const handleScrollPosition = async (
             parseFloat(getComputedStyle(targetNode).marginTop)
         )
       : 0;
+    console.log(left, "left");
+    console.log(top, "top");
   } else if (href && href.indexOf("#") > -1) {
     let id = CSS.escape(href.split("#").reverse()[0]);
     if (!doc.body.querySelector("#" + id)) {
@@ -346,20 +348,20 @@ export const getCloestBlock = (
 ) => {
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
+  let offsetLeft =
+    convertStyleNum(targetNode.offsetLeft) -
+    convertStyleNum(
+      (targetNode as any).marginLeft ||
+        parseFloat(getComputedStyle(targetNode).marginLeft)
+    );
   if (mode === "scroll") {
     return targetNode;
   } else if (
     mode !== "scroll" &&
-    parseInt(
-      convertStyleNum(targetNode.offsetLeft) -
-        convertStyleNum(
-          (targetNode as any).marginLeft ||
-            parseFloat(getComputedStyle(targetNode).marginLeft)
-        ) +
-        ""
-    ) %
-      ((element.clientWidth + gap) / 2) ===
-      0
+    checkDivisibleInRange(
+      parseInt(offsetLeft + ""),
+      (element.clientWidth + gap) / 2
+    )
   ) {
     return targetNode;
   } else if (targetNode.parentElement) {
@@ -367,6 +369,14 @@ export const getCloestBlock = (
   } else {
     return targetNode;
   }
+};
+const checkDivisibleInRange = (x: number, y: number): boolean => {
+  for (let i = x - 10; i <= x + 10; i++) {
+    if (i % y === 0) {
+      return true;
+    }
+  }
+  return false;
 };
 export const handleRecord = async (
   element: HTMLElement,
@@ -589,8 +599,6 @@ export const getVisibleText = (
     .map((item) => item.textContent);
 };
 export const handleHighlightNode = (
-  element: HTMLElement,
-  mode: string,
   text: string,
   style: string,
   doc: Document
