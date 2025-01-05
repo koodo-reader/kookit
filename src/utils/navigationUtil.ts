@@ -10,6 +10,7 @@ import Chapter from "../model/chapter";
 import { cleanText } from "../libs/html";
 import Chinese from "chinese-s2t";
 import _ from "underscore";
+import rangy from "rangy/lib/rangy-core.js";
 declare var window: any;
 let lock = false;
 export const getBlockElement = (Element) => {
@@ -813,11 +814,17 @@ export const addTouchEvent = (doc: Document, iframe: any) => {
         screenWidth: window.innerWidth,
         screenHeight: window.innerHeight,
       };
+      rangy.init();
+
+      let charRange = rangy
+        .getSelection(iframe)
+        .saveCharacterRanges(doc.body)[0];
       window.ReactNativeWebView.postMessage(
         JSON.stringify({
           event: "select-text",
           selectedText: selectedText,
           position: position,
+          range: charRange,
         })
       );
     }
