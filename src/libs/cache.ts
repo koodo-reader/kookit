@@ -94,21 +94,25 @@ export const getCache = (book: any) => {
         if (!subImgZip) {
           break;
         }
+
         let imageUrl =
           imgDomList[subindex].getAttribute("src") ||
           imgDomList[subindex].getAttribute("xlink:href");
-
         if (imageUrl) {
           try {
             let blob = await fetch(await imageUrl).then((r) => r.blob());
             subImgZip.file(subindex + "." + mimetypeReverse[blob.type], blob);
-            imgDomList[subindex].src =
+            let newUrl =
               "imgs/" +
               index +
               "/" +
               subindex +
               "." +
               mimetypeReverse[blob.type];
+            imgDomList[subindex].src = newUrl;
+            if (imgDomList[subindex].getAttribute("xlink:href")) {
+              imgDomList[subindex].setAttribute("xlink:href", newUrl);
+            }
           } catch (error) {
             console.log(error);
           }

@@ -779,7 +779,7 @@ export const addTouchEvent = (doc: Document, iframe: any) => {
     const target: any = event.target;
     if (!target) return;
     if (target.tagName === "IMG") {
-      const imgSrc = target.src;
+      const imgSrc = target.src || target.getAttribute("xlink:href");
       window.ReactNativeWebView.postMessage(
         JSON.stringify({ event: "view-image", imgSrc: imgSrc })
       );

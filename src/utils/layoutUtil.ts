@@ -93,6 +93,11 @@ export const handlePrecacheAssets = async (bookStr, loadAsset) => {
       imgDomList[subindex].src = await loadAsset(
         imgDomList[subindex].getAttribute("src")
       );
+    } else if (imgDomList[subindex].getAttribute("xlink:href")) {
+      imgDomList[subindex].setAttribute(
+        "xlink:href",
+        await loadAsset(imgDomList[subindex].getAttribute("xlink:href"))
+      );
     }
   }
   let linkList = Array.from(chapterDoc.getElementsByTagName("link"));
