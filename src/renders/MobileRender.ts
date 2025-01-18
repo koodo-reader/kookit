@@ -51,7 +51,7 @@ class MobileRender extends GeneralRender {
   }
   displayFontBase64(fontName: string, fontBase64: string) {
     let doc = this.getDocument();
-    if (!doc) return;
+    if (!doc || fontBase64.length === 0) return;
     const fontFaceCSS =
       "@font-face {" +
       "  font-family: '" +
@@ -97,6 +97,13 @@ class MobileRender extends GeneralRender {
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
     addTouchEvent(doc, iframe);
+  }
+  clearSelection() {
+    let iframe = this.getIframe();
+    if (!iframe) return;
+    let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
+    if (!iWin || !iWin.getSelection()) return;
+    iWin.getSelection()?.empty();
   }
 }
 export default MobileRender;
