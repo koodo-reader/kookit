@@ -5,10 +5,17 @@ import GeneralParser from "../utils/generalParser";
 import chardet from "chardet";
 import { getCache } from "../libs/cache.js";
 class TxtRender extends GeneralRender {
-  text: string;
-  constructor(text: string, mode: string, animation: string) {
+  txtBuffer: ArrayBuffer;
+  charset: string;
+  constructor(
+    txtBuffer: ArrayBuffer,
+    mode: string,
+    animation: string,
+    charset: string
+  ) {
     super({ mode, format: "TXT", animation });
-    this.text = text;
+    this.txtBuffer = txtBuffer;
+    this.charset = charset;
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -28,7 +35,10 @@ class TxtRender extends GeneralRender {
   }
   async parse() {
     try {
-      this.book = makeHtmlBook(this.text, true);
+      const textDecoder = new TextDecoder(this.charset);
+      const bytes = new Uint8Array(this.txtBuffer);
+      let text = textDecoder.decode(bytes);
+      this.book = makeHtmlBook(text, true);
     } catch (error) {
       console.log(error);
       throw error;
@@ -45,6 +55,7 @@ class TxtRender extends GeneralRender {
     try {
       const array = new Uint8Array(txtBuffer);
       let charset = chardet.detect(array);
+      this.charset = charset || "utf8";
       return { charset: charset || "utf8" };
     } catch (error) {
       console.log(error);

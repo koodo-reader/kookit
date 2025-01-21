@@ -321,7 +321,11 @@ class GeneralRender extends EventEmitter {
     if (!doc || !iframe) {
       return;
     }
-    if (this.mode === "scroll" || convertStyleNum(doc.body.scrollLeft) === 0) {
+    if (
+      (this.mode === "scroll" &&
+        convertStyleNum(this.element.scrollTop) === 0) ||
+      (this.mode !== "scroll" && convertStyleNum(doc.body.scrollLeft) === 0)
+    ) {
       await handlePrevChapter(
         this.element,
         this.flatChapter(this.chapterList),
@@ -337,6 +341,13 @@ class GeneralRender extends EventEmitter {
         doc.body.scrollTo(doc.body.scrollWidth, 0);
       }
       this.trigger("rendered");
+    } else if (this.mode === "scroll") {
+      // scroll mode under normal condition
+      this.element.scrollBy({
+        left: 0,
+        top: -(this.element.clientHeight - 50),
+        behavior: "smooth",
+      });
     } else {
       await handleScrollPage(
         this.element,

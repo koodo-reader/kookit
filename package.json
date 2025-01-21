@@ -35,7 +35,6 @@
     "@rollup/plugin-node-resolve": "^13.0.4",
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^8.2.5",
-    "@types/iconv-lite": "^0.0.1",
     "@types/jszip": "^3.4.1",
     "@types/node": "^16.11.2",
     "@types/rangy": "^0.0.38",
