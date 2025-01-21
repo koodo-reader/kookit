@@ -394,12 +394,13 @@ export const handleRecord = async (
       isScrolledIntoView(element, s as HTMLElement, mode) &&
       ((s as HTMLElement).textContent || "").trim()
   );
+  console.log(visibleNode, "visibleNode");
   let firstVisibleNode: any = visibleNode[0] as HTMLElement;
   if (targetNode) {
     firstVisibleNode = targetNode;
   }
   let count = 0;
-
+  console.log(firstVisibleNode, "firstVisibleNode");
   for (let i = 0; i < nodeList.length; i++) {
     if (
       isScrolledIntoView(element, nodeList[i], mode) &&
@@ -411,15 +412,15 @@ export const handleRecord = async (
     }
   }
   handleHashChapter(visibleNode, flattenChapters, tempLocation);
+  console.log(
+    !isCurrentNodeFarFromParrent(firstVisibleNode, element, mode),
+    "!isCurrentNodeFarFromParrent(firstVisibleNode, element, mode)"
+  );
   if (
     firstVisibleNode &&
     !isCurrentNodeFarFromParrent(firstVisibleNode, element, mode)
   ) {
-    tempLocation.text = firstVisibleNode
-      ? firstVisibleNode.textContent
-        ? firstVisibleNode.textContent
-        : ""
-      : "";
+    tempLocation.text = firstVisibleNode.textContent || "";
     tempLocation.count = count + "";
     tempLocation.page = "";
   } else {

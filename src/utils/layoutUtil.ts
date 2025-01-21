@@ -27,6 +27,7 @@ export const handleIframeHeight = async (
       console.log("all images loaded successfully!!");
     else console.log("some images failed to load, all finished loading");
   });
+  console.log(1);
   await handleImageSize(element, mode, format, doc);
   if (format !== "PDF") {
     handleTextStyle(doc);
@@ -63,6 +64,7 @@ export const handleIframeHeight = async (
     iframe.height = doc.body.scrollHeight + "px";
     iframe.height = doc.body.scrollHeight + 300 + "px";
   }
+  console.log(2);
   // await new Promise((r) => setTimeout(r, 1));
 };
 
@@ -173,7 +175,11 @@ export const handleTextStyle = (doc: Document) => {
 export const getImageMeta = async (url) => {
   const img = new Image();
   img.src = url;
-  await img.decode();
+  try {
+    await img.decode();
+  } catch (error) {
+    console.log(error);
+  }
   return img;
 };
 export const handleImageSize = async (
