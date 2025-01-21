@@ -26,6 +26,23 @@ export default [
     input: "src/index.ts",
     output: [{
       name: "Kookit",
+      file: "D:\\Project\\koodo-reader\\src\\assets\\lib\\kookit.js",
+      format: "es",
+    }],
+    plugins: [
+      resolve({ browser: true }),
+      commonjs({
+        include: [/node_modules/],
+      }),
+      json(),
+      typescript({ tsconfig: "./tsconfig.json" }),
+    ],
+    external: ['mammoth', 'jszip', 'underscore', 'marked', 'chinese-s2t', 'mhtml2html', 'js-untar', 'fflate', '@zip.js/zip.js', 'rangy/lib/rangy-core.js', 'rangy/lib/rangy-textrange'],
+  },
+  {
+    input: "src/index.ts",
+    output: [{
+      name: "Kookit",
       file: "D:\\Project\\koodo-reader\\src\\assets\\lib\\kookit.min.js",
       format: "es",
     }],
@@ -67,23 +84,7 @@ export default [
     ],
     // external: ['mammoth', 'jszip', 'underscore', 'marked', 'chinese-s2t', 'mhtml2html', 'js-untar', 'fflate', '@zip.js/zip.js', 'rangy'],
   },
-  {
-    input: "src/index.ts",
-    output: [{
-      name: "Kookit",
-      file: "D:\\Project\\koodo-reader\\src\\assets\\lib\\kookit.js",
-      format: "es",
-    }],
-    plugins: [
-      resolve({ browser: true }),
-      commonjs({
-        include: [/node_modules/],
-      }),
-      json(),
-      typescript({ tsconfig: "./tsconfig.json" }),
-    ],
-    external: ['mammoth', 'jszip', 'underscore', 'marked', 'chinese-s2t', 'mhtml2html', 'js-untar', 'fflate', '@zip.js/zip.js', 'rangy'],
-  },
+
   // CommonJS (for Node) and ES module (for bundlers) build.
   // (We could have three entries in the configuration array
   // instead of two, but it's quicker to generate multiple

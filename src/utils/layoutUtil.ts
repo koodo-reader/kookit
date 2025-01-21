@@ -123,7 +123,7 @@ export const handleImageMarker = (bookStr) => {
       newItem.appendChild(textnode);
       newItem.setAttribute("style", "visibility: hidden; position: absolute");
       if (imgDomList[i].parentNode) {
-        (imgDomList[i].parentNode as any).insertBefore(newItem, imgDomList[i]);
+        (imgDomList[i].parentNode as any).appendChild(newItem);
       }
     }
     return chapterDoc.documentElement.innerHTML;
@@ -199,6 +199,7 @@ export const handleImageSize = async (
     let height = item.naturalHeight;
     if (item.tagName === "image") {
       let img = await getImageMeta(item.getAttribute("xlink:href"));
+      console.log(img, "img");
       width = img.naturalWidth;
       height = img.naturalHeight;
     }
@@ -262,7 +263,7 @@ export const handleImageSize = async (
     if (maxWidth || maxHeight) {
       item.setAttribute(
         "style",
-        item.getAttribute("style") +
+        (item.getAttribute("style") ? item.getAttribute("style") : "") +
           ";" +
           `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${
             maxHeight > 0 ? maxHeight + "px" : ""

@@ -750,6 +750,9 @@ export class EPUB {
     this.#encryption = new Encryption(deobfuscators(sha1));
   }
   #parseXML(str) {
+    if (str && str.includes("opf:scheme")) {
+      str = str.replaceAll("opf:scheme", "scheme")
+    }
     return str ? this.parser.parseFromString(str, MIME.XML) : null;
   }
   async #loadXML(uri) {
@@ -819,7 +822,7 @@ export class EPUB {
       } catch (e) {
         console.warn(e);
       }
-    if (!this.toc && ncxPath)
+    if ((!this.toc || this.toc.length === 0) && ncxPath)
       try {
         const resolve = (url) => resolveURL(url, ncxPath);
         const ncx = parseNCX(await this.#loadXML(ncxPath), resolve);

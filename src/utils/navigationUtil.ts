@@ -206,18 +206,13 @@ export const handleRenderChatper = async (
   }
 
   await handleCssLink(doc);
-  if (
-    tempLocation.chapterDocIndex &&
-    chapterDocList[tempLocation.chapterDocIndex].text &&
-    chapterDocList[tempLocation.chapterDocIndex].text.unload
-  ) {
-    chapterDocList[tempLocation.chapterDocIndex].text.unload();
-  }
+
   tempLocation.chapterTitle = chapterTitle;
   tempLocation.chapterHref = chapterHref;
   tempLocation.chapterDocIndex = chapterDocIndex + "";
   tempLocation.percentage = chapterDocIndex / chapterDocList.length + "";
   tempLocation.text = "";
+  console.log(doc.body.innerHTML);
   await handleIframeHeight(element, mode, format, iframe, doc);
   handleScrollPosition(element, mode, "", "", "", "", doc);
 };
@@ -412,10 +407,6 @@ export const handleRecord = async (
     }
   }
   handleHashChapter(visibleNode, flattenChapters, tempLocation);
-  console.log(
-    !isCurrentNodeFarFromParrent(firstVisibleNode, element, mode),
-    "!isCurrentNodeFarFromParrent(firstVisibleNode, element, mode)"
-  );
   if (
     firstVisibleNode &&
     !isCurrentNodeFarFromParrent(firstVisibleNode, element, mode)
@@ -654,11 +645,6 @@ export const getSearchResult = async (
           }),
         });
       }
-    }
-  }
-  for (let i = 0; i < chapterDocList.length; i++) {
-    if (chapterDocList[i].text && chapterDocList[i].text.unload) {
-      chapterDocList[i].text.unload();
     }
   }
   return _.uniq(searchResult, "excerpt");
