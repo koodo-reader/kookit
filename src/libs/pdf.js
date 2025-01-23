@@ -25,7 +25,7 @@ const render = async (page, doc, zoom) => {
   canvas.height = viewport.height
   canvas.width = viewport.width
   const canvasContext = canvas.getContext('2d')
-  await page.render({ canvasContext, viewport }).promise
+  await page.render({ canvasContext, viewport, background: 'rgba(0,0,0,0)', }).promise
   doc.querySelector('#canvas').replaceChildren(doc.adoptNode(canvas))
   docLayer.style.overflow = 'hidden'
   const container = doc.querySelector('.textLayer')

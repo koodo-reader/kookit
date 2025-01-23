@@ -41,7 +41,6 @@ export const handleScrollPage = async (
       } else if (delta < 0) {
         flipToNextPage();
       }
-      console.log("first");
       setTimeout(() => {
         if (!bookDiv) return {};
         bookDiv.style.display = "none";
@@ -121,7 +120,7 @@ export const handlePrevChapter = async (
 
   tempLocation.text = "prevChapter";
   tempLocation.page = "";
-  await handleRenderChatper(
+  await handleRenderChapter(
     prevChapter.index,
     prevChapter.label,
     prevChapter.href,
@@ -157,7 +156,7 @@ export const getPdfScale = async (
   }
   return scale;
 };
-export const handleRenderChatper = async (
+export const handleRenderChapter = async (
   chapterDocIndex: number,
   chapterTitle: string,
   chapterHref: string,
@@ -212,7 +211,6 @@ export const handleRenderChatper = async (
   tempLocation.chapterDocIndex = chapterDocIndex + "";
   tempLocation.percentage = chapterDocIndex / chapterDocList.length + "";
   tempLocation.text = "";
-  console.log(doc.body.innerHTML);
   await handleIframeHeight(element, mode, format, iframe, doc);
   handleScrollPosition(element, mode, "", "", "", "", doc);
 };
@@ -303,8 +301,6 @@ export const handleScrollPosition = async (
             parseFloat(getComputedStyle(targetNode).marginTop)
         )
       : 0;
-    console.log(left, "left");
-    console.log(top, "top");
   } else if (href && href.indexOf("#") > -1) {
     let id = CSS.escape(href.split("#").reverse()[0]);
     if (!doc.body.querySelector("#" + id)) {
@@ -389,13 +385,11 @@ export const handleRecord = async (
       isScrolledIntoView(element, s as HTMLElement, mode) &&
       ((s as HTMLElement).textContent || "").trim()
   );
-  console.log(visibleNode, "visibleNode");
   let firstVisibleNode: any = visibleNode[0] as HTMLElement;
   if (targetNode) {
     firstVisibleNode = targetNode;
   }
   let count = 0;
-  console.log(firstVisibleNode, "firstVisibleNode");
   for (let i = 0; i < nodeList.length; i++) {
     if (
       isScrolledIntoView(element, nodeList[i], mode) &&
@@ -537,7 +531,7 @@ export const handleNextChapter = async (
   );
   if (!nextChapter) return;
   tempLocation.page = "";
-  await handleRenderChatper(
+  await handleRenderChapter(
     nextChapter.index,
     nextChapter.label,
     nextChapter.href,
@@ -788,7 +782,6 @@ export const addTouchEvent = (doc: Document, iframe: any) => {
   doc.body.oncontextmenu = function (event) {
     event.preventDefault();
     event.stopPropagation();
-    console.log(JSON.stringify({ event }));
     var selectedText = iWin.getSelection().toString();
     if (selectedText) {
       var range = iWin.getSelection().getRangeAt(0);

@@ -27,7 +27,6 @@ export const handleIframeHeight = async (
       console.log("all images loaded successfully!!");
     else console.log("some images failed to load, all finished loading");
   });
-  console.log(1);
   await handleImageSize(element, mode, format, doc);
   if (format !== "PDF") {
     handleTextStyle(doc);
@@ -64,7 +63,6 @@ export const handleIframeHeight = async (
     iframe.height = doc.body.scrollHeight + "px";
     iframe.height = doc.body.scrollHeight + 300 + "px";
   }
-  console.log(2);
   // await new Promise((r) => setTimeout(r, 1));
 };
 
@@ -118,13 +116,14 @@ export const handleImageMarker = (bookStr) => {
     return bookStr;
   } else {
     for (let i = 0; i < imgDomList.length; i++) {
+      if (imgDomList[i].tagName === "image") {
+        continue;
+      }
       var newItem = document.createElement("address");
       var textnode = document.createTextNode("img");
       newItem.appendChild(textnode);
       newItem.setAttribute("style", "visibility: hidden; position: absolute");
-      if (imgDomList[i].parentNode) {
-        (imgDomList[i].parentNode as any).appendChild(newItem);
-      }
+      imgDomList[i]?.insertAdjacentElement("afterend", newItem);
     }
     return chapterDoc.documentElement.innerHTML;
   }
@@ -199,7 +198,6 @@ export const handleImageSize = async (
     let height = item.naturalHeight;
     if (item.tagName === "image") {
       let img = await getImageMeta(item.getAttribute("xlink:href"));
-      console.log(img, "img");
       width = img.naturalWidth;
       height = img.naturalHeight;
     }

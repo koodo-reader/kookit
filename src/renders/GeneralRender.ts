@@ -13,7 +13,7 @@ import {
   handleNextChapter,
   handlePrevChapter,
   handleRecord,
-  handleRenderChatper,
+  handleRenderChapter,
   handleScrollPage,
   handleScrollPosition,
   handleHighlightNode,
@@ -163,11 +163,10 @@ class GeneralRender extends EventEmitter {
     }
   }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
-    console.log(chapterDocIndex, chapterHref, chapterTitle);
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
-    await handleRenderChatper(
+    await handleRenderChapter(
       parseInt(chapterDocIndex),
       chapterTitle,
       chapterHref,
@@ -208,7 +207,7 @@ class GeneralRender extends EventEmitter {
     };
     let { text, chapterTitle, chapterDocIndex, chapterHref, count, page, cfi } =
       bookLocation;
-    await handleRenderChatper(
+    await handleRenderChapter(
       parseInt(chapterDocIndex),
       chapterTitle,
       chapterHref,
@@ -227,7 +226,6 @@ class GeneralRender extends EventEmitter {
         return;
       }
       const { node, offset } = cfiInfo.resolve(doc, {});
-      console.log(node, offset);
 
       if (node) {
         let element: Element | null = null;
@@ -326,6 +324,9 @@ class GeneralRender extends EventEmitter {
         convertStyleNum(this.element.scrollTop) === 0) ||
       (this.mode !== "scroll" && convertStyleNum(doc.body.scrollLeft) === 0)
     ) {
+      if (this.tempLocation.chapterDocIndex === "0") {
+        return;
+      }
       await handlePrevChapter(
         this.element,
         this.flatChapter(this.chapterList),
