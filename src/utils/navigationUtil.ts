@@ -238,7 +238,9 @@ export const handleCssLink = async (doc) => {
       Promise.all(styleSheetPromises),
       new Promise((resolve, reject) => {
         setTimeout(() => {
-          reject(new Error("Timeout"));
+          console.log("css load timeout");
+          // reject(new Error("Timeout"));
+          resolve("css load timeout");
         }, 1000);
       }),
     ]);

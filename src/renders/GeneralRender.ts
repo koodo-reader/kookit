@@ -605,6 +605,7 @@ class GeneralRender extends EventEmitter {
     }
   };
   addPageAnimation = () => {
+    console.log("addPageAnimation", this.animation);
     if (this.animation === "mimical") {
       let progressInfo = this.getProgress();
       if (!progressInfo) return;
