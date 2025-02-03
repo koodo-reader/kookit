@@ -250,6 +250,7 @@ class GeneralRender extends EventEmitter {
         }
       }
     }
+
     await handleScrollPosition(
       this.element,
       this.mode,
@@ -313,7 +314,7 @@ class GeneralRender extends EventEmitter {
     this.element.innerHTML = "";
   }
   async prev() {
-    this.trigger("page-changed");
+    // this.trigger("page-changed");
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) {
@@ -362,7 +363,7 @@ class GeneralRender extends EventEmitter {
     await this.record();
   }
   async next() {
-    this.trigger("page-changed");
+    // this.trigger("page-changed");
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) {
@@ -415,7 +416,7 @@ class GeneralRender extends EventEmitter {
     await this.record();
   }
   async prevChapter() {
-    this.trigger("page-changed");
+    // this.trigger("page-changed");
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -433,7 +434,7 @@ class GeneralRender extends EventEmitter {
     this.trigger("rendered");
   }
   async nextChapter() {
-    this.trigger("page-changed");
+    // this.trigger("page-changed");
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -487,6 +488,7 @@ class GeneralRender extends EventEmitter {
       doc,
       null
     );
+    this.trigger("page-changed");
   }
   getPosition() {
     return this.tempLocation;

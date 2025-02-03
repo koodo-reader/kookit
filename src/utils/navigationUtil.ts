@@ -216,6 +216,9 @@ export const handleRenderChapter = async (
 };
 export const handleCssLink = async (doc) => {
   let linkList = Array.from(doc.getElementsByTagName("link"));
+  if (linkList.length === 0) {
+    return;
+  }
   for (let index = 0; index < linkList.length; index++) {
     const link: any = linkList[index];
     link.onload = () => {
@@ -756,6 +759,7 @@ export const addTouchEvent = (doc: Document, iframe: any) => {
       Math.abs(distY) >= swipeThreshold
     ) {
       console.log("Swipe detected");
+      window.ReactNativeWebView.postMessage(JSON.stringify({ event: "swipe" }));
     }
   };
   let onTouchStart = function (event) {
