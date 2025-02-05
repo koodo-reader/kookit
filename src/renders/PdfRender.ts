@@ -43,10 +43,11 @@ class PdfRender extends GeneralRender {
     }
   }
   async preCache() {
-    if (!this.book) {
-      await this.parse();
-    }
-    return await getCache(this.book);
+    return "";
+    // if (!this.book) {
+    //   await this.parse();
+    // }
+    // return await getCache(this.book);
   }
   async getMetadata() {
     try {

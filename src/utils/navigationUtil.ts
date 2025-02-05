@@ -203,8 +203,9 @@ export const handleRenderChapter = async (
     );
     await chapterDocList[chapterDocIndex].text.render(doc, scale);
   }
-
-  await handleCssLink(doc);
+  if (format !== "CACHE") {
+    await handleCssLink(doc);
+  }
 
   tempLocation.chapterTitle = chapterTitle;
   tempLocation.chapterHref = chapterHref;

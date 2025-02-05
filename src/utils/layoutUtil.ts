@@ -12,26 +12,27 @@ export const handleIframeHeight = async (
   iframe: any,
   doc: Document
 ) => {
-  await Promise.all(
-    Array.from([...doc.images, ...doc.querySelectorAll("image")]).map(
-      (img: any) => {
-        if (img.complete) return Promise.resolve(img.naturalHeight !== 0);
-        return new Promise((resolve) => {
-          img.addEventListener("load", () => resolve(true));
-          img.addEventListener("error", () => resolve(false));
-        });
-      }
-    )
-  ).then((results) => {
-    if (results.every((res) => res))
-      console.log("all images loaded successfully!!");
-    else console.log("some images failed to load, all finished loading");
-  });
+  if (format !== "CACHE") {
+    await Promise.all(
+      Array.from([...doc.images, ...doc.querySelectorAll("image")]).map(
+        (img: any) => {
+          if (img.complete) return Promise.resolve(img.naturalHeight !== 0);
+          return new Promise((resolve) => {
+            img.addEventListener("load", () => resolve(true));
+            img.addEventListener("error", () => resolve(false));
+          });
+        }
+      )
+    ).then((results) => {
+      if (results.every((res) => res))
+        console.log("all images loaded successfully!!");
+      else console.log("some images failed to load, all finished loading");
+    });
+  }
   await handleImageSize(element, mode, format, doc);
   if (format !== "PDF") {
     handleTextStyle(doc);
   }
-
   if (mode !== "scroll") {
     iframe.height = element.clientHeight + "px";
     if (mode === "double") {
@@ -206,7 +207,7 @@ export const handleImageSize = async (
     } else if (format.startsWith("CB") && mode === "single") {
       maxHeight = element.clientHeight;
       maxWidth = element.clientWidth;
-    } else if (width && height) {
+    } else if (parentItem && width && height) {
       let isImageScaleLargerThanElement =
         height / width > parentItem.clientHeight / parentItem.clientWidth;
       if (isImageScaleLargerThanElement) {
@@ -246,7 +247,6 @@ export const handleImageSize = async (
           ? element.clientWidth
           : (element.clientWidth - gap) / 2;
     }
-
     if (width && height) {
       if (width > height) {
         maxHeight = maxWidth * (height / width);
