@@ -6,8 +6,8 @@ import { marked } from "marked";
 import { getCache } from "../libs/cache.js";
 class MdRender extends GeneralRender {
   mdBuffer: ArrayBuffer;
-  constructor(mdBuffer: ArrayBuffer, mode: string, animation: string) {
-    super({ mode, format: "MD", animation });
+  constructor(mdBuffer: ArrayBuffer, config: any) {
+    super({ format: "MD", ...config });
     this.mdBuffer = mdBuffer;
   }
   renderTo(element: HTMLElement) {
@@ -22,7 +22,7 @@ class MdRender extends GeneralRender {
       createIframe(element);
       let doc = this.getDocument();
       if (!doc) return;
-      handleLayout(element, this.mode, doc);
+      handleLayout(element, this.readerMode, doc);
       resolve();
     });
   }

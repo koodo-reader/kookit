@@ -6,8 +6,8 @@ import mammoth from "mammoth";
 import { getCache } from "../libs/cache.js";
 class DocxRender extends GeneralRender {
   docxBuffer: ArrayBuffer;
-  constructor(docxBuffer: ArrayBuffer, mode: string, animation: string) {
-    super({ mode, format: "DOCX", animation });
+  constructor(docxBuffer: ArrayBuffer, config: any) {
+    super({ format: "DOCX", ...config });
     this.docxBuffer = docxBuffer;
   }
   renderTo(element: HTMLElement) {
@@ -22,7 +22,7 @@ class DocxRender extends GeneralRender {
       createIframe(element);
       let doc = this.getDocument();
       if (!doc) return;
-      handleLayout(element, this.mode, doc);
+      handleLayout(element, this.readerMode, doc);
       resolve();
     });
   }

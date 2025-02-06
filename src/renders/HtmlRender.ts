@@ -7,13 +7,8 @@ import mhtml2html from "mhtml2html";
 import { getCache } from "../libs/cache.js";
 class HtmlRender extends GeneralRender {
   htmlBuffer: ArrayBuffer;
-  constructor(
-    htmlBuffer: ArrayBuffer,
-    mode: string,
-    format: string,
-    animation: string
-  ) {
-    super({ mode, format, animation });
+  constructor(htmlBuffer: ArrayBuffer, config: any) {
+    super(config);
     this.htmlBuffer = htmlBuffer;
   }
   renderTo(element: HTMLElement) {
@@ -29,7 +24,7 @@ class HtmlRender extends GeneralRender {
       createIframe(element);
       let doc = this.getDocument();
       if (!doc) return;
-      handleLayout(element, this.mode, doc);
+      handleLayout(element, this.readerMode, doc);
       resolve();
     });
   }

@@ -11,23 +11,18 @@ declare var window: any;
 
 class ComicRender extends GeneralRender {
   comicBuffer: ArrayBuffer;
-  mode: string;
+  readerMode: string;
   book: any;
   format: string;
   chapterList: Chapter[];
   chapterDocList: ChapterDoc[];
   element: any;
   rpc: any;
-  constructor(
-    comicBuffer: ArrayBuffer,
-    mode: string,
-    format: string,
-    animation: string
-  ) {
-    super({mode, format, animation});
+  constructor(comicBuffer: ArrayBuffer, config: any) {
+    super(config);
     this.comicBuffer = comicBuffer;
-    this.mode = mode;
-    this.format = format;
+    this.readerMode = config.readerMode;
+    this.format = config.format;
     this.chapterList = [];
     this.chapterDocList = [];
     this.book = "";
@@ -51,7 +46,7 @@ class ComicRender extends GeneralRender {
       this.chapterDocList = await parser.getChapterDoc();
       let doc = this.getDocument();
       if (!doc) return;
-      handleLayout(element, this.mode, doc);
+      handleLayout(element, this.readerMode, doc);
       resolve();
     });
   }

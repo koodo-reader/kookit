@@ -8,15 +8,8 @@ declare var window: any;
 class MobileRender extends GeneralRender {
   toc: any[];
   sections: any[];
-  constructor(
-    toc: any[],
-    sections: any[],
-    mode: string,
-    animation: string,
-    convertChinese: string,
-    isBionic: string
-  ) {
-    super({ mode, format: "CACHE", animation, convertChinese, isBionic });
+  constructor(toc: any[], sections: any[], config: any) {
+    super({ format: "CACHE", ...config });
     this.toc = toc;
     this.sections = sections;
   }
@@ -36,7 +29,7 @@ class MobileRender extends GeneralRender {
       let doc = this.getDocument();
       if (!doc) return;
 
-      handleLayout(element, this.mode, doc);
+      handleLayout(element, this.readerMode, doc);
 
       resolve();
     });

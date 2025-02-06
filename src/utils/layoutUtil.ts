@@ -7,7 +7,7 @@ export const convertComputedNum = (value: string) => {
 };
 export const handleIframeHeight = async (
   element: HTMLElement,
-  mode: string,
+  readerMode: string,
   format: string,
   iframe: any,
   doc: Document
@@ -29,13 +29,13 @@ export const handleIframeHeight = async (
       else console.log("some images failed to load, all finished loading");
     });
   }
-  await handleImageSize(element, mode, format, doc);
+  await handleImageSize(element, readerMode, format, doc);
   if (format !== "PDF") {
     handleTextStyle(doc);
   }
-  if (mode !== "scroll") {
+  if (readerMode !== "scroll") {
     iframe.height = element.clientHeight + "px";
-    if (mode === "double") {
+    if (readerMode === "double") {
       let section = Math.floor(element.clientWidth / 12);
       let gap = section % 2 === 0 ? section : section - 1;
       let pageWidth = (element.clientWidth + gap) / 2;
@@ -60,7 +60,7 @@ export const handleIframeHeight = async (
     if (!docLayer) return;
     iframe.height = docLayer.getBoundingClientRect().height + 100 + "px";
   } else {
-    //fix text blocked issue under scroll mode, don't ask me why
+    //fix text blocked issue under scroll readerMode, don't ask me why
     iframe.height = doc.body.scrollHeight + "px";
     iframe.height = doc.body.scrollHeight + 300 + "px";
   }
@@ -145,14 +145,14 @@ export const createIframe = (element: HTMLElement, styleStr: string = "") => {
   element.appendChild(iframe);
 };
 
-export const progressInfo = (mode: string, doc: Document) => {
+export const progressInfo = (readerMode: string, doc: Document) => {
   //TODO 是否有必要保留延时
   // if (parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") === 1) {
   //   await new Promise((r) => setTimeout(r, 1000));
   // }
   return {
     totalPage:
-      mode === "scroll"
+      readerMode === "scroll"
         ? 1
         : parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") + 1,
     currentPage:
@@ -184,7 +184,7 @@ export const getImageMeta = async (url) => {
 };
 export const handleImageSize = async (
   element: HTMLElement,
-  mode: string,
+  readerMode: string,
   format: string,
   doc: Document
 ) => {
@@ -202,9 +202,9 @@ export const handleImageSize = async (
       width = img.naturalWidth;
       height = img.naturalHeight;
     }
-    if (format.startsWith("CB") && mode === "scroll") {
+    if (format.startsWith("CB") && readerMode === "scroll") {
       maxWidth = parentItem.offsetWidth;
-    } else if (format.startsWith("CB") && mode === "single") {
+    } else if (format.startsWith("CB") && readerMode === "single") {
       maxHeight = element.clientHeight;
       maxWidth = element.clientWidth;
     } else if (parentItem && width && height) {
@@ -236,14 +236,14 @@ export const handleImageSize = async (
     }
     if (maxWidth) {
       maxWidth = Math.min(
-        mode === "scroll" || mode === "single"
+        readerMode === "scroll" || readerMode === "single"
           ? element.clientWidth
           : (element.clientWidth - gap) / 2,
         maxWidth
       );
     } else {
       maxWidth =
-        mode === "scroll" || mode === "single"
+        readerMode === "scroll" || readerMode === "single"
           ? element.clientWidth
           : (element.clientWidth - gap) / 2;
     }
@@ -277,7 +277,7 @@ export const handleImageSize = async (
 
 export const handleLayout = (
   element: HTMLElement,
-  mode: string,
+  readerMode: string,
   doc: Document
 ) => {
   let style = doc.createElement("style");
@@ -285,8 +285,8 @@ export const handleLayout = (
   style.textContent =
     "p,empty-line{display: inherit;margin-block-start: inherit;margin-block-end: inherit;margin-inline-start: inherit;margin-inline-end: inherit;}body{margin: 0px}";
   doc.head.appendChild(style);
-  if (mode === "scroll") return;
-  let scale = mode === "double" ? 2 : 1;
+  if (readerMode === "scroll") return;
+  let scale = readerMode === "double" ? 2 : 1;
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   doc.body.setAttribute(

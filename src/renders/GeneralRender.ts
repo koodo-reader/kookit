@@ -27,7 +27,7 @@ import "rangy/lib/rangy-textrange";
 import Chinese from "chinese-s2t";
 import { processDocumentBody } from "../utils/bionicUtil";
 class GeneralRender extends EventEmitter {
-  mode: string;
+  readerMode: string;
   format: string;
   animation: string;
   convertChinese: string | undefined;
@@ -41,14 +41,14 @@ class GeneralRender extends EventEmitter {
   flipToNextPage: () => void;
   flipToPrevPage: () => void;
   constructor(config: {
-    mode: string;
+    readerMode: string;
     format: string;
     animation: string;
     convertChinese?: string;
     isBionic?: string;
   }) {
     super();
-    this.mode = config.mode;
+    this.readerMode = config.readerMode;
     this.animation = config.animation;
     this.format = config.format;
     this.convertChinese = config.convertChinese;
@@ -63,7 +63,7 @@ class GeneralRender extends EventEmitter {
     this.flipToPrevPage = () => {};
   }
   getPageSize() {
-    let scale = this.mode === "double" ? 2 : 1;
+    let scale = this.readerMode === "double" ? 2 : 1;
     let section = Math.floor(this.element.clientWidth / 12);
     let gap = section % 2 === 0 ? section : section - 1;
     return {
@@ -172,7 +172,7 @@ class GeneralRender extends EventEmitter {
       chapterHref,
       this.chapterDocList,
       this.element,
-      this.mode,
+      this.readerMode,
       this.format,
       this.tempLocation,
       doc,
@@ -181,7 +181,7 @@ class GeneralRender extends EventEmitter {
     if (chapterHref && chapterHref.indexOf("#") > -1) {
       await handleScrollPosition(
         this.element,
-        this.mode,
+        this.readerMode,
         "",
         "",
         chapterHref,
@@ -213,7 +213,7 @@ class GeneralRender extends EventEmitter {
       chapterHref,
       this.chapterDocList,
       this.element,
-      this.mode,
+      this.readerMode,
       this.format,
       this.tempLocation,
       doc,
@@ -252,7 +252,7 @@ class GeneralRender extends EventEmitter {
     }
     await handleScrollPosition(
       this.element,
-      this.mode,
+      this.readerMode,
       text,
       count,
       "",
@@ -286,7 +286,7 @@ class GeneralRender extends EventEmitter {
     if (!doc) {
       return;
     }
-    let targetNode = getCloestBlock(node, this.element, this.mode);
+    let targetNode = getCloestBlock(node, this.element, this.readerMode);
     let left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
         convertStyleNum(
@@ -301,7 +301,7 @@ class GeneralRender extends EventEmitter {
             parseFloat(getComputedStyle(targetNode).marginTop)
         )
       : 0;
-    if (this.mode !== "scroll") {
+    if (this.readerMode !== "scroll") {
       doc.body.scrollTo(left, 0);
     } else {
       this.element.scrollTo(0, top);
@@ -320,9 +320,10 @@ class GeneralRender extends EventEmitter {
       return;
     }
     if (
-      (this.mode === "scroll" &&
+      (this.readerMode === "scroll" &&
         convertStyleNum(this.element.scrollTop) === 0) ||
-      (this.mode !== "scroll" && convertStyleNum(doc.body.scrollLeft) === 0)
+      (this.readerMode !== "scroll" &&
+        convertStyleNum(doc.body.scrollLeft) === 0)
     ) {
       if (this.tempLocation.chapterDocIndex === "0") {
         return;
@@ -331,7 +332,7 @@ class GeneralRender extends EventEmitter {
         this.element,
         this.flatChapter(this.chapterList),
         this.chapterDocList,
-        this.mode,
+        this.readerMode,
         this.format,
         this.tempLocation,
         doc,
@@ -339,11 +340,12 @@ class GeneralRender extends EventEmitter {
       );
       let chapterDocIndex = parseInt(this.tempLocation.chapterDocIndex || "-1");
       if (chapterDocIndex > -1) {
-        doc.body.scrollTo(doc.body.scrollWidth, 0);
+        console.log(doc.body.scrollHeight);
+        this.element.scrollTo(0, doc.body.scrollHeight);
       }
       this.trigger("rendered");
-    } else if (this.mode === "scroll") {
-      // scroll mode under normal condition
+    } else if (this.readerMode === "scroll") {
+      // scroll readerMode under normal condition
       this.element.scrollBy({
         left: 0,
         top: -(this.element.clientHeight - 50),
@@ -374,35 +376,35 @@ class GeneralRender extends EventEmitter {
           convertStyleNum(doc.body.scrollLeft) -
           doc.body.clientWidth
       ) < 10 &&
-        this.mode !== "scroll") ||
+        this.readerMode !== "scroll") ||
       (Math.abs(
         this.element.scrollHeight -
           convertStyleNum(this.element.scrollTop) -
           this.element.clientHeight
       ) < 10 &&
-        this.mode === "scroll")
+        this.readerMode === "scroll")
     ) {
       // if the last page
       await handleNextChapter(
         this.element,
         this.flatChapter(this.chapterList),
         this.chapterDocList,
-        this.mode,
+        this.readerMode,
         this.format,
         this.tempLocation,
         doc,
         iframe
       );
       this.trigger("rendered");
-    } else if (this.mode === "scroll") {
-      // scroll mode under normal condition
+    } else if (this.readerMode === "scroll") {
+      // scroll readerMode under normal condition
       this.element.scrollBy({
         left: 0,
         top: this.element.clientHeight - 50,
         behavior: "smooth",
       });
     } else {
-      // single and double mode under normal condition
+      // single and double readerMode under normal condition
       await handleScrollPage(
         this.element,
         this.animation,
@@ -423,7 +425,7 @@ class GeneralRender extends EventEmitter {
       this.element,
       this.flatChapter(this.chapterList),
       this.chapterDocList,
-      this.mode,
+      this.readerMode,
       this.format,
       this.tempLocation,
       doc,
@@ -441,7 +443,7 @@ class GeneralRender extends EventEmitter {
       this.element,
       this.flatChapter(this.chapterList),
       this.chapterDocList,
-      this.mode,
+      this.readerMode,
       this.format,
       this.tempLocation,
       doc,
@@ -453,12 +455,12 @@ class GeneralRender extends EventEmitter {
   visibleText() {
     let doc = this.getDocument();
     if (!doc) return "";
-    return getVisibleText(this.element, this.mode, doc);
+    return getVisibleText(this.element, this.readerMode, doc);
   }
   audioText() {
     let doc = this.getDocument();
     if (!doc) return "";
-    return getAudioText(this.element, this.mode, doc);
+    return getAudioText(this.element, this.readerMode, doc);
   }
   highlightNode(text: string, style: string) {
     let doc = this.getDocument();
@@ -471,7 +473,7 @@ class GeneralRender extends EventEmitter {
   getProgress() {
     let doc = this.getDocument();
     if (!doc) return;
-    return progressInfo(this.mode, doc);
+    return progressInfo(this.readerMode, doc);
   }
   async record() {
     if (this.animation === "sliding") {
@@ -481,7 +483,7 @@ class GeneralRender extends EventEmitter {
     if (!doc) return;
     await handleRecord(
       this.element,
-      this.mode,
+      this.readerMode,
       this.flatChapter(this.chapterList),
       this.tempLocation,
       doc,
@@ -499,7 +501,7 @@ class GeneralRender extends EventEmitter {
     if (!selectedElement) return;
     await handleRecord(
       this.element,
-      this.mode,
+      this.readerMode,
       this.flatChapter(this.chapterList),
       this.tempLocation,
       doc,

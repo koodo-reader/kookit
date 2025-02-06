@@ -99,7 +99,7 @@ export const handlePrevChapter = async (
   element: HTMLElement,
   flattenChapters: Chapter[],
   chapterDocList: ChapterDoc[],
-  mode: string,
+  readerMode: string,
   format: string,
   tempLocation: any,
   doc: Document,
@@ -126,7 +126,7 @@ export const handlePrevChapter = async (
     prevChapter.href,
     chapterDocList,
     element,
-    mode,
+    readerMode,
     format,
     tempLocation,
     doc,
@@ -135,23 +135,23 @@ export const handlePrevChapter = async (
 };
 export const getPdfScale = async (
   element: HTMLElement,
-  mode: string,
+  readerMode: string,
   chapterDocList: ChapterDoc[],
   chapterDocIndex: number
 ) => {
   let { width, height } = await chapterDocList[
     chapterDocIndex
   ].text.getDimension();
-  let columnNum = mode === "double" ? 2 : 1;
+  let columnNum = readerMode === "double" ? 2 : 1;
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   let viewWidth = (element.clientWidth - gap) / columnNum;
-  if (mode === "single") {
+  if (readerMode === "single") {
     viewWidth = element.clientWidth;
   }
   let viewHeight = element.clientHeight;
   let scale = Math.min(viewWidth / width, viewHeight / height);
-  if (mode === "scroll") {
+  if (readerMode === "scroll") {
     scale = viewWidth / width;
   }
   return scale;
@@ -162,7 +162,7 @@ export const handleRenderChapter = async (
   chapterHref: string,
   chapterDocList: ChapterDoc[],
   element: HTMLElement,
-  mode: string,
+  readerMode: string,
   format: string,
   tempLocation: any,
   doc: Document,
@@ -197,7 +197,7 @@ export const handleRenderChapter = async (
   if (format === "PDF") {
     let scale = await getPdfScale(
       element,
-      mode,
+      readerMode,
       chapterDocList,
       chapterDocIndex
     );
@@ -212,8 +212,8 @@ export const handleRenderChapter = async (
   tempLocation.chapterDocIndex = chapterDocIndex + "";
   tempLocation.percentage = chapterDocIndex / chapterDocList.length + "";
   tempLocation.text = "";
-  await handleIframeHeight(element, mode, format, iframe, doc);
-  handleScrollPosition(element, mode, "", "", "", "", doc);
+  await handleIframeHeight(element, readerMode, format, iframe, doc);
+  handleScrollPosition(element, readerMode, "", "", "", "", doc);
 };
 export const handleCssLink = async (doc) => {
   let linkList = Array.from(doc.getElementsByTagName("link"));
@@ -254,7 +254,7 @@ export const handleCssLink = async (doc) => {
 };
 export const handleScrollPosition = async (
   element: HTMLElement,
-  mode: string,
+  readerMode: string,
   text: string,
   count: string,
   href: string,
@@ -264,7 +264,7 @@ export const handleScrollPosition = async (
   let top = 0;
   let left = 0;
   let targetNode: any = doc.body;
-  if (page && mode !== "scroll") {
+  if (page && readerMode !== "scroll") {
     let section = Math.floor(element.clientWidth / 12);
     let gap = section % 2 === 0 ? section : section - 1;
     const width = convertComputedNum(getComputedStyle(element).width);
@@ -290,7 +290,7 @@ export const handleScrollPosition = async (
       console.log("failed");
       return;
     }
-    targetNode = getCloestBlock(targetNodeList[0], element, mode);
+    targetNode = getCloestBlock(targetNodeList[0], element, readerMode);
     left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
         convertStyleNum(
@@ -315,7 +315,7 @@ export const handleScrollPosition = async (
     targetNode = getCloestBlock(
       doc.body.querySelector("#" + id) || doc.body,
       element,
-      mode
+      readerMode
     );
     left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
@@ -332,7 +332,7 @@ export const handleScrollPosition = async (
         )
       : 0;
   }
-  if (mode !== "scroll") {
+  if (readerMode !== "scroll") {
     doc.body.scrollTo(left, 0);
   } else {
     targetNode.scrollIntoView();
@@ -342,7 +342,7 @@ export const handleScrollPosition = async (
 export const getCloestBlock = (
   targetNode: HTMLElement,
   element: HTMLElement,
-  mode: string
+  readerMode: string
 ) => {
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
@@ -352,10 +352,10 @@ export const getCloestBlock = (
       (targetNode as any).marginLeft ||
         parseFloat(getComputedStyle(targetNode).marginLeft)
     );
-  if (mode === "scroll") {
+  if (readerMode === "scroll") {
     return targetNode;
   } else if (
-    mode !== "scroll" &&
+    readerMode !== "scroll" &&
     checkDivisibleInRange(
       parseInt(offsetLeft + ""),
       (element.clientWidth + gap) / 2
@@ -363,7 +363,7 @@ export const getCloestBlock = (
   ) {
     return targetNode;
   } else if (targetNode.parentElement) {
-    return getCloestBlock(targetNode.parentElement, element, mode);
+    return getCloestBlock(targetNode.parentElement, element, readerMode);
   } else {
     return targetNode;
   }
@@ -378,7 +378,7 @@ const checkDivisibleInRange = (x: number, y: number): boolean => {
 };
 export const handleRecord = async (
   element: HTMLElement,
-  mode: string,
+  readerMode: string,
   flattenChapters: Chapter[],
   tempLocation: any,
   doc: Document,
@@ -388,7 +388,7 @@ export const handleRecord = async (
   let nodeList = getBlockElement(doc.body);
   let visibleNode = nodeList.filter(
     (s) =>
-      isScrolledIntoView(element, s as HTMLElement, mode) &&
+      isScrolledIntoView(element, s as HTMLElement, readerMode) &&
       ((s as HTMLElement).textContent || "").trim()
   );
   let firstVisibleNode: any = visibleNode[0] as HTMLElement;
@@ -398,7 +398,7 @@ export const handleRecord = async (
   let count = 0;
   for (let i = 0; i < nodeList.length; i++) {
     if (
-      isScrolledIntoView(element, nodeList[i], mode) &&
+      isScrolledIntoView(element, nodeList[i], readerMode) &&
       firstVisibleNode &&
       nodeList[i].innerHTML === firstVisibleNode.innerHTML
     ) {
@@ -409,13 +409,13 @@ export const handleRecord = async (
   handleHashChapter(visibleNode, flattenChapters, tempLocation);
   if (
     firstVisibleNode &&
-    !isCurrentNodeFarFromParrent(firstVisibleNode, element, mode)
+    !isCurrentNodeFarFromParrent(firstVisibleNode, element, readerMode)
   ) {
     tempLocation.text = firstVisibleNode.textContent || "";
     tempLocation.count = count + "";
     tempLocation.page = "";
   } else {
-    tempLocation.page = (await progressInfo(mode, doc))?.currentPage + "";
+    tempLocation.page = (await progressInfo(readerMode, doc))?.currentPage + "";
   }
 
   lock = true;
@@ -425,7 +425,7 @@ export const handleRecord = async (
 };
 export const handleRecordByNode = async (
   element: HTMLElement,
-  mode: string,
+  readerMode: string,
   flattenChapters: Chapter[],
   tempLocation: any,
   doc: Document,
@@ -435,7 +435,7 @@ export const handleRecordByNode = async (
   let nodeList = getBlockElement(doc.body);
   let visibleNode = nodeList.filter(
     (s) =>
-      isScrolledIntoView(element, s as HTMLElement, mode) &&
+      isScrolledIntoView(element, s as HTMLElement, readerMode) &&
       ((s as HTMLElement).textContent || "").trim()
   );
   let firstVisibleNode: any = node;
@@ -443,7 +443,7 @@ export const handleRecordByNode = async (
 
   for (let i = 0; i < nodeList.length; i++) {
     if (
-      isScrolledIntoView(element, nodeList[i], mode) &&
+      isScrolledIntoView(element, nodeList[i], readerMode) &&
       firstVisibleNode &&
       nodeList[i].innerHTML === firstVisibleNode.innerHTML
     ) {
@@ -454,7 +454,7 @@ export const handleRecordByNode = async (
   handleHashChapter(visibleNode, flattenChapters, tempLocation);
   if (
     firstVisibleNode &&
-    !isCurrentNodeFarFromParrent(firstVisibleNode, element, mode)
+    !isCurrentNodeFarFromParrent(firstVisibleNode, element, readerMode)
   ) {
     tempLocation.text = firstVisibleNode
       ? firstVisibleNode.textContent
@@ -464,7 +464,7 @@ export const handleRecordByNode = async (
     tempLocation.count = count + "";
     tempLocation.page = "";
   } else {
-    tempLocation.page = (await progressInfo(mode, doc))?.currentPage + "";
+    tempLocation.page = (await progressInfo(readerMode, doc))?.currentPage + "";
   }
 
   lock = true;
@@ -475,14 +475,14 @@ export const handleRecordByNode = async (
 export const isCurrentNodeFarFromParrent = (
   targetNode: HTMLElement,
   element: HTMLElement,
-  mode
+  readerMode
 ) => {
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   if (
     Math.abs(
       targetNode.offsetLeft -
-        getCloestBlock(targetNode, element, mode).offsetLeft
+        getCloestBlock(targetNode, element, readerMode).offsetLeft
     ) >
     (element.clientWidth + gap) / 2
   ) {
@@ -517,7 +517,7 @@ export const handleNextChapter = async (
   element: HTMLElement,
   flattenChapters: Chapter[],
   chapterDocList: ChapterDoc[],
-  mode: string,
+  readerMode: string,
   format: string,
   tempLocation: any,
   doc: Document,
@@ -543,7 +543,7 @@ export const handleNextChapter = async (
     nextChapter.href,
     chapterDocList,
     element,
-    mode,
+    readerMode,
     format,
     tempLocation,
     doc,
@@ -552,7 +552,7 @@ export const handleNextChapter = async (
 };
 export const getAudioText = (
   element: HTMLElement,
-  mode: string,
+  readerMode: string,
   doc: Document
 ) => {
   let nodeList = getBlockElement(doc.body).filter(
@@ -565,7 +565,7 @@ export const getAudioText = (
     .filter((item) => item.textContent !== "img")
     .map((item) => item.textContent);
   let firstSliceIndex = 0;
-  let visibleText = getVisibleText(element, mode, doc);
+  let visibleText = getVisibleText(element, readerMode, doc);
   if (visibleText && visibleText.length > 0) {
     let firstVisibleText = visibleText[0];
     firstSliceIndex = audioText.indexOf(firstVisibleText);
@@ -575,7 +575,7 @@ export const getAudioText = (
 };
 export const getVisibleText = (
   element: HTMLElement,
-  mode: string,
+  readerMode: string,
   doc: Document
 ) => {
   let nodeList = getBlockElement(doc.body).filter(
@@ -583,7 +583,7 @@ export const getVisibleText = (
   );
   let visibleNode = nodeList.filter(
     (s) =>
-      isScrolledIntoView(element, s as HTMLElement, mode) &&
+      isScrolledIntoView(element, s as HTMLElement, readerMode) &&
       ((s as HTMLElement).textContent || "").trim()
   );
 
@@ -672,19 +672,23 @@ export const isParentBlock = (myDiv: Element) => {
 export const isScrolledIntoView = (
   element: HTMLElement,
   el: HTMLElement,
-  mode: string
+  readerMode: string
 ) => {
   var isVisible = false;
   var rect = el.getBoundingClientRect();
-  if (mode !== "scroll" && el.textContent && el.textContent.trim()) {
+  if (readerMode !== "scroll" && el.textContent && el.textContent.trim()) {
     let elemLeft = rect.left;
     isVisible = elemLeft > -10 && elemLeft <= element.clientWidth;
-  } else if (mode === "scroll" && el.textContent && el.textContent.trim()) {
+  } else if (
+    readerMode === "scroll" &&
+    el.textContent &&
+    el.textContent.trim()
+  ) {
     let elemTop = rect.top;
     isVisible =
       elemTop >= element.scrollTop &&
       elemTop <= element.scrollTop + element.clientHeight;
-  } else if (mode !== "scroll") {
+  } else if (readerMode !== "scroll") {
     let elemLeft = rect.left;
     isVisible = elemLeft >= 0 && elemLeft <= element.clientWidth;
   }

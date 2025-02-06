@@ -6,8 +6,8 @@ import { ZipReader, BlobReader, TextWriter, BlobWriter } from "@zip.js/zip.js";
 import { getCache } from "../libs/cache.js";
 class EpubRender extends GeneralRender {
   epubBuffer: ArrayBuffer;
-  constructor(epubBuffer: ArrayBuffer, mode: string, animation: string) {
-    super({ mode, format: "EPUB", animation });
+  constructor(epubBuffer: ArrayBuffer, config: any) {
+    super({ format: "EPUB", ...config });
     this.epubBuffer = epubBuffer;
   }
   renderTo(element: HTMLElement) {
@@ -22,7 +22,7 @@ class EpubRender extends GeneralRender {
       createIframe(element);
       let doc = this.getDocument();
       if (!doc) return;
-      handleLayout(element, this.mode, doc);
+      handleLayout(element, this.readerMode, doc);
       resolve();
     });
   }

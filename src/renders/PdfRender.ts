@@ -7,8 +7,8 @@ import { getPdfScale } from "../utils/navigationUtil.js";
 import { getCache } from "../libs/cache.js";
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
-  constructor(pdfBuffer: ArrayBuffer, mode: string, animation: string) {
-    super({ mode, format: "PDF", animation });
+  constructor(pdfBuffer: ArrayBuffer, config: any) {
+    super({ format: "PDF", ...config });
     this.pdfBuffer = pdfBuffer;
   }
   renderTo(element: HTMLElement) {
@@ -23,7 +23,7 @@ class PdfRender extends GeneralRender {
       createIframe(element);
       let doc = this.getDocument();
       if (!doc) return;
-      handleLayout(element, this.mode, doc);
+      handleLayout(element, this.readerMode, doc);
       resolve();
     });
   }
@@ -70,7 +70,7 @@ class PdfRender extends GeneralRender {
     let page = await this.chapterDocList[pageIndex].text.getPage();
     let scale = await getPdfScale(
       this.element,
-      this.mode,
+      this.readerMode,
       this.chapterDocList,
       pageIndex
     );
@@ -138,7 +138,7 @@ class PdfRender extends GeneralRender {
       let page = await this.chapterDocList[pageIndex].text.getPage();
       let scale = await getPdfScale(
         this.element,
-        this.mode,
+        this.readerMode,
         this.chapterDocList,
         pageIndex
       );
@@ -174,7 +174,7 @@ class PdfRender extends GeneralRender {
     let page = await this.chapterDocList[pageIndex].text.getPage();
     let scale = await getPdfScale(
       this.element,
-      this.mode,
+      this.readerMode,
       this.chapterDocList,
       pageIndex
     );

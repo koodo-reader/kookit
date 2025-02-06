@@ -5,8 +5,8 @@ import GeneralParser from "../utils/generalParser";
 
 class CacheRender extends GeneralRender {
   cacheBuffer: ArrayBuffer;
-  constructor(cacheBuffer: ArrayBuffer, mode: string, animation: string) {
-    super({ mode, format: "CACHE", animation });
+  constructor(cacheBuffer: ArrayBuffer, config: any) {
+    super({ format: "CACHE", ...config });
     this.cacheBuffer = cacheBuffer;
   }
   renderTo(element: HTMLElement) {
@@ -19,7 +19,7 @@ class CacheRender extends GeneralRender {
       createIframe(element);
       let doc = this.getDocument();
       if (!doc) return;
-      handleLayout(element, this.mode, doc);
+      handleLayout(element, this.readerMode, doc);
       resolve();
     });
   }

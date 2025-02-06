@@ -7,15 +7,10 @@ import { getCache } from "../libs/cache.js";
 class TxtRender extends GeneralRender {
   txtBuffer: ArrayBuffer;
   charset: string;
-  constructor(
-    txtBuffer: ArrayBuffer,
-    mode: string,
-    animation: string,
-    charset: string
-  ) {
-    super({ mode, format: "TXT", animation });
+  constructor(txtBuffer: ArrayBuffer, config: any) {
+    super({ format: "TXT", ...config });
     this.txtBuffer = txtBuffer;
-    this.charset = charset;
+    this.charset = config.charset;
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -29,7 +24,7 @@ class TxtRender extends GeneralRender {
       createIframe(element);
       let doc = this.getDocument();
       if (!doc) return;
-      handleLayout(element, this.mode, doc);
+      handleLayout(element, this.readerMode, doc);
       resolve();
     });
   }

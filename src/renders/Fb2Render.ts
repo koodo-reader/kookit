@@ -5,8 +5,8 @@ import GeneralRender from "./GeneralRender";
 import { getCache } from "../libs/cache.js";
 class Fb2Render extends GeneralRender {
   fb2Buffer: ArrayBuffer;
-  constructor(fb2Buffer: ArrayBuffer, mode: string, animation: string) {
-    super({ mode, format: "FB2", animation });
+  constructor(fb2Buffer: ArrayBuffer, config: any) {
+    super({ format: "FB2", ...config });
     this.fb2Buffer = fb2Buffer;
   }
   renderTo(element: HTMLElement) {
@@ -22,7 +22,7 @@ class Fb2Render extends GeneralRender {
 
       let doc = this.getDocument();
       if (!doc) return;
-      handleLayout(element, this.mode, doc);
+      handleLayout(element, this.readerMode, doc);
       resolve();
     });
   }
