@@ -694,7 +694,11 @@ export const isScrolledIntoView = (
   }
   return isVisible;
 };
-export const addTouchEvent = (doc: Document, iframe: any) => {
+export const addTouchEvent = (
+  doc: Document,
+  iframe: any,
+  element: HTMLElement
+) => {
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
   let touchStartTime = 0;
   let touchStartX = 0;
@@ -798,7 +802,7 @@ export const addTouchEvent = (doc: Document, iframe: any) => {
       var range = iWin.getSelection().getRangeAt(0);
       var rect = range.getBoundingClientRect();
       var position = {
-        top: rect.top,
+        top: rect.top - element.scrollTop,
         left: rect.left,
         width: rect.width,
         height: rect.height,

@@ -89,7 +89,7 @@ class MobileRender extends GeneralRender {
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
-    addTouchEvent(doc, iframe);
+    addTouchEvent(doc, iframe, this.element);
   }
   clearSelection() {
     let iframe = this.getIframe();
