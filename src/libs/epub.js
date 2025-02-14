@@ -453,9 +453,12 @@ class Resources {
           type: type.split(/\s/),
           href: resolveHref(href),
         }));
+    console.log(this, 'resources')
 
     this.cover =
       this.getItemByProperty("cover-image") ??
+      this.getItemByID("cover-image") ??
+      this.getItemByID("cover") ??
       // EPUB 2 compat
       this.getItemByID(
         $$$(opf, "meta")
@@ -463,7 +466,7 @@ class Resources {
           ?.getAttribute("content")
       ) ??
       this.getItemByHref(
-        this.guide?.find((ref) => ref.type.includes("cover"))?.href
+        this.guide?.find((ref) => ref.type.includes("cover") && !ref.href.includes("html") && !ref.href.includes("xml"))?.href
       );
 
     this.cfis = CFI.fromElements($$itemref);
@@ -929,6 +932,7 @@ export class EPUB {
   }
   async getCover() {
     const cover = this.resources?.cover;
+    console.log(cover, 'cover')
     return cover?.href
       ? new Blob([await this.loadBlob(cover.href)], { type: cover.mediaType })
       : null;

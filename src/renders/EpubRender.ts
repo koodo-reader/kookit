@@ -41,40 +41,45 @@ class EpubRender extends GeneralRender {
     }
   }
   async preCache() {
-    if (!this.book) {
-      await this.parse();
+    try {
+      if (!this.book) {
+        await this.parse();
+      }
+      return await getCache(this.book);
+    } catch (error) {
+      return "";
     }
-    return await getCache(this.book);
   }
   async makeZipLoader(file) {
     let reader: any;
     try {
       reader = new ZipReader(new BlobReader(file));
+      const entries = await reader.getEntries();
+      const map = new Map(entries.map((entry) => [entry.filename, entry]));
+      const load =
+        (f) =>
+        (name, ...args) =>
+          map.has(name) ? f(map.get(name), ...args) : null;
+      const loadText = load((entry) => entry.getData(new TextWriter()));
+      const loadBlob = load((entry, type) => {
+        return new Promise<any>((resolve, reject) => {
+          entry
+            .getData(new BlobWriter(type))
+            .then((res) => {
+              resolve(res);
+            })
+            .catch((err) => {
+              resolve(new Blob());
+            });
+        });
+        // return entry.getData(new BlobWriter(type));
+      });
+      const getSize = (name) => (map.get(name) as any)?.uncompressedSize ?? 0;
+      return { entries, loadText, loadBlob, getSize };
     } catch (error) {
+      console.log(error, "error");
       throw error;
     }
-    const entries = await reader.getEntries();
-    const map = new Map(entries.map((entry) => [entry.filename, entry]));
-    const load =
-      (f) =>
-      (name, ...args) =>
-        map.has(name) ? f(map.get(name), ...args) : null;
-    const loadText = load((entry) => entry.getData(new TextWriter()));
-    const loadBlob = load((entry, type) => {
-      return new Promise<any>((resolve, reject) => {
-        entry
-          .getData(new BlobWriter(type))
-          .then((res) => {
-            resolve(res);
-          })
-          .catch((err) => {
-            resolve(new Blob());
-          });
-      });
-      // return entry.getData(new BlobWriter(type));
-    });
-    const getSize = (name) => (map.get(name) as any)?.uncompressedSize ?? 0;
-    return { entries, loadText, loadBlob, getSize };
   }
   async getMetadata() {
     try {
@@ -84,7 +89,7 @@ class EpubRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       return await parser.getMetadata();
     } catch (error) {
-      console.log(error);
+      console.log(error, "error");
       throw error;
     }
   }

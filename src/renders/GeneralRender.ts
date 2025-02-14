@@ -340,8 +340,11 @@ class GeneralRender extends EventEmitter {
       );
       let chapterDocIndex = parseInt(this.tempLocation.chapterDocIndex || "-1");
       if (chapterDocIndex > -1) {
-        console.log(doc.body.scrollHeight);
-        this.element.scrollTo(0, doc.body.scrollHeight);
+        if (this.readerMode === "scroll") {
+          this.element.scrollTo(0, doc.body.scrollHeight);
+        } else {
+          doc.body.scrollTo(doc.body.scrollWidth, 0);
+        }
       }
       this.trigger("rendered");
     } else if (this.readerMode === "scroll") {
