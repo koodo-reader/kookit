@@ -704,7 +704,7 @@ export const isScrolledIntoView = (
   }
   return isVisible;
 };
-export const addTouchEvent = (
+export const addAndroidTouchEvent = (
   doc: Document,
   iframe: any,
   element: HTMLElement
@@ -755,21 +755,32 @@ export const addTouchEvent = (
 
       var result = "";
 
+      // if (
+      //   (row === 0 && (col === 0 || col === 1)) || // Top-left and Top-middle
+      //   (row === 1 && col === 0) || // Middle-left
+      //   (row === 2 && col === 0) || // Bottom-left
+      //   (row === 0 && col === 1) // Middle-top
+      // ) {
+      //   result = "left";
+      // } else if (row === 1 && col === 1) {
+      //   result = "center";
+      // } else if (
+      //   (row === 0 && col === 2) || // Top-right
+      //   (row === 1 && col === 2) || // Middle-right
+      //   (row === 2 && col === 2) || // Bottom-right
+      //   (row === 2 && col === 1) // Middle-bottom
+      // ) {
+      //   result = "right";
+      // }
       if (
-        (row === 0 && (col === 0 || col === 1)) || // Top-left and Top-middle
-        (row === 1 && col === 0) || // Middle-left
-        (row === 2 && col === 0) || // Bottom-left
-        (row === 0 && col === 1) // Middle-top
+        col === 0 // Left column (left third of screen)
       ) {
         result = "left";
-      } else if (row === 1 && col === 1) {
+      } else if (col === 1) {
+        // Middle column (middle third of screen)
         result = "center";
-      } else if (
-        (row === 0 && col === 2) || // Top-right
-        (row === 1 && col === 2) || // Middle-right
-        (row === 2 && col === 2) || // Bottom-right
-        (row === 2 && col === 1) // Middle-bottom
-      ) {
+      } else if (col === 2) {
+        // Right column (right third of screen)
         result = "right";
       }
       window.ReactNativeWebView.postMessage(JSON.stringify({ event: result }));
@@ -795,16 +806,16 @@ export const addTouchEvent = (
     }
     const touch = event.touches[0];
     touchStartTime = Date.now();
-    touchStartX = touch.screenX;
-    touchStartY = touch.screenY;
+    touchStartX = touch.screenX; // Changed from screenX to clientX
+    touchStartY = touch.screenY; // Changed from screenY to clientY
   };
-
   doc.body.ontouchend = onTouchEnd;
   doc.body.ontouchstart = onTouchStart;
   iWin.ontouchend = onTouchEnd;
   iWin.ontouchstart = onTouchStart;
 
   doc.body.oncontextmenu = function (event) {
+    console.log("contextmenu");
     event.preventDefault();
     event.stopPropagation();
     var selectedText = iWin.getSelection().toString();
@@ -833,6 +844,153 @@ export const addTouchEvent = (
         })
       );
     }
+    return false;
+  };
+};
+export const addAppleTouchEvent = (
+  doc: Document,
+  iframe: any,
+  element: HTMLElement
+) => {
+  let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
+  let touchStartTime = 0;
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let lastTouchEnd = 0;
+  const swipeThreshold = 30; // Minimum distance in pixels to be considered a swipe
+  const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
+  let selectionTimeout: any = null;
+  let onTouchEnd = function (event) {
+    iWin.getSelection()?.empty();
+    console.log("touchend");
+    if (selectionTimeout) {
+      clearTimeout(selectionTimeout);
+    }
+    selectionTimeout = setTimeout(() => {
+      const selectedText = iWin.getSelection().toString().trim();
+      if (selectedText) {
+        var range = iWin.getSelection().getRangeAt(0);
+        var rect = range.getBoundingClientRect();
+        var position = {
+          top: rect.top - element.scrollTop,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+          screenWidth: window.innerWidth,
+          screenHeight: window.innerHeight,
+        };
+
+        rangy.init();
+        let charRange = rangy
+          .getSelection(iframe)
+          .saveCharacterRanges(doc.body)[0];
+
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({
+            event: "select-text",
+            selectedText: selectedText,
+            position: position,
+            range: charRange,
+          })
+        );
+      }
+    }, 300); // Debounce selection events
+    let now = new Date().getTime();
+    if (now - lastTouchEnd <= 300) {
+      event.preventDefault();
+      return;
+    }
+    lastTouchEnd = now;
+    const touch = event.changedTouches[0];
+    const touchEndTime = Date.now();
+    const touchEndX = touch.clientX;
+    const touchEndY = touch.clientY;
+    const timeDiff = touchEndTime - touchStartTime;
+    const distX = touchEndX - touchStartX;
+    const distY = touchEndY - touchStartY;
+
+    // var selectedText = iWin.getSelection().toString();
+    // if (selectedText) {
+    //   window.ReactNativeWebView.postMessage(
+    //     JSON.stringify({ event: "select-text", selectedText: selectedText })
+    //   );
+    //   return;
+    // }
+
+    if (
+      timeDiff < timeThreshold &&
+      Math.abs(distX) < swipeThreshold &&
+      Math.abs(distY) < swipeThreshold
+    ) {
+      const width = document.documentElement.clientWidth;
+      const height = document.documentElement.clientHeight;
+      const normalizedX = Math.min(Math.max(touchEndX, 0), width);
+      const normalizedY = Math.min(Math.max(touchEndY, 0), height);
+
+      let result = "";
+      // For pagination mode: keep original 3x3 grid
+      const cellWidth = width / 3;
+      const cellHeight = height / 3;
+      const col = Math.min(Math.floor(normalizedX / cellWidth), 2);
+      const row = Math.min(Math.floor(normalizedY / cellHeight), 2);
+
+      if (
+        col === 0 // Left column (left third of screen)
+      ) {
+        result = "left";
+      } else if (col === 1) {
+        // Middle column (middle third of screen)
+        result = "center";
+      } else if (col === 2) {
+        // Right column (right third of screen)
+        result = "right";
+      }
+
+      window.ReactNativeWebView.postMessage(JSON.stringify({ event: result }));
+    } else if (
+      Math.abs(distX) >= swipeThreshold ||
+      Math.abs(distY) >= swipeThreshold
+    ) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ event: "swipe" }));
+    }
+  };
+  let onTouchStart = function (event) {
+    const target: any = event.target;
+    if (!target) return;
+    if (target.tagName === "IMG") {
+      const imgSrc = target.src || target.getAttribute("xlink:href");
+      window.ReactNativeWebView.postMessage(
+        JSON.stringify({ event: "view-image", imgSrc: imgSrc })
+      );
+    }
+    if (event.touches.length > 1) {
+      event.preventDefault();
+    }
+    const touch = event.touches[0];
+    touchStartTime = Date.now();
+    touchStartX = touch.clientX; // Changed from screenX to clientX
+    touchStartY = touch.clientY; // Changed from screenY to clientY
+  };
+  doc.body.ontouchend = onTouchEnd;
+  doc.body.ontouchstart = onTouchStart;
+  iWin.ontouchend = onTouchEnd;
+  iWin.ontouchstart = onTouchStart;
+
+  doc.addEventListener("selectionchange", (event) => {}, false);
+  doc.addEventListener(
+    "touchmove",
+    (event) => {
+      //不知道为什么加了就不会再触发 context menu 了
+      console.log("touchmove");
+    },
+    false
+  );
+
+  doc.body.oncontextmenu = function (event) {
+    console.log("contextmenu");
+    event.preventDefault();
+    event.stopPropagation();
+
     return false;
   };
 };

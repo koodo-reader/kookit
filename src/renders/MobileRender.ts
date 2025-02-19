@@ -2,7 +2,10 @@ import { createIframe, handleLayout } from "../utils/layoutUtil";
 import GeneralRender from "./GeneralRender";
 import { makeCacheBook } from "../libs/cache-mobile";
 import GeneralParser from "../utils/generalParser";
-import { addTouchEvent } from "../utils/navigationUtil";
+import {
+  addAndroidTouchEvent,
+  addAppleTouchEvent,
+} from "../utils/navigationUtil";
 declare var window: any;
 
 class MobileRender extends GeneralRender {
@@ -85,11 +88,15 @@ class MobileRender extends GeneralRender {
     doc.head.appendChild(styleElement);
     // console.log("displayFontUrl", fontName, fontUrl);
   }
-  addTouchEvent() {
+  addTouchEvent(isAndroid: string) {
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
-    addTouchEvent(doc, iframe, this.element);
+    if (isAndroid === "yes") {
+      addAndroidTouchEvent(doc, iframe, this.element);
+    } else {
+      addAppleTouchEvent(doc, iframe, this.element);
+    }
   }
   clearSelection() {
     let iframe = this.getIframe();

@@ -3,6 +3,19 @@ import commonjs from "@rollup/plugin-commonjs";
 import typescript from "@rollup/plugin-typescript";
 import terser from '@rollup/plugin-terser';
 import json from "@rollup/plugin-json";
+import path from 'path';
+const getDesktopOutputPath = (filename) => {
+  const basePath = process.platform === 'win32'
+    ? 'D:\\Project\\koodo-reader'
+    : '/Users/troyeguo/Documents/Project/koodo-reader';
+  return path.join(basePath, 'src', 'assets', 'lib', filename);
+};
+const getMobileOutputPath = (filename) => {
+  const basePath = process.platform === 'win32'
+    ? 'D:\\Project\\koodo-reader-expo'
+    : '/Users/troyeguo/Documents/Project/koodo-reader-expo';
+  return path.join(basePath, 'assets', 'lib', filename);
+};
 export default [
   //browser-friendly UMD build
   // {
@@ -26,7 +39,7 @@ export default [
     input: "src/index.ts",
     output: [{
       name: "Kookit",
-      file: "D:\\Project\\koodo-reader\\src\\assets\\lib\\kookit.js",
+      file: getDesktopOutputPath("kookit.js"),
       format: "es",
     }],
     plugins: [
@@ -43,7 +56,7 @@ export default [
     input: "src/index.ts",
     output: [{
       name: "Kookit",
-      file: "D:\\Project\\koodo-reader\\src\\assets\\lib\\kookit.min.js",
+      file: getDesktopOutputPath("kookit.min.js"),
       format: "es",
     }],
     plugins: [
@@ -66,7 +79,7 @@ export default [
     input: "src/mobile.ts",
     output: [{
       name: "Kookit",
-      file: "D:\\Project\\koodo-reader-expo\\assets\\lib\\kookit-mobile.min.txt",
+      file: getMobileOutputPath("kookit-mobile.min.txt"),
       format: "umd",
     }],
     plugins: [
