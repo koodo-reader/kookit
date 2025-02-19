@@ -84,6 +84,14 @@ class GeneralParser {
   getMetadata() {
     return new Promise<any>(async (resolve, reject) => {
       const metadata = this.book.metadata;
+      let author =
+        metadata.author && metadata.author[0] && metadata.author[0].name
+          ? metadata.author[0].name
+          : metadata.author && metadata.author[0]
+          ? metadata.author[0]
+          : metadata.author
+          ? metadata.author
+          : "";
       try {
         const blob = await this.book.getCover();
         var reader = new FileReader();
@@ -91,7 +99,7 @@ class GeneralParser {
         reader.onloadend = () => {
           resolve({
             name: metadata.title,
-            author: metadata.author ? metadata.author[0].name : "",
+            author: author,
             description: metadata.description,
             publisher: metadata.publisher,
             cover: reader.result,
@@ -99,14 +107,6 @@ class GeneralParser {
         };
       } catch (error) {
         try {
-          let author =
-            metadata.author && metadata.author[0] && metadata.author[0].name
-              ? metadata.author[0].name
-              : metadata.author && metadata.author[0]
-              ? metadata.author[0]
-              : metadata.author
-              ? metadata.author
-              : "";
           resolve({
             name: metadata.title,
             author: author,

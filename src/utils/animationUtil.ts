@@ -66,7 +66,6 @@ export const addPageAnimation = (totalPage: number) => {
   createBookElement(totalPage);
   var WINDOW_WIDTH = window.innerWidth;
   var WINDOW_HEIGHT = window.innerHeight;
-  console.log(WINDOW_WIDTH, WINDOW_HEIGHT);
 
   // The canvas size equals to the book dimensions + this padding
   var CANVAS_PADDING = 0;

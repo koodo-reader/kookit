@@ -186,6 +186,15 @@ export const handleRenderChapter = async (
       chapterDocIndex = tempChapterDocIndex;
     }
   }
+  if (chapterDocIndex === -1 && chapterHref.indexOf("#") > -1) {
+    let href = chapterHref.split("#")[0];
+    let tempChapterDocIndex = _.findLastIndex(chapterDocList, {
+      href: href,
+    });
+    if (tempChapterDocIndex !== -1) {
+      chapterDocIndex = tempChapterDocIndex;
+    }
+  }
   if (chapterDocIndex === -1 || chapterDocIndex > chapterDocList.length - 1) {
     chapterDocIndex = 0;
   }
@@ -509,6 +518,7 @@ export const handleHashChapter = (
       });
       if (newIndex > -1) {
         tempLocation.chapterHref = newHref;
+        tempLocation.chapterTitle = flattenChapters[newIndex].label;
       }
     }
   }
