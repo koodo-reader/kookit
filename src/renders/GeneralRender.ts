@@ -32,6 +32,7 @@ class GeneralRender extends EventEmitter {
   animation: string;
   convertChinese: string | undefined;
   isBionic: string | undefined;
+  isDarkMode: string | undefined;
   book: any;
   tempLocation: any;
   chapterList: Chapter[];
@@ -46,6 +47,7 @@ class GeneralRender extends EventEmitter {
     animation: string;
     convertChinese?: string;
     isBionic?: string;
+    isDarkMode?: string;
   }) {
     super();
     this.readerMode = config.readerMode;
@@ -53,6 +55,7 @@ class GeneralRender extends EventEmitter {
     this.format = config.format;
     this.convertChinese = config.convertChinese;
     this.isBionic = config.isBionic;
+    this.isDarkMode = config.isDarkMode;
     this.chapterList = [];
     this.chapterDocList = [];
     this.flattenChapters = [];
@@ -614,7 +617,10 @@ class GeneralRender extends EventEmitter {
     if (this.animation === "mimical") {
       let progressInfo = this.getProgress();
       if (!progressInfo) return;
-      const pageAnimation = addPageAnimation(progressInfo.totalPage);
+      const pageAnimation = addPageAnimation(
+        progressInfo.totalPage,
+        this.isDarkMode
+      );
       if (pageAnimation) {
         this.flipToNextPage = pageAnimation.flipToNextPage;
         this.flipToPrevPage = pageAnimation.flipToPrevPage;

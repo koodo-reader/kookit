@@ -61,7 +61,8 @@ function createBookElement(sectionCount) {
   style.innerHTML = css;
   document.head.appendChild(style);
 }
-export const addPageAnimation = (totalPage: number) => {
+export const addPageAnimation = (totalPage: number, isDarkMode) => {
+  console.log(isDarkMode, "isDarkMode");
   // Example usage: create a book element with 3 sections
   createBookElement(totalPage);
   var WINDOW_WIDTH = window.innerWidth;
@@ -213,7 +214,10 @@ export const addPageAnimation = (totalPage: number) => {
     context.translate(CANVAS_PADDING + BOOK_WIDTH / 2, PAGE_Y + CANVAS_PADDING);
 
     // Draw a sharp shadow on the left side of the page
-    context.strokeStyle = "rgba(0,0,0," + 0.05 * strength + ")";
+    context.strokeStyle =
+      (isDarkMode === "no" ? "rgba(0,0,0," : "rgba(255,255,255,") +
+      0.05 * strength +
+      ")";
     context.lineWidth = 30 * strength;
     context.beginPath();
     context.moveTo(foldX - foldWidth, -verticalOutdent * 0.5);
@@ -227,8 +231,16 @@ export const addPageAnimation = (totalPage: number) => {
       foldX + rightShadowWidth,
       0
     );
-    rightShadowGradient.addColorStop(0, "rgba(0,0,0," + strength * 0.2 + ")");
-    rightShadowGradient.addColorStop(0.8, "rgba(0,0,0,0.0)");
+    rightShadowGradient.addColorStop(
+      0,
+      (isDarkMode === "no" ? "rgba(0,0,0," : "rgba(255,255,255,") +
+        strength * 0.2 +
+        ")"
+    );
+    rightShadowGradient.addColorStop(
+      0.8,
+      (isDarkMode === "no" ? "rgba(0,0,0," : "rgba(255,255,255,") + "0.0)"
+    );
 
     context.fillStyle = rightShadowGradient;
     context.beginPath();
@@ -245,8 +257,16 @@ export const addPageAnimation = (totalPage: number) => {
       foldX - foldWidth,
       0
     );
-    leftShadowGradient.addColorStop(0, "rgba(0,0,0,0.0)");
-    leftShadowGradient.addColorStop(1, "rgba(0,0,0," + strength * 0.15 + ")");
+    leftShadowGradient.addColorStop(
+      0,
+      (isDarkMode === "no" ? "rgba(0,0,0," : "rgba(255,255,255,") + "0.0)"
+    );
+    leftShadowGradient.addColorStop(
+      1,
+      (isDarkMode === "no" ? "rgba(0,0,0," : "rgba(255,255,255,") +
+        +strength * 0.15 +
+        ")"
+    );
 
     context.fillStyle = leftShadowGradient;
     context.beginPath();
@@ -263,13 +283,21 @@ export const addPageAnimation = (totalPage: number) => {
       foldX,
       0
     );
-    foldGradient.addColorStop(0.35, "#fafafa");
-    foldGradient.addColorStop(0.73, "#eeeeee");
-    foldGradient.addColorStop(0.9, "#fafafa");
-    foldGradient.addColorStop(1.0, "#e2e2e2");
+    if (isDarkMode === "no") {
+      foldGradient.addColorStop(0.35, "#fafafa");
+      foldGradient.addColorStop(0.73, "#eeeeee");
+      foldGradient.addColorStop(0.9, "#fafafa");
+      foldGradient.addColorStop(1.0, "#e2e2e2");
+    } else {
+      foldGradient.addColorStop(0.35, "#333");
+      foldGradient.addColorStop(0.73, "#444");
+      foldGradient.addColorStop(0.9, "#333");
+      foldGradient.addColorStop(1.0, "#444");
+    }
 
     context.fillStyle = foldGradient;
-    context.strokeStyle = "rgba(0,0,0,0.06)";
+    context.strokeStyle =
+      (isDarkMode === "no" ? "rgba(0,0,0," : "rgba(255,255,255,") + "0.06)";
     context.lineWidth = 0.5;
 
     // Draw the folded piece of paper

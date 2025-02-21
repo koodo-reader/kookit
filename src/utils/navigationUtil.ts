@@ -203,6 +203,7 @@ export const handleRenderChapter = async (
     chapterDocList[chapterDocIndex].text,
     false
   );
+  console.log(doc.body.innerHTML);
   if (format === "PDF") {
     let scale = await getPdfScale(
       element,
@@ -861,7 +862,6 @@ export const addAppleTouchEvent = (
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
   let selectionTimeout: any = null;
   let onTouchEnd = function (event) {
-    iWin.getSelection()?.empty();
     console.log("touchend");
     if (selectionTimeout) {
       clearTimeout(selectionTimeout);
@@ -910,13 +910,13 @@ export const addAppleTouchEvent = (
     const distX = touchEndX - touchStartX;
     const distY = touchEndY - touchStartY;
 
-    var selectedText = iWin.getSelection().toString();
-    if (selectedText) {
-      window.ReactNativeWebView.postMessage(
-        JSON.stringify({ event: "select-text", selectedText: selectedText })
-      );
-      return;
-    }
+    // var selectedText = iWin.getSelection().toString();
+    // if (selectedText) {
+    //   window.ReactNativeWebView.postMessage(
+    //     JSON.stringify({ event: "select-text", selectedText: selectedText })
+    //   );
+    //   return;
+    // }
 
     if (
       timeDiff < timeThreshold &&
@@ -978,15 +978,7 @@ export const addAppleTouchEvent = (
   iWin.ontouchstart = onTouchStart;
 
   doc.addEventListener("selectionchange", (event) => {}, false);
-  doc.addEventListener(
-    "touchmove",
-    (event) => {
-      //不知道为什么加了就不会再触发 context menu 了
-      // console.log("touchmove");
-      setTimeout(() => {}, 1);
-    },
-    false
-  );
+  doc.addEventListener("touchmove", (event) => {}, false);
 
   doc.body.oncontextmenu = function (event) {
     console.log("contextmenu");
