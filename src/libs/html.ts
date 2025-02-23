@@ -1,5 +1,4 @@
 import Chinese from "chinese-s2t";
-
 export const makeHtmlBook = (bookStr: string, isTxt = false) => {
   const bookDoc = new DOMParser().parseFromString(
     isTxt ? txtToHtml(bookStr) : bookStr,

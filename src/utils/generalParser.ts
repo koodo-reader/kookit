@@ -1,6 +1,5 @@
 import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
-
 class GeneralParser {
   book: any;
   chapterList: Chapter[];
@@ -11,6 +10,11 @@ class GeneralParser {
     this.chapterList = [];
     this.flattenChapters = [];
     this.chapterDocList = [];
+  }
+  unescapeHtml(htmlStr: string): string {
+    if (!htmlStr) return "";
+    const doc = new DOMParser().parseFromString(htmlStr, "text/html");
+    return doc.documentElement.textContent || "";
   }
   async getChapter(toc) {
     if (toc) {
@@ -27,7 +31,9 @@ class GeneralParser {
           }
 
           return {
-            label: item.label ? item.label : index + "",
+            label: this.unescapeHtml(item.label)
+              ? this.unescapeHtml(item.label)
+              : index + "",
             href: item.href ? item.href : "title" + index,
             index: index,
             subitems: item.subitems ? await this.getChapter(item.subitems) : [],
@@ -38,7 +44,9 @@ class GeneralParser {
       this.chapterList = await Promise.all<Chapter>(
         this.book.sections.map(async (item, index) => {
           return {
-            label: item.label ? item.label : index + "",
+            label: this.unescapeHtml(item.label)
+              ? this.unescapeHtml(item.label)
+              : index + "",
             href: item.href ? item.href : "title" + index,
             index: index,
             subitems: item.subitems ? await this.getChapter(item.subitems) : [],
@@ -54,7 +62,9 @@ class GeneralParser {
     return this.book.sections.map((item: any, index: number) => {
       if (chapterIndexList.indexOf(index) > -1) {
         return {
-          label: this.flattenChapters[chapterIndexList.indexOf(index)].label,
+          label: this.unescapeHtml(
+            this.flattenChapters[chapterIndexList.indexOf(index)].label
+          ),
           href: this.flattenChapters[chapterIndexList.indexOf(index)].href,
           text: item,
         };

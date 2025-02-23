@@ -62,7 +62,6 @@ function createBookElement(sectionCount) {
   document.head.appendChild(style);
 }
 export const addPageAnimation = (totalPage: number, isDarkMode) => {
-  console.log(isDarkMode, "isDarkMode");
   // Example usage: create a book element with 3 sections
   createBookElement(totalPage);
   var WINDOW_WIDTH = window.innerWidth;

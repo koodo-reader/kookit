@@ -203,7 +203,6 @@ export const handleRenderChapter = async (
     chapterDocList[chapterDocIndex].text,
     false
   );
-  console.log(doc.body.innerHTML);
   if (format === "PDF") {
     let scale = await getPdfScale(
       element,

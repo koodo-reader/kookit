@@ -9,9 +9,10 @@
     "allowJs": true,
     "esModuleInterop": true,
     "noImplicitAny": false,
-    "outDir": "dist"
+    "outDir": "dist",
+    "typeRoots": ["./node_modules/@types", "types"]
   },
-  "include": ["src"],
+  "include": ["src", "types"],
   "paths": {
     "*": ["./node_modules/@types", "./types"]
   }

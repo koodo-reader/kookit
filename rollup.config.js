@@ -95,7 +95,7 @@ export default [
         },
       }),
     ],
-    // external: ['mammoth', 'jszip', 'underscore', 'marked', 'chinese-s2t', 'mhtml2html', 'js-untar', 'fflate', '@zip.js/zip.js', 'rangy'],
+    external: [],
   },
 
   // CommonJS (for Node) and ES module (for bundlers) build.

@@ -1,6 +1,5 @@
 import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
-import { mimetype } from "../utils/mimetype";
 import _ from "underscore";
 declare var window: any;
 
