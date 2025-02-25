@@ -6,6 +6,9 @@ import {
   addAndroidTouchEvent,
   addAppleTouchEvent,
 } from "../utils/navigationUtil";
+import rangy from "rangy/lib/rangy-core.js";
+import "rangy/lib/rangy-textrange";
+import { filterRects, getSafeRanges } from "../utils/noteUtil";
 declare var window: any;
 
 class MobileRender extends GeneralRender {
@@ -104,6 +107,58 @@ class MobileRender extends GeneralRender {
     let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
     if (!iWin || !iWin.getSelection()) return;
     iWin.getSelection()?.empty();
+  }
+  clearSelectionKeepHighlight() {
+    let doc = this.getDocument();
+    let iframe = this.getIframe();
+    if (!doc || !iframe) return;
+    let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
+    if (!iWin || !iWin.getSelection()) return;
+    let sel = doc!.getSelection();
+    if (!sel) return;
+    let newRange = sel.getRangeAt(0);
+    var safeRanges: Range[] = getSafeRanges(newRange);
+    console.log("clearSelectionKeepHighlight", safeRanges.length);
+    for (var i = 0; i < safeRanges.length; i++) {
+      const rects = filterRects(safeRanges[i].getClientRects());
+      for (let index = 0; index < rects.length; index++) {
+        const rect = rects[index];
+        let newNode = document.createElement("span");
+        newNode?.setAttribute(
+          "style",
+          "position: absolute; background-color: #f3a6a68c;left:" +
+            (Math.min(rect.left, rect.x) + doc.body.scrollLeft) +
+            "px; top:" +
+            (Math.min(rect.top, rect.y) + doc.body.scrollTop) +
+            "px;" +
+            "width:" +
+            rect.width +
+            "px; height:" +
+            rect.height +
+            "px; z-index:-1;"
+        );
+        newNode.setAttribute("id", "temp-highlight");
+        doc.body.appendChild(newNode);
+      }
+    }
+    let charRange = rangy.getSelection(iframe).saveCharacterRanges(doc.body)[0];
+    window.charRange = charRange;
+    iWin.getSelection()?.removeAllRanges();
+  }
+  restoreSelectionClearHighlight() {
+    let doc = this.getDocument();
+    if (!doc) return;
+    let tempHighlights = doc.querySelectorAll("#temp-highlight");
+    tempHighlights.forEach((element) => {
+      console.log("clear");
+      element.parentNode?.removeChild(element);
+    });
+    let iframe = this.getIframe();
+    if (!iframe) return;
+    rangy.init();
+    let charRange = window.charRange;
+    if (!charRange) return;
+    rangy.getSelection(iframe).restoreCharacterRanges(doc, [charRange]);
   }
 }
 export default MobileRender;

@@ -468,6 +468,11 @@ class GeneralRender extends EventEmitter {
     if (!doc) return "";
     return getAudioText(this.element, this.readerMode, doc);
   }
+  chapterText() {
+    let doc = this.getDocument();
+    if (!doc) return "";
+    return doc.body.innerText;
+  }
   highlightNode(text: string, style: string) {
     let doc = this.getDocument();
     if (!doc) return;
