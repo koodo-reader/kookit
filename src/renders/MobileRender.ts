@@ -48,7 +48,12 @@ class MobileRender extends GeneralRender {
     defaultStyle.innerHTML = css;
     doc.head.appendChild(defaultStyle);
   }
-  displayFontBase64(fontName: string, fontBase64: string) {
+  displayFontBase64(
+    fontName: string,
+    fontBase64: string,
+    fontFormat: string,
+    fontType: string
+  ) {
     let doc = this.getDocument();
     if (!doc || fontBase64.length === 0) return;
     const fontFaceCSS =
@@ -56,9 +61,13 @@ class MobileRender extends GeneralRender {
       "  font-family: '" +
       fontName +
       "';" +
-      "  src: url('data:font/ttf;charset=utf-8;base64," +
+      "  src: url('data:font/" +
+      fontType +
+      ";charset=utf-8;base64," +
       fontBase64 +
-      "') format('truetype');" +
+      "') format('" +
+      fontFormat +
+      "');" +
       "}";
     const styleElement = document.createElement("style");
     styleElement.type = "text/css";
