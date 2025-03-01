@@ -265,11 +265,7 @@ export const handleImageSize = async (
           ";" +
           `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${
             maxHeight > 0 ? maxHeight + "px" : ""
-          }; margin: 0 auto; ${
-            format.startsWith("CB")
-              ? "display: block; margin-left: auto; margin-right: auto;"
-              : ""
-          }`
+          }; margin: 0 auto;`
       );
     }
   }

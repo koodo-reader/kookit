@@ -17,6 +17,7 @@ const render = async (page, doc, zoom) => {
   docLayer.style.setProperty('--scale-factor', scale)
   const viewport = page.getViewport({ scale })
 
+
   // the canvas must be in the `PDFDocument`'s `ownerDocument`
   // (`globalThis.document` by default); that's where the fonts are loaded
   const canvas = document.createElement('canvas')
@@ -65,6 +66,7 @@ const render = async (page, doc, zoom) => {
       addLinkAttributes: (link, url) => link.href = url,
     },
   })
+  doc.body.style.paddingLeft = `${(doc.body.clientWidth - docLayer.getBoundingClientRect().width) / 2}px`
 }
 
 const renderPage = async (page, getImageBlob) => {
