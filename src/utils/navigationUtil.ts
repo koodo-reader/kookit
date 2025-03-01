@@ -736,7 +736,10 @@ export const addAndroidTouchEvent = (
     var selectedText = iWin.getSelection().toString();
     if (selectedText) {
       window.ReactNativeWebView.postMessage(
-        JSON.stringify({ event: "select-text", selectedText: selectedText })
+        JSON.stringify({
+          event: "select-text-after-touch",
+          selectedText: selectedText,
+        })
       );
       return;
     }
@@ -814,36 +817,36 @@ export const addAndroidTouchEvent = (
   doc.body.ontouchstart = onTouchStart;
   iWin.ontouchend = onTouchEnd;
   iWin.ontouchstart = onTouchStart;
-
+  let selectionTimeout: any = null;
   doc.body.oncontextmenu = function (event) {
     event.preventDefault();
     event.stopPropagation();
-    var selectedText = iWin.getSelection().toString();
-    if (selectedText) {
-      var range = iWin.getSelection().getRangeAt(0);
-      var rect = range.getBoundingClientRect();
-      var position = {
-        top: rect.top - element.scrollTop,
-        left: rect.left,
-        width: rect.width,
-        height: rect.height,
-        screenWidth: window.innerWidth,
-        screenHeight: window.innerHeight,
-      };
-      rangy.init();
+    // var selectedText = iWin.getSelection().toString();
+    // if (selectedText) {
+    //   var range = iWin.getSelection().getRangeAt(0);
+    //   var rect = range.getBoundingClientRect();
+    //   var position = {
+    //     top: rect.top - element.scrollTop,
+    //     left: rect.left,
+    //     width: rect.width,
+    //     height: rect.height,
+    //     screenWidth: window.innerWidth,
+    //     screenHeight: window.innerHeight,
+    //   };
+    //   rangy.init();
 
-      let charRange = rangy
-        .getSelection(iframe)
-        .saveCharacterRanges(doc.body)[0];
-      window.ReactNativeWebView.postMessage(
-        JSON.stringify({
-          event: "select-text",
-          selectedText: selectedText,
-          position: position,
-          range: charRange,
-        })
-      );
-    }
+    //   let charRange = rangy
+    //     .getSelection(iframe)
+    //     .saveCharacterRanges(doc.body)[0];
+    //   window.ReactNativeWebView.postMessage(
+    //     JSON.stringify({
+    //       event: "select-text",
+    //       selectedText: selectedText,
+    //       position: position,
+    //       range: charRange,
+    //     })
+    //   );
+    // }
     return false;
   };
   let scrollLeft = 0;
@@ -860,8 +863,40 @@ export const addAndroidTouchEvent = (
   doc.addEventListener(
     "selectionchange",
     (event) => {
-      if (readerMode === "scroll") return;
       doc.body.scrollLeft = scrollLeft;
+      if (selectionTimeout) {
+        clearTimeout(selectionTimeout);
+      }
+      selectionTimeout = setTimeout(() => {
+        const selectedText = iWin.getSelection().toString().trim();
+        console.log("selecsdfsdtedText", selectedText);
+        if (selectedText) {
+          var range = iWin.getSelection().getRangeAt(0);
+          var rect = range.getBoundingClientRect();
+          var position = {
+            top: rect.top - element.scrollTop,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            screenWidth: window.innerWidth,
+            screenHeight: window.innerHeight,
+          };
+
+          rangy.init();
+          let charRange = rangy
+            .getSelection(iframe)
+            .saveCharacterRanges(doc.body)[0];
+
+          window.ReactNativeWebView.postMessage(
+            JSON.stringify({
+              event: "select-text",
+              selectedText: selectedText,
+              position: position,
+              range: charRange,
+            })
+          );
+        }
+      }, 300); // Debounce selection events
     },
     false
   );

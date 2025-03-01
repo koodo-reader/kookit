@@ -12,6 +12,7 @@ const annotationLayerBuilderCSS = async () => await fetchText(pdfjsPath('annotat
 const render = async (page, doc, zoom) => {
   const scale = zoom * devicePixelRatio
   let docLayer = doc.querySelector('#koodoPDFLayer')
+  docLayer.style.visibility = 'hidden'
   docLayer.style.transform = `scale(${1 / devicePixelRatio})`
   docLayer.style.transformOrigin = 'top left'
   docLayer.style.setProperty('--scale-factor', scale)
@@ -67,11 +68,13 @@ const render = async (page, doc, zoom) => {
     },
   })
   docLayer.style.marginLeft = `calc(50% - ${docLayer.getBoundingClientRect().width / 2}px)`
+  docLayer.style.visibility = 'visible'
 }
 const renderExtra = async (page, doc, zoom) => {
   const scale = zoom * devicePixelRatio
   let docLayer = doc.querySelector('#koodoPDFLayerExtra')
   docLayer.style.display = 'block'
+  docLayer.style.visibility = 'hidden'
   docLayer.style.transform = `scale(${1 / devicePixelRatio})`
   docLayer.style.transformOrigin = 'top left'
   docLayer.style.setProperty('--scale-factor', scale)
@@ -127,6 +130,7 @@ const renderExtra = async (page, doc, zoom) => {
     },
   })
   docLayer.style.marginLeft = `calc(50% - ${docLayer.getBoundingClientRect().width / 2}px)`
+  docLayer.style.visibility = 'visible'
 }
 
 const renderPage = async (page, getImageBlob) => {

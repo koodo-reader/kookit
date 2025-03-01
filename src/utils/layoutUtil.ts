@@ -150,11 +150,14 @@ export const progressInfo = (readerMode: string, doc: Document) => {
   // if (parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") === 1) {
   //   await new Promise((r) => setTimeout(r, 1000));
   // }
+  console.log(convertStyleNum(doc.body.scrollLeft), doc.body.clientWidth);
   return {
     totalPage:
       readerMode === "scroll"
         ? 1
-        : parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") + 1,
+        : readerMode === "single"
+        ? parseInt(doc.body.scrollWidth / doc.body.clientWidth + "")
+        : parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") * 2,
     currentPage:
       parseInt(
         convertStyleNum(doc.body.scrollLeft) / doc.body.clientWidth + ""
