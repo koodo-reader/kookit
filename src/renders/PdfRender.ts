@@ -18,8 +18,12 @@ class PdfRender extends GeneralRender {
         await this.parse();
       }
       let parser = new GeneralParser(this.book);
+      console.log(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
+      console.log(this.chapterDocList);
+
+      console.log(this.chapterList);
       createIframe(element);
       let doc = this.getDocument();
       if (!doc) return;
@@ -35,7 +39,7 @@ class PdfRender extends GeneralRender {
         type: blob.type,
       });
       if (await isPDF(file)) {
-        this.book = await makePDF(file);
+        this.book = await makePDF(file, this.readerMode);
       }
     } catch (error) {
       console.log(error);
@@ -122,7 +126,7 @@ class PdfRender extends GeneralRender {
           )
         );
     });
-    return { page: pageIndex, coords: selected };
+    return { page: pageIndex, coords: selected, readerMode: this.readerMode };
   }
   async renderHighlighters(notes: any[], handleNoteClick: any) {
     let iframe = this.getIframe();
@@ -135,6 +139,12 @@ class PdfRender extends GeneralRender {
 
       let selected = JSON.parse(item.range);
       var pageIndex = selected.page;
+      if (
+        selected.readerMode === "double" &&
+        selected.readerMode !== this.readerMode
+      ) {
+        continue;
+      }
       let page = await this.chapterDocList[pageIndex].text.getPage();
       let scale = await getPdfScale(
         this.element,

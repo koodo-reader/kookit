@@ -11,7 +11,7 @@ const annotationLayerBuilderCSS = async () => await fetchText(pdfjsPath('annotat
 
 const render = async (page, doc, zoom) => {
   const scale = zoom * devicePixelRatio
-  let docLayer = doc.querySelector('.koodoPDFLayer')
+  let docLayer = doc.querySelector('#koodoPDFLayer')
   docLayer.style.transform = `scale(${1 / devicePixelRatio})`
   docLayer.style.transformOrigin = 'top left'
   docLayer.style.setProperty('--scale-factor', scale)
@@ -29,7 +29,7 @@ const render = async (page, doc, zoom) => {
   await page.render({ canvasContext, viewport, background: 'rgba(0,0,0,0)', }).promise
   doc.querySelector('#canvas').replaceChildren(doc.adoptNode(canvas))
   docLayer.style.overflow = 'hidden'
-  const container = doc.querySelector('.textLayer')
+  const container = doc.querySelector('#textLayer')
   const textLayer = new pdfjsLib.TextLayer({
     textContentSource: await page.streamTextContent(),
     container, viewport,
@@ -57,7 +57,7 @@ const render = async (page, doc, zoom) => {
   container.onpointerdown = () => container.classList.add('selecting')
   container.onpointerup = () => container.classList.remove('selecting')
 
-  const div = doc.querySelector('.annotationLayer')
+  const div = doc.querySelector('#annotationLayer')
   await new pdfjsLib.AnnotationLayer({ page, viewport, div }).render({
     annotations: await page.getAnnotations(),
     linkService: {
@@ -66,7 +66,67 @@ const render = async (page, doc, zoom) => {
       addLinkAttributes: (link, url) => link.href = url,
     },
   })
-  doc.body.style.paddingLeft = `${(doc.body.clientWidth - docLayer.getBoundingClientRect().width) / 2}px`
+  docLayer.style.marginLeft = `calc(50% - ${docLayer.getBoundingClientRect().width / 2}px)`
+}
+const renderExtra = async (page, doc, zoom) => {
+  const scale = zoom * devicePixelRatio
+  let docLayer = doc.querySelector('#koodoPDFLayerExtra')
+  docLayer.style.display = 'block'
+  docLayer.style.transform = `scale(${1 / devicePixelRatio})`
+  docLayer.style.transformOrigin = 'top left'
+  docLayer.style.setProperty('--scale-factor', scale)
+  const viewport = page.getViewport({ scale })
+
+
+  // the canvas must be in the `PDFDocument`'s `ownerDocument`
+  // (`globalThis.document` by default); that's where the fonts are loaded
+  const canvas = document.createElement('canvas')
+  docLayer.style.width = `${viewport.width}px`
+  docLayer.style.height = `${viewport.height}px`
+  canvas.height = viewport.height
+  canvas.width = viewport.width
+  const canvasContext = canvas.getContext('2d')
+  await page.render({ canvasContext, viewport, background: 'rgba(0,0,0,0)', }).promise
+  doc.querySelector('#canvasExtra').replaceChildren(doc.adoptNode(canvas))
+  docLayer.style.overflow = 'hidden'
+  const container = doc.querySelector('#textLayerExtra')
+  const textLayer = new pdfjsLib.TextLayer({
+    textContentSource: await page.streamTextContent(),
+    container, viewport,
+  })
+  await textLayer.render()
+
+  // hide "offscreen" canvases appended to docuemnt when rendering text layer
+  // https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/pdf_viewer.css#L51-L58
+  for (const canvas of document.querySelectorAll('.hiddenCanvasElement'))
+    Object.assign(canvas.style, {
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      width: '0',
+      height: '0',
+      display: 'none',
+    })
+
+  // fix text selection
+  // https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/text_layer_builder.js#L105-L107
+  const endOfContent = document.createElement('div')
+  endOfContent.className = 'endOfContent'
+  container.append(endOfContent)
+  // TODO: this only works in Firefox; see https://github.com/mozilla/pdf.js/pull/17923
+  container.onpointerdown = () => container.classList.add('selecting')
+  container.onpointerup = () => container.classList.remove('selecting')
+
+  const div = doc.querySelector('#annotationLayerExtra')
+  await new pdfjsLib.AnnotationLayer({ page, viewport, div }).render({
+    annotations: await page.getAnnotations(),
+    linkService: {
+      goToDestination: () => { },
+      getDestinationHash: dest => JSON.stringify(dest),
+      addLinkAttributes: (link, url) => link.href = url,
+    },
+  })
+  docLayer.style.marginLeft = `calc(50% - ${docLayer.getBoundingClientRect().width / 2}px)`
 }
 
 const renderPage = async (page, getImageBlob) => {
@@ -93,10 +153,15 @@ const renderPage = async (page, getImageBlob) => {
         ${await annotationLayerBuilderCSS()}
         </style>
         <div class="noteLayer"></div>
-        <div class="koodoPDFLayer">
-            <div class="textLayer"></div>
-            <div class="annotationLayer"></div>
+        <div class="koodoPDFLayer" id="koodoPDFLayer">
+            <div class="textLayer" id="textLayer"></div>
+            <div class="annotationLayer" id="annotationLayer"></div>
             <div id="canvas"></div>
+        </div>
+        <div class="koodoPDFLayer" id="koodoPDFLayerExtra">
+            <div class="textLayer" id="textLayerExtra"></div>
+            <div class="annotationLayer" id="annotationLayerExtra"></div>
+            <div id="canvasExtra"></div>
         </div>
 
     `], { type: 'text/html' }))
@@ -109,7 +174,7 @@ const makeTOCItem = item => ({
   subitems: item.items.length ? item.items.map(makeTOCItem) : null,
 })
 
-export const makePDF = async file => {
+export const makePDF = async (file, readerMode) => {
   const transport = new pdfjsLib.PDFDataRangeTransport(file.size, [])
   transport.requestDataRange = (begin, end) => {
     file.slice(begin, end).arrayBuffer().then(chunk => {
@@ -141,7 +206,13 @@ export const makePDF = async file => {
   }
 
   const outline = await pdf.getOutline()
-  book.toc = outline?.map(makeTOCItem)
+  book.toc = outline?.map(makeTOCItem).filter((_, i) => {
+    if (readerMode === "double") {
+      return i % 2 === 0
+    } else {
+      return true
+    }
+  })
 
   const cache = new Map()
   book.sections = Array.from({ length: pdf.numPages }).map((_, i) => ({
@@ -159,7 +230,12 @@ export const makePDF = async file => {
       console.log(page)
       page.cleanup()
     },
-    render: async (doc, scale) => await render(await pdf.getPage(i + 1), doc, scale),
+    render: async (doc, scale) => {
+      await render(await pdf.getPage(i + 1), doc, scale);
+      if (readerMode === "double") {
+        await renderExtra(await pdf.getPage(i + 2), doc, scale);
+      }
+    },
     size: 1000,
     getDimension: async () => {
       let viewport = (await pdf.getPage(i + 1)).getViewport({ scale: 1 })
@@ -168,7 +244,13 @@ export const makePDF = async file => {
     getPage: async () => {
       return await pdf.getPage(i + 1)
     }
-  }))
+  })).filter((_, i) => {
+    if (readerMode === "double") {
+      return i % 2 === 0
+    } else {
+      return true
+    }
+  })
   book.isExternal = uri => /^\w+:/i.test(uri)
   book.resolveHref = async href => {
     const parsed = JSON.parse(href)

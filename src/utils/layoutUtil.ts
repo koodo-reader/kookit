@@ -259,13 +259,34 @@ export const handleImageSize = async (
       }
     }
     if (maxWidth || maxHeight) {
+      console.log(item.clientWidth, maxWidth, maxHeight);
       item.setAttribute(
         "style",
         (item.getAttribute("style") ? item.getAttribute("style") : "") +
           ";" +
           `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${
             maxHeight > 0 ? maxHeight + "px" : ""
-          }; margin: 0 auto;`
+          }; margin: 0 auto; ${
+            format.startsWith("CB")
+              ? `margin-left: calc(100% - ${item.clientWidth}px);`
+              : ""
+          }`
+      );
+    }
+    if (format.startsWith("CB") && readerMode === "scroll") {
+      item.setAttribute(
+        "style",
+        (item.getAttribute("style") ? item.getAttribute("style") : "") +
+          ";margin-left: 0px; width: 100%;"
+      );
+    }
+    if (format.startsWith("CB") && readerMode !== "scroll") {
+      item.setAttribute(
+        "style",
+        (item.getAttribute("style") ? item.getAttribute("style") : "") +
+          `;margin-left: calc(50% - ${
+            item.getBoundingClientRect().width / 2
+          }px);`
       );
     }
   }

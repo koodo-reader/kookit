@@ -210,7 +210,7 @@ export const handleRenderChapter = async (
       chapterDocList,
       chapterDocIndex
     );
-    await chapterDocList[chapterDocIndex].text.render(doc, scale);
+    await chapterDocList[chapterDocIndex].text.render(doc, scale, readerMode);
   }
   if (format !== "CACHE") {
     await handleCssLink(doc);
@@ -707,7 +707,8 @@ export const isScrolledIntoView = (
 export const addAndroidTouchEvent = (
   doc: Document,
   iframe: any,
-  element: HTMLElement
+  element: HTMLElement,
+  readerMode: string
 ) => {
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
   let touchStartTime = 0;
@@ -815,7 +816,6 @@ export const addAndroidTouchEvent = (
   iWin.ontouchstart = onTouchStart;
 
   doc.body.oncontextmenu = function (event) {
-    console.log("contextmenu");
     event.preventDefault();
     event.stopPropagation();
     var selectedText = iWin.getSelection().toString();
@@ -846,11 +846,31 @@ export const addAndroidTouchEvent = (
     }
     return false;
   };
+  let scrollLeft = 0;
+  doc.addEventListener(
+    "selectstart",
+    (event) => {
+      if (readerMode === "scroll") return;
+      scrollLeft = doc.body.scrollLeft;
+      //prevent doc.body from scrolling
+    },
+    false
+  );
+
+  doc.addEventListener(
+    "selectionchange",
+    (event) => {
+      if (readerMode === "scroll") return;
+      doc.body.scrollLeft = scrollLeft;
+    },
+    false
+  );
 };
 export const addAppleTouchEvent = (
   doc: Document,
   iframe: any,
-  element: HTMLElement
+  element: HTMLElement,
+  readerMode: string
 ) => {
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
   let touchStartTime = 0;
@@ -976,14 +996,31 @@ export const addAppleTouchEvent = (
   iWin.ontouchend = onTouchEnd;
   iWin.ontouchstart = onTouchStart;
 
-  doc.addEventListener("selectionchange", (event) => {}, false);
   doc.addEventListener("touchmove", (event) => {}, false);
 
   doc.body.oncontextmenu = function (event) {
-    console.log("contextmenu");
     event.preventDefault();
     event.stopPropagation();
 
     return false;
   };
+  let scrollLeft = 0;
+  doc.addEventListener(
+    "selectstart",
+    (event) => {
+      if (readerMode === "scroll") return;
+      scrollLeft = doc.body.scrollLeft;
+      //prevent doc.body from scrolling
+    },
+    false
+  );
+
+  doc.addEventListener(
+    "selectionchange",
+    (event) => {
+      if (readerMode === "scroll") return;
+      doc.body.scrollLeft = scrollLeft;
+    },
+    false
+  );
 };

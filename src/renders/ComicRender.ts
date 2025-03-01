@@ -59,10 +59,10 @@ class ComicRender extends GeneralRender {
       });
       if (this.format === "CBZ") {
         const loader: any = await this.makeZipLoader(file);
-        this.book = makeComicBook(loader, file);
+        this.book = makeComicBook(loader, file, this.readerMode);
       } else if (this.format === "CBT") {
         const loader: any = await this.makeTarLoader();
-        this.book = makeComicBook(loader, file);
+        this.book = makeComicBook(loader, file, this.readerMode);
       } else if (this.format === "CBR") {
         this.rpc = await window.RPC.new("./lib/libunrar/worker.js", {
           loaded: function () {
@@ -74,10 +74,10 @@ class ComicRender extends GeneralRender {
         });
         await new Promise((r) => setTimeout(r, 200));
         const loader: any = await this.makeRarLoader();
-        this.book = makeComicBook(loader, file);
+        this.book = makeComicBook(loader, file, this.readerMode);
       } else if (this.format === "CB7") {
         const loader: any = await this.make7zLoader();
-        this.book = makeComicBook(loader, file);
+        this.book = makeComicBook(loader, file, this.readerMode);
       }
     } catch (error) {
       console.log(error);
@@ -88,6 +88,7 @@ class ComicRender extends GeneralRender {
     if (!this.book) {
       await this.parse();
     }
+    console.log(this.book);
     return await getCache(this.book);
   }
   async makeZipLoader(file) {
