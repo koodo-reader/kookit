@@ -821,32 +821,6 @@ export const addAndroidTouchEvent = (
   doc.body.oncontextmenu = function (event) {
     event.preventDefault();
     event.stopPropagation();
-    // var selectedText = iWin.getSelection().toString();
-    // if (selectedText) {
-    //   var range = iWin.getSelection().getRangeAt(0);
-    //   var rect = range.getBoundingClientRect();
-    //   var position = {
-    //     top: rect.top - element.scrollTop,
-    //     left: rect.left,
-    //     width: rect.width,
-    //     height: rect.height,
-    //     screenWidth: window.innerWidth,
-    //     screenHeight: window.innerHeight,
-    //   };
-    //   rangy.init();
-
-    //   let charRange = rangy
-    //     .getSelection(iframe)
-    //     .saveCharacterRanges(doc.body)[0];
-    //   window.ReactNativeWebView.postMessage(
-    //     JSON.stringify({
-    //       event: "select-text",
-    //       selectedText: selectedText,
-    //       position: position,
-    //       range: charRange,
-    //     })
-    //   );
-    // }
     return false;
   };
   let scrollLeft = 0;
@@ -912,11 +886,37 @@ export const addAppleTouchEvent = (
   let touchStartX = 0;
   let touchStartY = 0;
   let lastTouchEnd = 0;
+  let lastSelectEnd = 0;
   const swipeThreshold = 30; // Minimum distance in pixels to be considered a swipe
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
   let selectionTimeout: any = null;
   let onTouchEnd = function (event) {
     console.log("touchend");
+    let now = new Date().getTime();
+    if (now - lastTouchEnd <= 1000) {
+      event.preventDefault();
+      return;
+    }
+    lastTouchEnd = now;
+    const touch = event.changedTouches[0];
+    const touchEndTime = Date.now();
+    const touchEndX = touch.clientX;
+    const touchEndY = touch.clientY;
+    const timeDiff = touchEndTime - touchStartTime;
+    const distX = touchEndX - touchStartX;
+    const distY = touchEndY - touchStartY;
+
+    var selectedText = iWin.getSelection().toString();
+    console.log("selectedText", selectedText);
+    // if (selectedText && Date.now() - lastSelectEnd > 300) {
+    //   window.ReactNativeWebView.postMessage(
+    //     JSON.stringify({
+    //       event: "select-text-after-touch",
+    //       selectedText: selectedText,
+    //     })
+    //   );
+    //   return;
+    // }
     if (selectionTimeout) {
       clearTimeout(selectionTimeout);
     }
@@ -950,27 +950,6 @@ export const addAppleTouchEvent = (
         );
       }
     }, 300); // Debounce selection events
-    let now = new Date().getTime();
-    if (now - lastTouchEnd <= 300) {
-      event.preventDefault();
-      return;
-    }
-    lastTouchEnd = now;
-    const touch = event.changedTouches[0];
-    const touchEndTime = Date.now();
-    const touchEndX = touch.clientX;
-    const touchEndY = touch.clientY;
-    const timeDiff = touchEndTime - touchStartTime;
-    const distX = touchEndX - touchStartX;
-    const distY = touchEndY - touchStartY;
-
-    // var selectedText = iWin.getSelection().toString();
-    // if (selectedText) {
-    //   window.ReactNativeWebView.postMessage(
-    //     JSON.stringify({ event: "select-text", selectedText: selectedText })
-    //   );
-    //   return;
-    // }
 
     if (
       timeDiff < timeThreshold &&
@@ -1039,23 +1018,4 @@ export const addAppleTouchEvent = (
 
     return false;
   };
-  let scrollLeft = 0;
-  doc.addEventListener(
-    "selectstart",
-    (event) => {
-      if (readerMode === "scroll") return;
-      scrollLeft = doc.body.scrollLeft;
-      //prevent doc.body from scrolling
-    },
-    false
-  );
-
-  doc.addEventListener(
-    "selectionchange",
-    (event) => {
-      if (readerMode === "scroll") return;
-      doc.body.scrollLeft = scrollLeft;
-    },
-    false
-  );
 };
