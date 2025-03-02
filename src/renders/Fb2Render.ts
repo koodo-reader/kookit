@@ -31,7 +31,7 @@ class Fb2Render extends GeneralRender {
       let blob = new Blob([this.fb2Buffer]);
       this.book = await makeFB2(blob);
     } catch (error) {
-      console.log(error);
+      console.error(error);
       throw error;
     }
   }

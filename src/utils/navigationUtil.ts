@@ -837,13 +837,16 @@ export const addAndroidTouchEvent = (
   doc.addEventListener(
     "selectionchange",
     (event) => {
-      doc.body.scrollLeft = scrollLeft;
+      console.log(scrollLeft);
+      if (scrollLeft > 0) {
+        doc.body.scrollLeft = scrollLeft;
+      }
+
       if (selectionTimeout) {
         clearTimeout(selectionTimeout);
       }
       selectionTimeout = setTimeout(() => {
         const selectedText = iWin.getSelection().toString().trim();
-        console.log("selecsdfsdtedText", selectedText);
         if (selectedText) {
           var range = iWin.getSelection().getRangeAt(0);
           var rect = range.getBoundingClientRect();
@@ -906,8 +909,7 @@ export const addAppleTouchEvent = (
     const distX = touchEndX - touchStartX;
     const distY = touchEndY - touchStartY;
 
-    var selectedText = iWin.getSelection().toString();
-    console.log("selectedText", selectedText);
+    // var selectedText = iWin.getSelection().toString();
     // if (selectedText && Date.now() - lastSelectEnd > 300) {
     //   window.ReactNativeWebView.postMessage(
     //     JSON.stringify({
@@ -922,7 +924,6 @@ export const addAppleTouchEvent = (
     }
     selectionTimeout = setTimeout(() => {
       const selectedText = iWin.getSelection().toString().trim();
-      console.log("selecsdfsdtedText", selectedText);
       if (selectedText) {
         var range = iWin.getSelection().getRangeAt(0);
         var rect = range.getBoundingClientRect();

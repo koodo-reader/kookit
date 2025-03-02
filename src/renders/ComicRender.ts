@@ -88,7 +88,6 @@ class ComicRender extends GeneralRender {
     if (!this.book) {
       await this.parse();
     }
-    console.log(this.book);
     return await getCache(this.book);
   }
   async makeZipLoader(file) {

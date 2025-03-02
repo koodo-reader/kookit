@@ -127,7 +127,6 @@ class MobileRender extends GeneralRender {
     if (!sel) return;
     let newRange = sel.getRangeAt(0);
     var safeRanges: Range[] = getSafeRanges(newRange);
-    console.log("clearSelectionKeepHighlight", safeRanges.length);
     for (var i = 0; i < safeRanges.length; i++) {
       const rects = filterRects(safeRanges[i].getClientRects());
       for (let index = 0; index < rects.length; index++) {

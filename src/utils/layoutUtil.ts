@@ -150,7 +150,6 @@ export const progressInfo = (readerMode: string, doc: Document) => {
   // if (parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") === 1) {
   //   await new Promise((r) => setTimeout(r, 1000));
   // }
-  console.log(convertStyleNum(doc.body.scrollLeft), doc.body.clientWidth);
   return {
     totalPage:
       readerMode === "scroll"
@@ -262,7 +261,6 @@ export const handleImageSize = async (
       }
     }
     if (maxWidth || maxHeight) {
-      console.log(item.clientWidth, maxWidth, maxHeight);
       item.setAttribute(
         "style",
         (item.getAttribute("style") ? item.getAttribute("style") : "") +

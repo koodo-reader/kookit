@@ -18,12 +18,9 @@ class PdfRender extends GeneralRender {
         await this.parse();
       }
       let parser = new GeneralParser(this.book);
-      console.log(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
-      console.log(this.chapterDocList);
 
-      console.log(this.chapterList);
       createIframe(element);
       let doc = this.getDocument();
       if (!doc) return;

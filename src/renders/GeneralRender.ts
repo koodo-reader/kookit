@@ -551,7 +551,7 @@ class GeneralRender extends EventEmitter {
         );
         // highlighter.highlightSelection(classes[item.color]);
       } catch (e) {
-        console.log(
+        console.error(
           e,
           "Exception has been caught when restore character ranges."
         );
