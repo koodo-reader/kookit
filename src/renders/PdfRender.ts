@@ -139,12 +139,12 @@ class PdfRender extends GeneralRender {
 
       let selected = JSON.parse(item.range);
       var pageIndex = selected.page;
-      if (
-        selected.readerMode === "double" &&
-        selected.readerMode !== this.readerMode
-      ) {
-        continue;
-      }
+      // if (
+      //   selected.readerMode === "double" &&
+      //   selected.readerMode !== this.readerMode
+      // ) {
+      //   continue;
+      // }
       let page = await this.chapterDocList[pageIndex].text.getPage();
       let scale = await getPdfScale(
         this.element,
@@ -160,8 +160,7 @@ class PdfRender extends GeneralRender {
           handleNoteClick,
           page,
           scale,
-          doc,
-          this.readerMode
+          doc
         );
       } catch (e) {
         console.warn(
@@ -196,8 +195,7 @@ class PdfRender extends GeneralRender {
       handleNoteClick,
       page,
       scale,
-      doc,
-      this.readerMode
+      doc
     );
     if (!iWin || !iWin.getSelection()) return;
     iWin.getSelection()?.empty();

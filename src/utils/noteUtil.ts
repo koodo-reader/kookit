@@ -47,28 +47,20 @@ export const showPDFHighlight = (
   handleNoteClick: any,
   page: any,
   scale: number,
-  doc: Document,
-  readerMode: string
+  doc: Document
 ) => {
   let colorCode = classes[colorIndex];
   let pageElement: any = doc.querySelector(".noteLayer");
   let docLayer = doc.querySelector("#koodoPDFLayer");
   console.log(docLayer, "docLayer");
-  if (!docLayer) {
-    return;
-  }
 
   var viewport = page.getViewport({ scale: scale });
   selected.coords.forEach((rect) => {
     var bounds = viewport.convertToViewportRectangle(rect);
     var newNode = document.createElement("div");
-    console.log(
-      Math.min(bounds[0], bounds[2]) +
-        (readerMode === "double"
-          ? parseFloat(getComputedStyle(docLayer).marginLeft.split("px")[0])
-          : 0),
-      "sadfdsfds"
-    );
+    if (!docLayer) {
+      return;
+    }
     newNode?.setAttribute(
       "style",
       "position: absolute;" +
@@ -79,10 +71,7 @@ export const showPDFHighlight = (
           ? pdfColors[colorCode.split("-")[1]]
           : `2px solid ${lines[colorCode.split("-")[1]]}`) +
         "; left:" +
-        (Math.min(bounds[0], bounds[2]) +
-          (readerMode === "double"
-            ? parseFloat(getComputedStyle(docLayer).marginLeft.split("px")[0])
-            : 0)) +
+        Math.min(bounds[0], bounds[2]) +
         "px; top:" +
         Math.min(bounds[1], bounds[3]) +
         "px;" +
