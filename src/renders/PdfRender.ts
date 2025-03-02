@@ -160,7 +160,8 @@ class PdfRender extends GeneralRender {
           handleNoteClick,
           page,
           scale,
-          doc
+          doc,
+          this.readerMode
         );
       } catch (e) {
         console.warn(
@@ -195,7 +196,8 @@ class PdfRender extends GeneralRender {
       handleNoteClick,
       page,
       scale,
-      doc
+      doc,
+      this.readerMode
     );
     if (!iWin || !iWin.getSelection()) return;
     iWin.getSelection()?.empty();
