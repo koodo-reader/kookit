@@ -919,39 +919,34 @@ export const addAppleTouchEvent = (
     //   );
     //   return;
     // }
-    if (selectionTimeout) {
-      clearTimeout(selectionTimeout);
+    const selectedText = iWin.getSelection().toString().trim();
+    if (selectedText) {
+      var range = iWin.getSelection().getRangeAt(0);
+      var rect = range.getBoundingClientRect();
+      var position = {
+        top: rect.top - element.scrollTop,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        screenWidth: window.innerWidth,
+        screenHeight: window.innerHeight,
+      };
+
+      rangy.init();
+      let charRange = rangy
+        .getSelection(iframe)
+        .saveCharacterRanges(doc.body)[0];
+
+      window.ReactNativeWebView.postMessage(
+        JSON.stringify({
+          event: "select-text",
+          selectedText: selectedText,
+          position: position,
+          range: charRange,
+        })
+      );
+      return;
     }
-    selectionTimeout = setTimeout(() => {
-      const selectedText = iWin.getSelection().toString().trim();
-      if (selectedText) {
-        var range = iWin.getSelection().getRangeAt(0);
-        var rect = range.getBoundingClientRect();
-        var position = {
-          top: rect.top - element.scrollTop,
-          left: rect.left,
-          width: rect.width,
-          height: rect.height,
-          screenWidth: window.innerWidth,
-          screenHeight: window.innerHeight,
-        };
-
-        rangy.init();
-        let charRange = rangy
-          .getSelection(iframe)
-          .saveCharacterRanges(doc.body)[0];
-
-        window.ReactNativeWebView.postMessage(
-          JSON.stringify({
-            event: "select-text",
-            selectedText: selectedText,
-            position: position,
-            range: charRange,
-          })
-        );
-      }
-    }, 300); // Debounce selection events
-
     if (
       timeDiff < timeThreshold &&
       Math.abs(distX) < swipeThreshold &&
