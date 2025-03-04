@@ -892,9 +892,7 @@ export const addAppleTouchEvent = (
   let lastSelectEnd = 0;
   const swipeThreshold = 30; // Minimum distance in pixels to be considered a swipe
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
-  let selectionTimeout: any = null;
   let onTouchEnd = function (event) {
-    console.log("touchend");
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 1000) {
       event.preventDefault();

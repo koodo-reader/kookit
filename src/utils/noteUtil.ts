@@ -52,7 +52,6 @@ export const showPDFHighlight = (
   let colorCode = classes[colorIndex];
   let pageElement: any = doc.querySelector(".noteLayer");
   let docLayer = doc.querySelector("#koodoPDFLayer");
-  console.log(docLayer, "docLayer");
 
   var viewport = page.getViewport({ scale: scale });
   selected.coords.forEach((rect) => {
@@ -71,7 +70,8 @@ export const showPDFHighlight = (
           ? pdfColors[colorCode.split("-")[1]]
           : `2px solid ${lines[colorCode.split("-")[1]]}`) +
         "; left:" +
-        Math.min(bounds[0], bounds[2]) +
+        (Math.min(bounds[0], bounds[2]) +
+          parseFloat(getComputedStyle(docLayer).marginLeft)) +
         "px; top:" +
         Math.min(bounds[1], bounds[3]) +
         "px;" +

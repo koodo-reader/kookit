@@ -84,7 +84,6 @@ class MobileRender extends GeneralRender {
     let loadedFont = await font.load();
     // 将加载的字体添加到文档的字体集合中
     document.fonts.add(loadedFont);
-    console.log("Font loaded successfully");
     const fontFaceCSS =
       "@font-face {" +
       "  font-family: '" +
@@ -98,7 +97,6 @@ class MobileRender extends GeneralRender {
     styleElement.type = "text/css";
     styleElement.appendChild(document.createTextNode(fontFaceCSS));
     doc.head.appendChild(styleElement);
-    // console.log("displayFontUrl", fontName, fontUrl);
   }
   addTouchEvent(isAndroid: string) {
     let doc = this.getDocument();
@@ -158,7 +156,6 @@ class MobileRender extends GeneralRender {
     if (!doc) return;
     let tempHighlights = doc.querySelectorAll("#temp-highlight");
     tempHighlights.forEach((element) => {
-      console.log("clear");
       element.parentNode?.removeChild(element);
     });
     let iframe = this.getIframe();

@@ -136,12 +136,9 @@ class PdfRender extends GeneralRender {
 
       let selected = JSON.parse(item.range);
       var pageIndex = selected.page;
-      // if (
-      //   selected.readerMode === "double" &&
-      //   selected.readerMode !== this.readerMode
-      // ) {
-      //   continue;
-      // }
+      if (selected.readerMode === "double" || this.readerMode === "double") {
+        continue;
+      }
       let page = await this.chapterDocList[pageIndex].text.getPage();
       let scale = await getPdfScale(
         this.element,

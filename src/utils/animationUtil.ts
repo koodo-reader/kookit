@@ -319,14 +319,14 @@ export const addPageAnimation = (totalPage: number, isDarkMode) => {
   }
   return {
     flipToNextPage: () => {
-      console.log("flipToNextPage");
+      console.info("flipToNextPage");
       if (page + 1 < flips.length) {
         flips[page].target = -1;
         page = Math.min(page + 1, flips.length);
       }
     },
     flipToPrevPage: () => {
-      console.log("flipToPrevPage");
+      console.info("flipToPrevPage");
       if (page - 1 >= 0) {
         flips[page - 1].target = 1;
         page = Math.max(page - 1, 0);

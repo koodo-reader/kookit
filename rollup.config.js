@@ -35,23 +35,23 @@ export default [
   //     // uglify(),
   //   ],
   // },
-  {
-    input: "src/index.ts",
-    output: [{
-      name: "Kookit",
-      file: getDesktopOutputPath("kookit.js"),
-      format: "es",
-    }],
-    plugins: [
-      resolve({ browser: true }),
-      commonjs({
-        include: [/node_modules/],
-      }),
-      json(),
-      typescript({ tsconfig: "./tsconfig.json" }),
-    ],
-    external: ['mammoth', 'jszip', 'underscore', 'marked', 'chinese-s2t', 'mhtml2html', 'js-untar', 'fflate', '@zip.js/zip.js', 'rangy/lib/rangy-core.js', 'rangy/lib/rangy-textrange', 'chardet'],
-  },
+  // {
+  //   input: "src/index.ts",
+  //   output: [{
+  //     name: "Kookit",
+  //     file: getDesktopOutputPath("kookit.js"),
+  //     format: "es",
+  //   }],
+  //   plugins: [
+  //     resolve({ browser: true }),
+  //     commonjs({
+  //       include: [/node_modules/],
+  //     }),
+  //     json(),
+  //     typescript({ tsconfig: "./tsconfig.json" }),
+  //   ],
+  //   external: ['mammoth', 'jszip', 'underscore', 'marked', 'chinese-s2t', 'mhtml2html', 'js-untar', 'fflate', '@zip.js/zip.js', 'rangy/lib/rangy-core.js', 'rangy/lib/rangy-textrange', 'chardet'],
+  // },
   {
     input: "src/index.ts",
     output: [{

@@ -66,10 +66,10 @@ class ComicRender extends GeneralRender {
       } else if (this.format === "CBR") {
         this.rpc = await window.RPC.new("./lib/libunrar/worker.js", {
           loaded: function () {
-            console.log("loaded");
+            console.info("loaded");
           },
           progressShow: function (fileName, fileSize, progress) {
-            console.log(progress);
+            console.info(progress);
           },
         });
         await new Promise((r) => setTimeout(r, 200));
