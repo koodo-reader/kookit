@@ -196,6 +196,7 @@ class GeneralRender extends EventEmitter {
     this.trigger("rendered");
   }
   async goToPosition(bookLocationStr: string) {
+    console.log(bookLocationStr, "bookLocationStr");
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -210,6 +211,7 @@ class GeneralRender extends EventEmitter {
     };
     let { text, chapterTitle, chapterDocIndex, chapterHref, count, page, cfi } =
       bookLocation;
+    console.log(bookLocation, "bookLocation");
     await handleRenderChapter(
       parseInt(chapterDocIndex),
       chapterTitle,
@@ -253,6 +255,7 @@ class GeneralRender extends EventEmitter {
         }
       }
     }
+    console.log(text, count, page, "text, count, page");
     await handleScrollPosition(
       this.element,
       this.readerMode,
@@ -487,7 +490,7 @@ class GeneralRender extends EventEmitter {
     return progressInfo(this.readerMode, doc);
   }
   async record() {
-    if (this.animation === "sliding") {
+    if (this.animation !== "") {
       await new Promise((r) => setTimeout(r, 1000));
     }
     let doc = this.getDocument();

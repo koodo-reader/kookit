@@ -270,6 +270,7 @@ export const handleScrollPosition = async (
   page: string,
   doc: Document
 ) => {
+  console.log(text, count, href, page, "sfsdfsd");
   let top = 0;
   let left = 0;
   let targetNode: any = doc.body;
@@ -300,6 +301,8 @@ export const handleScrollPosition = async (
       return;
     }
     targetNode = getCloestBlock(targetNodeList[0], element, readerMode);
+    console.log(targetNode);
+    console.log(targetNode.offsetLeft, "sdfasdfds");
     left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
         convertStyleNum(
@@ -309,6 +312,7 @@ export const handleScrollPosition = async (
       : text === "prevChapter"
       ? doc.body.scrollWidth
       : 0;
+    console.log(left, "left");
     top = targetNode
       ? convertStyleNum(targetNode.offsetTop) -
         convertStyleNum(
@@ -833,6 +837,16 @@ export const addAndroidTouchEvent = (
     },
     false
   );
+  element.onscroll = function () {
+    if (readerMode !== "scroll") return;
+    if (
+      Math.abs(
+        element.scrollHeight - element.scrollTop - element.clientHeight
+      ) < 10
+    ) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ event: "right" }));
+    }
+  };
 
   doc.addEventListener(
     "selectionchange",
@@ -1011,5 +1025,15 @@ export const addAppleTouchEvent = (
     event.stopPropagation();
 
     return false;
+  };
+  element.onscroll = function () {
+    if (readerMode !== "scroll") return;
+    if (
+      Math.abs(
+        element.scrollHeight - element.scrollTop - element.clientHeight
+      ) < 10
+    ) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ event: "right" }));
+    }
   };
 };

@@ -48,7 +48,7 @@ class MobileRender extends GeneralRender {
     defaultStyle.innerHTML = css;
     doc.head.appendChild(defaultStyle);
   }
-  displayFontBase64(
+  async displayFontBase64(
     fontName: string,
     fontBase64: string,
     fontFormat: string,
@@ -56,6 +56,13 @@ class MobileRender extends GeneralRender {
   ) {
     let doc = this.getDocument();
     if (!doc || fontBase64.length === 0) return;
+    const font = new FontFace(
+      fontName,
+      `url(data:font/${fontType};charset=utf-8;base64,${fontBase64})`
+    );
+    let loadedFont = await font.load();
+    // 将加载的字体添加到文档的字体集合中
+    document.fonts.add(loadedFont);
     const fontFaceCSS =
       "@font-face {" +
       "  font-family: '" +
