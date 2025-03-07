@@ -114,7 +114,7 @@ export const getCache = (book: any) => {
               imgDomList[subindex].setAttribute("xlink:href", newUrl);
             }
           } catch (error) {
-            console.log(error);
+            console.error(error);
           }
         }
       }
@@ -139,7 +139,7 @@ export const getCache = (book: any) => {
               "." +
               mimetypeReverse[blob.type];
           } catch (error) {
-            console.log(error);
+            console.error(error);
           }
         }
       }

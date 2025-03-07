@@ -49,7 +49,7 @@ class Fb2Render extends GeneralRender {
       let parser = new GeneralParser(this.book);
       return await parser.getMetadata();
     } catch (error) {
-      console.log(error);
+      console.error(error);
       throw error;
     }
   }

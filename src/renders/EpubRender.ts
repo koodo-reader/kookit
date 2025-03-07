@@ -36,7 +36,7 @@ class EpubRender extends GeneralRender {
       const loader: any = await this.makeZipLoader(file);
       this.book = await new EPUB(loader).init();
     } catch (error) {
-      console.log(error);
+      console.error(error);
       throw error;
     }
   }
@@ -77,7 +77,7 @@ class EpubRender extends GeneralRender {
       const getSize = (name) => (map.get(name) as any)?.uncompressedSize ?? 0;
       return { entries, loadText, loadBlob, getSize };
     } catch (error) {
-      console.log(error, "error");
+      console.error(error, "error");
       throw error;
     }
   }
@@ -89,7 +89,7 @@ class EpubRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       return await parser.getMetadata();
     } catch (error) {
-      console.log(error, "error");
+      console.error(error, "error");
       throw error;
     }
   }

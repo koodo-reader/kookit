@@ -37,7 +37,7 @@ class MobiRender extends GeneralRender {
         this.book = await new MOBI({ unzlib: unzlibSync }).open(file);
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       throw error;
     }
   }
@@ -55,7 +55,7 @@ class MobiRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       return await parser.getMetadata();
     } catch (error) {
-      console.log(error);
+      console.error(error);
       throw error;
     }
   }

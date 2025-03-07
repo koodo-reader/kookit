@@ -225,7 +225,6 @@ export const makePDF = async (file, readerMode) => {
       const cached = cache.get(i)
       if (cached) return cached
       const url = await renderPage(await pdf.getPage(i + 1))
-      console.log(url)
       cache.set(i, url)
       return url
     },

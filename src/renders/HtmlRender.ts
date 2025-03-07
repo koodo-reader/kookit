@@ -48,7 +48,7 @@ class HtmlRender extends GeneralRender {
         };
         reader.readAsText(blob, "UTF-8");
       } catch (error) {
-        console.log(error);
+        console.error(error);
         reject(error);
       }
     });

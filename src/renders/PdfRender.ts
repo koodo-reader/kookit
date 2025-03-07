@@ -39,7 +39,7 @@ class PdfRender extends GeneralRender {
         this.book = await makePDF(file, this.readerMode);
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       throw error;
     }
   }
@@ -58,7 +58,7 @@ class PdfRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       return await parser.getMetadata();
     } catch (error) {
-      console.log(error);
+      console.error(error);
       throw error;
     }
   }

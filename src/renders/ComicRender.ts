@@ -37,7 +37,7 @@ class ComicRender extends GeneralRender {
         try {
           await this.parse();
         } catch (error) {
-          console.log(error);
+          console.error(error);
           reject(error);
         }
       }
@@ -80,7 +80,7 @@ class ComicRender extends GeneralRender {
         this.book = makeComicBook(loader, file, this.readerMode);
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       throw error;
     }
   }
@@ -156,8 +156,8 @@ class ComicRender extends GeneralRender {
           });
         })
         .catch((err) => {
+          console.error(err);
           reject(err);
-          console.log(err);
         });
     });
   }
@@ -261,7 +261,7 @@ class ComicRender extends GeneralRender {
           });
         };
       } catch (error) {
-        console.log(error);
+        console.error(error);
         reject(error);
       }
     });

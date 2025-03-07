@@ -35,7 +35,7 @@ class TxtRender extends GeneralRender {
       let text = textDecoder.decode(bytes);
       this.book = makeHtmlBook(text, true);
     } catch (error) {
-      console.log(error);
+      console.error(error);
       throw error;
     }
   }
@@ -53,7 +53,7 @@ class TxtRender extends GeneralRender {
       this.charset = charset || "utf8";
       return { charset: charset || "utf8" };
     } catch (error) {
-      console.log(error);
+      console.error(error);
       throw error;
     }
   }

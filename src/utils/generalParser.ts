@@ -1,5 +1,8 @@
 import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
+const isString = (value: any): boolean => {
+  return typeof value === "string" || value instanceof String;
+};
 class GeneralParser {
   book: any;
   chapterList: Chapter[];
@@ -27,7 +30,7 @@ class GeneralParser {
                 ? (await this.book.resolveHref(item.href)).index
                 : -1;
           } catch (error) {
-            console.log(error);
+            console.error(error);
           }
 
           return {
@@ -99,7 +102,7 @@ class GeneralParser {
           ? metadata.author[0].name
           : metadata.author && metadata.author[0]
           ? metadata.author[0]
-          : metadata.author
+          : metadata.author && isString(metadata.author)
           ? metadata.author
           : "";
       try {
@@ -125,7 +128,7 @@ class GeneralParser {
             cover: "",
           });
         } catch (error) {
-          console.log(error);
+          console.error(error);
           reject(error);
         }
       }

@@ -232,7 +232,7 @@ export const handleCssLink = async (doc) => {
   for (let index = 0; index < linkList.length; index++) {
     const link: any = linkList[index];
     link.onload = () => {
-      console.log("finished");
+      console.info("finished");
     };
   }
   let styleSheetPromises: any = [];
@@ -251,14 +251,14 @@ export const handleCssLink = async (doc) => {
       Promise.all(styleSheetPromises),
       new Promise((resolve, reject) => {
         setTimeout(() => {
-          console.log("css load timeout");
+          console.info("css load timeout");
           // reject(new Error("Timeout"));
           resolve("css load timeout");
         }, 1000);
       }),
     ]);
   } catch (err) {
-    console.log(err);
+    console.error(err);
   }
 };
 export const handleScrollPosition = async (
@@ -270,7 +270,6 @@ export const handleScrollPosition = async (
   page: string,
   doc: Document
 ) => {
-  console.log(text, count, href, page, "sfsdfsd");
   let top = 0;
   let left = 0;
   let targetNode: any = doc.body;
@@ -297,12 +296,10 @@ export const handleScrollPosition = async (
       );
     });
     if (targetNodeList.length === 0) {
-      console.log("failed");
+      console.info("failed");
       return;
     }
     targetNode = getCloestBlock(targetNodeList[0], element, readerMode);
-    console.log(targetNode);
-    console.log(targetNode.offsetLeft, "sdfasdfds");
     left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
         convertStyleNum(
@@ -312,7 +309,6 @@ export const handleScrollPosition = async (
       : text === "prevChapter"
       ? doc.body.scrollWidth
       : 0;
-    console.log(left, "left");
     top = targetNode
       ? convertStyleNum(targetNode.offsetTop) -
         convertStyleNum(
@@ -723,7 +719,7 @@ export const addAndroidTouchEvent = (
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
 
   let onTouchEnd = function (event) {
-    console.log("touchend");
+    console.info("touchend");
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
       event.preventDefault();
@@ -796,8 +792,18 @@ export const addAndroidTouchEvent = (
       Math.abs(distX) >= swipeThreshold ||
       Math.abs(distY) >= swipeThreshold
     ) {
-      console.log("Swipe detected");
+      console.info("Swipe detected");
       window.ReactNativeWebView.postMessage(JSON.stringify({ event: "swipe" }));
+      if (
+        readerMode === "scroll" &&
+        Math.abs(
+          element.scrollHeight - element.scrollTop - element.clientHeight
+        ) < 10
+      ) {
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({ event: "right" })
+        );
+      }
     }
   };
   let onTouchStart = function (event) {
@@ -837,21 +843,9 @@ export const addAndroidTouchEvent = (
     },
     false
   );
-  element.onscroll = function () {
-    if (readerMode !== "scroll") return;
-    if (
-      Math.abs(
-        element.scrollHeight - element.scrollTop - element.clientHeight
-      ) < 10
-    ) {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ event: "right" }));
-    }
-  };
-
   doc.addEventListener(
     "selectionchange",
     (event) => {
-      console.log(scrollLeft);
       if (scrollLeft > 0) {
         doc.body.scrollLeft = scrollLeft;
       }
@@ -994,6 +988,16 @@ export const addAppleTouchEvent = (
       Math.abs(distY) >= swipeThreshold
     ) {
       window.ReactNativeWebView.postMessage(JSON.stringify({ event: "swipe" }));
+      if (
+        readerMode === "scroll" &&
+        Math.abs(
+          element.scrollHeight - element.scrollTop - element.clientHeight
+        ) < 10
+      ) {
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({ event: "right" })
+        );
+      }
     }
   };
   let onTouchStart = function (event) {
@@ -1025,15 +1029,5 @@ export const addAppleTouchEvent = (
     event.stopPropagation();
 
     return false;
-  };
-  element.onscroll = function () {
-    if (readerMode !== "scroll") return;
-    if (
-      Math.abs(
-        element.scrollHeight - element.scrollTop - element.clientHeight
-      ) < 10
-    ) {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ event: "right" }));
-    }
   };
 };

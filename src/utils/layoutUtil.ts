@@ -25,8 +25,8 @@ export const handleIframeHeight = async (
       )
     ).then((results) => {
       if (results.every((res) => res))
-        console.log("all images loaded successfully!!");
-      else console.log("some images failed to load, all finished loading");
+        console.info("all images loaded successfully!!");
+      else console.error("some images failed to load, all finished loading");
     });
   }
   await handleImageSize(element, readerMode, format, doc);
@@ -165,7 +165,7 @@ export const progressInfo = (readerMode: string, doc: Document) => {
 };
 export const handleTextStyle = (doc: Document) => {
   let textNodes = doc.querySelectorAll(
-    "a, article, cite, div, li, p, span, pre, table, bold, body"
+    "a, article, cite, div, li, p, span, pre, table, bold, body, font"
   ) as any;
   for (let index = 0; index < textNodes.length; index++) {
     const element = textNodes[index];
@@ -180,7 +180,7 @@ export const getImageMeta = async (url) => {
   try {
     await img.decode();
   } catch (error) {
-    console.log(error);
+    console.error(error);
   }
   return img;
 };
