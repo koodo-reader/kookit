@@ -717,9 +717,11 @@ export const addAndroidTouchEvent = (
   let lastTouchEnd = 0;
   const swipeThreshold = 30; // Minimum distance in pixels to be considered a swipe
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
-
+  let section = Math.floor(element.clientWidth / 12);
+  let gap = section % 2 === 0 ? section : section - 1;
   let onTouchEnd = function (event) {
     console.info("touchend");
+
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
       event.preventDefault();
@@ -733,6 +735,43 @@ export const addAndroidTouchEvent = (
     const timeDiff = touchEndTime - touchStartTime;
     const distX = touchEndX - touchStartX;
     const distY = touchEndY - touchStartY;
+    if (isDragging) {
+      console.log("isDragging", distX, window.screen.width);
+      doc.body.style.transform = "";
+      let pageWidth = element.clientWidth + gap;
+      let scrollLeft = doc.body.scrollLeft;
+      console.log(scrollLeft, pageWidth);
+
+      // Improved snapping logic
+      let snapX;
+      const currentPage = Math.round(scrollLeft / pageWidth);
+      const dragPercentage = Math.abs(distX) / window.screen.width;
+      const dragThreshold = 0.1; // Only 10% drag needed to change page
+
+      if (distX > 0 && dragPercentage > dragThreshold) {
+        // Dragged right (go to previous page)
+        snapX = (currentPage - 1) * pageWidth;
+      } else if (distX < 0 && dragPercentage > dragThreshold) {
+        // Dragged left (go to next page)
+        snapX = (currentPage + 1) * pageWidth;
+      } else {
+        // Stay on current page
+        snapX = currentPage * pageWidth;
+      }
+
+      // Ensure we don't go out of bounds
+      snapX = Math.max(0, Math.min(snapX, doc.body.scrollWidth - pageWidth));
+
+      doc.body.scrollTo({
+        top: 0,
+        left: snapX,
+        behavior: "smooth",
+      });
+
+      isDragging = false;
+      return;
+    }
+
     var selectedText = iWin.getSelection().toString();
     if (selectedText) {
       window.ReactNativeWebView.postMessage(
@@ -823,10 +862,63 @@ export const addAndroidTouchEvent = (
     touchStartX = touch.screenX; // Changed from screenX to clientX
     touchStartY = touch.screenY; // Changed from screenY to clientY
   };
+  let isDragging = false;
+  let lastTouchX = 0;
+
+  let onTouchMove = function (event) {
+    // Skip handling if not dragging yet and still determining direction
+    if (!isDragging && Math.abs(event.touches[0].screenX - touchStartX) <= 10) {
+      return;
+    }
+
+    // Prevent default to stop browser scroll behavior
+    event.preventDefault();
+
+    const touch = event.touches[0];
+    const touchCurrentX = touch.screenX;
+    const touchCurrentY = touch.screenY;
+
+    // Calculate distance moved
+    const distX = touchCurrentX - touchStartX;
+    const distY = touchCurrentY - touchStartY;
+
+    // Only start dragging if horizontal movement is greater than vertical
+    if (
+      !isDragging &&
+      Math.abs(distX) > Math.abs(distY) &&
+      Math.abs(distX) > 10
+    ) {
+      isDragging = true;
+      lastTouchX = touchCurrentX;
+      // Apply hardware acceleration to the body
+      doc.body.style.transform = "translateZ(0)";
+      return;
+    }
+
+    // If we're in dragging mode, apply direct transform for better performance
+    if (isDragging) {
+      // Calculate the delta since last move event
+      const deltaX = touchCurrentX - lastTouchX;
+
+      // Use transform instead of scrollBy for smoother rendering
+      const currentScrollLeft = doc.body.scrollLeft;
+      doc.body.scrollLeft = currentScrollLeft - deltaX;
+
+      // Update last position
+      lastTouchX = touchCurrentX;
+
+      // Request animation frame for smoother updates (optional)
+      requestAnimationFrame(() => {
+        // Additional visual feedback can be added here
+      });
+    }
+  };
   doc.body.ontouchend = onTouchEnd;
   doc.body.ontouchstart = onTouchStart;
+  doc.body.ontouchmove = onTouchMove;
   iWin.ontouchend = onTouchEnd;
   iWin.ontouchstart = onTouchStart;
+  iWin.ontouchmove = onTouchMove;
   let selectionTimeout: any = null;
   doc.body.oncontextmenu = function (event) {
     event.preventDefault();
@@ -900,6 +992,8 @@ export const addAppleTouchEvent = (
   let lastSelectEnd = 0;
   const swipeThreshold = 30; // Minimum distance in pixels to be considered a swipe
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
+  let section = Math.floor(element.clientWidth / 12);
+  let gap = section % 2 === 0 ? section : section - 1;
   let onTouchEnd = function (event) {
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 1000) {
@@ -915,16 +1009,42 @@ export const addAppleTouchEvent = (
     const distX = touchEndX - touchStartX;
     const distY = touchEndY - touchStartY;
 
-    // var selectedText = iWin.getSelection().toString();
-    // if (selectedText && Date.now() - lastSelectEnd > 300) {
-    //   window.ReactNativeWebView.postMessage(
-    //     JSON.stringify({
-    //       event: "select-text-after-touch",
-    //       selectedText: selectedText,
-    //     })
-    //   );
-    //   return;
-    // }
+    if (isDragging) {
+      console.log("isDragging", distX, window.screen.width);
+      doc.body.style.transform = "";
+      let pageWidth = element.clientWidth + gap;
+      let scrollLeft = doc.body.scrollLeft;
+      console.log(scrollLeft, pageWidth);
+
+      // Improved snapping logic
+      let snapX;
+      const currentPage = Math.round(scrollLeft / pageWidth);
+      const dragPercentage = Math.abs(distX) / window.screen.width;
+      const dragThreshold = 0.1; // Only 10% drag needed to change page
+
+      if (distX > 0 && dragPercentage > dragThreshold) {
+        // Dragged right (go to previous page)
+        snapX = (currentPage - 1) * pageWidth;
+      } else if (distX < 0 && dragPercentage > dragThreshold) {
+        // Dragged left (go to next page)
+        snapX = (currentPage + 1) * pageWidth;
+      } else {
+        // Stay on current page
+        snapX = currentPage * pageWidth;
+      }
+
+      // Ensure we don't go out of bounds
+      snapX = Math.max(0, Math.min(snapX, doc.body.scrollWidth - pageWidth));
+
+      doc.body.scrollTo({
+        top: 0,
+        left: snapX,
+        behavior: "smooth",
+      });
+
+      isDragging = false;
+      return;
+    }
     const selectedText = iWin.getSelection().toString().trim();
     if (selectedText) {
       var range = iWin.getSelection().getRangeAt(0);
@@ -1017,10 +1137,63 @@ export const addAppleTouchEvent = (
     touchStartX = touch.clientX; // Changed from screenX to clientX
     touchStartY = touch.clientY; // Changed from screenY to clientY
   };
+  let isDragging = false;
+  let lastTouchX = 0;
+
+  let onTouchMove = function (event) {
+    // Skip handling if not dragging yet and still determining direction
+    if (!isDragging && Math.abs(event.touches[0].screenX - touchStartX) <= 10) {
+      return;
+    }
+
+    // Prevent default to stop browser scroll behavior
+    event.preventDefault();
+
+    const touch = event.touches[0];
+    const touchCurrentX = touch.screenX;
+    const touchCurrentY = touch.screenY;
+
+    // Calculate distance moved
+    const distX = touchCurrentX - touchStartX;
+    const distY = touchCurrentY - touchStartY;
+
+    // Only start dragging if horizontal movement is greater than vertical
+    if (
+      !isDragging &&
+      Math.abs(distX) > Math.abs(distY) &&
+      Math.abs(distX) > 10
+    ) {
+      isDragging = true;
+      lastTouchX = touchCurrentX;
+      // Apply hardware acceleration to the body
+      doc.body.style.transform = "translateZ(0)";
+      return;
+    }
+
+    // If we're in dragging mode, apply direct transform for better performance
+    if (isDragging) {
+      // Calculate the delta since last move event
+      const deltaX = touchCurrentX - lastTouchX;
+
+      // Use transform instead of scrollBy for smoother rendering
+      const currentScrollLeft = doc.body.scrollLeft;
+      doc.body.scrollLeft = currentScrollLeft - deltaX;
+
+      // Update last position
+      lastTouchX = touchCurrentX;
+
+      // Request animation frame for smoother updates (optional)
+      requestAnimationFrame(() => {
+        // Additional visual feedback can be added here
+      });
+    }
+  };
   doc.body.ontouchend = onTouchEnd;
   doc.body.ontouchstart = onTouchStart;
+  doc.body.ontouchmove = onTouchMove;
   iWin.ontouchend = onTouchEnd;
   iWin.ontouchstart = onTouchStart;
+  iWin.ontouchmove = onTouchMove;
 
   doc.addEventListener("touchmove", (event) => {}, false);
 
