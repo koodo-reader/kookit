@@ -41,6 +41,10 @@ class GeneralRender extends EventEmitter {
   element: any;
   flipToNextPage: () => void;
   flipToPrevPage: () => void;
+  mouseDownHandler: (event: TouchEvent) => void;
+  mouseUpHandler: (event: TouchEvent) => void;
+  mouseMoveHandler: (event: TouchEvent) => void;
+  isMobile: string | undefined;
   constructor(config: {
     readerMode: string;
     format: string;
@@ -48,6 +52,7 @@ class GeneralRender extends EventEmitter {
     convertChinese?: string;
     isBionic?: string;
     isDarkMode?: string;
+    isMobile?: string;
   }) {
     super();
     this.readerMode = config.readerMode;
@@ -56,6 +61,7 @@ class GeneralRender extends EventEmitter {
     this.convertChinese = config.convertChinese;
     this.isBionic = config.isBionic;
     this.isDarkMode = config.isDarkMode;
+    this.isMobile = config.isMobile;
     this.chapterList = [];
     this.chapterDocList = [];
     this.flattenChapters = [];
@@ -64,6 +70,9 @@ class GeneralRender extends EventEmitter {
     this.tempLocation = {};
     this.flipToNextPage = () => {};
     this.flipToPrevPage = () => {};
+    this.mouseDownHandler = () => {};
+    this.mouseUpHandler = () => {};
+    this.mouseMoveHandler = (event: TouchEvent) => {};
   }
   getPageSize() {
     let scale = this.readerMode === "double" ? 2 : 1;
@@ -364,7 +373,8 @@ class GeneralRender extends EventEmitter {
         1,
         doc,
         this.flipToNextPage,
-        this.flipToPrevPage
+        this.flipToPrevPage,
+        this.isMobile
       );
     }
     await this.record();
@@ -417,7 +427,8 @@ class GeneralRender extends EventEmitter {
         -1,
         doc,
         this.flipToNextPage,
-        this.flipToPrevPage
+        this.flipToPrevPage,
+        this.isMobile
       );
     }
     await this.record();
@@ -441,9 +452,11 @@ class GeneralRender extends EventEmitter {
     this.trigger("rendered");
   }
   async nextChapter() {
+    console.log("sadfsdfdsf444444");
     // this.trigger("page-changed");
     let doc = this.getDocument();
     let iframe = this.getIframe();
+    console.log("dgsdfgdfg");
     if (!doc || !iframe) return;
     await handleNextChapter(
       this.element,
@@ -618,19 +631,23 @@ class GeneralRender extends EventEmitter {
       processDocumentBody(doc);
     }
   };
-  addPageAnimation = () => {
-    // if (this.animation === "mimical") {
-    //   let progressInfo = this.getProgress();
-    //   if (!progressInfo) return;
-    //   const pageAnimation = addPageAnimation(
-    //     progressInfo.totalPage,
-    //     this.isDarkMode
-    //   );
-    //   if (pageAnimation) {
-    //     this.flipToNextPage = pageAnimation.flipToNextPage;
-    //     this.flipToPrevPage = pageAnimation.flipToPrevPage;
-    //   }
-    // }
+  addPageAnimation = (backgroundColor: string) => {
+    if (this.animation === "mimical") {
+      let progressInfo = this.getProgress();
+      if (!progressInfo) return;
+      const pageAnimation = addPageAnimation(
+        progressInfo.totalPage,
+        this.isDarkMode,
+        backgroundColor
+      );
+      if (pageAnimation) {
+        this.flipToNextPage = pageAnimation.flipToNextPage;
+        this.flipToPrevPage = pageAnimation.flipToPrevPage;
+        this.mouseDownHandler = pageAnimation.mouseDownHandler;
+        this.mouseUpHandler = pageAnimation.mouseUpHandler;
+        this.mouseMoveHandler = pageAnimation.mouseMoveHandler;
+      }
+    }
   };
 }
 export default GeneralRender;

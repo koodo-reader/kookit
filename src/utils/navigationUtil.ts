@@ -27,12 +27,13 @@ export const handleScrollPage = async (
   delta: number,
   doc: Document,
   flipToNextPage: () => void,
-  flipToPrevPage: () => void
+  flipToPrevPage: () => void,
+  isMobile: string | undefined
 ) => {
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   const width = element.clientWidth;
-  if (animation === "mimical") {
+  if (animation === "mimical" && isMobile !== "yes") {
     let bookDiv = document.getElementById("book");
     if (bookDiv) {
       bookDiv.style.display = "block";
@@ -52,7 +53,8 @@ export const handleScrollPage = async (
     doc.body.scrollBy({
       top: 0,
       left: -width - gap,
-      behavior: "auto",
+      behavior:
+        animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
     });
     // trigger("page-changed");
   } else if (delta < 0) {
@@ -60,7 +62,8 @@ export const handleScrollPage = async (
     doc.body.scrollBy({
       top: 0,
       left: width + gap,
-      behavior: "auto",
+      behavior:
+        animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
     });
   }
 };
@@ -704,12 +707,14 @@ export const isScrolledIntoView = (
   }
   return isVisible;
 };
+
 export const addAndroidTouchEvent = (
   doc: Document,
   iframe: any,
   element: HTMLElement,
   readerMode: string,
-  animation: string
+  animation: string,
+  render: any
 ) => {
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
   let touchStartTime = 0;
@@ -738,6 +743,21 @@ export const addAndroidTouchEvent = (
     const distY = touchEndY - touchStartY;
     if (isDragging && animation === "mimical") {
       isDragging = false;
+      render.mouseUpHandler(event);
+      if (touch.screenX < window.screen.width / 2) {
+        render.next();
+      } else {
+        render.prev();
+      }
+      setTimeout(() => {
+        let bookDiv = document.getElementById("book");
+        console.log("bookDiv", bookDiv);
+        if (bookDiv) {
+          bookDiv.style.display = "none";
+        }
+      }, 400);
+
+      return;
     }
     if (isDragging && animation === "sliding") {
       console.log("isDragging", distX, window.screen.width);
@@ -774,7 +794,7 @@ export const addAndroidTouchEvent = (
         left: snapX,
         behavior: "smooth",
       });
-
+      render.record();
       isDragging = false;
       return;
     }
@@ -903,14 +923,36 @@ export const addAndroidTouchEvent = (
         window.ReactNativeWebView.postMessage(
           JSON.stringify({ event: "swipe-start" })
         );
+        let bookDiv = document.getElementById("book");
+        if (bookDiv) {
+          bookDiv.style.display = "block";
+          render.mouseDownHandler(event);
+        }
       }
       return;
+    }
+    if (isDragging && animation === "mimical") {
+      render.mouseMoveHandler(event);
     }
     // If we're in dragging mode, apply direct transform for better performance
     if (isDragging && animation === "sliding") {
       // Calculate the delta since last move event
       const deltaX = touchCurrentX - lastTouchX;
-
+      if (
+        Math.abs(
+          doc.body.scrollWidth - doc.body.scrollLeft - element.clientWidth
+        ) < 10 &&
+        deltaX < 0
+      ) {
+        console.log("reaching end");
+        render.next();
+        return;
+      }
+      if (doc.body.scrollLeft === 0 && deltaX > 0) {
+        console.log("reaching start");
+        render.prev();
+        return;
+      }
       // Use transform instead of scrollBy for smoother rendering
       const currentScrollLeft = doc.body.scrollLeft;
       doc.body.scrollLeft = currentScrollLeft - deltaX;
@@ -994,7 +1036,8 @@ export const addAppleTouchEvent = (
   iframe: any,
   element: HTMLElement,
   readerMode: string,
-  animation: string
+  animation: string,
+  render: any
 ) => {
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
   let touchStartTime = 0;
@@ -1023,6 +1066,21 @@ export const addAppleTouchEvent = (
 
     if (isDragging && animation === "mimical") {
       isDragging = false;
+      render.mouseUpHandler(event);
+      if (touch.screenX < window.screen.width / 2) {
+        render.next();
+      } else {
+        render.prev();
+      }
+      setTimeout(() => {
+        let bookDiv = document.getElementById("book");
+        console.log("bookDiv", bookDiv);
+        if (bookDiv) {
+          bookDiv.style.display = "none";
+        }
+      }, 400);
+
+      return;
     }
     if (isDragging && animation === "sliding") {
       console.log("isDragging", distX, window.screen.width);
@@ -1058,7 +1116,7 @@ export const addAppleTouchEvent = (
         left: snapX,
         behavior: "smooth",
       });
-
+      render.record();
       isDragging = false;
       return;
     }
@@ -1188,15 +1246,36 @@ export const addAppleTouchEvent = (
         window.ReactNativeWebView.postMessage(
           JSON.stringify({ event: "swipe-start" })
         );
+        let bookDiv = document.getElementById("book");
+        if (bookDiv) {
+          bookDiv.style.display = "block";
+          render.mouseDownHandler(event);
+        }
       }
       return;
     }
-
+    if (isDragging && animation === "mimical") {
+      render.mouseMoveHandler(event);
+    }
     // If we're in dragging mode, apply direct transform for better performance
     if (isDragging && animation === "sliding") {
       // Calculate the delta since last move event
       const deltaX = touchCurrentX - lastTouchX;
-
+      if (
+        Math.abs(
+          doc.body.scrollWidth - doc.body.scrollLeft - element.clientWidth
+        ) < 10 &&
+        deltaX < 0
+      ) {
+        console.log("reaching end");
+        render.next();
+        return;
+      }
+      if (doc.body.scrollLeft === 0 && deltaX > 0) {
+        console.log("reaching start");
+        render.prev();
+        return;
+      }
       // Use transform instead of scrollBy for smoother rendering
       const currentScrollLeft = doc.body.scrollLeft;
       doc.body.scrollLeft = currentScrollLeft - deltaX;

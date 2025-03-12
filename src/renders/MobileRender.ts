@@ -15,7 +15,7 @@ class MobileRender extends GeneralRender {
   toc: any[];
   sections: any[];
   constructor(toc: any[], sections: any[], config: any) {
-    super({ format: "CACHE", ...config });
+    super({ format: "CACHE", isMobile: "yes", ...config });
     this.toc = toc;
     this.sections = sections;
   }
@@ -115,7 +115,8 @@ class MobileRender extends GeneralRender {
         iframe,
         this.element,
         this.readerMode,
-        this.animation
+        this.animation,
+        this
       );
     } else {
       addAppleTouchEvent(
@@ -123,7 +124,8 @@ class MobileRender extends GeneralRender {
         iframe,
         this.element,
         this.readerMode,
-        this.animation
+        this.animation,
+        this
       );
     }
   }

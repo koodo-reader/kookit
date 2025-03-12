@@ -61,7 +61,11 @@ function createBookElement(sectionCount) {
   style.innerHTML = css;
   document.head.appendChild(style);
 }
-export const addPageAnimation = (totalPage: number, isDarkMode) => {
+export const addPageAnimation = (
+  totalPage: number,
+  isDarkMode,
+  backgroundColor: string
+) => {
   // Example usage: create a book element with 3 sections
   createBookElement(totalPage);
   var WINDOW_WIDTH = window.innerWidth;
@@ -128,33 +132,48 @@ export const addPageAnimation = (totalPage: number, isDarkMode) => {
   document.addEventListener("mousedown", mouseDownHandler, false);
   document.addEventListener("mouseup", mouseUpHandler, false);
 
+  book.addEventListener("touchmove", mouseMoveHandler, false);
+  book.addEventListener("touchstart", mouseDownHandler, false);
+  book.addEventListener("touchend", mouseUpHandler, false);
+
   function mouseMoveHandler(event) {
     if (!book) return;
     // Offset mouse position so that the top of the spine is 0,0
-    mouse.x = event.clientX - book.offsetLeft - BOOK_WIDTH / 2;
-    mouse.y = event.clientY - book.offsetTop;
+    // mouse.x = event.clientX - book.offsetLeft - BOOK_WIDTH / 2;
+    // mouse.y = event.clientY - book.offsetTop;
+
+    const touch = event.touches[0];
+    const touchCurrentX = touch.screenX;
+    const touchCurrentY = touch.screenY;
+    mouse.x = touchCurrentX - book.offsetLeft - BOOK_WIDTH / 2;
+    mouse.y = touchCurrentY - book.offsetTop;
   }
 
   function mouseDownHandler(event) {
-    if (Math.abs(mouse.x) < PAGE_WIDTH) {
-      if (mouse.x < 0 && page - 1 >= 0) {
-        flips[page - 1].dragging = true;
-      } else if (mouse.x > 0 && page + 1 < flips.length) {
-        flips[page].dragging = true;
-      }
-    }
+    flips[page].dragging = true;
+    // if (Math.abs(mouse.x) < PAGE_WIDTH) {
+    //   if (mouse.x < 0 && page - 1 >= 0) {
+    //     console.log("isdragging2343");
+    //     flips[page - 1].dragging = true;
+    //   } else if (mouse.x > 0 && page + 1 < flips.length) {
+    //     flips[page].dragging = true;
+    //   }
+    // }
 
     // Prevents the text selection cursor from appearing when dragging
     event.preventDefault();
   }
 
   function mouseUpHandler(event) {
+    console.log(mouse.x, PAGE_WIDTH);
     for (var i = 0; i < flips.length; i++) {
       // If this flip was being dragged we animate to its destination
+      console.log(flips[i].dragging);
       if (flips[i].dragging) {
         // Figure out which page we should go to next depending on the flip direction
-        if (mouse.x < 0) {
+        if (mouse.x < PAGE_WIDTH / 2) {
           flips[i].target = -1;
+          console.log(page, "page");
           page = Math.min(page + 1, flips.length);
         } else {
           flips[i].target = 1;
@@ -282,7 +301,12 @@ export const addPageAnimation = (totalPage: number, isDarkMode) => {
       foldX,
       0
     );
-    if (isDarkMode === "no") {
+    if (backgroundColor) {
+      foldGradient.addColorStop(0.35, backgroundColor);
+      foldGradient.addColorStop(0.73, backgroundColor);
+      foldGradient.addColorStop(0.9, backgroundColor);
+      foldGradient.addColorStop(1.0, backgroundColor);
+    } else if (isDarkMode === "no") {
       foldGradient.addColorStop(0.35, "#fafafa");
       foldGradient.addColorStop(0.73, "#eeeeee");
       foldGradient.addColorStop(0.9, "#fafafa");
@@ -332,6 +356,9 @@ export const addPageAnimation = (totalPage: number, isDarkMode) => {
         page = Math.max(page - 1, 0);
       }
     },
+    mouseDownHandler,
+    mouseUpHandler,
+    mouseMoveHandler,
   };
   // window.flipToNextPage = () => {
   //   if (page + 1 < flips.length) {
