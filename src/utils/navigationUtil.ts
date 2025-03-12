@@ -52,7 +52,7 @@ export const handleScrollPage = async (
     doc.body.scrollBy({
       top: 0,
       left: -width - gap,
-      behavior: animation === "sliding" ? "smooth" : "auto",
+      behavior: "auto",
     });
     // trigger("page-changed");
   } else if (delta < 0) {
@@ -60,7 +60,7 @@ export const handleScrollPage = async (
     doc.body.scrollBy({
       top: 0,
       left: width + gap,
-      behavior: animation === "sliding" ? "smooth" : "auto",
+      behavior: "auto",
     });
   }
 };
@@ -708,7 +708,8 @@ export const addAndroidTouchEvent = (
   doc: Document,
   iframe: any,
   element: HTMLElement,
-  readerMode: string
+  readerMode: string,
+  animation: string
 ) => {
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
   let touchStartTime = 0;
@@ -735,7 +736,10 @@ export const addAndroidTouchEvent = (
     const timeDiff = touchEndTime - touchStartTime;
     const distX = touchEndX - touchStartX;
     const distY = touchEndY - touchStartY;
-    if (isDragging) {
+    if (isDragging && animation === "mimical") {
+      isDragging = false;
+    }
+    if (isDragging && animation === "sliding") {
       console.log("isDragging", distX, window.screen.width);
       doc.body.style.transform = "";
       let pageWidth = element.clientWidth + gap;
@@ -761,6 +765,9 @@ export const addAndroidTouchEvent = (
 
       // Ensure we don't go out of bounds
       snapX = Math.max(0, Math.min(snapX, doc.body.scrollWidth - pageWidth));
+      if (doc.body.scrollWidth - snapX < pageWidth + gap) {
+        snapX = doc.body.scrollWidth;
+      }
 
       doc.body.scrollTo({
         top: 0,
@@ -892,11 +899,15 @@ export const addAndroidTouchEvent = (
       lastTouchX = touchCurrentX;
       // Apply hardware acceleration to the body
       doc.body.style.transform = "translateZ(0)";
+      if (animation === "mimical") {
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({ event: "swipe-start" })
+        );
+      }
       return;
     }
-
     // If we're in dragging mode, apply direct transform for better performance
-    if (isDragging) {
+    if (isDragging && animation === "sliding") {
       // Calculate the delta since last move event
       const deltaX = touchCurrentX - lastTouchX;
 
@@ -982,7 +993,8 @@ export const addAppleTouchEvent = (
   doc: Document,
   iframe: any,
   element: HTMLElement,
-  readerMode: string
+  readerMode: string,
+  animation: string
 ) => {
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
   let touchStartTime = 0;
@@ -1009,7 +1021,10 @@ export const addAppleTouchEvent = (
     const distX = touchEndX - touchStartX;
     const distY = touchEndY - touchStartY;
 
-    if (isDragging) {
+    if (isDragging && animation === "mimical") {
+      isDragging = false;
+    }
+    if (isDragging && animation === "sliding") {
       console.log("isDragging", distX, window.screen.width);
       doc.body.style.transform = "";
       let pageWidth = element.clientWidth + gap;
@@ -1035,7 +1050,9 @@ export const addAppleTouchEvent = (
 
       // Ensure we don't go out of bounds
       snapX = Math.max(0, Math.min(snapX, doc.body.scrollWidth - pageWidth));
-
+      if (doc.body.scrollWidth - snapX < pageWidth + gap) {
+        snapX = doc.body.scrollWidth;
+      }
       doc.body.scrollTo({
         top: 0,
         left: snapX,
@@ -1167,11 +1184,16 @@ export const addAppleTouchEvent = (
       lastTouchX = touchCurrentX;
       // Apply hardware acceleration to the body
       doc.body.style.transform = "translateZ(0)";
+      if (animation === "mimical") {
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({ event: "swipe-start" })
+        );
+      }
       return;
     }
 
     // If we're in dragging mode, apply direct transform for better performance
-    if (isDragging) {
+    if (isDragging && animation === "sliding") {
       // Calculate the delta since last move event
       const deltaX = touchCurrentX - lastTouchX;
 

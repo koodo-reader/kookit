@@ -110,9 +110,21 @@ class MobileRender extends GeneralRender {
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
     if (isAndroid === "yes") {
-      addAndroidTouchEvent(doc, iframe, this.element, this.readerMode);
+      addAndroidTouchEvent(
+        doc,
+        iframe,
+        this.element,
+        this.readerMode,
+        this.animation
+      );
     } else {
-      addAppleTouchEvent(doc, iframe, this.element, this.readerMode);
+      addAppleTouchEvent(
+        doc,
+        iframe,
+        this.element,
+        this.readerMode,
+        this.animation
+      );
     }
   }
   clearSelection() {

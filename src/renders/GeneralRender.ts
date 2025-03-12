@@ -619,18 +619,18 @@ class GeneralRender extends EventEmitter {
     }
   };
   addPageAnimation = () => {
-    if (this.animation === "mimical") {
-      let progressInfo = this.getProgress();
-      if (!progressInfo) return;
-      const pageAnimation = addPageAnimation(
-        progressInfo.totalPage,
-        this.isDarkMode
-      );
-      if (pageAnimation) {
-        this.flipToNextPage = pageAnimation.flipToNextPage;
-        this.flipToPrevPage = pageAnimation.flipToPrevPage;
-      }
-    }
+    // if (this.animation === "mimical") {
+    //   let progressInfo = this.getProgress();
+    //   if (!progressInfo) return;
+    //   const pageAnimation = addPageAnimation(
+    //     progressInfo.totalPage,
+    //     this.isDarkMode
+    //   );
+    //   if (pageAnimation) {
+    //     this.flipToNextPage = pageAnimation.flipToNextPage;
+    //     this.flipToPrevPage = pageAnimation.flipToPrevPage;
+    //   }
+    // }
   };
 }
 export default GeneralRender;
