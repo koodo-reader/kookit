@@ -7,10 +7,12 @@ import { getCache } from "../libs/cache.js";
 class TxtRender extends GeneralRender {
   txtBuffer: ArrayBuffer;
   charset: string;
+  parserRegex: string;
   constructor(txtBuffer: ArrayBuffer, config: any) {
     super({ format: "TXT", ...config });
     this.txtBuffer = txtBuffer;
     this.charset = config.charset;
+    this.parserRegex = config.parserRegex;
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -33,7 +35,7 @@ class TxtRender extends GeneralRender {
       const textDecoder = new TextDecoder(this.charset);
       const bytes = new Uint8Array(this.txtBuffer);
       let text = textDecoder.decode(bytes);
-      this.book = makeHtmlBook(text, true);
+      this.book = makeHtmlBook(text, true, this.parserRegex);
     } catch (error) {
       console.error(error);
       throw error;

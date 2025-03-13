@@ -867,7 +867,12 @@ export const addAndroidTouchEvent = (
         ) < 10
       ) {
         window.ReactNativeWebView.postMessage(
-          JSON.stringify({ event: "right" })
+          JSON.stringify({ event: "scroll-bottom" })
+        );
+      }
+      if (readerMode === "scroll" && element.scrollTop === 0) {
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({ event: "scroll-top" })
         );
       }
     }
@@ -1190,7 +1195,12 @@ export const addAppleTouchEvent = (
         ) < 10
       ) {
         window.ReactNativeWebView.postMessage(
-          JSON.stringify({ event: "right" })
+          JSON.stringify({ event: "scroll-bottom" })
+        );
+      }
+      if (readerMode === "scroll" && element.scrollTop === 0) {
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({ event: "scroll-top" })
         );
       }
     }

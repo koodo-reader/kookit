@@ -1,7 +1,11 @@
 import Chinese from "chinese-s2t";
-export const makeHtmlBook = (bookStr: string, isTxt = false) => {
+export const makeHtmlBook = (
+  bookStr: string,
+  isTxt = false,
+  parserRegex = ""
+) => {
   const bookDoc = new DOMParser().parseFromString(
-    isTxt ? txtToHtml(bookStr) : bookStr,
+    isTxt ? txtToHtml(bookStr, parserRegex) : bookStr,
     "text/html"
   );
   let chapterDomList = getTitleElement(bookDoc);
@@ -96,7 +100,10 @@ export const cleanText = (str) => {
     .join("");
 };
 
-const isTitle = (line: any) => {
+const isTitle = (line: any, parserRegex: string = "") => {
+  if (parserRegex) {
+    return new RegExp(parserRegex).test(line);
+  }
   return (
     line &&
     line.length < 40 &&
@@ -199,11 +206,11 @@ const getChapterDoc = (bookStr: string) => {
   });
   return chapterDocList;
 };
-const txtToHtml = (text: string) => {
+const txtToHtml = (text: string, parserRegex: string) => {
   let html: string = "";
   let lines = text.split("\n");
   for (let item of lines) {
-    if (cleanText(item) && isTitle(cleanText(item))) {
+    if (cleanText(item) && isTitle(cleanText(item), parserRegex)) {
       html += `<h1>${cleanText(item)}</h1>`;
     } else {
       html += `<p>${item}</p>`;
