@@ -25,13 +25,11 @@ import { addPageAnimation } from "../utils/animationUtil";
 import rangy from "rangy/lib/rangy-core.js";
 import "rangy/lib/rangy-textrange";
 import Chinese from "chinese-s2t";
-import { processDocumentBody } from "../utils/bionicUtil";
 class GeneralRender extends EventEmitter {
   readerMode: string;
   format: string;
   animation: string;
   convertChinese: string | undefined;
-  isBionic: string | undefined;
   isDarkMode: string | undefined;
   book: any;
   tempLocation: any;
@@ -50,7 +48,6 @@ class GeneralRender extends EventEmitter {
     format: string;
     animation: string;
     convertChinese?: string;
-    isBionic?: string;
     isDarkMode?: string;
     isMobile?: string;
   }) {
@@ -59,7 +56,6 @@ class GeneralRender extends EventEmitter {
     this.animation = config.animation;
     this.format = config.format;
     this.convertChinese = config.convertChinese;
-    this.isBionic = config.isBionic;
     this.isDarkMode = config.isDarkMode;
     this.isMobile = config.isMobile;
     this.chapterList = [];
@@ -452,11 +448,9 @@ class GeneralRender extends EventEmitter {
     this.trigger("rendered");
   }
   async nextChapter() {
-    console.log("sadfsdfdsf444444");
     // this.trigger("page-changed");
     let doc = this.getDocument();
     let iframe = this.getIframe();
-    console.log("dgsdfgdfg");
     if (!doc || !iframe) return;
     await handleNextChapter(
       this.element,
@@ -622,13 +616,6 @@ class GeneralRender extends EventEmitter {
             .map((item) => Chinese.t2s(item))
             .join("");
         });
-    }
-  };
-  bionicReadingProcess = () => {
-    let doc = this.getDocument();
-    if (!doc) return;
-    if (this.isBionic === "yes") {
-      processDocumentBody(doc);
     }
   };
   addPageAnimation = (backgroundColor: string) => {

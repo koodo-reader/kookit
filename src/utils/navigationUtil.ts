@@ -751,7 +751,6 @@ export const addAndroidTouchEvent = (
       }
       setTimeout(() => {
         let bookDiv = document.getElementById("book");
-        console.log("bookDiv", bookDiv);
         if (bookDiv) {
           bookDiv.style.display = "none";
         }
@@ -760,11 +759,9 @@ export const addAndroidTouchEvent = (
       return;
     }
     if (isDragging && animation === "sliding") {
-      console.log("isDragging", distX, window.screen.width);
       doc.body.style.transform = "";
       let pageWidth = element.clientWidth + gap;
       let scrollLeft = doc.body.scrollLeft;
-      console.log(scrollLeft, pageWidth);
 
       // Improved snapping logic
       let snapX;
@@ -949,12 +946,10 @@ export const addAndroidTouchEvent = (
         ) < 10 &&
         deltaX < 0
       ) {
-        console.log("reaching end");
         render.next();
         return;
       }
       if (doc.body.scrollLeft === 0 && deltaX > 0) {
-        console.log("reaching start");
         render.prev();
         return;
       }
@@ -1079,7 +1074,6 @@ export const addAppleTouchEvent = (
       }
       setTimeout(() => {
         let bookDiv = document.getElementById("book");
-        console.log("bookDiv", bookDiv);
         if (bookDiv) {
           bookDiv.style.display = "none";
         }
@@ -1088,11 +1082,9 @@ export const addAppleTouchEvent = (
       return;
     }
     if (isDragging && animation === "sliding") {
-      console.log("isDragging", distX, window.screen.width);
       doc.body.style.transform = "";
       let pageWidth = element.clientWidth + gap;
       let scrollLeft = doc.body.scrollLeft;
-      console.log(scrollLeft, pageWidth);
 
       // Improved snapping logic
       let snapX;
@@ -1277,12 +1269,10 @@ export const addAppleTouchEvent = (
         ) < 10 &&
         deltaX < 0
       ) {
-        console.log("reaching end");
         render.next();
         return;
       }
       if (doc.body.scrollLeft === 0 && deltaX > 0) {
-        console.log("reaching start");
         render.prev();
         return;
       }

@@ -153,7 +153,6 @@ export const addPageAnimation = (
     flips[page].dragging = true;
     // if (Math.abs(mouse.x) < PAGE_WIDTH) {
     //   if (mouse.x < 0 && page - 1 >= 0) {
-    //     console.log("isdragging2343");
     //     flips[page - 1].dragging = true;
     //   } else if (mouse.x > 0 && page + 1 < flips.length) {
     //     flips[page].dragging = true;
@@ -165,15 +164,12 @@ export const addPageAnimation = (
   }
 
   function mouseUpHandler(event) {
-    console.log(mouse.x, PAGE_WIDTH);
     for (var i = 0; i < flips.length; i++) {
       // If this flip was being dragged we animate to its destination
-      console.log(flips[i].dragging);
       if (flips[i].dragging) {
         // Figure out which page we should go to next depending on the flip direction
         if (mouse.x < PAGE_WIDTH / 2) {
           flips[i].target = -1;
-          console.log(page, "page");
           page = Math.min(page + 1, flips.length);
         } else {
           flips[i].target = 1;
