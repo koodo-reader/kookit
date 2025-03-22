@@ -1121,8 +1121,9 @@ export const addAppleTouchEvent = (
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   let onTouchEnd = function (event) {
+    console.log("touchend");
     let now = new Date().getTime();
-    if (now - lastTouchEnd <= 1000) {
+    if (now - lastTouchEnd <= 300) {
       event.preventDefault();
       return;
     }
@@ -1153,7 +1154,7 @@ export const addAppleTouchEvent = (
       return;
     }
     // Replace the scrollTo implementation with this optimized version
-
+    console.log(isDragging, animation, "isDragging, animation");
     if (isDragging && animation === "sliding") {
       // Clean up any existing animation
       if (window.scrollAnimationId) {
@@ -1186,6 +1187,7 @@ export const addAppleTouchEvent = (
       if (doc.body.scrollWidth - snapX < pageWidth + gap) {
         snapX = doc.body.scrollWidth;
       }
+      console.log(snapX, "snapX");
 
       // Use custom smooth scrolling with requestAnimationFrame instead of browser's scrollTo
       const startTime = performance.now();
@@ -1217,7 +1219,7 @@ export const addAppleTouchEvent = (
         // Calculate new position using easing
         const progress = easeOutCubic(elapsedTime / duration);
         const newLeft = startLeft + distance * progress;
-
+        console.log(newLeft, "newLeft");
         // Update scroll position
         doc.body.scrollLeft = newLeft;
 
@@ -1391,6 +1393,7 @@ export const addAppleTouchEvent = (
       }
       // Use transform instead of scrollBy for smoother rendering
       const currentScrollLeft = doc.body.scrollLeft;
+      console.log(currentScrollLeft, deltaX, "currentScrollLeft");
       doc.body.scrollLeft = currentScrollLeft - deltaX;
 
       // Update last position
