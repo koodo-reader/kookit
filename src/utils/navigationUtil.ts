@@ -1333,8 +1333,12 @@ export const addAppleTouchEvent = (
   let lastTouchX = 0;
 
   let onTouchMove = function (event) {
+    const selectedText = iWin.getSelection().toString().trim();
     // Skip handling if not dragging yet and still determining direction
-    if (!isDragging && Math.abs(event.touches[0].screenX - touchStartX) <= 10) {
+    if (
+      (!isDragging && Math.abs(event.touches[0].screenX - touchStartX) <= 10) ||
+      selectedText
+    ) {
       return;
     }
 
@@ -1413,7 +1417,6 @@ export const addAppleTouchEvent = (
   iWin.ontouchmove = onTouchMove;
 
   doc.addEventListener("touchmove", (event) => {}, false);
-
   doc.body.oncontextmenu = function (event) {
     event.preventDefault();
     event.stopPropagation();
