@@ -12,7 +12,7 @@ export const handleIframeHeight = async (
   iframe: any,
   doc: Document
 ) => {
-  if (format !== "CACHE") {
+  if (format !== "MOBILE") {
     await Promise.all(
       Array.from([...doc.images, ...doc.querySelectorAll("image")]).map(
         (img: any) => {
@@ -155,11 +155,17 @@ export const progressInfo = (readerMode: string, doc: Document) => {
       readerMode === "scroll"
         ? 1
         : readerMode === "single"
-        ? parseInt(doc.body.scrollWidth / doc.body.clientWidth + "")
-        : parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") * 2,
+        ? Math.round(
+            parseFloat(doc.body.scrollWidth / doc.body.clientWidth + "")
+          )
+        : Math.round(
+            parseFloat(doc.body.scrollWidth / doc.body.clientWidth + "")
+          ) * 2,
     currentPage:
-      parseInt(
-        convertStyleNum(doc.body.scrollLeft) / doc.body.clientWidth + ""
+      Math.round(
+        parseFloat(
+          convertStyleNum(doc.body.scrollLeft) / doc.body.clientWidth + ""
+        )
       ) + 1,
   };
 };

@@ -73,13 +73,23 @@ const findValidChapter = (
   chapterDocList: ChapterDoc[],
   flag: string
 ) => {
-  let currentChapterIndex = _.findLastIndex(chapterDocList, {
-    href: chapterHref,
+  let currentChapterIndex = _.findLastIndex(chapterDocList, (chapter) => {
+    return (
+      chapter.href === chapterHref ||
+      (chapter.href &&
+        chapter.href.includes("#") &&
+        chapter.href.includes(chapterHref))
+    );
   });
   if (
     chapterHref &&
-    _.findLastIndex(chapterDocList, {
-      href: chapterHref,
+    _.findLastIndex(chapterDocList, (chapter) => {
+      return (
+        chapter.href === chapterHref ||
+        (chapter.href &&
+          chapter.href.includes("#") &&
+          chapter.href.includes(chapterHref))
+      );
     }) > -1
   ) {
     //nothing
@@ -189,11 +199,18 @@ export const handleRenderChapter = async (
       chapterDocIndex = tempChapterDocIndex;
     }
   }
+  console.log(chapterHref, chapterDocList, "chapterHref");
   if (chapterDocIndex === -1 && chapterHref.indexOf("#") > -1) {
     let href = chapterHref.split("#")[0];
-    let tempChapterDocIndex = _.findLastIndex(chapterDocList, {
-      href: href,
+    let tempChapterDocIndex = _.findLastIndex(chapterDocList, (chapter) => {
+      return (
+        chapter.href === href ||
+        (chapter.href &&
+          chapter.href.includes("#") &&
+          chapter.href.includes(href))
+      );
     });
+    console.log(tempChapterDocIndex, "tempChapterDocIndex");
     if (tempChapterDocIndex !== -1) {
       chapterDocIndex = tempChapterDocIndex;
     }
@@ -215,7 +232,7 @@ export const handleRenderChapter = async (
     );
     await chapterDocList[chapterDocIndex].text.render(doc, scale, readerMode);
   }
-  if (format !== "CACHE") {
+  if (format !== "MOBILE") {
     await handleCssLink(doc);
   }
 
@@ -225,7 +242,7 @@ export const handleRenderChapter = async (
   tempLocation.percentage = chapterDocIndex / chapterDocList.length + "";
   tempLocation.text = "";
   await handleIframeHeight(element, readerMode, format, iframe, doc);
-  handleScrollPosition(element, readerMode, "", "", "", "", doc);
+  await handleScrollPosition(element, readerMode, "", "", "", "", doc);
 };
 export const handleCssLink = async (doc) => {
   let linkList = Array.from(doc.getElementsByTagName("link"));
@@ -321,9 +338,11 @@ export const handleScrollPosition = async (
       : 0;
   } else if (href && href.indexOf("#") > -1) {
     let id = CSS.escape(href.split("#").reverse()[0]);
+    console.log(id, "id");
     if (!doc.body.querySelector("#" + id)) {
       return;
     }
+    console.log(id, "id");
     targetNode = getCloestBlock(
       doc.body.querySelector("#" + id) || doc.body,
       element,
@@ -509,16 +528,25 @@ export const handleHashChapter = (
   tempLocation
 ) => {
   let chapterHref = tempLocation.chapterHref || "";
+  console.log(tempLocation, "tempLocation435454");
   let lastIndexOfHash = chapterHref.lastIndexOf("#");
-  let beforeHash = chapterHref.substring(0, lastIndexOfHash);
-  let afterHash = chapterHref.substring(lastIndexOfHash + 1);
+  let beforeHash = "";
+  if (lastIndexOfHash === -1) {
+    beforeHash = chapterHref;
+  } else {
+    beforeHash = chapterHref.substring(0, lastIndexOfHash);
+  }
+  console.log(visibleNode);
   for (let index = 0; index < visibleNode.length; index++) {
     const element = visibleNode[index];
-    if (afterHash && element.id) {
+    if (element.id) {
       let newHref = beforeHash + "#" + element.id;
+      console.log(newHref, "newHref");
+      console.log(flattenChapters, "flattenChapters");
       let newIndex = _.findLastIndex(flattenChapters, {
         href: newHref,
       });
+      console.log(newIndex, "newIndex");
       if (newIndex > -1) {
         tempLocation.chapterHref = newHref;
         tempLocation.chapterTitle = flattenChapters[newIndex].label;
@@ -542,12 +570,14 @@ export const handleNextChapter = async (
     tempLocation.percentage = "1";
     return;
   }
+  console.log(chapterDocIndex, chapterDocList, "chapterDocIndex");
   let nextChapter = findValidChapter(
     chapterDocIndex,
     chapterHref,
     chapterDocList,
     "next"
   );
+  console.log(nextChapter, "nextChapter");
   if (!nextChapter) return;
   tempLocation.page = "";
   await handleRenderChapter(
@@ -758,7 +788,14 @@ export const addAndroidTouchEvent = (
 
       return;
     }
+    // Replace the scrollTo implementation with this optimized version
+
     if (isDragging && animation === "sliding") {
+      // Clean up any existing animation
+      if (window.scrollAnimationId) {
+        cancelAnimationFrame(window.scrollAnimationId);
+      }
+
       doc.body.style.transform = "";
       let pageWidth = element.clientWidth + gap;
       let scrollLeft = doc.body.scrollLeft;
@@ -786,13 +823,47 @@ export const addAndroidTouchEvent = (
         snapX = doc.body.scrollWidth;
       }
 
-      doc.body.scrollTo({
-        top: 0,
-        left: snapX,
-        behavior: "smooth",
-      });
-      render.record();
-      isDragging = false;
+      // Use custom smooth scrolling with requestAnimationFrame instead of browser's scrollTo
+      const startTime = performance.now();
+      const startLeft = doc.body.scrollLeft;
+      const distance = snapX - startLeft;
+      const duration = 300; // milliseconds
+
+      // Apply hardware acceleration before animation starts
+      doc.body.style.willChange = "scroll-position";
+
+      // Custom easing function for natural movement
+      const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+      function animateScroll(currentTime) {
+        const elapsedTime = currentTime - startTime;
+
+        if (elapsedTime >= duration) {
+          // Animation complete - set final position
+          doc.body.scrollLeft = snapX;
+
+          // Clean up acceleration hints
+          doc.body.style.willChange = "auto";
+
+          render.record();
+          isDragging = false;
+          return;
+        }
+
+        // Calculate new position using easing
+        const progress = easeOutCubic(elapsedTime / duration);
+        const newLeft = startLeft + distance * progress;
+
+        // Update scroll position
+        doc.body.scrollLeft = newLeft;
+
+        // Continue animation
+        window.scrollAnimationId = requestAnimationFrame(animateScroll);
+      }
+
+      // Start animation
+      window.scrollAnimationId = requestAnimationFrame(animateScroll);
+
       return;
     }
 
@@ -1081,7 +1152,14 @@ export const addAppleTouchEvent = (
 
       return;
     }
+    // Replace the scrollTo implementation with this optimized version
+
     if (isDragging && animation === "sliding") {
+      // Clean up any existing animation
+      if (window.scrollAnimationId) {
+        cancelAnimationFrame(window.scrollAnimationId);
+      }
+
       doc.body.style.transform = "";
       let pageWidth = element.clientWidth + gap;
       let scrollLeft = doc.body.scrollLeft;
@@ -1108,13 +1186,48 @@ export const addAppleTouchEvent = (
       if (doc.body.scrollWidth - snapX < pageWidth + gap) {
         snapX = doc.body.scrollWidth;
       }
-      doc.body.scrollTo({
-        top: 0,
-        left: snapX,
-        behavior: "smooth",
-      });
-      render.record();
-      isDragging = false;
+
+      // Use custom smooth scrolling with requestAnimationFrame instead of browser's scrollTo
+      const startTime = performance.now();
+      const startLeft = doc.body.scrollLeft;
+      const distance = snapX - startLeft;
+      const duration = 300; // milliseconds
+
+      // Apply hardware acceleration before animation starts
+      doc.body.style.willChange = "scroll-position";
+
+      // Custom easing function for natural movement
+      const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+      function animateScroll(currentTime) {
+        const elapsedTime = currentTime - startTime;
+
+        if (elapsedTime >= duration) {
+          // Animation complete - set final position
+          doc.body.scrollLeft = snapX;
+
+          // Clean up acceleration hints
+          doc.body.style.willChange = "auto";
+
+          render.record();
+          isDragging = false;
+          return;
+        }
+
+        // Calculate new position using easing
+        const progress = easeOutCubic(elapsedTime / duration);
+        const newLeft = startLeft + distance * progress;
+
+        // Update scroll position
+        doc.body.scrollLeft = newLeft;
+
+        // Continue animation
+        window.scrollAnimationId = requestAnimationFrame(animateScroll);
+      }
+
+      // Start animation
+      window.scrollAnimationId = requestAnimationFrame(animateScroll);
+
       return;
     }
     const selectedText = iWin.getSelection().toString().trim();

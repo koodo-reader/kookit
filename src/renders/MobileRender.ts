@@ -15,7 +15,7 @@ class MobileRender extends GeneralRender {
   toc: any[];
   sections: any[];
   constructor(toc: any[], sections: any[], config: any) {
-    super({ format: "CACHE", isMobile: "yes", ...config });
+    super({ format: "MOBILE", isMobile: "yes", ...config });
     this.toc = toc;
     this.sections = sections;
   }
