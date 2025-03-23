@@ -209,6 +209,11 @@ const getChapterDoc = (bookStr: string) => {
 const txtToHtml = (text: string, parserRegex: string) => {
   let html: string = "";
   let lines = text.split("\n");
+  console.log(lines);
+  if (lines.length === 1) {
+    lines = text.split("\r");
+  }
+  console.log(lines);
   for (let item of lines) {
     if (cleanText(item) && isTitle(cleanText(item), parserRegex)) {
       html += `<h1>${cleanText(item)}</h1>`;

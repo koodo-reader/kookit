@@ -1017,11 +1017,21 @@ export const addAndroidTouchEvent = (
         ) < 10 &&
         deltaX < 0
       ) {
-        render.next();
+        if (selectionTimeout) {
+          clearTimeout(selectionTimeout);
+        }
+        selectionTimeout = setTimeout(() => {
+          render.next();
+        }, 300); // Debounce selection events
         return;
       }
       if (doc.body.scrollLeft === 0 && deltaX > 0) {
-        render.prev();
+        if (selectionTimeout) {
+          clearTimeout(selectionTimeout);
+        }
+        selectionTimeout = setTimeout(() => {
+          render.prev();
+        }, 300); // Debounce selection events
         return;
       }
       // Use transform instead of scrollBy for smoother rendering
@@ -1388,11 +1398,21 @@ export const addAppleTouchEvent = (
         ) < 10 &&
         deltaX < 0
       ) {
-        render.next();
+        if (selectionTimeout) {
+          clearTimeout(selectionTimeout);
+        }
+        selectionTimeout = setTimeout(() => {
+          render.next();
+        }, 300); // Debounce selection events
         return;
       }
       if (doc.body.scrollLeft === 0 && deltaX > 0) {
-        render.prev();
+        if (selectionTimeout) {
+          clearTimeout(selectionTimeout);
+        }
+        selectionTimeout = setTimeout(() => {
+          render.prev();
+        }, 300); // Debounce selection events
         return;
       }
       // Use transform instead of scrollBy for smoother rendering
@@ -1415,7 +1435,7 @@ export const addAppleTouchEvent = (
   iWin.ontouchend = onTouchEnd;
   iWin.ontouchstart = onTouchStart;
   iWin.ontouchmove = onTouchMove;
-
+  let selectionTimeout: any = null;
   doc.addEventListener("touchmove", (event) => {}, false);
   doc.body.oncontextmenu = function (event) {
     event.preventDefault();

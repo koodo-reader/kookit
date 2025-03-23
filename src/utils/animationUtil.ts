@@ -150,14 +150,17 @@ export const addPageAnimation = (
   }
 
   function mouseDownHandler(event) {
-    flips[page].dragging = true;
-    // if (Math.abs(mouse.x) < PAGE_WIDTH) {
-    //   if (mouse.x < 0 && page - 1 >= 0) {
-    //     flips[page - 1].dragging = true;
-    //   } else if (mouse.x > 0 && page + 1 < flips.length) {
-    //     flips[page].dragging = true;
-    //   }
-    // }
+    const touch = event.touches[0];
+    // flips[page].dragging = true;
+
+    if (touch.screenX < window.screen.width / 2 && page - 1 >= 0) {
+      flips[page - 1].dragging = true;
+    } else if (
+      touch.screenX > window.screen.width / 2 &&
+      page + 1 < flips.length
+    ) {
+      flips[page].dragging = true;
+    }
 
     // Prevents the text selection cursor from appearing when dragging
     event.preventDefault();
