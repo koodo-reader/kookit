@@ -44,7 +44,6 @@ export const makeComicBook = ({ entries, loadBlob, getSize }, file, readerMode) 
     load: () => {
       if (readerMode === "double") {
         const nameExtra = files[index + 1]
-        console.log(name, nameExtra)
         return load(name, nameExtra)
       } else {
         return load(name)

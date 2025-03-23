@@ -453,7 +453,6 @@ class Resources {
           type: type.split(/\s/),
           href: resolveHref(href),
         }));
-    console.log(this, 'resources')
 
     this.cover =
       this.getItemByProperty("cover-image") ??

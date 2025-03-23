@@ -608,7 +608,6 @@ const getFont = async (buf, unzlib) => {
 
 export const isMOBI = async (file) => {
   const magic = getString(await file.slice(60, 68).arrayBuffer());
-  console.log(magic, 'magic');
   return magic === "BOOKMOBI"; // || magic === 'TEXtREAd'
 };
 

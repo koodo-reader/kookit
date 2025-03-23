@@ -230,7 +230,6 @@ export const makePDF = async (file, readerMode) => {
     },
     unload: async () => {
       let page = await pdf.getPage(i + 1)
-      console.log(page)
       page.cleanup()
     },
     render: async (doc, scale) => {

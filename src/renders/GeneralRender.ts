@@ -174,7 +174,6 @@ class GeneralRender extends EventEmitter {
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
-    console.log(chapterDocIndex, "chapterDocIndex");
     await handleRenderChapter(
       parseInt(chapterDocIndex),
       chapterTitle,
@@ -187,7 +186,6 @@ class GeneralRender extends EventEmitter {
       doc,
       iframe
     );
-    console.log(chapterHref, "chapterHref");
     if (chapterHref && chapterHref.indexOf("#") > -1) {
       await handleScrollPosition(
         this.element,

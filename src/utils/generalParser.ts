@@ -97,7 +97,6 @@ class GeneralParser {
   getMetadata() {
     return new Promise<any>(async (resolve, reject) => {
       const metadata = this.book.metadata;
-      console.log(metadata, "metadata");
       let author =
         metadata.author &&
         metadata.author[0] &&
@@ -111,7 +110,6 @@ class GeneralParser {
           : metadata.author && isString(metadata.author)
           ? metadata.author
           : "";
-      console.log(author, metadata.author[0], "author");
       try {
         const blob = await this.book.getCover();
         var reader = new FileReader();

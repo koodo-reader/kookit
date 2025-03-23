@@ -199,7 +199,6 @@ export const handleRenderChapter = async (
       chapterDocIndex = tempChapterDocIndex;
     }
   }
-  console.log(chapterHref, chapterDocList, "chapterHref");
   if (chapterDocIndex === -1 && chapterHref.indexOf("#") > -1) {
     let href = chapterHref.split("#")[0];
     let tempChapterDocIndex = _.findLastIndex(chapterDocList, (chapter) => {
@@ -210,7 +209,6 @@ export const handleRenderChapter = async (
           chapter.href.includes(href))
       );
     });
-    console.log(tempChapterDocIndex, "tempChapterDocIndex");
     if (tempChapterDocIndex !== -1) {
       chapterDocIndex = tempChapterDocIndex;
     }
@@ -338,11 +336,9 @@ export const handleScrollPosition = async (
       : 0;
   } else if (href && href.indexOf("#") > -1) {
     let id = CSS.escape(href.split("#").reverse()[0]);
-    console.log(id, "id");
     if (!doc.body.querySelector("#" + id)) {
       return;
     }
-    console.log(id, "id");
     targetNode = getCloestBlock(
       doc.body.querySelector("#" + id) || doc.body,
       element,
@@ -528,7 +524,6 @@ export const handleHashChapter = (
   tempLocation
 ) => {
   let chapterHref = tempLocation.chapterHref || "";
-  console.log(tempLocation, "tempLocation435454");
   let lastIndexOfHash = chapterHref.lastIndexOf("#");
   let beforeHash = "";
   if (lastIndexOfHash === -1) {
@@ -536,17 +531,13 @@ export const handleHashChapter = (
   } else {
     beforeHash = chapterHref.substring(0, lastIndexOfHash);
   }
-  console.log(visibleNode);
   for (let index = 0; index < visibleNode.length; index++) {
     const element = visibleNode[index];
     if (element.id) {
       let newHref = beforeHash + "#" + element.id;
-      console.log(newHref, "newHref");
-      console.log(flattenChapters, "flattenChapters");
       let newIndex = _.findLastIndex(flattenChapters, {
         href: newHref,
       });
-      console.log(newIndex, "newIndex");
       if (newIndex > -1) {
         tempLocation.chapterHref = newHref;
         tempLocation.chapterTitle = flattenChapters[newIndex].label;
@@ -570,14 +561,12 @@ export const handleNextChapter = async (
     tempLocation.percentage = "1";
     return;
   }
-  console.log(chapterDocIndex, chapterDocList, "chapterDocIndex");
   let nextChapter = findValidChapter(
     chapterDocIndex,
     chapterHref,
     chapterDocList,
     "next"
   );
-  console.log(nextChapter, "nextChapter");
   if (!nextChapter) return;
   tempLocation.page = "";
   await handleRenderChapter(
@@ -1131,7 +1120,6 @@ export const addAppleTouchEvent = (
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   let onTouchEnd = function (event) {
-    console.log("touchend");
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
       event.preventDefault();
@@ -1164,7 +1152,6 @@ export const addAppleTouchEvent = (
       return;
     }
     // Replace the scrollTo implementation with this optimized version
-    console.log(isDragging, animation, "isDragging, animation");
     if (isDragging && animation === "sliding") {
       // Clean up any existing animation
       if (window.scrollAnimationId) {
@@ -1197,7 +1184,6 @@ export const addAppleTouchEvent = (
       if (doc.body.scrollWidth - snapX < pageWidth + gap) {
         snapX = doc.body.scrollWidth;
       }
-      console.log(snapX, "snapX");
 
       // Use custom smooth scrolling with requestAnimationFrame instead of browser's scrollTo
       const startTime = performance.now();
@@ -1229,7 +1215,6 @@ export const addAppleTouchEvent = (
         // Calculate new position using easing
         const progress = easeOutCubic(elapsedTime / duration);
         const newLeft = startLeft + distance * progress;
-        console.log(newLeft, "newLeft");
         // Update scroll position
         doc.body.scrollLeft = newLeft;
 
@@ -1417,7 +1402,6 @@ export const addAppleTouchEvent = (
       }
       // Use transform instead of scrollBy for smoother rendering
       const currentScrollLeft = doc.body.scrollLeft;
-      console.log(currentScrollLeft, deltaX, "currentScrollLeft");
       doc.body.scrollLeft = currentScrollLeft - deltaX;
 
       // Update last position
