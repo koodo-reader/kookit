@@ -78,6 +78,7 @@ let startWithChars = [
   "后记",
   "楔子",
   "后序",
+  "章节目录",
   "尾声",
 ];
 let startWithNumAndChars = [" ", "　", "、", "·", ".", "：", ":"];

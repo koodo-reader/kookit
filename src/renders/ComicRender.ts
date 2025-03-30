@@ -5,8 +5,8 @@ import GeneralParser from "../utils/generalParser";
 import { makeComicBook } from "../libs/comic-book";
 import GeneralRender from "./GeneralRender";
 import untar from "js-untar";
-import { ZipReader, BlobReader, TextWriter, BlobWriter } from "@zip.js/zip.js";
 import { getCache } from "../libs/cache.js";
+import JSZip from "jszip";
 declare var window: any;
 
 class ComicRender extends GeneralRender {
@@ -91,17 +91,34 @@ class ComicRender extends GeneralRender {
     return await getCache(this.book);
   }
   async makeZipLoader(file) {
-    const reader = new ZipReader(new BlobReader(file));
-    const entries = await reader.getEntries();
-    const map = new Map(entries.map((entry) => [entry.filename, entry]));
-    const load =
-      (f) =>
-      (name, ...args) =>
-        map.has(name) ? f(map.get(name), ...args) : null;
-    const loadText = load((entry) => entry.getData(new TextWriter()));
-    const loadBlob = load((entry, type) => entry.getData(new BlobWriter(type)));
-    const getSize = (name) => (map.get(name) as any)?.uncompressedSize ?? 0;
-    return { entries, loadText, loadBlob, getSize };
+    let zip = await JSZip.loadAsync(file);
+    const entries = zip.files;
+    const loadText = async (name) => {
+      let entry = zip.file(name);
+      if (entry) {
+        return entry.async("string");
+      }
+      return "";
+    };
+    const loadBlob = async (name) => {
+      let entry = zip.file(name);
+      if (entry) {
+        let buffer = await entry.async("arraybuffer");
+        return new Blob([buffer]);
+      }
+      return new Blob([new ArrayBuffer(0)]);
+    };
+    const getSize = (name) => {
+      return 0;
+    };
+    return {
+      entries: Object.values(entries).map((item) => {
+        return { filename: item.name };
+      }),
+      loadText,
+      loadBlob,
+      getSize,
+    };
   }
   async makeTarLoader() {
     const entries = await untar(this.comicBuffer);

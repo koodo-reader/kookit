@@ -171,7 +171,7 @@ export const progressInfo = (readerMode: string, doc: Document) => {
 };
 export const handleTextStyle = (doc: Document) => {
   let textNodes = doc.querySelectorAll(
-    "a, article, cite, div, li, p, span, pre, table, bold, body, font"
+    "a, article, cite, div, li, p, span, pre, table, bold, font"
   ) as any;
   for (let index = 0; index < textNodes.length; index++) {
     const element = textNodes[index];

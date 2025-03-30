@@ -49,7 +49,6 @@
   },
   "dependencies": {
     "7z-wasm": "^1.1.0",
-    "@zip.js/zip.js": "^2.7.54",
     "chardet": "^2.0.0",
     "chinese-s2t": "^1.0.0",
     "fflate": "^0.8.2",

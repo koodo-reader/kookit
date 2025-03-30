@@ -2,8 +2,8 @@ import { createIframe, handleLayout } from "../utils/layoutUtil";
 import GeneralParser from "../utils/generalParser";
 import { EPUB } from "../libs/epub";
 import GeneralRender from "./GeneralRender";
-import { ZipReader, BlobReader, TextWriter, BlobWriter } from "@zip.js/zip.js";
 import { getCache } from "../libs/cache.js";
+import JSZip from "jszip";
 class EpubRender extends GeneralRender {
   epubBuffer: ArrayBuffer;
   constructor(epubBuffer: ArrayBuffer, config: any) {
@@ -51,35 +51,26 @@ class EpubRender extends GeneralRender {
     }
   }
   async makeZipLoader(file) {
-    let reader: any;
-    try {
-      reader = new ZipReader(new BlobReader(file));
-      const entries = await reader.getEntries();
-      const map = new Map(entries.map((entry) => [entry.filename, entry]));
-      const load =
-        (f) =>
-        (name, ...args) =>
-          map.has(name) ? f(map.get(name), ...args) : null;
-      const loadText = load((entry) => entry.getData(new TextWriter()));
-      const loadBlob = load((entry, type) => {
-        return new Promise<any>((resolve, reject) => {
-          entry
-            .getData(new BlobWriter(type))
-            .then((res) => {
-              resolve(res);
-            })
-            .catch((err) => {
-              resolve(new Blob());
-            });
-        });
-        // return entry.getData(new BlobWriter(type));
-      });
-      const getSize = (name) => (map.get(name) as any)?.uncompressedSize ?? 0;
-      return { entries, loadText, loadBlob, getSize };
-    } catch (error) {
-      console.error(error, "error");
-      throw error;
-    }
+    let zip = await JSZip.loadAsync(file);
+    const entries = zip.files;
+    const loadText = async (name) => {
+      let entry = zip.file(name);
+      if (entry) {
+        return entry.async("string");
+      }
+      return "";
+    };
+    const loadBlob = async (name) => {
+      let entry = zip.file(name);
+      if (entry) {
+        return entry.async("arraybuffer");
+      }
+      return new ArrayBuffer(0);
+    };
+    const getSize = (name) => {
+      return 0;
+    };
+    return { entries, loadText, loadBlob, getSize };
   }
   async getMetadata() {
     try {

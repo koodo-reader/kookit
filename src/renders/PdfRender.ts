@@ -8,7 +8,7 @@ import { getCache } from "../libs/cache.js";
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
-    super({ format: "PDF", ...config });
+    super({ format: "PDF", ...config, convertChinese: "Default" });
     this.pdfBuffer = pdfBuffer;
   }
   renderTo(element: HTMLElement) {
