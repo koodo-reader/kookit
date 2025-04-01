@@ -63,14 +63,22 @@ class EpubRender extends GeneralRender {
     const loadBlob = async (name) => {
       let entry = zip.file(name);
       if (entry) {
-        return entry.async("arraybuffer");
+        let buffer = await entry.async("arraybuffer");
+        return new Blob([buffer]);
       }
-      return new ArrayBuffer(0);
+      return new Blob([new ArrayBuffer(0)]);
     };
     const getSize = (name) => {
       return 0;
     };
-    return { entries, loadText, loadBlob, getSize };
+    return {
+      entries: Object.values(entries).map((item) => {
+        return { filename: item.name };
+      }),
+      loadText,
+      loadBlob,
+      getSize,
+    };
   }
   async getMetadata() {
     try {

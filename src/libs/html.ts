@@ -226,21 +226,26 @@ const txtToHtml = (text: string, parserRegex: string) => {
     return `<h1>Title</h1><p>${text}</p>`;
   }
 };
-const getHFromStr = (str) => {
-  const regex = /<h[1-6][^>]*>(.*?)<\/h[1-6]>/; // 匹配第一个h1标签里的内容，支持换行符和其他特殊字符
-  const match = regex.exec(str);
-  const content = match
-    ? match[1].replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    : ""; // 处理转义字符
-  return content; // 输出：This\nis\na\nheading
+const getHFromStr = (str: string): string => {
+  // Create temporary DOM element
+  const tempDoc = new DOMParser().parseFromString(str, "text/html");
+
+  // Find first heading tag
+  const headingTag = tempDoc.querySelector("h1, h2, h3, h4, h5, h6");
+
+  // Return content if found, otherwise empty string
+  return headingTag ? headingTag.textContent?.trim() || "" : "";
 };
+
 const getTitleFromStr = (str) => {
-  const regex = /<title[^>]*>(.*?)<\/title>/; // 匹配第一个h1标签里的内容，支持换行符和其他特殊字符
-  const match = regex.exec(str);
-  const content = match
-    ? match[1].replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    : ""; // 处理转义字符
-  return content; // 输出：This\nis\na\nheading
+  // Create temporary DOM element
+  const tempDoc = new DOMParser().parseFromString(str, "text/html");
+
+  // Find first heading tag
+  const headingTag = tempDoc.querySelector("title");
+
+  // Return content if found, otherwise empty string
+  return headingTag ? headingTag.textContent?.trim() || "" : "";
 };
 const getTitlefromText = (bookDoc) => {
   let elements = bookDoc.getElementsByTagName("*");
