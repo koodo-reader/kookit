@@ -230,9 +230,8 @@ export const handleRenderChapter = async (
     );
     await chapterDocList[chapterDocIndex].text.render(doc, scale, readerMode);
   }
-  if (format !== "MOBILE") {
-    await handleCssLink(doc);
-  }
+
+  await handleCssLink(doc);
 
   tempLocation.chapterTitle = chapterTitle;
   tempLocation.chapterHref = chapterHref;
@@ -1068,7 +1067,7 @@ export const addAndroidTouchEvent = (
       if (selectionTimeout) {
         clearTimeout(selectionTimeout);
       }
-      selectionTimeout = setTimeout(() => {
+      selectionTimeout = setTimeout(async () => {
         const selectedText = iWin.getSelection().toString().trim();
         if (selectedText) {
           var range = iWin.getSelection().getRangeAt(0);
@@ -1083,9 +1082,7 @@ export const addAndroidTouchEvent = (
           };
 
           rangy.init();
-          let charRange = rangy
-            .getSelection(iframe)
-            .saveCharacterRanges(doc.body)[0];
+          let charRange = await render.getHightlightCoords();
 
           window.ReactNativeWebView.postMessage(
             JSON.stringify({
@@ -1096,7 +1093,7 @@ export const addAndroidTouchEvent = (
             })
           );
         }
-      }, 300); // Debounce selection events
+      }, 500); // Debounce selection events
     },
     false
   );
@@ -1119,7 +1116,7 @@ export const addAppleTouchEvent = (
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  let onTouchEnd = function (event) {
+  let onTouchEnd = async function (event) {
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
       event.preventDefault();
@@ -1241,9 +1238,7 @@ export const addAppleTouchEvent = (
       };
 
       rangy.init();
-      let charRange = rangy
-        .getSelection(iframe)
-        .saveCharacterRanges(doc.body)[0];
+      let charRange = await render.getHightlightCoords();
 
       window.ReactNativeWebView.postMessage(
         JSON.stringify({

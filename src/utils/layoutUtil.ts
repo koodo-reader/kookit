@@ -12,23 +12,22 @@ export const handleIframeHeight = async (
   iframe: any,
   doc: Document
 ) => {
-  if (format !== "MOBILE") {
-    await Promise.all(
-      Array.from([...doc.images, ...doc.querySelectorAll("image")]).map(
-        (img: any) => {
-          if (img.complete) return Promise.resolve(img.naturalHeight !== 0);
-          return new Promise((resolve) => {
-            img.addEventListener("load", () => resolve(true));
-            img.addEventListener("error", () => resolve(false));
-          });
-        }
-      )
-    ).then((results) => {
-      if (results.every((res) => res))
-        console.info("all images loaded successfully!!");
-      else console.error("some images failed to load, all finished loading");
-    });
-  }
+  await Promise.all(
+    Array.from([...doc.images, ...doc.querySelectorAll("image")]).map(
+      (img: any) => {
+        if (img.complete) return Promise.resolve(img.naturalHeight !== 0);
+        return new Promise((resolve) => {
+          img.addEventListener("load", () => resolve(true));
+          img.addEventListener("error", () => resolve(false));
+        });
+      }
+    )
+  ).then((results) => {
+    if (results.every((res) => res))
+      console.info("all images loaded successfully!!");
+    else console.error("some images failed to load, all finished loading");
+  });
+
   await handleImageSize(element, readerMode, format, doc);
   if (format !== "PDF") {
     handleTextStyle(doc);

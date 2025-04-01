@@ -108,28 +108,28 @@ export default [
       warn(warning);
     },
   },
-  {
-    input: "src/mobile.ts",
-    output: [{
-      name: "Kookit",
-      file: getMobileOutputPath("kookit-mobile.min.txt"),
-      format: "umd",
-    }],
-    plugins: [
-      resolve({ browser: true }),
-      commonjs({
-        include: [/node_modules/],
-      }),
-      json(),
-      typescript({ tsconfig: "./tsconfig.json" }),
-      terser({
-        format: {
-          comments: false,
-        },
-      }),
-    ],
-    external: [],
-  },
+  // {
+  //   input: "src/mobile.ts",
+  //   output: [{
+  //     name: "Kookit",
+  //     file: getMobileOutputPath("kookit-mobile.min.txt"),
+  //     format: "umd",
+  //   }],
+  //   plugins: [
+  //     resolve({ browser: true }),
+  //     commonjs({
+  //       include: [/node_modules/],
+  //     }),
+  //     json(),
+  //     typescript({ tsconfig: "./tsconfig.json" }),
+  //     terser({
+  //       format: {
+  //         comments: false,
+  //       },
+  //     }),
+  //   ],
+  //   external: [],
+  // },
 
   // CommonJS (for Node) and ES module (for bundlers) build.
   // (We could have three entries in the configuration array

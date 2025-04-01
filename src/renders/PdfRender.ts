@@ -20,7 +20,6 @@ class PdfRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
-
       createIframe(element);
       let doc = this.getDocument();
       if (!doc) return;
@@ -62,7 +61,8 @@ class PdfRender extends GeneralRender {
       throw error;
     }
   }
-  async getHightlightCoords(pageIndex: number) {
+  async getHightlightCoords() {
+    let pageIndex = this.tempLocation.chapterDocIndex;
     let doc = this.getDocument();
     if (!doc) return;
 

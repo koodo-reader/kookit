@@ -95,7 +95,18 @@ export const showPDFHighlight = (
         }
       }
     });
-
+    newNode.ontouchend = (event) => {
+      if (event && event.target) {
+        if (
+          (event.target as any).dataset &&
+          (event.target as any).dataset.key
+        ) {
+          handleNoteClick(event);
+        }
+      }
+      event.preventDefault();
+      event.stopPropagation();
+    };
     pageElement.appendChild(newNode);
   });
 };
