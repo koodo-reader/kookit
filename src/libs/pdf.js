@@ -86,68 +86,6 @@ const render = async (page, doc, zoom) => {
   docLayer.style.marginLeft = `calc(50% - ${docLayer.getBoundingClientRect().width / 2}px)`
   docLayer.style.visibility = 'visible'
 }
-const renderExtra = async (page, doc, zoom) => {
-  const scale = zoom * devicePixelRatio
-  let docLayer = doc.querySelector('#koodoPDFLayerExtra')
-  docLayer.style.display = 'block'
-  docLayer.style.visibility = 'hidden'
-  docLayer.style.transform = `scale(${1 / devicePixelRatio})`
-  docLayer.style.transformOrigin = 'top left'
-  docLayer.style.setProperty('--scale-factor', scale)
-  const viewport = page.getViewport({ scale })
-
-
-  // the canvas must be in the `PDFDocument`'s `ownerDocument`
-  // (`globalThis.document` by default); that's where the fonts are loaded
-  const canvas = document.createElement('canvas')
-  docLayer.style.width = `${viewport.width}px`
-  docLayer.style.height = `${viewport.height}px`
-  canvas.height = viewport.height
-  canvas.width = viewport.width
-  const canvasContext = canvas.getContext('2d')
-  await page.render({ canvasContext, viewport, background: 'rgba(0,0,0,0)', }).promise
-  doc.querySelector('#canvasExtra').replaceChildren(doc.adoptNode(canvas))
-  docLayer.style.overflow = 'hidden'
-  const container = doc.querySelector('#textLayerExtra')
-  const textLayer = new pdfjsLib.TextLayer({
-    textContentSource: await page.streamTextContent(),
-    container, viewport,
-  })
-  await textLayer.render()
-
-  // hide "offscreen" canvases appended to docuemnt when rendering text layer
-  // https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/pdf_viewer.css#L51-L58
-  for (const canvas of document.querySelectorAll('.hiddenCanvasElement'))
-    Object.assign(canvas.style, {
-      position: 'absolute',
-      top: '0',
-      left: '0',
-      width: '0',
-      height: '0',
-      display: 'none',
-    })
-
-  // fix text selection
-  // https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/text_layer_builder.js#L105-L107
-  const endOfContent = document.createElement('div')
-  endOfContent.className = 'endOfContent'
-  container.append(endOfContent)
-  // TODO: this only works in Firefox; see https://github.com/mozilla/pdf.js/pull/17923
-  container.onpointerdown = () => container.classList.add('selecting')
-  container.onpointerup = () => container.classList.remove('selecting')
-
-  const div = doc.querySelector('#annotationLayerExtra')
-  await new pdfjsLib.AnnotationLayer({ page, viewport, div }).render({
-    annotations: await page.getAnnotations(),
-    linkService: {
-      goToDestination: () => { },
-      getDestinationHash: dest => JSON.stringify(dest),
-      addLinkAttributes: (link, url) => link.href = url,
-    },
-  })
-  docLayer.style.marginLeft = `calc(50% - ${docLayer.getBoundingClientRect().width / 2}px)`
-  docLayer.style.visibility = 'visible'
-}
 
 const renderPage = async (page, getImageBlob) => {
   const viewport = page.getViewport({ scale: 1 })
@@ -178,12 +116,6 @@ const renderPage = async (page, getImageBlob) => {
             <div class="annotationLayer" id="annotationLayer"></div>
             <div id="canvas"></div>
         </div>
-        <div class="koodoPDFLayer" id="koodoPDFLayerExtra">
-            <div class="textLayer" id="textLayerExtra"></div>
-            <div class="annotationLayer" id="annotationLayerExtra"></div>
-            <div id="canvasExtra"></div>
-        </div>
-
     `], { type: 'text/html' }))
   return src
 }
@@ -227,13 +159,7 @@ export const makePDF = async (file, readerMode) => {
   }
 
   const outline = await pdf.getOutline()
-  book.toc = outline?.map(makeTOCItem).filter((_, i) => {
-    if (readerMode === "double") {
-      return i % 2 === 0
-    } else {
-      return true
-    }
-  })
+  book.toc = outline?.map(makeTOCItem)
 
   const cache = new Map()
   book.sections = Array.from({ length: pdf.numPages }).map((_, i) => ({
@@ -251,9 +177,6 @@ export const makePDF = async (file, readerMode) => {
     },
     render: async (doc, scale) => {
       await render(await pdf.getPage(i + 1), doc, scale);
-      if (readerMode === "double") {
-        await renderExtra(await pdf.getPage(i + 2), doc, scale);
-      }
     },
     size: 1000,
     getDimension: async () => {
@@ -263,13 +186,7 @@ export const makePDF = async (file, readerMode) => {
     getPage: async () => {
       return await pdf.getPage(i + 1)
     }
-  })).filter((_, i) => {
-    if (readerMode === "double") {
-      return i % 2 === 0
-    } else {
-      return true
-    }
-  })
+  }))
   book.isExternal = uri => /^\w+:/i.test(uri)
   book.resolveHref = async href => {
     const parsed = JSON.parse(href)

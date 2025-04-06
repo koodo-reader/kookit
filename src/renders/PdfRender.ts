@@ -1,10 +1,19 @@
-import { createIframe, handleLayout } from "../utils/layoutUtil.js";
+import {
+  createIframe,
+  createPDFIframe,
+  handleLayout,
+  handlePDFLayout,
+} from "../utils/layoutUtil.js";
 import GeneralParser from "../utils/generalParser.js";
 import { isPDF, makePDF } from "../libs/pdf.js";
 import GeneralRender from "./GeneralRender.js";
 import { clearHighlight, showPDFHighlight } from "../utils/noteUtil.js";
-import { getPdfScale } from "../utils/navigationUtil.js";
-import { getCache } from "../libs/cache.js";
+import {
+  getPdfScale,
+  handleRenderChapter,
+  handleRenderPDFChapter,
+  handleScrollPosition,
+} from "../utils/navigationUtil.js";
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
@@ -21,9 +30,25 @@ class PdfRender extends GeneralRender {
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
       createIframe(element);
+      const viewport = await this.chapterDocList[0].text.getDimension();
+      console.log("viewport", viewport);
       let doc = this.getDocument();
       if (!doc) return;
-      handleLayout(element, this.readerMode, doc);
+      console.log("doc", doc);
+      createPDFIframe(
+        doc.body || (doc.documentElement as HTMLElement),
+        this.chapterDocList,
+        viewport
+      );
+      if (this.readerMode === "scroll") {
+        let subIframe = doc.querySelectorAll("iframe")[0];
+        let iframeHeight = subIframe?.getBoundingClientRect().height;
+        let iframe = this.getIframe();
+        if (!iframe) return;
+        iframe.style.height = iframeHeight * this.chapterDocList.length + "px";
+      }
+
+      handlePDFLayout(element, this.readerMode);
       resolve();
     });
   }
@@ -48,6 +73,66 @@ class PdfRender extends GeneralRender {
     //   await this.parse();
     // }
     // return await getCache(this.book);
+  }
+  async goToPosition(bookLocationStr: string) {
+    let doc = this.getDocument();
+    let iframe = this.getIframe();
+    if (!doc || !iframe) return;
+    let bookLocation = JSON.parse(bookLocationStr);
+    this.tempLocation = {
+      text: bookLocation.text,
+      chapterTitle: bookLocation.chapterTitle,
+      chapterDocIndex: bookLocation.chapterDocIndex,
+      chapterHref: bookLocation.chapterHref,
+      count: bookLocation.count,
+      page: bookLocation.page,
+    };
+    let { text, chapterTitle, chapterDocIndex, chapterHref, count, page, cfi } =
+      bookLocation;
+    let subIframes = doc.querySelectorAll("iframe");
+    let subIframeLeft = subIframes[parseInt(chapterDocIndex)];
+    let subDocLeft = subIframeLeft?.contentDocument;
+    if (!subDocLeft) return;
+    await handleRenderPDFChapter(
+      parseInt(chapterDocIndex),
+      chapterTitle,
+      chapterHref,
+      this.chapterDocList,
+      this.element,
+      this.readerMode,
+      this.format,
+      this.tempLocation,
+      subDocLeft,
+      iframe
+    );
+    let subIframesRight = doc.querySelectorAll("iframe");
+    let subIframeRight = subIframesRight[parseInt(chapterDocIndex) + 1];
+    let subDocRight = subIframeRight?.contentDocument;
+    if (!subDocRight) return;
+    await handleRenderPDFChapter(
+      parseInt(chapterDocIndex) + 1,
+      chapterTitle,
+      chapterHref,
+      this.chapterDocList,
+      this.element,
+      this.readerMode,
+      this.format,
+      this.tempLocation,
+      subDocRight,
+      iframe
+    );
+    await handleScrollPosition(
+      this.element,
+      this.readerMode,
+      text,
+      count,
+      "",
+      page,
+      doc
+    );
+    await this.record();
+    this.trigger("rendered");
+    // this.addPageAnimation();
   }
   async getMetadata() {
     try {

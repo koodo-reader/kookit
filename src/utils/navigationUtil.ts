@@ -241,6 +241,40 @@ export const handleRenderChapter = async (
   await handleIframeHeight(element, readerMode, format, iframe, doc);
   await handleScrollPosition(element, readerMode, "", "", "", "", doc);
 };
+export const handleRenderPDFChapter = async (
+  chapterDocIndex: number,
+  chapterTitle: string,
+  chapterHref: string,
+  chapterDocList: ChapterDoc[],
+  element: HTMLElement,
+  readerMode: string,
+  format: string,
+  tempLocation: any,
+  doc: Document,
+  iframe: any
+) => {
+  doc.body.innerHTML = "";
+  doc.body.innerHTML = await handleOneChapterDoc(
+    chapterDocList[chapterDocIndex].text,
+    false
+  );
+  if (format === "PDF") {
+    let scale = await getPdfScale(
+      element,
+      readerMode,
+      chapterDocList,
+      chapterDocIndex
+    );
+    await chapterDocList[chapterDocIndex].text.render(doc, scale, readerMode);
+  }
+
+  tempLocation.chapterTitle = chapterTitle;
+  tempLocation.chapterHref = chapterHref;
+  tempLocation.chapterDocIndex = chapterDocIndex + "";
+  tempLocation.percentage = chapterDocIndex / chapterDocList.length + "";
+  tempLocation.text = "";
+  await handleIframeHeight(element, readerMode, format, iframe, doc);
+};
 export const handleCssLink = async (doc) => {
   let linkList = Array.from(doc.getElementsByTagName("link"));
   if (linkList.length === 0) {
