@@ -406,6 +406,7 @@ export const handleRecord = async (
   element: HTMLElement,
   readerMode: string,
   flattenChapters: Chapter[],
+  chapterDocList: ChapterDoc[],
   tempLocation: any,
   doc: Document,
   targetNode: HTMLElement | null
@@ -440,6 +441,10 @@ export const handleRecord = async (
     tempLocation.text = firstVisibleNode.textContent || "";
     tempLocation.count = count + "";
     tempLocation.page = "";
+    tempLocation.percentage =
+      parseInt(tempLocation.chapterDocIndex) / chapterDocList.length +
+      (1 / chapterDocList.length) * (count / nodeList.length) +
+      "";
   } else {
     tempLocation.page = (await progressInfo(readerMode, doc))?.currentPage + "";
   }

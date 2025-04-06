@@ -1,8 +1,24 @@
-const pdfjsPath = path => `./lib/pdfjs/${path}`
+const pdfjsPath = path => `${isElectron() ? "." : ""}/lib/pdfjs/${path}`
 
 const pdfjsLib = window.pdfjsLib
 
 const fetchText = async url => await (await fetch(url)).text()
+const isElectron = () => {
+  // Renderer process
+  if (typeof window !== 'undefined' && typeof window.process === 'object' && window.process.type === 'renderer') {
+    return true;
+  }
+  // Main process
+  if (typeof process !== 'undefined' && typeof process.versions === 'object' && !!process.versions.electron) {
+    return true;
+  }
+  // Detect the user agent when the `nodeIntegration` option is set to true
+  if (typeof navigator === 'object' && typeof navigator.userAgent === 'string' && navigator.userAgent.indexOf('Electron') >= 0) {
+    return true;
+  }
+
+  return false;
+}
 
 // https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/text_layer_builder.css
 const textLayerBuilderCSS = async () => await fetchText(pdfjsPath('text_layer_builder.css'))
@@ -185,6 +201,7 @@ export const makePDF = async (file, readerMode) => {
       transport.onDataRange(begin, chunk)
     })
   }
+  console.log(pdfjsPath('cmaps/'))
   const pdf = await pdfjsLib.getDocument({
     range: transport,
     cMapUrl: pdfjsPath('cmaps/'),

@@ -61,6 +61,12 @@ class PdfRender extends GeneralRender {
       throw error;
     }
   }
+  getProgress() {
+    return {
+      totalPage: this.chapterDocList.length,
+      currentPage: this.tempLocation.chapterDocIndex,
+    };
+  }
   async getHightlightCoords() {
     let pageIndex = this.tempLocation.chapterDocIndex;
     let doc = this.getDocument();

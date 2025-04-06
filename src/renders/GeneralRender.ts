@@ -511,6 +511,7 @@ class GeneralRender extends EventEmitter {
       this.element,
       this.readerMode,
       this.flatChapter(this.chapterList),
+      this.chapterDocList,
       this.tempLocation,
       doc,
       null
@@ -529,6 +530,7 @@ class GeneralRender extends EventEmitter {
       this.element,
       this.readerMode,
       this.flatChapter(this.chapterList),
+      this.chapterDocList,
       this.tempLocation,
       doc,
       selectedElement
