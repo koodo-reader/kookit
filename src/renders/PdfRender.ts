@@ -1,19 +1,16 @@
-import {
-  createIframe,
-  createPDFIframe,
-  handleLayout,
-  handlePDFLayout,
-} from "../utils/layoutUtil.js";
+import { createIframe } from "../utils/layoutUtil.js";
 import GeneralParser from "../utils/generalParser.js";
 import { isPDF, makePDF } from "../libs/pdf.js";
 import GeneralRender from "./GeneralRender.js";
 import { clearHighlight, showPDFHighlight } from "../utils/noteUtil.js";
 import {
+  createPDFIframe,
   getPdfScale,
-  handleRenderChapter,
+  handlePDFLayout,
+  handlePDFScrollEvent,
   handleRenderPDFChapter,
-  handleScrollPosition,
-} from "../utils/navigationUtil.js";
+  handleScrollPDFPosition,
+} from "../utils/pdfUtil.js";
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
@@ -32,7 +29,7 @@ class PdfRender extends GeneralRender {
       createIframe(element);
       const viewport = await this.chapterDocList[0].text.getDimension();
       console.log("viewport", viewport);
-      let doc = this.getDocument();
+      let doc: any = this.getDocument();
       if (!doc) return;
       console.log("doc", doc);
       createPDFIframe(
@@ -46,9 +43,19 @@ class PdfRender extends GeneralRender {
         let iframe = this.getIframe();
         if (!iframe) return;
         iframe.style.height = iframeHeight * this.chapterDocList.length + "px";
+        this.element.addEventListener("scroll", (e) => {
+          console.log("scroll");
+          handlePDFScrollEvent(
+            this.chapterDocList,
+            element,
+            this.readerMode,
+            this.tempLocation,
+            doc
+          );
+        });
       }
 
-      handlePDFLayout(element, this.readerMode);
+      handlePDFLayout(element, this.readerMode, doc);
       resolve();
     });
   }
@@ -87,12 +94,9 @@ class PdfRender extends GeneralRender {
       count: bookLocation.count,
       page: bookLocation.page,
     };
-    let { text, chapterTitle, chapterDocIndex, chapterHref, count, page, cfi } =
-      bookLocation;
-    let subIframes = doc.querySelectorAll("iframe");
-    let subIframeLeft = subIframes[parseInt(chapterDocIndex)];
-    let subDocLeft = subIframeLeft?.contentDocument;
-    if (!subDocLeft) return;
+    let { chapterTitle, chapterDocIndex, chapterHref } = bookLocation;
+    console.log(chapterDocIndex, "chapterdocindex");
+
     await handleRenderPDFChapter(
       parseInt(chapterDocIndex),
       chapterTitle,
@@ -100,36 +104,23 @@ class PdfRender extends GeneralRender {
       this.chapterDocList,
       this.element,
       this.readerMode,
-      this.format,
       this.tempLocation,
-      subDocLeft,
-      iframe
-    );
-    let subIframesRight = doc.querySelectorAll("iframe");
-    let subIframeRight = subIframesRight[parseInt(chapterDocIndex) + 1];
-    let subDocRight = subIframeRight?.contentDocument;
-    if (!subDocRight) return;
-    await handleRenderPDFChapter(
-      parseInt(chapterDocIndex) + 1,
-      chapterTitle,
-      chapterHref,
-      this.chapterDocList,
-      this.element,
-      this.readerMode,
-      this.format,
-      this.tempLocation,
-      subDocRight,
-      iframe
-    );
-    await handleScrollPosition(
-      this.element,
-      this.readerMode,
-      text,
-      count,
-      "",
-      page,
       doc
     );
+    if (this.readerMode === "double") {
+      await handleRenderPDFChapter(
+        parseInt(chapterDocIndex) + 1,
+        chapterTitle,
+        chapterHref,
+        this.chapterDocList,
+        this.element,
+        this.readerMode,
+        this.tempLocation,
+        doc
+      );
+    }
+
+    await handleScrollPDFPosition(parseInt(chapterDocIndex), doc);
     await this.record();
     this.trigger("rendered");
     // this.addPageAnimation();

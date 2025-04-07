@@ -146,29 +146,7 @@ export const handlePrevChapter = async (
     iframe
   );
 };
-export const getPdfScale = async (
-  element: HTMLElement,
-  readerMode: string,
-  chapterDocList: ChapterDoc[],
-  chapterDocIndex: number
-) => {
-  let { width, height } = await chapterDocList[
-    chapterDocIndex
-  ].text.getDimension();
-  let columnNum = readerMode === "double" ? 2 : 1;
-  let section = Math.floor(element.clientWidth / 12);
-  let gap = section % 2 === 0 ? section : section - 1;
-  let viewWidth = (element.clientWidth - gap) / columnNum;
-  if (readerMode === "single") {
-    viewWidth = element.clientWidth;
-  }
-  let viewHeight = element.clientHeight;
-  let scale = Math.min(viewWidth / width, viewHeight / height);
-  if (readerMode === "scroll") {
-    scale = viewWidth / width;
-  }
-  return scale;
-};
+
 export const handleRenderChapter = async (
   chapterDocIndex: number,
   chapterTitle: string,
@@ -221,15 +199,6 @@ export const handleRenderChapter = async (
     chapterDocList[chapterDocIndex].text,
     false
   );
-  if (format === "PDF") {
-    let scale = await getPdfScale(
-      element,
-      readerMode,
-      chapterDocList,
-      chapterDocIndex
-    );
-    await chapterDocList[chapterDocIndex].text.render(doc, scale, readerMode);
-  }
 
   await handleCssLink(doc);
 
@@ -241,40 +210,7 @@ export const handleRenderChapter = async (
   await handleIframeHeight(element, readerMode, format, iframe, doc);
   await handleScrollPosition(element, readerMode, "", "", "", "", doc);
 };
-export const handleRenderPDFChapter = async (
-  chapterDocIndex: number,
-  chapterTitle: string,
-  chapterHref: string,
-  chapterDocList: ChapterDoc[],
-  element: HTMLElement,
-  readerMode: string,
-  format: string,
-  tempLocation: any,
-  doc: Document,
-  iframe: any
-) => {
-  doc.body.innerHTML = "";
-  doc.body.innerHTML = await handleOneChapterDoc(
-    chapterDocList[chapterDocIndex].text,
-    false
-  );
-  if (format === "PDF") {
-    let scale = await getPdfScale(
-      element,
-      readerMode,
-      chapterDocList,
-      chapterDocIndex
-    );
-    await chapterDocList[chapterDocIndex].text.render(doc, scale, readerMode);
-  }
 
-  tempLocation.chapterTitle = chapterTitle;
-  tempLocation.chapterHref = chapterHref;
-  tempLocation.chapterDocIndex = chapterDocIndex + "";
-  tempLocation.percentage = chapterDocIndex / chapterDocList.length + "";
-  tempLocation.text = "";
-  await handleIframeHeight(element, readerMode, format, iframe, doc);
-};
 export const handleCssLink = async (doc) => {
   let linkList = Array.from(doc.getElementsByTagName("link"));
   if (linkList.length === 0) {
@@ -321,7 +257,6 @@ export const handleScrollPosition = async (
   page: string,
   doc: Document
 ) => {
-  let top = 0;
   let left = 0;
   let targetNode: any = doc.body;
   if (page && readerMode !== "scroll") {
@@ -360,13 +295,6 @@ export const handleScrollPosition = async (
       : text === "prevChapter"
       ? doc.body.scrollWidth
       : 0;
-    top = targetNode
-      ? convertStyleNum(targetNode.offsetTop) -
-        convertStyleNum(
-          targetNode.marginTop ||
-            parseFloat(getComputedStyle(targetNode).marginTop)
-        )
-      : 0;
   } else if (href && href.indexOf("#") > -1) {
     let id = CSS.escape(href.split("#").reverse()[0]);
     if (!doc.body.querySelector("#" + id)) {
@@ -382,13 +310,6 @@ export const handleScrollPosition = async (
         convertStyleNum(
           targetNode.marginLeft ||
             parseFloat(getComputedStyle(targetNode).marginLeft)
-        )
-      : 0;
-    top = targetNode
-      ? convertStyleNum(targetNode.offsetTop) -
-        convertStyleNum(
-          targetNode.marginTop ||
-            parseFloat(getComputedStyle(targetNode).marginTop)
         )
       : 0;
   }
