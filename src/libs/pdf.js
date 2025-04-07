@@ -201,7 +201,6 @@ export const makePDF = async (file, readerMode) => {
       transport.onDataRange(begin, chunk)
     })
   }
-  console.log(pdfjsPath('cmaps/'))
   const pdf = await pdfjsLib.getDocument({
     range: transport,
     cMapUrl: pdfjsPath('cmaps/'),
