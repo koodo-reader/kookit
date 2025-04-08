@@ -1,4 +1,5 @@
 import ChapterDoc from "../model/chapterDoc";
+import { convertStyleNum } from "./layoutUtil";
 
 export const handleRenderPDFChapter = async (
   chapterDocIndex: number,
@@ -11,11 +12,8 @@ export const handleRenderPDFChapter = async (
   doc: Document
 ) => {
   let subIframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
-  console.log(subIframe, "subiframe");
   let subDoc = subIframe?.contentDocument;
-  console.log(subDoc, "subdoc");
   if (!subDoc) return;
-  console.log(subDoc.body.innerHTML, "subdocbody");
   if (subDoc.body.innerHTML) {
     return;
   }
@@ -126,11 +124,26 @@ export const createPDFIframe = (
 };
 export const handleScrollPDFPosition = async (
   chapterDocIndex: number,
+  readerMode: string,
   doc: Document
 ) => {
-  let targetNode = doc.getElementById("pdf-iframe-" + chapterDocIndex);
+  let targetNode: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
   if (!targetNode) return;
+  targetNode = targetNode.parentElement;
 
+  if (readerMode !== "scroll") {
+    let left = targetNode
+      ? convertStyleNum(targetNode.offsetLeft) -
+        convertStyleNum(
+          targetNode.marginLeft ||
+            parseFloat(getComputedStyle(targetNode).marginLeft)
+        )
+      : 0;
+    console.log(left, "left");
+    doc.body.scrollTo(left, 0);
+  } else {
+    targetNode.scrollIntoView();
+  }
   targetNode.scrollIntoView();
 };
 export const handlePDFScrollEvent = (
@@ -179,4 +192,54 @@ export const isPDFScrolledIntoView = (
         elemBottom <= element.scrollTop + element.clientHeight);
   }
   return isVisible;
+};
+export const renderPdfPage = async (
+  chapterDocIndex: number,
+  chapterTitle: string,
+  chapterHref: string,
+  chapterDocList: ChapterDoc[],
+  element: HTMLElement,
+  readerMode: string,
+  tempLocation: any,
+  doc: Document
+) => {
+  await handleRenderPDFChapter(
+    chapterDocIndex,
+    chapterTitle,
+    chapterHref,
+    chapterDocList,
+    element,
+    readerMode,
+    tempLocation,
+    doc
+  );
+  if (readerMode === "double") {
+    await handleRenderPDFChapter(
+      chapterDocIndex + 1,
+      chapterTitle,
+      chapterHref,
+      chapterDocList,
+      element,
+      readerMode,
+      tempLocation,
+      doc
+    );
+  }
+};
+export const handlePDFRecord = async (
+  element: HTMLElement,
+  readerMode: string,
+  tempLocation: any,
+  doc: Document
+) => {
+  let subIframes = doc.querySelectorAll("iframe");
+  console.log(subIframes, "subiframes");
+  for (let index = 0; index < subIframes.length; index++) {
+    let subIframe = subIframes[index];
+    if (isPDFScrolledIntoView(element, subIframe, readerMode)) {
+      tempLocation.chapterDocIndex = index + "";
+      tempLocation.percentage = index / subIframes.length + "";
+      break;
+    }
+  }
 };

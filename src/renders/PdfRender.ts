@@ -7,10 +7,13 @@ import {
   createPDFIframe,
   getPdfScale,
   handlePDFLayout,
+  handlePDFRecord,
   handlePDFScrollEvent,
   handleRenderPDFChapter,
   handleScrollPDFPosition,
+  renderPdfPage,
 } from "../utils/pdfUtil.js";
+import { handleScrollPage } from "../utils/navigationUtil.js";
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
@@ -97,7 +100,7 @@ class PdfRender extends GeneralRender {
     let { chapterTitle, chapterDocIndex, chapterHref } = bookLocation;
     console.log(chapterDocIndex, "chapterdocindex");
 
-    await handleRenderPDFChapter(
+    await renderPdfPage(
       parseInt(chapterDocIndex),
       chapterTitle,
       chapterHref,
@@ -107,11 +110,88 @@ class PdfRender extends GeneralRender {
       this.tempLocation,
       doc
     );
-    if (this.readerMode === "double") {
-      await handleRenderPDFChapter(
-        parseInt(chapterDocIndex) + 1,
-        chapterTitle,
-        chapterHref,
+
+    await handleScrollPDFPosition(
+      parseInt(chapterDocIndex),
+      this.readerMode,
+      doc
+    );
+    await this.record();
+    this.trigger("rendered");
+    // this.addPageAnimation();
+  }
+  async prev() {
+    // this.trigger("page-changed");
+    let doc = this.getDocument();
+    let iframe = this.getIframe();
+    if (!doc || !iframe) {
+      return;
+    }
+    if (this.readerMode === "scroll") {
+      // scroll readerMode under normal condition
+      this.element.scrollBy({
+        left: 0,
+        top: -(this.element.clientHeight - 50),
+        behavior: "smooth",
+      });
+    } else {
+      await handleScrollPage(
+        this.element,
+        this.animation,
+        1,
+        doc,
+        this.flipToNextPage,
+        this.flipToPrevPage,
+        this.isMobile
+      );
+      await renderPdfPage(
+        parseInt(this.tempLocation.chapterDocIndex) -
+          (this.readerMode === "double" ? 2 : 1),
+        this.tempLocation.chapterTitle,
+        this.tempLocation.chapterHref,
+        this.chapterDocList,
+        this.element,
+        this.readerMode,
+        this.tempLocation,
+        doc
+      );
+    }
+    await this.record();
+  }
+  async next() {
+    // this.trigger("page-changed");
+    let doc = this.getDocument();
+    let iframe = this.getIframe();
+    if (!doc || !iframe) {
+      return;
+    }
+    if (this.readerMode === "scroll") {
+      // scroll readerMode under normal condition
+      this.element.scrollBy({
+        left: 0,
+        top: this.element.clientHeight - 50,
+        behavior: "smooth",
+      });
+    } else {
+      // single and double readerMode under normal condition
+      await handleScrollPage(
+        this.element,
+        this.animation,
+        -1,
+        doc,
+        this.flipToNextPage,
+        this.flipToPrevPage,
+        this.isMobile
+      );
+      console.log(
+        this.tempLocation.chapterDocIndex,
+        "this.tempLocation.chapterDocIndex"
+      );
+      await renderPdfPage(
+        parseInt(this.tempLocation.chapterDocIndex) +
+          (this.readerMode === "double" ? 2 : 1),
+        this.tempLocation.chapterTitle,
+        this.tempLocation.chapterHref,
         this.chapterDocList,
         this.element,
         this.readerMode,
@@ -120,10 +200,21 @@ class PdfRender extends GeneralRender {
       );
     }
 
-    await handleScrollPDFPosition(parseInt(chapterDocIndex), doc);
     await this.record();
-    this.trigger("rendered");
-    // this.addPageAnimation();
+  }
+  async record(): Promise<void> {
+    if (this.animation !== "") {
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    let doc = this.getDocument();
+    if (!doc) return;
+    await handlePDFRecord(
+      this.element,
+      this.readerMode,
+      this.tempLocation,
+      doc
+    );
+    this.trigger("page-changed");
   }
   async getMetadata() {
     try {
