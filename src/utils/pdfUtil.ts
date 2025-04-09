@@ -1,6 +1,7 @@
 import ChapterDoc from "../model/chapterDoc";
 import { convertStyleNum } from "./layoutUtil";
-
+import _ from "underscore";
+import { getBlockElement } from "./navigationUtil";
 export const handleRenderPDFChapter = async (
   chapterDocIndex: number,
   chapterTitle: string,
@@ -178,7 +179,6 @@ export const isPDFScrolledIntoView = (
 ) => {
   var isVisible = false;
   var rect = el.getBoundingClientRect();
-  console.log(rect, "rect");
   if (readerMode !== "scroll") {
     let elemLeft = rect.left;
     isVisible = elemLeft > -10 && elemLeft <= element.clientWidth;
@@ -242,4 +242,80 @@ export const handlePDFRecord = async (
       break;
     }
   }
+};
+export const getPDFVisibleText = (
+  chapterDocIndex: number,
+  readerMode: string,
+  doc: Document
+) => {
+  let text: any = "";
+  let subIframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
+  let subDoc = subIframe?.contentDocument;
+  if (!subDoc) return;
+  text = subDoc.body.innerText;
+  if (readerMode === "double") {
+    let subIframe2: any = doc.getElementById(
+      "pdf-iframe-" + (chapterDocIndex + 1)
+    );
+    let subDoc2 = subIframe2?.contentDocument;
+    if (subDoc2) {
+      text += subDoc2.body.innerText;
+    }
+  }
+  return text;
+};
+export const handleHighlightPDFNode = (
+  text: string,
+  style: string,
+  doc: Document
+) => {
+  let chapterDocIndex = parseInt(text.split("#").reverse()[0]);
+  let str = text.split("#").slice(0, -1).join("#");
+  let subIframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
+  let subDoc = subIframe?.contentDocument;
+  if (!subDoc) return;
+  let nodeList = subDoc.querySelectorAll("p,span");
+  console.log(nodeList, "nodeList");
+  let nodes: any[] = Array.from(nodeList).filter((s: any) => {
+    if (s.getAttribute("style") === style) {
+      s.setAttribute("style", "");
+    }
+
+    return (
+      ((s as HTMLElement).textContent || "").trim() &&
+      (s as HTMLElement).textContent === str
+    );
+  });
+  console.log(nodes, "nodes");
+  if (nodes.length > 0) {
+    nodes[0].setAttribute("style", style);
+  }
+};
+export const getPDFSearchResult = async (
+  keyword: string,
+  chapterDocList: ChapterDoc[]
+) => {
+  let searchResult: { cfi: string; excerpt: string }[] = [];
+  for (let i = 0; i < chapterDocList.length; i++) {
+    let textContent = await chapterDocList[i].text.getTextContent();
+    console.log(textContent, "textContent");
+
+    let keyWordIndex = textContent.items.findIndex((item: any) => {
+      return item.str.indexOf(keyword) > -1;
+    });
+    if (keyWordIndex > -1) {
+      searchResult.push({
+        excerpt: textContent.items[keyWordIndex].str,
+        cfi: JSON.stringify({
+          text: textContent.items[keyWordIndex].str + "#" + i,
+          chapterTitle: chapterDocList[i].label,
+          chapterDocIndex: i,
+          chapterHref: chapterDocList[i].href,
+          count: "search",
+          percentage: i / chapterDocList.length,
+        }),
+      });
+    }
+  }
+  return _.uniq(searchResult, "excerpt");
 };

@@ -1,4 +1,4 @@
-import { createIframe } from "../utils/layoutUtil.js";
+import { createIframe, getSelectedElement } from "../utils/layoutUtil.js";
 import GeneralParser from "../utils/generalParser.js";
 import { isPDF, makePDF } from "../libs/pdf.js";
 import GeneralRender from "./GeneralRender.js";
@@ -6,6 +6,9 @@ import { clearHighlight, showPDFHighlight } from "../utils/noteUtil.js";
 import {
   createPDFIframe,
   getPdfScale,
+  getPDFSearchResult,
+  getPDFVisibleText,
+  handleHighlightPDFNode,
   handlePDFLayout,
   handlePDFRecord,
   handlePDFScrollEvent,
@@ -28,6 +31,8 @@ class PdfRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
+      console.log(this.chapterDocList, "this.chapterDocList");
+      console.log(this.chapterList, "this.chapterList");
       createIframe(element);
       const viewport = await this.chapterDocList[0].text.getDimension();
       console.log("viewport", viewport);
@@ -92,7 +97,31 @@ class PdfRender extends GeneralRender {
       );
     }
   }
+  getPageSize() {
+    let scale = this.readerMode === "double" ? 2 : 1;
+    let section = Math.floor(this.element.clientWidth / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+    let doc = this.getDocument();
+    if (!doc) return;
+    let subIframe = doc.querySelectorAll("iframe")[0];
+    let iframeHeight = subIframe?.getBoundingClientRect().height;
+    return {
+      width: this.element.clientWidth,
+      height: this.element.clientHeight,
+      left: this.element.offsetLeft,
+      top: this.element.offsetTop,
+      scrollTop: this.element.scrollTop,
+      sectionWidth: (this.element.clientWidth - gap) / scale,
+      sectionHeight: iframeHeight,
+      gap: gap,
+    };
+  }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
+    console.log(chapterDocIndex, chapterHref, chapterTitle);
+    console.log(chapterDocIndex, "chapterDocIndex345454");
+    if (this.readerMode === "double" && chapterDocIndex % 2 == 1) {
+      chapterDocIndex--;
+    }
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -106,8 +135,26 @@ class PdfRender extends GeneralRender {
       this.tempLocation,
       doc
     );
+    await handleScrollPDFPosition(
+      parseInt(chapterDocIndex),
+      this.readerMode,
+      doc
+    );
     await this.record();
     this.trigger("rendered");
+  }
+  async goToPercentage(percentage: number) {
+    if (this.flattenChapters.length > 0) {
+      let chapterIndex =
+        percentage === 1
+          ? this.flattenChapters.length - 1
+          : Math.floor(this.flattenChapters.length * percentage);
+      await this.goToChapter(
+        this.flattenChapters[chapterIndex].index.toString(),
+        this.flattenChapters[chapterIndex].href,
+        this.flattenChapters[chapterIndex].label
+      );
+    }
   }
   async goToPosition(bookLocationStr: string) {
     let doc = this.getDocument();
@@ -228,6 +275,33 @@ class PdfRender extends GeneralRender {
     this.trigger("rendered");
     await this.record();
   }
+  async prevChapter() {
+    await this.prev();
+  }
+  async nextChapter() {
+    await this.next();
+  }
+  visibleText() {
+    let doc = this.getDocument();
+    if (!doc) return "";
+    return getPDFVisibleText(
+      this.tempLocation.chapterDocIndex,
+      this.readerMode,
+      doc
+    );
+  }
+  audioText() {
+    let doc = this.getDocument();
+    if (!doc) return "";
+    return getPDFVisibleText(
+      this.tempLocation.chapterDocIndex,
+      this.readerMode,
+      doc
+    );
+  }
+  chapterText() {
+    return this.visibleText();
+  }
   async record(): Promise<void> {
     if (this.animation !== "") {
       await new Promise((r) => setTimeout(r, 1000));
@@ -255,11 +329,32 @@ class PdfRender extends GeneralRender {
       throw error;
     }
   }
+  async doSearch(keyword: string) {
+    return await getPDFSearchResult(keyword, this.chapterDocList);
+  }
+  highlightNode(text: string, style: string) {
+    console.log(text, style, "highlightNode4534543");
+    let doc = this.getDocument();
+    if (!doc) return;
+    handleHighlightPDFNode(text, style, doc);
+  }
   getProgress() {
     return {
       totalPage: this.chapterDocList.length,
       currentPage: this.tempLocation.chapterDocIndex,
     };
+  }
+  async getNotePosition() {
+    let doc = this.getDocument();
+    if (!doc) return;
+    let selectedElement = getSelectedElement(doc);
+    if (!selectedElement) return;
+    let ownerDoc = selectedElement.ownerDocument;
+    let targetIframe = ownerDoc?.defaultView?.frameElement;
+    console.log(targetIframe, "targetIframe");
+    let id = targetIframe?.getAttribute("id") || "";
+    let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
+    return { ...this.tempLocation, chapterDocIndex };
   }
   getSubDocument(chapterDocIndex?: number): Document | null {
     let pageArea = document.getElementById("page-area");
@@ -453,5 +548,6 @@ class PdfRender extends GeneralRender {
     if (!iWin || !iWin.getSelection()) return;
     iWin.getSelection()?.empty();
   }
+  //TODO 支持手机版
 }
 export default PdfRender;

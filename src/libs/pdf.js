@@ -177,6 +177,13 @@ export const makePDF = async (file, readerMode) => {
     render: async (doc, scale) => {
       await render(await pdf.getPage(i + 1), doc, scale);
     },
+    getTextContent: async () => {
+      const page = await pdf.getPage(i + 1)
+      const textContent = await page.getTextContent()
+      console.log(textContent)
+      return textContent
+      // return textContent.items.map(item => item.str).join('\n')
+    },
     size: 1000,
     getDimension: async () => {
       let viewport = (await pdf.getPage(i + 1)).getViewport({ scale: 1 })

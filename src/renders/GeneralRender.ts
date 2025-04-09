@@ -82,6 +82,9 @@ class GeneralRender extends EventEmitter {
     let scale = this.readerMode === "double" ? 2 : 1;
     let section = Math.floor(this.element.clientWidth / 12);
     let gap = section % 2 === 0 ? section : section - 1;
+    let iframe = this.getIframe();
+    if (!iframe) return;
+    let iframeHeight = iframe?.getBoundingClientRect().height;
     return {
       width: this.element.clientWidth,
       height: this.element.clientHeight,
@@ -89,6 +92,7 @@ class GeneralRender extends EventEmitter {
       top: this.element.offsetTop,
       scrollTop: this.element.scrollTop,
       sectionWidth: (this.element.clientWidth - gap) / scale,
+      sectionHeight: iframeHeight,
       gap: gap,
     };
   }
