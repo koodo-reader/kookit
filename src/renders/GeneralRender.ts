@@ -597,7 +597,7 @@ class GeneralRender extends EventEmitter {
       }
     }
   }
-  removeOneNote(key: string, format: string) {
+  removeOneNote(key: string) {
     let doc = this.getDocument();
     if (!doc) return;
     const elements = doc.querySelectorAll(".kookit-note");

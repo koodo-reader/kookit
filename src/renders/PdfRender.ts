@@ -9,7 +9,6 @@ import {
   handlePDFLayout,
   handlePDFRecord,
   handlePDFScrollEvent,
-  handleRenderPDFChapter,
   handleScrollPDFPosition,
   renderPdfPage,
 } from "../utils/pdfUtil.js";
@@ -84,6 +83,32 @@ class PdfRender extends GeneralRender {
     // }
     // return await getCache(this.book);
   }
+  async goToChapterIndex(targetChapterIndex: number) {
+    if (this.flattenChapters.length > 0) {
+      await this.goToChapter(
+        this.flattenChapters[targetChapterIndex].index,
+        this.flattenChapters[targetChapterIndex].href,
+        this.flattenChapters[targetChapterIndex].label
+      );
+    }
+  }
+  async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
+    let doc = this.getDocument();
+    let iframe = this.getIframe();
+    if (!doc || !iframe) return;
+    await renderPdfPage(
+      chapterDocIndex,
+      chapterTitle,
+      chapterHref,
+      this.chapterDocList,
+      this.element,
+      this.readerMode,
+      this.tempLocation,
+      doc
+    );
+    await this.record();
+    this.trigger("rendered");
+  }
   async goToPosition(bookLocationStr: string) {
     let doc = this.getDocument();
     let iframe = this.getIframe();
@@ -156,6 +181,7 @@ class PdfRender extends GeneralRender {
         doc
       );
     }
+    this.trigger("rendered");
     await this.record();
   }
   async next() {
@@ -199,7 +225,7 @@ class PdfRender extends GeneralRender {
         doc
       );
     }
-
+    this.trigger("rendered");
     await this.record();
   }
   async record(): Promise<void> {
@@ -214,6 +240,7 @@ class PdfRender extends GeneralRender {
       this.tempLocation,
       doc
     );
+
     this.trigger("page-changed");
   }
   async getMetadata() {
@@ -234,9 +261,39 @@ class PdfRender extends GeneralRender {
       currentPage: this.tempLocation.chapterDocIndex,
     };
   }
-  async getHightlightCoords() {
-    let pageIndex = this.tempLocation.chapterDocIndex;
-    let doc = this.getDocument();
+  getSubDocument(chapterDocIndex?: number): Document | null {
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return null;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe) return null;
+    let doc = iframe.contentDocument;
+    if (!doc) {
+      return null;
+    }
+
+    let subIframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
+    if (subIframe) {
+      doc = subIframe.contentDocument;
+    }
+    return doc;
+  }
+  getSubIframe(chapterDocIndex?: number): HTMLIFrameElement | null {
+    let pageArea = document.getElementById("page-area");
+    if (!pageArea) return null;
+    let iframe = pageArea.getElementsByTagName("iframe")[0];
+    if (!iframe) return null;
+
+    let doc = iframe.contentDocument;
+    if (!doc) {
+      return null;
+    }
+    iframe = doc.getElementById("pdf-iframe-" + chapterDocIndex) as any;
+
+    return iframe;
+  }
+  async getHightlightCoords(chapterDocIndex?: number) {
+    let pageIndex = chapterDocIndex || this.tempLocation.chapterDocIndex;
+    let doc = this.getSubDocument(chapterDocIndex);
     if (!doc) return;
 
     var selectionRects = doc.getSelection()!.getRangeAt(0).getClientRects();
@@ -298,18 +355,24 @@ class PdfRender extends GeneralRender {
     });
     return { page: pageIndex, coords: selected, readerMode: this.readerMode };
   }
-  async renderHighlighters(notes: any[], handleNoteClick: any) {
-    let iframe = this.getIframe();
-    let doc = this.getDocument();
+  async renderHighlighters(
+    notes: any[],
+    handleNoteClick: any,
+    chapterDocIndex?: number
+  ) {
+    let chapterIndex = chapterDocIndex || this.tempLocation.chapterDocIndex;
+    let iframe = this.getSubIframe(chapterIndex);
+    let doc = this.getSubDocument(chapterIndex);
     if (!doc || !iframe) return;
     clearHighlight(doc);
+    console.log("sdfasfswe");
     let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
     for (let index = 0; index < notes.length; index++) {
       const item = notes[index];
 
       let selected = JSON.parse(item.range);
       var pageIndex = selected.page;
-      if (selected.readerMode === "double" || this.readerMode === "double") {
+      if (pageIndex !== chapterIndex) {
         continue;
       }
       let page = await this.chapterDocList[pageIndex].text.getPage();
@@ -319,6 +382,7 @@ class PdfRender extends GeneralRender {
         this.chapterDocList,
         pageIndex
       );
+      console.log(page, "page");
       try {
         showPDFHighlight(
           selected,
@@ -340,9 +404,31 @@ class PdfRender extends GeneralRender {
       iWin.getSelection()?.empty();
     }
   }
-  async createOneNote(item: any, handleNoteClick: any) {
-    let iframe = this.getIframe();
-    let doc = this.getDocument();
+  removeOneNote(key: string, chapterDocIndex?: number) {
+    let doc = this.getSubDocument(
+      chapterDocIndex || this.tempLocation.chapterDocIndex
+    );
+    if (!doc) return;
+    const elements = doc.querySelectorAll(".kookit-note");
+    for (let index = 0; index < elements.length; index++) {
+      const element: any = elements[index];
+      const dataKey = element.getAttribute("data-key");
+      if (dataKey === key) {
+        element.parentNode.removeChild(element);
+      }
+    }
+  }
+  async createOneNote(
+    item: any,
+    handleNoteClick: any,
+    chapterDocIndex?: number
+  ) {
+    let iframe = this.getSubIframe(
+      chapterDocIndex || this.tempLocation.chapterDocIndex
+    );
+    let doc = this.getSubDocument(
+      chapterDocIndex || this.tempLocation.chapterDocIndex
+    );
     if (!doc || !iframe) return;
     let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
 
