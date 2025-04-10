@@ -243,26 +243,27 @@ export const handlePDFRecord = async (
     }
   }
 };
-export const getPDFVisibleText = (
+export const getPDFVisibleText = async (
   chapterDocIndex: number,
-  readerMode: string,
-  doc: Document
+  chapterDocList: ChapterDoc[],
+  readerMode: string
 ) => {
-  let text: any = "";
-  let subIframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
-  let subDoc = subIframe?.contentDocument;
-  if (!subDoc) return;
-  text = subDoc.body.innerText;
+  let textContent = await chapterDocList[chapterDocIndex].text.getTextContent();
+  console.log(textContent, "textContent");
+
+  let textList = textContent.items.map((item: any) => {
+    return item.str;
+  });
   if (readerMode === "double") {
-    let subIframe2: any = doc.getElementById(
-      "pdf-iframe-" + (chapterDocIndex + 1)
-    );
-    let subDoc2 = subIframe2?.contentDocument;
-    if (subDoc2) {
-      text += subDoc2.body.innerText;
-    }
+    let nextTextContent = await chapterDocList[
+      chapterDocIndex + 1
+    ].text.getTextContent();
+    let nextTextList = nextTextContent.items.map((item: any) => {
+      return item.str;
+    });
+    textList = textList.concat(nextTextList);
   }
-  return text;
+  return textList;
 };
 export const handleHighlightPDFNode = (
   text: string,
@@ -276,11 +277,13 @@ export const handleHighlightPDFNode = (
   if (!subDoc) return;
   let nodeList = subDoc.querySelectorAll("p,span");
   console.log(nodeList, "nodeList");
-  let nodes: any[] = Array.from(nodeList).filter((s: any) => {
-    if (s.getAttribute("style") === style) {
-      s.setAttribute("style", "");
+  let nodes: any[] = Array.from(nodeList).filter((s: any, index: number) => {
+    if (
+      ((s as HTMLElement).textContent || "").trim() &&
+      (s as HTMLElement).textContent === str
+    ) {
+      console.log(s, index, "s");
     }
-
     return (
       ((s as HTMLElement).textContent || "").trim() &&
       (s as HTMLElement).textContent === str
@@ -288,7 +291,7 @@ export const handleHighlightPDFNode = (
   });
   console.log(nodes, "nodes");
   if (nodes.length > 0) {
-    nodes[0].setAttribute("style", style);
+    nodes[0].setAttribute("style", nodes[0].getAttribute("style") + style);
   }
 };
 export const getPDFSearchResult = async (

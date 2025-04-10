@@ -281,26 +281,20 @@ class PdfRender extends GeneralRender {
   async nextChapter() {
     await this.next();
   }
-  visibleText() {
+  async visibleText() {
     let doc = this.getDocument();
     if (!doc) return "";
-    return getPDFVisibleText(
+    return await getPDFVisibleText(
       this.tempLocation.chapterDocIndex,
-      this.readerMode,
-      doc
+      this.chapterDocList,
+      this.readerMode
     );
   }
-  audioText() {
-    let doc = this.getDocument();
-    if (!doc) return "";
-    return getPDFVisibleText(
-      this.tempLocation.chapterDocIndex,
-      this.readerMode,
-      doc
-    );
+  async audioText() {
+    return await this.visibleText();
   }
-  chapterText() {
-    return this.visibleText();
+  async chapterText() {
+    return await this.visibleText();
   }
   async record(): Promise<void> {
     if (this.animation !== "") {
@@ -548,6 +542,5 @@ class PdfRender extends GeneralRender {
     if (!iWin || !iWin.getSelection()) return;
     iWin.getSelection()?.empty();
   }
-  //TODO 支持手机版
 }
 export default PdfRender;

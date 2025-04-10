@@ -77,6 +77,23 @@ class GeneralRender extends EventEmitter {
     this.mouseDownHandler = () => {};
     this.mouseUpHandler = () => {};
     this.mouseMoveHandler = (event: TouchEvent) => {};
+    if (this.isMobile) {
+      console.log = function (...args) {
+        window.ReactNativeWebView.postMessage(
+          args.map((arg) => String(arg)).join(", ")
+        );
+      };
+      console.info = function (...args) {
+        window.ReactNativeWebView.postMessage(
+          args.map((arg) => String(arg)).join(", ")
+        );
+      };
+      console.error = function (...args) {
+        window.ReactNativeWebView.postMessage(
+          args.map((arg) => String(arg)).join(", ")
+        );
+      };
+    }
   }
   getPageSize() {
     let scale = this.readerMode === "double" ? 2 : 1;
@@ -495,17 +512,17 @@ class GeneralRender extends EventEmitter {
     await this.record();
     this.trigger("rendered");
   }
-  visibleText() {
+  async visibleText() {
     let doc = this.getDocument();
     if (!doc) return "";
     return getVisibleText(this.element, this.readerMode, doc);
   }
-  audioText() {
+  async audioText() {
     let doc = this.getDocument();
     if (!doc) return "";
     return getAudioText(this.element, this.readerMode, doc);
   }
-  chapterText() {
+  async chapterText() {
     let doc = this.getDocument();
     if (!doc) return "";
     return doc.body.innerText;
@@ -728,38 +745,83 @@ class GeneralRender extends EventEmitter {
     styleElement.appendChild(document.createTextNode(fontFaceCSS));
     doc.head.appendChild(styleElement);
   }
-  addTouchEvent(isAndroid: string) {
+  getAllDocuments() {
     let doc = this.getDocument();
+    if (!doc) return [];
+    if (this.format !== "PDF") {
+      return [doc];
+    }
+    let iframes = doc.querySelectorAll("iframe");
+    let documents: Document[] = [];
+    iframes.forEach((iframe) => {
+      let iframeDoc = (iframe as HTMLIFrameElement).contentDocument;
+      if (iframeDoc) {
+        documents.push(iframeDoc);
+      }
+    });
+    return [doc, ...documents];
+  }
+  getAllIframes() {
     let iframe = this.getIframe();
-    if (!doc || !iframe) return;
-    if (isAndroid === "yes") {
-      addAndroidTouchEvent(
-        doc,
-        iframe,
-        this.element,
-        this.readerMode,
-        this.animation,
-        this
-      );
-    } else {
-      addAppleTouchEvent(
-        doc,
-        iframe,
-        this.element,
-        this.readerMode,
-        this.animation,
-        this
-      );
+    if (!iframe) return [];
+    if (this.format !== "PDF") {
+      return [iframe];
+    }
+    let doc = this.getDocument();
+    if (!doc) return [];
+    let iframes = doc.querySelectorAll("iframe");
+    let iframeElements: HTMLIFrameElement[] = [];
+    iframes.forEach((iframe) => {
+      let iframeElement = iframe as HTMLIFrameElement;
+      iframeElements.push(iframeElement);
+    });
+    return [iframe, ...iframeElements];
+  }
+  addTouchEvent(isAndroid: string) {
+    let docs = this.getAllDocuments();
+    let iframes = this.getAllIframes();
+    for (let index = 0; index < docs.length; index++) {
+      const doc = docs[index];
+      const iframe = iframes[index];
+      if (!doc || !iframe) continue;
+      if (isAndroid === "yes") {
+        addAndroidTouchEvent(
+          doc,
+          iframe,
+          this.element,
+          this.readerMode,
+          this.animation,
+          this.format,
+          this
+        );
+      } else {
+        addAppleTouchEvent(
+          doc,
+          iframe,
+          this.element,
+          this.readerMode,
+          this.animation,
+          this.format,
+          this
+        );
+      }
     }
   }
   clearSelection() {
-    let iframe = this.getIframe();
-    if (!iframe) return;
-    let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
-    if (!iWin || !iWin.getSelection()) return;
-    iWin.getSelection()?.empty();
+    let iframes = this.getAllIframes();
+    for (let index = 0; index < iframes.length; index++) {
+      const iframe = iframes[index];
+      if (!iframe) continue;
+      let iWin: any =
+        iframe.contentWindow || iframe.contentDocument?.defaultView;
+      if (!iWin || !iWin.getSelection()) return;
+      iWin.getSelection()?.empty();
+    }
   }
   clearSelectionKeepHighlight() {
+    if (this.format === "PDF") {
+      return;
+    }
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -796,6 +858,9 @@ class GeneralRender extends EventEmitter {
     iWin.getSelection()?.removeAllRanges();
   }
   restoreSelectionClearHighlight() {
+    if (this.format === "PDF") {
+      return;
+    }
     let doc = this.getDocument();
     if (!doc) return;
     let tempHighlights = doc.querySelectorAll("#temp-highlight");
