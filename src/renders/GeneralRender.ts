@@ -77,7 +77,8 @@ class GeneralRender extends EventEmitter {
     this.mouseDownHandler = () => {};
     this.mouseUpHandler = () => {};
     this.mouseMoveHandler = (event: TouchEvent) => {};
-    if (this.isMobile) {
+    console.log(this.isMobile, "safsdf");
+    if (this.isMobile === "yes") {
       console.log = function (...args) {
         window.ReactNativeWebView.postMessage(
           args.map((arg) => String(arg)).join(", ")
@@ -256,6 +257,7 @@ class GeneralRender extends EventEmitter {
       doc,
       iframe
     );
+    console.log(0);
     if (cfi) {
       const cfiInfo = new CFI(cfi, {});
       let doc = this.getDocument();
@@ -287,6 +289,7 @@ class GeneralRender extends EventEmitter {
         }
       }
     }
+    console.log(1);
     await handleScrollPosition(
       this.element,
       this.readerMode,
@@ -296,7 +299,9 @@ class GeneralRender extends EventEmitter {
       page,
       doc
     );
+    console.log(2);
     await this.record();
+    console.log(3);
     this.trigger("rendered");
     // this.addPageAnimation();
   }

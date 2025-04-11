@@ -201,13 +201,14 @@ export const handleRenderChapter = async (
   );
 
   await handleCssLink(doc);
-
+  console.log(11);
   tempLocation.chapterTitle = chapterTitle;
   tempLocation.chapterHref = chapterHref;
   tempLocation.chapterDocIndex = chapterDocIndex + "";
   tempLocation.percentage = chapterDocIndex / chapterDocList.length + "";
   tempLocation.text = "";
   await handleIframeHeight(element, readerMode, format, iframe, doc);
+  console.log(22);
   await handleScrollPosition(element, readerMode, "", "", "", "", doc);
 };
 
@@ -1207,7 +1208,7 @@ export const addAppleTouchEvent = (
       var range = iWin.getSelection().getRangeAt(0);
       var rect = range.getBoundingClientRect();
       var position = {
-        top: rect.top - element.scrollTop,
+        top: rect.top - (format !== "PDF" ? element.scrollTop : 0),
         left: rect.left,
         width: rect.width,
         height: rect.height,

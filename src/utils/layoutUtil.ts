@@ -31,9 +31,8 @@ export const handleIframeHeight = async (
   });
 
   await handleImageSize(element, readerMode, format, doc);
-  if (format !== "PDF") {
-    handleTextStyle(doc);
-  }
+  handleTextStyle(doc);
+
   if (readerMode !== "scroll") {
     iframe.height = element.clientHeight + "px";
     if (readerMode === "double") {
@@ -56,14 +55,10 @@ export const handleIframeHeight = async (
         doc.body.appendChild(tailElem);
       }
     }
-  } else if (format === "PDF") {
-    let docLayer = doc.querySelector(".koodoPDFLayer");
-    if (!docLayer) return;
-    iframe.height = docLayer.getBoundingClientRect().height + 100 + "px";
   } else {
     //fix text blocked issue under scroll readerMode, don't ask me why
     iframe.height = doc.body.scrollHeight + "px";
-    iframe.height = doc.body.scrollHeight + 300 + "px";
+    iframe.height = doc.body.scrollHeight + 100 + "px";
   }
   // await new Promise((r) => setTimeout(r, 1));
 };

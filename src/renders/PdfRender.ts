@@ -171,7 +171,9 @@ class PdfRender extends GeneralRender {
     };
     let { chapterTitle, chapterDocIndex, chapterHref } = bookLocation;
     console.log(chapterDocIndex, "chapterdocindex");
-
+    if (this.readerMode === "double" && chapterDocIndex % 2 == 1) {
+      chapterDocIndex--;
+    }
     await renderPdfPage(
       parseInt(chapterDocIndex),
       chapterTitle,
