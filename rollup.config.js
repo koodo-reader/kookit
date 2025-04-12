@@ -3,6 +3,7 @@ import commonjs from "@rollup/plugin-commonjs";
 import typescript from "@rollup/plugin-typescript";
 import terser from '@rollup/plugin-terser';
 import json from "@rollup/plugin-json";
+import { babel } from '@rollup/plugin-babel';
 import path from 'path';
 const getDesktopOutputPath = (filename) => {
   const basePath = process.platform === 'win32'
@@ -89,6 +90,25 @@ export default [
       }),
       json(),
       typescript({ tsconfig: "./tsconfig.json" }),
+      babel({
+        babelHelpers: 'bundled',
+        presets: [
+          ['@babel/preset-env', {
+            targets: {
+              browsers: [
+                'iOS >= 11',
+                'Android >= 5',
+                'last 2 versions',
+                '> 1%'
+              ]
+            },
+            useBuiltIns: 'usage',
+            corejs: 3,
+          }]
+        ],
+        exclude: 'node_modules/**',
+        extensions: ['.js', '.ts'],
+      }),
       terser({
         format: {
           comments: false, // 移除所有注释
