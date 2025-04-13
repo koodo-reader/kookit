@@ -180,7 +180,6 @@ export const makePDF = async (file, readerMode) => {
     getTextContent: async () => {
       const page = await pdf.getPage(i + 1)
       const textContent = await page.getTextContent()
-      console.log(textContent)
       return textContent
       // return textContent.items.map(item => item.str).join('\n')
     },

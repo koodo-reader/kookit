@@ -201,14 +201,12 @@ export const handleRenderChapter = async (
   );
 
   await handleCssLink(doc);
-  console.log(11);
   tempLocation.chapterTitle = chapterTitle;
   tempLocation.chapterHref = chapterHref;
   tempLocation.chapterDocIndex = chapterDocIndex + "";
   tempLocation.percentage = chapterDocIndex / chapterDocList.length + "";
   tempLocation.text = "";
   await handleIframeHeight(element, readerMode, format, iframe, doc);
-  console.log(22);
   await handleScrollPosition(element, readerMode, "", "", "", "", doc);
 };
 
@@ -1022,7 +1020,6 @@ export const addAndroidTouchEvent = (
   doc.addEventListener(
     "selectionchange",
     (event) => {
-      console.log("selectionchange");
       if (scrollLeft > 0) {
         doc.body.scrollLeft = scrollLeft;
       }
@@ -1032,11 +1029,9 @@ export const addAndroidTouchEvent = (
       }
       selectionTimeout = setTimeout(async () => {
         const selectedText = iWin.getSelection().toString().trim();
-        console.log("selectedTextsdfds", selectedText);
         if (selectedText) {
           var range = iWin.getSelection().getRangeAt(0);
           var rect = range.getBoundingClientRect();
-          console.log(2342);
           var position = {
             top: rect.top - (format !== "PDF" ? element.scrollTop : 0),
             left: rect.left,
@@ -1050,16 +1045,12 @@ export const addAndroidTouchEvent = (
           if (format === "PDF") {
             let target: any = event.target;
             let ownerDoc = target;
-            console.log(ownerDoc, "ownerDoc");
             let targetIframe = ownerDoc?.defaultView?.frameElement;
-            console.log(targetIframe, "targetIframe");
             let id = targetIframe?.getAttribute("id") || "";
             let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
             charRange = await render.getHightlightCoords(chapterDocIndex);
-            console.log("charRange", charRange);
           } else {
             charRange = await render.getHightlightCoords();
-            console.log("charRange", charRange);
           }
 
           window.ReactNativeWebView.postMessage(
@@ -1221,16 +1212,12 @@ export const addAppleTouchEvent = (
       if (format === "PDF") {
         let target: any = event.target;
         let ownerDoc = target;
-        console.log(ownerDoc, "ownerDoc");
         let targetIframe = ownerDoc?.defaultView?.frameElement;
-        console.log(targetIframe, "targetIframe");
         let id = targetIframe?.getAttribute("id") || "";
         let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
         charRange = await render.getHightlightCoords(chapterDocIndex);
-        console.log("charRange", charRange);
       } else {
         charRange = await render.getHightlightCoords();
-        console.log("charRange", charRange);
       }
 
       window.ReactNativeWebView.postMessage(

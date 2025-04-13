@@ -140,7 +140,6 @@ export const handleScrollPDFPosition = async (
             parseFloat(getComputedStyle(targetNode).marginLeft)
         )
       : 0;
-    console.log(left, "left");
     doc.body.scrollTo(left, 0);
   } else {
     targetNode.scrollIntoView();
@@ -155,7 +154,6 @@ export const handlePDFScrollEvent = (
   doc: Document
 ) => {
   let subIframes = doc.querySelectorAll("iframe");
-  console.log(subIframes, "subiframes");
   for (let index = 0; index < subIframes.length; index++) {
     let subIframe = subIframes[index];
     if (isPDFScrolledIntoView(element, subIframe, readerMode)) {
@@ -233,7 +231,6 @@ export const handlePDFRecord = async (
   doc: Document
 ) => {
   let subIframes = doc.querySelectorAll("iframe");
-  console.log(subIframes, "subiframes");
   for (let index = 0; index < subIframes.length; index++) {
     let subIframe = subIframes[index];
     if (isPDFScrolledIntoView(element, subIframe, readerMode)) {
@@ -249,7 +246,6 @@ export const getPDFVisibleText = async (
   readerMode: string
 ) => {
   let textContent = await chapterDocList[chapterDocIndex].text.getTextContent();
-  console.log(textContent, "textContent");
 
   let textList = textContent.items.map((item: any) => {
     return item.str;
@@ -276,20 +272,12 @@ export const handleHighlightPDFNode = (
   let subDoc = subIframe?.contentDocument;
   if (!subDoc) return;
   let nodeList = subDoc.querySelectorAll("p,span");
-  console.log(nodeList, "nodeList");
   let nodes: any[] = Array.from(nodeList).filter((s: any, index: number) => {
-    if (
-      ((s as HTMLElement).textContent || "").trim() &&
-      (s as HTMLElement).textContent === str
-    ) {
-      console.log(s, index, "s");
-    }
     return (
       ((s as HTMLElement).textContent || "").trim() &&
       (s as HTMLElement).textContent === str
     );
   });
-  console.log(nodes, "nodes");
   if (nodes.length > 0) {
     nodes[0].setAttribute("style", nodes[0].getAttribute("style") + style);
   }
@@ -301,7 +289,6 @@ export const getPDFSearchResult = async (
   let searchResult: { cfi: string; excerpt: string }[] = [];
   for (let i = 0; i < chapterDocList.length; i++) {
     let textContent = await chapterDocList[i].text.getTextContent();
-    console.log(textContent, "textContent");
 
     let keyWordIndex = textContent.items.findIndex((item: any) => {
       return item.str.indexOf(keyword) > -1;

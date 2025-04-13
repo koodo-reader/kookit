@@ -31,14 +31,10 @@ class PdfRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
-      console.log(this.chapterDocList, "this.chapterDocList");
-      console.log(this.chapterList, "this.chapterList");
       createIframe(element);
       const viewport = await this.chapterDocList[0].text.getDimension();
-      console.log("viewport", viewport);
       let doc: any = this.getDocument();
       if (!doc) return;
-      console.log("doc", doc);
       createPDFIframe(
         doc.body || (doc.documentElement as HTMLElement),
         this.chapterDocList,
@@ -51,7 +47,16 @@ class PdfRender extends GeneralRender {
         if (!iframe) return;
         iframe.style.height = iframeHeight * this.chapterDocList.length + "px";
         this.element.addEventListener("scroll", (e) => {
-          console.log("scroll");
+          handlePDFScrollEvent(
+            this.chapterDocList,
+            element,
+            this.readerMode,
+            this.tempLocation,
+            doc
+          );
+        });
+      } else {
+        doc.addEventListener("scroll", (e) => {
           handlePDFScrollEvent(
             this.chapterDocList,
             element,
@@ -117,8 +122,6 @@ class PdfRender extends GeneralRender {
     };
   }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
-    console.log(chapterDocIndex, chapterHref, chapterTitle);
-    console.log(chapterDocIndex, "chapterDocIndex345454");
     if (this.readerMode === "double" && chapterDocIndex % 2 == 1) {
       chapterDocIndex--;
     }
@@ -170,7 +173,6 @@ class PdfRender extends GeneralRender {
       page: bookLocation.page,
     };
     let { chapterTitle, chapterDocIndex, chapterHref } = bookLocation;
-    console.log(chapterDocIndex, "chapterdocindex");
     if (this.readerMode === "double" && chapterDocIndex % 2 == 1) {
       chapterDocIndex--;
     }
@@ -258,10 +260,6 @@ class PdfRender extends GeneralRender {
         this.flipToPrevPage,
         this.isMobile
       );
-      console.log(
-        this.tempLocation.chapterDocIndex,
-        "this.tempLocation.chapterDocIndex"
-      );
       await renderPdfPage(
         parseInt(this.tempLocation.chapterDocIndex) +
           (this.readerMode === "double" ? 2 : 1),
@@ -329,7 +327,6 @@ class PdfRender extends GeneralRender {
     return await getPDFSearchResult(keyword, this.chapterDocList);
   }
   highlightNode(text: string, style: string) {
-    console.log(text, style, "highlightNode4534543");
     let doc = this.getDocument();
     if (!doc) return;
     handleHighlightPDFNode(text, style, doc);
@@ -347,7 +344,6 @@ class PdfRender extends GeneralRender {
     if (!selectedElement) return;
     let ownerDoc = selectedElement.ownerDocument;
     let targetIframe = ownerDoc?.defaultView?.frameElement;
-    console.log(targetIframe, "targetIframe");
     let id = targetIframe?.getAttribute("id") || "";
     let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
     return { ...this.tempLocation, chapterDocIndex };
@@ -456,7 +452,6 @@ class PdfRender extends GeneralRender {
     let doc = this.getSubDocument(chapterIndex);
     if (!doc || !iframe) return;
     clearHighlight(doc);
-    console.log("sdfasfswe");
     let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
     for (let index = 0; index < notes.length; index++) {
       const item = notes[index];
@@ -473,7 +468,6 @@ class PdfRender extends GeneralRender {
         this.chapterDocList,
         pageIndex
       );
-      console.log(page, "page");
       try {
         showPDFHighlight(
           selected,

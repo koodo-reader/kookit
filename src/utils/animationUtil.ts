@@ -85,7 +85,7 @@ export const addPageAnimation = (
   // Vertical spacing between the top edge of the book and the papers
   var PAGE_Y = (BOOK_HEIGHT - PAGE_HEIGHT) / 2;
 
-  var page = 0;
+  var pageNum = 0;
 
   var canvas: any = document.getElementById("pageflip-canvas");
   if (!canvas) return;
@@ -152,14 +152,13 @@ export const addPageAnimation = (
   function mouseDownHandler(event) {
     const touch = event.touches[0];
     // flips[page].dragging = true;
-
-    if (touch.screenX < window.screen.width / 2 && page - 1 >= 0) {
-      flips[page - 1].dragging = true;
+    if (touch.screenX < window.screen.width / 2 && pageNum - 1 >= 0) {
+      flips[pageNum - 1].dragging = true;
     } else if (
       touch.screenX > window.screen.width / 2 &&
-      page + 1 < flips.length
+      pageNum + 1 < flips.length
     ) {
-      flips[page].dragging = true;
+      flips[pageNum].dragging = true;
     }
 
     // Prevents the text selection cursor from appearing when dragging
@@ -173,10 +172,10 @@ export const addPageAnimation = (
         // Figure out which page we should go to next depending on the flip direction
         if (mouse.x < PAGE_WIDTH / 2) {
           flips[i].target = -1;
-          page = Math.min(page + 1, flips.length);
+          pageNum = Math.min(pageNum + 1, flips.length);
         } else {
           flips[i].target = 1;
-          page = Math.max(page - 1, 0);
+          pageNum = Math.max(pageNum - 1, 0);
         }
       }
 
@@ -343,32 +342,20 @@ export const addPageAnimation = (
   return {
     flipToNextPage: () => {
       console.info("flipToNextPage");
-      if (page + 1 < flips.length) {
-        flips[page].target = -1;
-        page = Math.min(page + 1, flips.length);
+      if (pageNum + 1 < flips.length) {
+        flips[pageNum].target = -1;
+        pageNum = Math.min(pageNum + 1, flips.length);
       }
     },
     flipToPrevPage: () => {
       console.info("flipToPrevPage");
-      if (page - 1 >= 0) {
-        flips[page - 1].target = 1;
-        page = Math.max(page - 1, 0);
+      if (pageNum - 1 >= 0) {
+        flips[pageNum - 1].target = 1;
+        pageNum = Math.max(pageNum - 1, 0);
       }
     },
     mouseDownHandler,
     mouseUpHandler,
     mouseMoveHandler,
   };
-  // window.flipToNextPage = () => {
-  //   if (page + 1 < flips.length) {
-  //     flips[page].target = -1;
-  //     page = Math.min(page + 1, flips.length);
-  //   }
-  // };
-  // window.flipToPreviousPage = () => {
-  //   if (page - 1 >= 0) {
-  //     flips[page - 1].target = 1;
-  //     page = Math.max(page - 1, 0);
-  //   }
-  // };
 };
