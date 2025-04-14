@@ -2,42 +2,7 @@ import ChapterDoc from "../model/chapterDoc";
 import { convertStyleNum } from "./layoutUtil";
 import _ from "underscore";
 import { getBlockElement } from "./navigationUtil";
-export const handleRenderPDFChapter = async (
-  chapterDocIndex: number,
-  chapterTitle: string,
-  chapterHref: string,
-  chapterDocList: ChapterDoc[],
-  element: HTMLElement,
-  readerMode: string,
-  tempLocation: any,
-  doc: Document
-) => {
-  let subIframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
-  let subDoc = subIframe?.contentDocument;
-  if (!subDoc) return;
-  if (subDoc.body.innerHTML) {
-    return;
-  }
-  subDoc.body.innerHTML = "";
-  let blob = await fetch(
-    await chapterDocList[chapterDocIndex].text.load()
-  ).then((r) => r.blob());
-  let chapterText = await blob.text();
-  subDoc.body.innerHTML = chapterText;
-  let scale = await getPdfScale(
-    element,
-    readerMode,
-    chapterDocList,
-    chapterDocIndex
-  );
-  await chapterDocList[chapterDocIndex].text.render(subDoc, scale, readerMode);
 
-  tempLocation.chapterTitle = chapterTitle;
-  tempLocation.chapterHref = chapterHref;
-  tempLocation.chapterDocIndex = chapterDocIndex + "";
-  tempLocation.percentage = chapterDocIndex / chapterDocList.length + "";
-  tempLocation.text = "";
-};
 export const getPdfScale = async (
   element: HTMLElement,
   readerMode: string,
@@ -146,30 +111,7 @@ export const handleScrollPDFPosition = async (
   }
   targetNode.scrollIntoView();
 };
-export const handlePDFScrollEvent = (
-  chapterDocList: ChapterDoc[],
-  element: HTMLElement,
-  readerMode: string,
-  tempLocation: any,
-  doc: Document
-) => {
-  let subIframes = doc.querySelectorAll("iframe");
-  for (let index = 0; index < subIframes.length; index++) {
-    let subIframe = subIframes[index];
-    if (isPDFScrolledIntoView(element, subIframe, readerMode)) {
-      handleRenderPDFChapter(
-        index,
-        "",
-        "",
-        chapterDocList,
-        element,
-        readerMode,
-        tempLocation,
-        doc
-      );
-    }
-  }
-};
+
 export const isPDFScrolledIntoView = (
   element: HTMLElement,
   el: HTMLElement,
@@ -183,63 +125,17 @@ export const isPDFScrolledIntoView = (
   } else {
     let elemTop = rect.top;
     let elemBottom = rect.bottom;
+    console.log(elemTop, elemBottom);
     isVisible =
-      (elemTop >= element.scrollTop &&
-        elemTop <= element.scrollTop + element.clientHeight) ||
-      (elemBottom >= element.scrollTop &&
-        elemBottom <= element.scrollTop + element.clientHeight);
+      (elemTop - 10 >= element.scrollTop &&
+        elemTop + element.clientHeight / 2 <=
+          element.scrollTop + element.clientHeight) ||
+      (elemBottom - element.clientHeight / 2 >= element.scrollTop &&
+        elemBottom + 10 <= element.scrollTop + element.clientHeight);
   }
   return isVisible;
 };
-export const renderPdfPage = async (
-  chapterDocIndex: number,
-  chapterTitle: string,
-  chapterHref: string,
-  chapterDocList: ChapterDoc[],
-  element: HTMLElement,
-  readerMode: string,
-  tempLocation: any,
-  doc: Document
-) => {
-  await handleRenderPDFChapter(
-    chapterDocIndex,
-    chapterTitle,
-    chapterHref,
-    chapterDocList,
-    element,
-    readerMode,
-    tempLocation,
-    doc
-  );
-  if (readerMode === "double") {
-    await handleRenderPDFChapter(
-      chapterDocIndex + 1,
-      chapterTitle,
-      chapterHref,
-      chapterDocList,
-      element,
-      readerMode,
-      tempLocation,
-      doc
-    );
-  }
-};
-export const handlePDFRecord = async (
-  element: HTMLElement,
-  readerMode: string,
-  tempLocation: any,
-  doc: Document
-) => {
-  let subIframes = doc.querySelectorAll("iframe");
-  for (let index = 0; index < subIframes.length; index++) {
-    let subIframe = subIframes[index];
-    if (isPDFScrolledIntoView(element, subIframe, readerMode)) {
-      tempLocation.chapterDocIndex = index + "";
-      tempLocation.percentage = index / subIframes.length + "";
-      break;
-    }
-  }
-};
+
 export const getPDFVisibleText = async (
   chapterDocIndex: number,
   chapterDocList: ChapterDoc[],

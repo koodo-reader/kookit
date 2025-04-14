@@ -1032,13 +1032,18 @@ export const addAndroidTouchEvent = (
         if (selectedText) {
           var range = iWin.getSelection().getRangeAt(0);
           var rect = range.getBoundingClientRect();
+          let pageSize = render.getPageSize();
           var position = {
-            top: rect.top - (format !== "PDF" ? element.scrollTop : 0),
+            top: rect.top - element.scrollTop,
             left: rect.left,
             width: rect.width,
             height: rect.height,
             screenWidth: window.innerWidth,
             screenHeight: window.innerHeight,
+            sectionHeight: pageSize.sectionHeight,
+            chapterDocIndex: 0,
+            sectionWidth: pageSize.sectionWidth,
+            gap: pageSize.gap,
           };
           rangy.init();
           let charRange = null;
@@ -1049,6 +1054,7 @@ export const addAndroidTouchEvent = (
             let id = targetIframe?.getAttribute("id") || "";
             let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
             charRange = await render.getHightlightCoords(chapterDocIndex);
+            position.chapterDocIndex = chapterDocIndex;
           } else {
             charRange = await render.getHightlightCoords();
           }
@@ -1198,13 +1204,18 @@ export const addAppleTouchEvent = (
     if (selectedText) {
       var range = iWin.getSelection().getRangeAt(0);
       var rect = range.getBoundingClientRect();
+      var pageSize = render.getPageSize();
       var position = {
-        top: rect.top - (format !== "PDF" ? element.scrollTop : 0),
+        top: rect.top - element.scrollTop,
         left: rect.left,
         width: rect.width,
         height: rect.height,
         screenWidth: window.innerWidth,
         screenHeight: window.innerHeight,
+        sectionHeight: pageSize.sectionHeight,
+        chapterDocIndex: 0,
+        sectionWidth: pageSize.sectionWidth,
+        gap: pageSize.gap,
       };
 
       rangy.init();
@@ -1215,6 +1226,7 @@ export const addAppleTouchEvent = (
         let targetIframe = ownerDoc?.defaultView?.frameElement;
         let id = targetIframe?.getAttribute("id") || "";
         let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
+        position.chapterDocIndex = chapterDocIndex;
         charRange = await render.getHightlightCoords(chapterDocIndex);
       } else {
         charRange = await render.getHightlightCoords();

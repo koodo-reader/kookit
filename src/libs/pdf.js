@@ -192,9 +192,6 @@ export const makePDF = async (file, readerMode) => {
       return await pdf.getPage(i + 1)
     }
   }))
-  if (readerMode === "double") {
-
-  }
   book.isExternal = uri => /^\w+:/i.test(uri)
   book.resolveHref = async href => {
     const parsed = JSON.parse(href)

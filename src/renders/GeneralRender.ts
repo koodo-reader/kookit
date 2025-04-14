@@ -309,14 +309,6 @@ class GeneralRender extends EventEmitter {
     if (!doc) {
       return null;
     }
-    // if (this.format === "PDF") {
-    //   let subIframe: any = doc.getElementById(
-    //     "pdf-iframe-" + this.tempLocation.chapterDocIndex
-    //   );
-    //   if (subIframe) {
-    //     doc = subIframe.contentDocument;
-    //   }
-    // }
     return doc;
   }
   getIframe() {
@@ -324,16 +316,6 @@ class GeneralRender extends EventEmitter {
     if (!pageArea) return null;
     let iframe = pageArea.getElementsByTagName("iframe")[0];
     if (!iframe) return null;
-
-    // if (this.format === "PDF") {
-    //   let doc = iframe.contentDocument;
-    //   if (!doc) {
-    //     return null;
-    //   }
-    //   iframe = doc.getElementById(
-    //     "pdf-iframe-" + this.tempLocation.chapterDocIndex
-    //   ) as any;
-    // }
     return iframe;
   }
   async goToNode(node: any) {

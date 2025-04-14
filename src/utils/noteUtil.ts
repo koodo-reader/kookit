@@ -52,7 +52,6 @@ export const showPDFHighlight = (
   let colorCode = classes[colorIndex];
   let pageElement: any = doc.querySelector(".noteLayer");
   let docLayer = doc.querySelector("#koodoPDFLayer");
-
   var viewport = page.getViewport({ scale: scale });
   selected.coords.forEach((rect) => {
     var bounds = viewport.convertToViewportRectangle(rect);
