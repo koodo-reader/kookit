@@ -14,7 +14,6 @@ import {
   isPDFScrolledIntoView,
 } from "../utils/pdfUtil.js";
 import { handleScrollPage } from "../utils/navigationUtil.js";
-import ChapterDoc from "../model/chapterDoc.js";
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
@@ -332,9 +331,6 @@ class PdfRender extends GeneralRender {
       console.error(error);
       throw error;
     }
-  }
-  async doSearch(keyword: string) {
-    return await getPDFSearchResult(keyword, this.chapterDocList);
   }
   highlightNode(text: string, style: string) {
     let doc = this.getDocument();

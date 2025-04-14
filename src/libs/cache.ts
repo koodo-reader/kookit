@@ -3,7 +3,7 @@ import ChapterDoc from "../model/chapterDoc";
 import GeneralParser from "../utils/generalParser";
 import { mimetype, mimetypeReverse } from "../utils/mimetype";
 import JSZip from "jszip";
-import { findLastIndex } from "underscore";
+import _ from "underscore";
 import { getImageElement } from "../utils/layoutUtil";
 
 export const makeCacheBook = async (bookBuffer: ArrayBuffer) => {
@@ -52,7 +52,7 @@ export const makeCacheBook = async (bookBuffer: ArrayBuffer) => {
   }));
   book.rendition = { layout: "pre-paginated" };
   book.resolveHref = (href: string) => {
-    return { index: findLastIndex(sections, { href }) };
+    return { index: _.findLastIndex(sections, { href }) };
   };
   book.splitTOCHref = (href) => [href, null];
   book.getTOCFragment = (doc) => doc.documentElement;

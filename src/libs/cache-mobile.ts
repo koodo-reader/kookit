@@ -1,6 +1,6 @@
 import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
-import { findLastIndex } from "underscore";
+import _ from "underscore";
 declare var window: any;
 
 export const makeCacheBook = async (toc, sections) => {
@@ -27,7 +27,7 @@ export const makeCacheBook = async (toc, sections) => {
   }));
   book.rendition = { layout: "pre-paginated" };
   book.resolveHref = (href: string) => {
-    return { index: findLastIndex(sections, { href }) };
+    return { index: _.findLastIndex(sections, { href }) };
   };
   book.splitTOCHref = (href) => [href, null];
   book.getTOCFragment = (doc) => doc.documentElement;

@@ -1,7 +1,6 @@
 import ChapterDoc from "../model/chapterDoc";
 import { convertStyleNum } from "./layoutUtil";
-import { uniq } from "underscore";
-
+import _ from "underscore";
 export const getPdfScale = async (
   element: HTMLElement,
   readerMode: string,
@@ -202,6 +201,5 @@ export const getPDFSearchResult = async (
       });
     }
   }
-  console.log(uniq, "_");
-  return uniq(searchResult, "excerpt");
+  return _.uniq(searchResult, "excerpt");
 };

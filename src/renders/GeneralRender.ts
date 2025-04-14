@@ -32,6 +32,7 @@ import { addPageAnimation } from "../utils/animationUtil";
 import rangy from "rangy/lib/rangy-core.js";
 import "rangy/lib/rangy-textrange";
 import Chinese from "chinese-s2t";
+import { getPDFSearchResult } from "../utils/pdfUtil";
 declare var window: any;
 class GeneralRender extends EventEmitter {
   readerMode: string;
@@ -511,7 +512,11 @@ class GeneralRender extends EventEmitter {
     handleHighlightNode(text, style, doc);
   }
   async doSearch(keyword: string) {
-    return await getSearchResult(keyword, this.chapterDocList);
+    if (this.format === "PDF") {
+      return await getPDFSearchResult(keyword, this.chapterDocList);
+    } else {
+      return await getSearchResult(keyword, this.chapterDocList);
+    }
   }
   getProgress() {
     let doc = this.getDocument();

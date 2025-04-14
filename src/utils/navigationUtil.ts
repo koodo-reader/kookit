@@ -9,7 +9,7 @@ import {
 import Chapter from "../model/chapter";
 import { cleanText } from "../libs/html";
 import Chinese from "chinese-s2t";
-import { findLastIndex, uniq } from "underscore";
+import _ from "underscore";
 import rangy from "rangy/lib/rangy-core.js";
 declare var window: any;
 let lock = false;
@@ -72,7 +72,7 @@ const findValidChapter = (
   chapterDocList: ChapterDoc[],
   flag: string
 ) => {
-  let currentChapterIndex = findLastIndex(chapterDocList, (chapter) => {
+  let currentChapterIndex = _.findLastIndex(chapterDocList, (chapter) => {
     return (
       chapter.href === chapterHref ||
       (chapter.href &&
@@ -82,7 +82,7 @@ const findValidChapter = (
   });
   if (
     chapterHref &&
-    findLastIndex(chapterDocList, (chapter) => {
+    _.findLastIndex(chapterDocList, (chapter) => {
       return (
         chapter.href === chapterHref ||
         (chapter.href &&
@@ -169,7 +169,7 @@ export const handleRenderChapter = async (
       chapterTitle !== chapterDocList[chapterDocIndex].label &&
       chapterHref.indexOf("#") === -1)
   ) {
-    let tempChapterDocIndex = findLastIndex(chapterDocList, {
+    let tempChapterDocIndex = _.findLastIndex(chapterDocList, {
       label: chapterTitle,
     });
     if (tempChapterDocIndex !== -1) {
@@ -178,7 +178,7 @@ export const handleRenderChapter = async (
   }
   if (chapterDocIndex === -1 && chapterHref.indexOf("#") > -1) {
     let href = chapterHref.split("#")[0];
-    let tempChapterDocIndex = findLastIndex(chapterDocList, (chapter) => {
+    let tempChapterDocIndex = _.findLastIndex(chapterDocList, (chapter) => {
       return (
         chapter.href === href ||
         (chapter.href &&
@@ -492,7 +492,7 @@ export const handleHashChapter = (
     const element = visibleNode[index];
     if (element.id) {
       let newHref = beforeHash + "#" + element.id;
-      let newIndex = findLastIndex(flattenChapters, {
+      let newIndex = _.findLastIndex(flattenChapters, {
         href: newHref,
       });
       if (newIndex > -1) {
@@ -636,8 +636,9 @@ export const getSearchResult = async (
       }
     }
   }
-  return uniq(searchResult, "excerpt");
+  return _.uniq(searchResult, "excerpt");
 };
+
 export const isParentBlock = (myDiv: Element) => {
   var children = myDiv.children;
   let flag = false;
