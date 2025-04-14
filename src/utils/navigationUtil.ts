@@ -1027,48 +1027,53 @@ export const addAndroidTouchEvent = (
       if (selectionTimeout) {
         clearTimeout(selectionTimeout);
       }
-      selectionTimeout = setTimeout(async () => {
-        const selectedText = iWin.getSelection().toString().trim();
-        if (selectedText) {
-          var range = iWin.getSelection().getRangeAt(0);
-          var rect = range.getBoundingClientRect();
-          let pageSize = render.getPageSize();
-          var position = {
-            top: rect.top - element.scrollTop,
-            left: rect.left,
-            width: rect.width,
-            height: rect.height,
-            screenWidth: window.innerWidth,
-            screenHeight: window.innerHeight,
-            sectionHeight: pageSize.sectionHeight,
-            chapterDocIndex: 0,
-            sectionWidth: pageSize.sectionWidth,
-            gap: pageSize.gap,
-          };
-          rangy.init();
-          let charRange = null;
-          if (format === "PDF") {
-            let target: any = event.target;
-            let ownerDoc = target;
-            let targetIframe = ownerDoc?.defaultView?.frameElement;
-            let id = targetIframe?.getAttribute("id") || "";
-            let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
-            charRange = await render.getHightlightCoords(chapterDocIndex);
-            position.chapterDocIndex = chapterDocIndex;
-          } else {
-            charRange = await render.getHightlightCoords();
-          }
+      selectionTimeout = setTimeout(
+        async () => {
+          const selectedText = iWin.getSelection().toString().trim();
+          if (selectedText) {
+            var range = iWin.getSelection().getRangeAt(0);
+            var rect = range.getBoundingClientRect();
+            let pageSize = render.getPageSize();
+            var position = {
+              top: rect.top - element.scrollTop,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height,
+              screenWidth: window.innerWidth,
+              screenHeight: window.innerHeight,
+              sectionHeight: pageSize.sectionHeight,
+              chapterDocIndex: 0,
+              sectionWidth: pageSize.sectionWidth,
+              gap: pageSize.gap,
+            };
+            rangy.init();
+            let charRange = null;
+            if (format === "PDF") {
+              let target: any = event.target;
+              let ownerDoc = target;
+              let targetIframe = ownerDoc?.defaultView?.frameElement;
+              let id = targetIframe?.getAttribute("id") || "";
+              let chapterDocIndex = id
+                ? parseInt(id.split("-").reverse()[0])
+                : 0;
+              charRange = await render.getHightlightCoords(chapterDocIndex);
+              position.chapterDocIndex = chapterDocIndex;
+            } else {
+              charRange = await render.getHightlightCoords();
+            }
 
-          window.ReactNativeWebView.postMessage(
-            JSON.stringify({
-              event: "select-text",
-              selectedText: selectedText,
-              position: position,
-              range: charRange,
-            })
-          );
-        }
-      }, 500); // Debounce selection events
+            window.ReactNativeWebView.postMessage(
+              JSON.stringify({
+                event: "select-text",
+                selectedText: selectedText,
+                position: position,
+                range: charRange,
+              })
+            );
+          }
+        },
+        format === "PDF" ? 1000 : 500
+      ); // Debounce selection events
     },
     false
   );

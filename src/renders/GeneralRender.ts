@@ -602,7 +602,7 @@ class GeneralRender extends EventEmitter {
       }
     }
   }
-  removeOneNote(key: string) {
+  removeOneNote(key: string, chapterDocIndex: number) {
     let doc = this.getDocument();
     if (!doc) return;
     const elements = doc.querySelectorAll(".kookit-note");
@@ -799,6 +799,7 @@ class GeneralRender extends EventEmitter {
       let iWin: any =
         iframe.contentWindow || iframe.contentDocument?.defaultView;
       if (!iWin || !iWin.getSelection()) return;
+      console.log("clear", index);
       iWin.getSelection()?.empty();
     }
   }

@@ -515,8 +515,6 @@ class PdfRender extends GeneralRender {
     let iframe = this.getSubIframe(item.chapterIndex);
     let doc = this.getSubDocument(item.chapterIndex);
     if (!doc || !iframe) return;
-    let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
-
     let selected = JSON.parse(item.range);
     var pageIndex = parseInt(selected.page + "");
     let page = await this.chapterDocList[pageIndex].text.getPage();
@@ -535,8 +533,7 @@ class PdfRender extends GeneralRender {
       scale,
       doc
     );
-    if (!iWin || !iWin.getSelection()) return;
-    iWin.getSelection()?.empty();
+    this.clearSelection();
   }
   async handleRenderPDFChapter(chapterDocIndex: number, doc: Document) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
