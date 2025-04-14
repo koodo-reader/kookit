@@ -242,6 +242,7 @@ class GeneralRender extends EventEmitter {
       chapterHref: bookLocation.chapterHref,
       count: bookLocation.count,
       page: bookLocation.page,
+      percentage: bookLocation.percentage,
     };
     let { text, chapterTitle, chapterDocIndex, chapterHref, count, page, cfi } =
       bookLocation;

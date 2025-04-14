@@ -125,9 +125,8 @@ export const isPDFScrolledIntoView = (
     let elemBottom = rect.bottom;
     isVisible =
       (elemTop - 10 >= element.scrollTop &&
-        elemTop + element.clientHeight / 2 <=
-          element.scrollTop + element.clientHeight) ||
-      (elemBottom - element.clientHeight / 2 >= element.scrollTop &&
+        elemTop + 10 <= element.scrollTop + element.clientHeight) ||
+      (elemBottom - 10 >= element.scrollTop &&
         elemBottom + 10 <= element.scrollTop + element.clientHeight);
   }
   return isVisible;
@@ -138,7 +137,6 @@ export const getPDFVisibleText = async (
   chapterDocList: ChapterDoc[],
   readerMode: string
 ) => {
-  console.log("getPDFVisibleText", chapterDocIndex);
   let textContent = await chapterDocList[chapterDocIndex].text.getTextContent();
 
   let textList = textContent.items.map((item: any) => {

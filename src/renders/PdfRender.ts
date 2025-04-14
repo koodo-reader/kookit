@@ -100,11 +100,11 @@ class PdfRender extends GeneralRender {
     // return await getCache(this.book);
   }
   async goToChapterIndex(targetChapterIndex: number) {
-    if (this.flattenChapters.length > 0) {
+    if (this.chapterDocList.length > 0) {
       await this.goToChapter(
-        this.flattenChapters[targetChapterIndex].index,
-        this.flattenChapters[targetChapterIndex].href,
-        this.flattenChapters[targetChapterIndex].label
+        targetChapterIndex,
+        this.chapterDocList[targetChapterIndex].href,
+        this.chapterDocList[targetChapterIndex].label
       );
     }
   }
@@ -153,15 +153,15 @@ class PdfRender extends GeneralRender {
     return this.tempLocation;
   }
   async goToPercentage(percentage: number) {
-    if (this.flattenChapters.length > 0) {
+    if (this.chapterDocList.length > 0) {
       let chapterIndex =
         percentage === 1
-          ? this.flattenChapters.length - 1
-          : Math.floor(this.flattenChapters.length * percentage);
+          ? this.chapterDocList.length - 1
+          : Math.floor(this.chapterDocList.length * percentage);
       await this.goToChapter(
-        this.flattenChapters[chapterIndex].index.toString(),
-        this.flattenChapters[chapterIndex].href,
-        this.flattenChapters[chapterIndex].label
+        chapterIndex,
+        this.chapterDocList[chapterIndex].href,
+        this.chapterDocList[chapterIndex].label
       );
     }
   }
@@ -177,6 +177,7 @@ class PdfRender extends GeneralRender {
       chapterHref: bookLocation.chapterHref,
       count: bookLocation.count,
       page: bookLocation.page,
+      percentage: bookLocation.percentage,
     };
     let { chapterTitle, chapterDocIndex, chapterHref } = bookLocation;
     if (this.readerMode === "double" && chapterDocIndex % 2 == 1) {
