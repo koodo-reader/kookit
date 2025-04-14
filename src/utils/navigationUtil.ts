@@ -9,7 +9,7 @@ import {
 import Chapter from "../model/chapter";
 import { cleanText } from "../libs/html";
 import Chinese from "chinese-s2t";
-import _ from "underscore";
+import { findLastIndex, uniq } from "underscore";
 import rangy from "rangy/lib/rangy-core.js";
 declare var window: any;
 let lock = false;
@@ -56,7 +56,6 @@ export const handleScrollPage = async (
       behavior:
         animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
     });
-    // trigger("page-changed");
   } else if (delta < 0) {
     // next page
     doc.body.scrollBy({
@@ -73,7 +72,7 @@ const findValidChapter = (
   chapterDocList: ChapterDoc[],
   flag: string
 ) => {
-  let currentChapterIndex = _.findLastIndex(chapterDocList, (chapter) => {
+  let currentChapterIndex = findLastIndex(chapterDocList, (chapter) => {
     return (
       chapter.href === chapterHref ||
       (chapter.href &&
@@ -83,7 +82,7 @@ const findValidChapter = (
   });
   if (
     chapterHref &&
-    _.findLastIndex(chapterDocList, (chapter) => {
+    findLastIndex(chapterDocList, (chapter) => {
       return (
         chapter.href === chapterHref ||
         (chapter.href &&
@@ -170,7 +169,7 @@ export const handleRenderChapter = async (
       chapterTitle !== chapterDocList[chapterDocIndex].label &&
       chapterHref.indexOf("#") === -1)
   ) {
-    let tempChapterDocIndex = _.findLastIndex(chapterDocList, {
+    let tempChapterDocIndex = findLastIndex(chapterDocList, {
       label: chapterTitle,
     });
     if (tempChapterDocIndex !== -1) {
@@ -179,7 +178,7 @@ export const handleRenderChapter = async (
   }
   if (chapterDocIndex === -1 && chapterHref.indexOf("#") > -1) {
     let href = chapterHref.split("#")[0];
-    let tempChapterDocIndex = _.findLastIndex(chapterDocList, (chapter) => {
+    let tempChapterDocIndex = findLastIndex(chapterDocList, (chapter) => {
       return (
         chapter.href === href ||
         (chapter.href &&
@@ -493,7 +492,7 @@ export const handleHashChapter = (
     const element = visibleNode[index];
     if (element.id) {
       let newHref = beforeHash + "#" + element.id;
-      let newIndex = _.findLastIndex(flattenChapters, {
+      let newIndex = findLastIndex(flattenChapters, {
         href: newHref,
       });
       if (newIndex > -1) {
@@ -637,7 +636,7 @@ export const getSearchResult = async (
       }
     }
   }
-  return _.uniq(searchResult, "excerpt");
+  return uniq(searchResult, "excerpt");
 };
 export const isParentBlock = (myDiv: Element) => {
   var children = myDiv.children;

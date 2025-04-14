@@ -144,7 +144,6 @@ class PdfRender extends GeneralRender {
     await this.record();
   }
   getPositionByChapter(chapterDocIndex: number) {
-    this.tempLocation.chapterDocIndex = chapterDocIndex;
     this.tempLocation.percentage = chapterDocIndex / this.chapterDocList.length;
     this.tempLocation.chapterDocIndex = chapterDocIndex + "";
     this.tempLocation.percentage =
@@ -202,10 +201,10 @@ class PdfRender extends GeneralRender {
       doc
     );
     await this.record();
+    this.trigger("page-changed");
     // this.addPageAnimation();
   }
   async prev() {
-    // this.trigger("page-changed");
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) {
@@ -238,7 +237,6 @@ class PdfRender extends GeneralRender {
     await this.record();
   }
   async next() {
-    // this.trigger("page-changed");
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) {
@@ -281,7 +279,7 @@ class PdfRender extends GeneralRender {
     let doc = this.getDocument();
     if (!doc) return "";
     return await getPDFVisibleText(
-      this.tempLocation.chapterDocIndex,
+      parseInt(this.tempLocation.chapterDocIndex || "0"),
       this.chapterDocList,
       this.readerMode
     );
@@ -346,7 +344,7 @@ class PdfRender extends GeneralRender {
   getProgress() {
     return {
       totalPage: this.chapterDocList.length,
-      currentPage: this.tempLocation.chapterDocIndex,
+      currentPage: parseInt(this.tempLocation.chapterDocIndex || "0") + 1,
     };
   }
   async getNotePosition() {
@@ -458,6 +456,7 @@ class PdfRender extends GeneralRender {
     return { page: pageIndex, coords: selected, readerMode: this.readerMode };
   }
   async renderHighlighters(notes: any[], handleNoteClick: any) {
+    if (notes.length === 0) return;
     let chapterIndex = notes[0].chapterIndex;
     let iframe = this.getSubIframe(chapterIndex);
     let doc = this.getSubDocument(chapterIndex);
@@ -543,12 +542,9 @@ class PdfRender extends GeneralRender {
     iWin.getSelection()?.empty();
   }
   async handleRenderPDFChapter(chapterDocIndex: number, doc: Document) {
-    this.tempLocation.chapterTitle = this.chapterDocList[chapterDocIndex].label;
-    this.tempLocation.chapterHref = this.chapterDocList[chapterDocIndex].href;
-    this.tempLocation.chapterDocIndex = chapterDocIndex + "";
-    this.tempLocation.percentage =
-      chapterDocIndex / this.chapterDocList.length + "";
-    this.tempLocation.text = "";
+    if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
+      return;
+    }
     let subIframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
     let subDoc = subIframe?.contentDocument;
     if (!subDoc) return;

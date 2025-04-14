@@ -1,7 +1,6 @@
 import ChapterDoc from "../model/chapterDoc";
 import { convertStyleNum } from "./layoutUtil";
-import _ from "underscore";
-import { getBlockElement } from "./navigationUtil";
+import { uniq } from "underscore";
 
 export const getPdfScale = async (
   element: HTMLElement,
@@ -125,7 +124,6 @@ export const isPDFScrolledIntoView = (
   } else {
     let elemTop = rect.top;
     let elemBottom = rect.bottom;
-    console.log(elemTop, elemBottom);
     isVisible =
       (elemTop - 10 >= element.scrollTop &&
         elemTop + element.clientHeight / 2 <=
@@ -141,6 +139,7 @@ export const getPDFVisibleText = async (
   chapterDocList: ChapterDoc[],
   readerMode: string
 ) => {
+  console.log("getPDFVisibleText", chapterDocIndex);
   let textContent = await chapterDocList[chapterDocIndex].text.getTextContent();
 
   let textList = textContent.items.map((item: any) => {
@@ -203,5 +202,6 @@ export const getPDFSearchResult = async (
       });
     }
   }
-  return _.uniq(searchResult, "excerpt");
+  console.log(uniq, "_");
+  return uniq(searchResult, "excerpt");
 };
