@@ -1072,7 +1072,7 @@ export const addAndroidTouchEvent = (
             );
           }
         },
-        format === "PDF" ? 1000 : 500
+        format === "PDF" ? 300 : 200
       ); // Debounce selection events
     },
     false

@@ -6,7 +6,6 @@ import { clearHighlight, showPDFHighlight } from "../utils/noteUtil.js";
 import {
   createPDFIframe,
   getPdfScale,
-  getPDFSearchResult,
   getPDFVisibleText,
   handleHighlightPDFNode,
   handlePDFLayout,
@@ -69,10 +68,10 @@ class PdfRender extends GeneralRender {
     let subIframes = doc.querySelectorAll("iframe");
     for (let index = 0; index < subIframes.length; index++) {
       let subIframe = subIframes[index];
+      let id = subIframe.getAttribute("id");
+      if (!id) continue;
+      let chapterDocIndex = parseInt(id.split("-").reverse()[0]);
       if (isPDFScrolledIntoView(this.element, subIframe, this.readerMode)) {
-        let id = subIframe.getAttribute("id");
-        if (!id) continue;
-        let chapterDocIndex = parseInt(id.split("-").reverse()[0]);
         await this.handleRenderPDFChapter(chapterDocIndex, doc);
       }
     }
@@ -564,11 +563,23 @@ class PdfRender extends GeneralRender {
     );
     this.trigger("rendered");
   }
+  async handleUnloadPDFChapter(chapterDocIndex: number, doc: Document) {
+    if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
+      return;
+    }
+    let subIframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
+    let subDoc = subIframe?.contentDocument;
+    if (!subDoc) return;
+    if (subDoc.body.innerHTML === "") {
+      return;
+    }
+    await this.chapterDocList[chapterDocIndex].text.unload();
+    subDoc.body.innerHTML = "";
+  }
   async renderPdfPage(chapterDocIndex: number, doc: Document) {
     await this.handleRenderPDFChapter(chapterDocIndex, doc);
-    if (this.readerMode === "double") {
-      await this.handleRenderPDFChapter(chapterDocIndex + 1, doc);
-    }
+
+    await this.handleRenderPDFChapter(chapterDocIndex + 1, doc);
   }
 }
 export default PdfRender;
