@@ -2,10 +2,11 @@ import Chinese from "chinese-s2t";
 export const makeHtmlBook = (
   bookStr: string,
   isTxt = false,
-  parserRegex = ""
+  parserRegex = "",
+  bookLocation?: any
 ) => {
   const bookDoc = new DOMParser().parseFromString(
-    isTxt ? txtToHtml(bookStr, parserRegex) : bookStr,
+    isTxt ? txtToHtml(bookStr, parserRegex, bookLocation) : bookStr,
     "text/html"
   );
   let chapterDomList = getTitleElement(bookDoc);
@@ -207,22 +208,94 @@ const getChapterDoc = (bookStr: string) => {
   });
   return chapterDocList;
 };
-const txtToHtml = (text: string, parserRegex: string) => {
-  let html: string = "";
+const txtToHtml = (text: string, parserRegex: string, bookLocation?: any) => {
   let lines = text.split("\n");
   if (lines.length === 1) {
     lines = text.split("\r");
   }
-  for (let item of lines) {
-    if (cleanText(item) && isTitle(cleanText(item), parserRegex)) {
-      html += `<h1>${cleanText(item)}</h1>`;
-    } else {
-      html += `<p>${item}</p>`;
+
+  const htmlParts: string[] = []; // Use an array to store HTML parts
+
+  if (bookLocation && bookLocation.text && lines.length > 10000) {
+    // --- Slicing and Title Identification Logic ---
+    let targetLineIndex = lines.findIndex((item) => {
+      // Optimization: cleanText called only once here if needed often
+      return cleanText(item) === cleanText(bookLocation.text);
+    });
+    if (targetLineIndex === -1) {
+      targetLineIndex = 0;
+    }
+
+    // Slice the lines array
+    const startIndex = Math.max(targetLineIndex - 1000, 0);
+    const endIndex = Math.min(targetLineIndex + 1000, lines.length);
+    const relevantLines = lines.slice(startIndex, endIndex); // Process only the relevant slice
+    console.log(relevantLines.length, "lines.length");
+
+    // Identify potential titles within the relevant slice
+    const titlesInSlice = relevantLines.filter((item) => {
+      const cleaned = cleanText(item); // Clean once
+      return cleaned && isTitle(cleaned, parserRegex);
+    });
+
+    // Create a Set of cleaned titles for fast lookup
+    const cleanedTitlesSet = new Set(
+      titlesInSlice.map((title) => cleanText(title))
+    );
+
+    let targetTitleIndex = titlesInSlice.findIndex((item) => {
+      // Optimization: cleanText called only once here
+      return cleanText(item) === cleanText(bookLocation.chapterTitle);
+    });
+    if (targetTitleIndex === -1) {
+      targetTitleIndex = 0;
+    }
+
+    // --- Prepending Logic (if needed) ---
+    // This part seems related to chapter indexing, ensure it uses the correct indices based on the slice
+    if (targetTitleIndex < parseInt(bookLocation.chapterDocIndex || "0") - 1) {
+      let prependLength =
+        parseInt(bookLocation.chapterDocIndex || "0") - targetTitleIndex;
+      if (prependLength > 0) {
+        for (let i = 0; i < prependLength; i++) {
+          // Push to array instead of concatenating
+          htmlParts.push(`<h1>Chapter ${i}</h1>`);
+          htmlParts.push(`<p>Chapter ${i}</p>`);
+        }
+      }
+    }
+
+    // --- Main Loop for Relevant Lines ---
+    for (const item of relevantLines) {
+      // Iterate over the sliced array
+      const cleanedItem = cleanText(item); // Clean once per line
+      // Use the Set for O(1) average lookup
+      if (cleanedItem && cleanedTitlesSet.has(cleanedItem)) {
+        htmlParts.push(`<h1>${cleanedItem}</h1>`); // Push to array
+      } else {
+        // Avoid cleaning again if not necessary, use original item for content
+        htmlParts.push(`<p>${item}</p>`); // Push to array
+      }
+    }
+  } else {
+    // --- Loop for Full File (if not large or no bookLocation) ---
+    for (const item of lines) {
+      const cleanedItem = cleanText(item); // Clean once per line
+      if (cleanedItem && isTitle(cleanedItem, parserRegex)) {
+        htmlParts.push(`<h1>${cleanedItem}</h1>`); // Push to array
+      } else {
+        htmlParts.push(`<p>${item}</p>`); // Push to array
+      }
     }
   }
-  if (html) {
-    return html;
+
+  // Join the array at the end
+  const finalHtml = htmlParts.join("");
+
+  if (finalHtml) {
+    return finalHtml;
   } else {
+    // Fallback if no HTML was generated
     return `<h1>Title</h1><p>${text}</p>`;
   }
 };

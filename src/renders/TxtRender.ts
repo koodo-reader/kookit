@@ -14,11 +14,11 @@ class TxtRender extends GeneralRender {
     this.charset = config.charset;
     this.parserRegex = config.parserRegex;
   }
-  renderTo(element: HTMLElement) {
+  renderTo(element: HTMLElement, bookLocation?: any): Promise<void> {
     return new Promise<void>(async (resolve, reject) => {
       this.element = element;
       if (!this.book) {
-        await this.parse();
+        await this.parse(bookLocation);
       }
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
@@ -30,16 +30,23 @@ class TxtRender extends GeneralRender {
       resolve();
     });
   }
-  async parse() {
+  async parse(bookLocation?: any) {
     try {
       const textDecoder = new TextDecoder(this.charset);
       const bytes = new Uint8Array(this.txtBuffer);
       let text = textDecoder.decode(bytes);
-      this.book = makeHtmlBook(text, true, this.parserRegex);
+      this.book = makeHtmlBook(text, true, this.parserRegex, bookLocation);
     } catch (error) {
       console.error(error);
       throw error;
     }
+  }
+  async refreshContent() {
+    await this.parse();
+    let parser = new GeneralParser(this.book);
+    this.chapterList = await parser.getChapter(this.book.toc);
+    this.chapterDocList = await parser.getChapterDoc();
+    return this.chapterList;
   }
   async preCache() {
     if (!this.book) {
@@ -48,15 +55,31 @@ class TxtRender extends GeneralRender {
     return await getCache(this.book);
   }
 
-  async getMetadata(txtBuffer) {
+  async getMetadata(txtBuffer: ArrayBuffer) {
     try {
-      const array = new Uint8Array(txtBuffer);
-      let charset = chardet.detect(array);
-      this.charset = charset || "utf8";
-      return { charset: charset || "utf8" };
+      // Define the size of the chunk to read for detection (e.g., 4KB)
+      const CHUNK_SIZE = 4096;
+      const bufferLength = txtBuffer.byteLength;
+
+      // Determine the actual size to read (up to CHUNK_SIZE or the file size if smaller)
+      const sizeToRead = Math.min(bufferLength, CHUNK_SIZE);
+
+      // Create a Uint8Array from the beginning chunk of the buffer
+      const chunkArray = new Uint8Array(txtBuffer, 0, sizeToRead);
+
+      // Detect the charset using only the chunk
+      let detectedCharset = chardet.detect(chunkArray);
+
+      // Fallback to utf8 if detection fails or returns null/undefined
+      const charset = detectedCharset || "utf8";
+      this.charset = charset;
+
+      return { charset: charset };
     } catch (error) {
-      console.error(error);
-      throw error;
+      console.error("Error detecting charset:", error);
+      // Fallback to utf8 in case of error during detection
+      this.charset = "utf8";
+      return { charset: "utf8" };
     }
   }
 }
