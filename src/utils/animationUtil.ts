@@ -81,6 +81,8 @@ export const addPageAnimation = (
   // Dimensions of one page in the book
   var PAGE_WIDTH = WINDOW_WIDTH;
   var PAGE_HEIGHT = WINDOW_HEIGHT;
+  var touchStartX = 0;
+  var touchEndX = 0;
 
   // Vertical spacing between the top edge of the book and the papers
   var PAGE_Y = (BOOK_HEIGHT - PAGE_HEIGHT) / 2;
@@ -152,6 +154,7 @@ export const addPageAnimation = (
   function mouseDownHandler(event) {
     const touch = event.touches[0];
     // flips[page].dragging = true;
+    touchStartX = touch.screenX;
     if (touch.screenX < window.screen.width / 2 && pageNum - 1 >= 0) {
       flips[pageNum - 1].dragging = true;
     } else if (
@@ -166,16 +169,30 @@ export const addPageAnimation = (
   }
 
   function mouseUpHandler(event) {
+    const touch = event.changedTouches[0];
+    touchEndX = touch.screenX;
+    console.log("touchEndX", touchEndX);
+    console.log("touchStartX", touchStartX);
+    console.log(mouse.x, PAGE_WIDTH / 2);
     for (var i = 0; i < flips.length; i++) {
       // If this flip was being dragged we animate to its destination
       if (flips[i].dragging) {
         // Figure out which page we should go to next depending on the flip direction
-        if (mouse.x < PAGE_WIDTH / 2) {
+        if (mouse.x < PAGE_WIDTH / 2 && touchEndX - touchStartX < 0) {
           flips[i].target = -1;
           pageNum = Math.min(pageNum + 1, flips.length);
-        } else {
+        } else if (mouse.x > PAGE_WIDTH / 2 && touchEndX - touchStartX > 0) {
           flips[i].target = 1;
           pageNum = Math.max(pageNum - 1, 0);
+        } else {
+          //实现当不满足以上条件时将拖拽的页面恢复到原来的位置
+          if (i === pageNum) {
+            // Page was being dragged forward attempt
+            flips[i].target = 1;
+          } else if (i === pageNum - 1) {
+            // Page was being dragged backward attempt
+            flips[i].target = -1;
+          }
         }
       }
 

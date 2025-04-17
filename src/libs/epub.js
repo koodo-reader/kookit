@@ -453,6 +453,7 @@ class Resources {
           type: type.split(/\s/),
           href: resolveHref(href),
         }));
+    console.log(this)
     this.cover =
       this.getItemByProperty("cover-image") ??
       this.getItemByID("cover-image") ??
@@ -463,6 +464,9 @@ class Resources {
           ?.getAttribute("content")
       ) ??
       this.getItemByID("cover") ??
+      this.getItemByID("cover.jpg") ??
+      this.getItemByID("cover.png") ??
+      this.getItemByID("cover.jpeg") ??
       this.getItemByHref(
         this.guide?.find((ref) => ref.type.includes("cover") && !ref.href.includes("html") && !ref.href.includes("xml"))?.href
       );

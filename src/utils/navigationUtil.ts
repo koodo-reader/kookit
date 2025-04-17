@@ -722,9 +722,15 @@ export const addAndroidTouchEvent = (
     if (isDragging && animation === "mimical") {
       isDragging = false;
       render.mouseUpHandler(event);
-      if (touch.screenX < window.screen.width / 2) {
+      if (
+        touch.screenX < window.screen.width / 2 &&
+        touchEndX - touchStartX < 0
+      ) {
         render.next();
-      } else {
+      } else if (
+        touch.screenX > window.screen.width / 2 &&
+        touchEndX - touchStartX > 0
+      ) {
         render.prev();
       }
       setTimeout(() => {
