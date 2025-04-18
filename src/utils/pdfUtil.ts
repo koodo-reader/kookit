@@ -1,3 +1,4 @@
+import { create } from "domain";
 import ChapterDoc from "../model/chapterDoc";
 import { convertStyleNum } from "./layoutUtil";
 import _ from "underscore";
@@ -41,7 +42,7 @@ export const handlePDFLayout = (
       }px;`
   );
 };
-export const createPDFIframe = (
+export const createPDFContainer = (
   element: HTMLElement,
   chapterDocList: ChapterDoc[],
   viewport: any
@@ -51,49 +52,58 @@ export const createPDFIframe = (
     const iframeContainer = document.createElement("div");
     iframeContainer.style.position = "relative";
     iframeContainer.style.width = "100%";
+    iframeContainer.id = "pdf-container-" + index;
+    iframeContainer.className = "pdf-container";
 
     // Set aspect ratio based on PDF page dimensions
     const aspectRatio = viewport?.width / viewport?.height || 0.75; // Default to 3:4 if viewport unknown
     iframeContainer.style.paddingTop = `${(1 / aspectRatio) * 100}%`;
 
-    // Create iframe with absolute positioning
-    let iframe = document.createElement("iframe");
-    iframe.style.position = "absolute";
-    iframe.style.top = "0";
-    iframe.style.left = "0";
-    iframe.style.width = "100%";
-    iframe.style.height = "100%";
-    iframe.style.border = "0";
-    iframe.style.margin = "0";
-    iframe.style.padding = "0";
-    iframe.style.fontSize = "100%";
-    iframe.style.font = "inherit";
-    iframe.scrolling = "no";
-    iframe.tabIndex = 0;
-    iframe.id = "pdf-iframe-" + index;
-
-    // Add style element
-    let style = document.createElement("style");
-    style.id = "default-style";
-    style.textContent =
-      "p,empty-line{display: inherit;margin-block-start: inherit;margin-block-end: inherit;margin-inline-start: inherit;margin-inline-end: inherit;}body{margin: 0px}";
-
-    // Append iframe to container, then container to parent
-    iframeContainer.appendChild(iframe);
     element.appendChild(iframeContainer);
-
-    // Add style to iframe after it's in the DOM
-    iframe.contentDocument?.head.appendChild(style);
   }
+};
+export const createPDFIframe = (chapterDocIndex: number, doc: Document) => {
+  const iframeContainer = doc.getElementById(
+    "pdf-container-" + chapterDocIndex
+  );
+  console.log("createPDFIframe", chapterDocIndex, iframeContainer);
+  if (!iframeContainer) return;
+  // Create iframe with absolute positioning
+  let iframe = document.createElement("iframe");
+  iframe.style.position = "absolute";
+  iframe.style.top = "0";
+  iframe.style.left = "0";
+  iframe.style.width = "100%";
+  iframe.style.height = "100%";
+  iframe.style.border = "0";
+  iframe.style.margin = "0";
+  iframe.style.padding = "0";
+  iframe.style.fontSize = "100%";
+  iframe.style.font = "inherit";
+  iframe.scrolling = "no";
+  iframe.tabIndex = 0;
+  iframe.id = "pdf-iframe-" + chapterDocIndex;
+
+  // Add style element
+  let style = document.createElement("style");
+  style.id = "default-style";
+  style.textContent =
+    "p,empty-line{display: inherit;margin-block-start: inherit;margin-block-end: inherit;margin-inline-start: inherit;margin-inline-end: inherit;}body{margin: 0px}";
+
+  // Append iframe to container, then container to parent
+  iframeContainer.appendChild(iframe);
+
+  // Add style to iframe after it's in the DOM
+  iframe.contentDocument?.head.appendChild(style);
+  return iframe;
 };
 export const handleScrollPDFPosition = async (
   chapterDocIndex: number,
   readerMode: string,
   doc: Document
 ) => {
-  let targetNode: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
+  let targetNode: any = doc.getElementById("pdf-container-" + chapterDocIndex);
   if (!targetNode) return;
-  targetNode = targetNode.parentElement;
 
   if (readerMode !== "scroll") {
     let left = targetNode
@@ -161,6 +171,9 @@ export const handleHighlightPDFNode = (
   let chapterDocIndex = parseInt(text.split("#").reverse()[0]);
   let str = text.split("#").slice(0, -1).join("#");
   let subIframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
+  if (!subIframe) {
+    subIframe = createPDFIframe(chapterDocIndex, doc);
+  }
   let subDoc = subIframe?.contentDocument;
   if (!subDoc) return;
   let nodeList = subDoc.querySelectorAll("p,span");

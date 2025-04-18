@@ -52,6 +52,7 @@ class GeneralRender extends EventEmitter {
   mouseUpHandler: (event: TouchEvent) => void;
   mouseMoveHandler: (event: TouchEvent) => void;
   isMobile: string | undefined;
+  touchEventSet: any;
   constructor(config: {
     readerMode: string;
     format: string;
@@ -78,6 +79,7 @@ class GeneralRender extends EventEmitter {
     this.mouseDownHandler = () => {};
     this.mouseUpHandler = () => {};
     this.mouseMoveHandler = (event: TouchEvent) => {};
+    this.touchEventSet = {};
     if (this.isMobile === "yes") {
       console.log = function (...args) {
         window.ReactNativeWebView.postMessage(
@@ -764,10 +766,17 @@ class GeneralRender extends EventEmitter {
   addTouchEvent(isAndroid: string) {
     let docs = this.getAllDocuments();
     let iframes = this.getAllIframes();
+    console.log("bsafsdfsd");
     for (let index = 0; index < docs.length; index++) {
       const doc = docs[index];
       const iframe = iframes[index];
       if (!doc || !iframe) continue;
+      let iframeId = iframe.id;
+      console.log(JSON.stringify(this.touchEventSet), "safsdfsdfds");
+      if (this.touchEventSet[iframeId]) {
+        continue;
+      }
+      this.touchEventSet[iframeId] = true;
       if (isAndroid === "yes") {
         addAndroidTouchEvent(
           doc,

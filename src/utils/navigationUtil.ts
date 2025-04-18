@@ -1001,12 +1001,15 @@ export const addAndroidTouchEvent = (
       });
     }
   };
-  doc.body.ontouchend = onTouchEnd;
-  doc.body.ontouchstart = onTouchStart;
-  doc.body.ontouchmove = onTouchMove;
-  iWin.ontouchend = onTouchEnd;
-  iWin.ontouchstart = onTouchStart;
-  iWin.ontouchmove = onTouchMove;
+  doc.addEventListener("touchend", onTouchEnd, false);
+  doc.addEventListener("touchstart", onTouchStart, false);
+  doc.addEventListener("touchmove", onTouchMove, false);
+  // doc.body.ontouchend = onTouchEnd;
+  // doc.body.ontouchstart = onTouchStart;
+  // doc.body.ontouchmove = onTouchMove;
+  // iWin.ontouchend = onTouchEnd;
+  // iWin.ontouchstart = onTouchStart;
+  // iWin.ontouchmove = onTouchMove;
   let selectionTimeout: any = null;
   doc.body.oncontextmenu = function (event) {
     event.preventDefault();
@@ -1038,8 +1041,49 @@ export const addAndroidTouchEvent = (
           const selectedText = iWin.getSelection().toString().trim();
           if (selectedText) {
             var range = iWin.getSelection().getRangeAt(0);
-            var rect = range.getBoundingClientRect();
             let pageSize = render.getPageSize();
+            var rect = range.getBoundingClientRect();
+            if (format === "PDF") {
+              let clientRects = range.getClientRects();
+              if (clientRects.length > 0) {
+                console.log(clientRects.length, "clientRects.length");
+                //combine all the rects
+                clientRects = Array.from(clientRects).filter((item: any) => {
+                  console.log(item, "item");
+                  console.log(pageSize, "pageSize");
+                  return (
+                    Math.abs(item.height - pageSize.sectionHeight) > 10 &&
+                    Math.abs(item.width - pageSize.sectionWidth) > 10
+                  );
+                });
+                console.log(clientRects);
+                console.log(clientRects.length, "clientRects.length");
+                let minTop = Infinity;
+                let minLeft = Infinity;
+                let maxBottom = -Infinity;
+                let maxRight = -Infinity;
+
+                for (let i = 0; i < clientRects.length; i++) {
+                  const rect = clientRects[i];
+                  minTop = Math.min(minTop, rect.top);
+                  minLeft = Math.min(minLeft, rect.left);
+                  maxBottom = Math.max(maxBottom, rect.bottom);
+                  maxRight = Math.max(maxRight, rect.right);
+                }
+
+                // Create the combined rectangle object
+                const combinedRect = {
+                  top: minTop,
+                  left: minLeft,
+                  bottom: maxBottom,
+                  right: maxRight,
+                  width: maxRight - minLeft,
+                  height: maxBottom - minTop,
+                };
+                rect = combinedRect;
+              }
+            }
+
             var position = {
               top: rect.top - element.scrollTop,
               left: rect.left,
@@ -1411,12 +1455,15 @@ export const addAppleTouchEvent = (
       });
     }
   };
-  doc.body.ontouchend = onTouchEnd;
-  doc.body.ontouchstart = onTouchStart;
-  doc.body.ontouchmove = onTouchMove;
-  iWin.ontouchend = onTouchEnd;
-  iWin.ontouchstart = onTouchStart;
-  iWin.ontouchmove = onTouchMove;
+  doc.addEventListener("touchend", onTouchEnd, false);
+  doc.addEventListener("touchstart", onTouchStart, false);
+  doc.addEventListener("touchmove", onTouchMove, false);
+  // doc.body.ontouchend = onTouchEnd;
+  // doc.body.ontouchstart = onTouchStart;
+  // doc.body.ontouchmove = onTouchMove;
+  // iWin.ontouchend = onTouchEnd;
+  // iWin.ontouchstart = onTouchStart;
+  // iWin.ontouchmove = onTouchMove;
   let selectionTimeout: any = null;
   doc.addEventListener("touchmove", (event) => {}, false);
   doc.body.oncontextmenu = function (event) {

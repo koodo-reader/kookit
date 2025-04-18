@@ -53,11 +53,19 @@ export const showPDFHighlight = (
   let pageElement: any = doc.querySelector(".noteLayer");
   let docLayer = doc.querySelector("#koodoPDFLayer");
   var viewport = page.getViewport({ scale: scale });
-  selected.coords.forEach((rect) => {
+  for (let i = 0; i < selected.coords.length; i++) {
+    const rect = selected.coords[i];
     var bounds = viewport.convertToViewportRectangle(rect);
+    //过滤出把整页都给高亮的rect，剔除掉
+    if (
+      Math.abs(Math.abs(bounds[1] - bounds[3]) - viewport.height) < 10 ||
+      Math.abs(Math.abs(bounds[0] - bounds[2]) - viewport.width) < 10
+    ) {
+      continue;
+    }
     var newNode = document.createElement("div");
     if (!docLayer) {
-      return;
+      continue;
     }
     newNode?.setAttribute(
       "style",
@@ -107,7 +115,7 @@ export const showPDFHighlight = (
       event.stopPropagation();
     };
     pageElement.appendChild(newNode);
-  });
+  }
 };
 
 export const clearHighlight = (doc: Document) => {
