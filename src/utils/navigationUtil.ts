@@ -1053,7 +1053,9 @@ export const addAndroidTouchEvent = (
                   console.log(pageSize, "pageSize");
                   return (
                     Math.abs(item.height - pageSize.sectionHeight) > 10 &&
-                    Math.abs(item.width - pageSize.sectionWidth) > 10
+                    Math.abs(item.width - pageSize.sectionWidth) > 10 &&
+                    item.height > 0 &&
+                    item.width > 0
                   );
                 });
                 console.log(clientRects);
@@ -1065,6 +1067,13 @@ export const addAndroidTouchEvent = (
 
                 for (let i = 0; i < clientRects.length; i++) {
                   const rect = clientRects[i];
+                  console.log(
+                    rect.top,
+                    rect.left,
+                    rect.height,
+                    rect.width,
+                    "rect"
+                  );
                   minTop = Math.min(minTop, rect.top);
                   minLeft = Math.min(minLeft, rect.left);
                   maxBottom = Math.max(maxBottom, rect.bottom);

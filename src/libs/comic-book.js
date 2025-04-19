@@ -33,8 +33,24 @@ export const makeComicBook = ({ entries, loadBlob, getSize }, file, readerMode) 
   const exts = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"];
   const files = entries
     .map((entry) => entry.filename)
-    .filter((name) => exts.some((ext) => name.endsWith(ext)))
-    .sort();
+    .filter((name) => exts.some((ext) => name.endsWith(ext))).sort((a, b) => {
+      const numA = parseInt(a.replace(/\D/g, ""));
+      const numB = parseInt(b.replace(/\D/g, ""));
+
+      // Check if both are numbers
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return numA - numB;
+      }
+      // Check if only one is a number (place numbers first)
+      if (!isNaN(numA)) {
+        return -1; // a comes first
+      }
+      if (!isNaN(numB)) {
+        return 1; // b comes first
+      }
+      // If neither are numbers, sort alphabetically
+      return a.localeCompare(b);
+    });
 
   const book = {};
   book.getCover = () => loadBlob(files[0]);

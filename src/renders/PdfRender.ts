@@ -82,7 +82,7 @@ class PdfRender extends GeneralRender {
           this.readerMode
         )
       ) {
-        await this.handleRenderPDFChapter(chapterDocIndex, doc);
+        await this.renderPdfPage(chapterDocIndex, doc);
       }
     }
   }
@@ -152,14 +152,13 @@ class PdfRender extends GeneralRender {
     await this.record();
   }
   getPositionByChapter(chapterDocIndex: number) {
-    this.tempLocation.percentage = chapterDocIndex / this.chapterDocList.length;
-    this.tempLocation.chapterDocIndex = chapterDocIndex + "";
-    this.tempLocation.percentage =
-      chapterDocIndex / this.chapterDocList.length + "";
-    this.tempLocation.chapterHref = this.chapterDocList[chapterDocIndex].href;
-    this.tempLocation.chapterTitle = this.chapterDocList[chapterDocIndex].label;
-    this.tempLocation.text = "";
-    return this.tempLocation;
+    return {
+      percentage: chapterDocIndex / this.chapterDocList.length,
+      chapterDocIndex: chapterDocIndex + "",
+      chapterHref: this.chapterDocList[chapterDocIndex].href,
+      chapterTitle: this.chapterDocList[chapterDocIndex].label,
+      text: "",
+    };
   }
   async goToPercentage(percentage: number) {
     if (this.chapterDocList.length > 0) {
@@ -318,6 +317,7 @@ class PdfRender extends GeneralRender {
     let subContainers = doc.querySelectorAll(".pdf-container");
     for (let index = 0; index < subContainers.length; index++) {
       let subContainer = subContainers[index];
+      console.log("subContainer", subContainer);
       if (
         isPDFScrolledIntoView(
           this.element,
@@ -326,6 +326,7 @@ class PdfRender extends GeneralRender {
         )
       ) {
         let id = subContainer.getAttribute("id");
+        console.log("handlePDFRecord", id);
         if (!id) continue;
         let chapterDocIndex = parseInt(id.split("-").reverse()[0]);
         if (chapterDocIndex !== parseInt(this.tempLocation.chapterDocIndex)) {

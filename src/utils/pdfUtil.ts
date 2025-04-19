@@ -137,7 +137,9 @@ export const isPDFScrolledIntoView = (
       (elemTop - 10 >= element.scrollTop &&
         elemTop + 10 <= element.scrollTop + element.clientHeight) ||
       (elemBottom - 10 >= element.scrollTop &&
-        elemBottom + 10 <= element.scrollTop + element.clientHeight);
+        elemBottom + 10 <= element.scrollTop + element.clientHeight) ||
+      (elemTop + 10 <= element.scrollTop &&
+        elemBottom - 10 >= element.scrollTop + element.clientHeight);
   }
   return isVisible;
 };
