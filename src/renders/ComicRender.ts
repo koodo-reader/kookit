@@ -44,8 +44,6 @@ class ComicRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
-      console.log(this.chapterList);
-      console.log(this.chapterDocList);
       let doc = this.getDocument();
       if (!doc) return;
       handleLayout(element, this.readerMode, doc);

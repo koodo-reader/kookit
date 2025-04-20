@@ -507,7 +507,7 @@ class GeneralRender extends EventEmitter {
   async chapterText() {
     let doc = this.getDocument();
     if (!doc) return "";
-    return doc.body.innerText;
+    return doc.body.textContent || "";
   }
   highlightNode(text: string, style: string) {
     let doc = this.getDocument();
@@ -766,13 +766,11 @@ class GeneralRender extends EventEmitter {
   addTouchEvent(isAndroid: string) {
     let docs = this.getAllDocuments();
     let iframes = this.getAllIframes();
-    console.log("bsafsdfsd");
     for (let index = 0; index < docs.length; index++) {
       const doc = docs[index];
       const iframe = iframes[index];
       if (!doc || !iframe) continue;
       let iframeId = iframe.id;
-      console.log(JSON.stringify(this.touchEventSet), "safsdfsdfds");
       if (this.touchEventSet[iframeId]) {
         continue;
       }

@@ -1046,11 +1046,8 @@ export const addAndroidTouchEvent = (
             if (format === "PDF") {
               let clientRects = range.getClientRects();
               if (clientRects.length > 0) {
-                console.log(clientRects.length, "clientRects.length");
                 //combine all the rects
                 clientRects = Array.from(clientRects).filter((item: any) => {
-                  console.log(item, "item");
-                  console.log(pageSize, "pageSize");
                   return (
                     Math.abs(item.height - pageSize.sectionHeight) > 10 &&
                     Math.abs(item.width - pageSize.sectionWidth) > 10 &&
@@ -1058,8 +1055,6 @@ export const addAndroidTouchEvent = (
                     item.width > 0
                   );
                 });
-                console.log(clientRects);
-                console.log(clientRects.length, "clientRects.length");
                 let minTop = Infinity;
                 let minLeft = Infinity;
                 let maxBottom = -Infinity;
@@ -1067,13 +1062,6 @@ export const addAndroidTouchEvent = (
 
                 for (let i = 0; i < clientRects.length; i++) {
                   const rect = clientRects[i];
-                  console.log(
-                    rect.top,
-                    rect.left,
-                    rect.height,
-                    rect.width,
-                    "rect"
-                  );
                   minTop = Math.min(minTop, rect.top);
                   minLeft = Math.min(minLeft, rect.left);
                   maxBottom = Math.max(maxBottom, rect.bottom);

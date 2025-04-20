@@ -230,8 +230,6 @@ const txtToHtml = (text: string, parserRegex: string, bookLocation?: any) => {
     const startIndex = Math.max(targetLineIndex - 1000, 0);
     const endIndex = Math.min(targetLineIndex + 1000, lines.length);
     const relevantLines = lines.slice(startIndex, endIndex); // Process only the relevant slice
-    console.log(relevantLines.length, "lines.length");
-
     // Identify potential titles within the relevant slice
     const titlesInSlice = relevantLines.filter((item) => {
       const cleaned = cleanText(item); // Clean once

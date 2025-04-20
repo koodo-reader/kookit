@@ -88,7 +88,6 @@ const render = async (page, doc, zoom) => {
     let element = e.target.closest('.textLayer > span')
     // Check if the target or any of its parents is a span element within the text layer
     const isText = element !== null
-    console.log(isText, element)
     container.style.cursor = isText ? 'text' : 'default'
     //if not, insert end of content element next to closest element
     //remove end of content element from container

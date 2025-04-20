@@ -33,13 +33,11 @@ class PdfRender extends GeneralRender {
       const viewport = await this.chapterDocList[0].text.getDimension();
       let doc: any = this.getDocument();
       if (!doc) return;
-      console.log("before createPDFIframe");
       createPDFContainer(
         doc.body || (doc.documentElement as HTMLElement),
         this.chapterDocList,
         viewport
       );
-      console.log("after createPDFIframe");
       let scrollTimeout: any = null;
       if (this.readerMode === "scroll") {
         this.element.addEventListener("scroll", (e) => {
@@ -64,7 +62,6 @@ class PdfRender extends GeneralRender {
       }
 
       handlePDFLayout(element, this.readerMode, doc);
-      console.log("after handlePDFLayout");
       resolve();
     });
   }
@@ -174,7 +171,6 @@ class PdfRender extends GeneralRender {
     }
   }
   async goToPosition(bookLocationStr: string) {
-    console.log("bookLocationStr", bookLocationStr);
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -195,7 +191,6 @@ class PdfRender extends GeneralRender {
     if (this.readerMode === "double" && chapterDocIndex % 2 == 1) {
       chapterDocIndex--;
     }
-    console.log("before renderPdfPage", chapterDocIndex);
     await this.renderPdfPage(parseInt(chapterDocIndex), doc);
     if (this.readerMode === "scroll") {
       let subIframe = this.getSubIframe(
@@ -208,13 +203,11 @@ class PdfRender extends GeneralRender {
         subIframe.parentElement?.getBoundingClientRect().height || 0;
       iframe.style.height = iframeHeight * this.chapterDocList.length + "px";
     }
-    console.log("after renderPdfPage");
     await handleScrollPDFPosition(
       parseInt(chapterDocIndex),
       this.readerMode,
       doc
     );
-    console.log("after handleScrollPDFPosition");
     await this.record();
     this.trigger("page-changed");
     // this.addPageAnimation();
@@ -317,7 +310,6 @@ class PdfRender extends GeneralRender {
     let subContainers = doc.querySelectorAll(".pdf-container");
     for (let index = 0; index < subContainers.length; index++) {
       let subContainer = subContainers[index];
-      console.log("subContainer", subContainer);
       if (
         isPDFScrolledIntoView(
           this.element,
@@ -326,7 +318,6 @@ class PdfRender extends GeneralRender {
         )
       ) {
         let id = subContainer.getAttribute("id");
-        console.log("handlePDFRecord", id);
         if (!id) continue;
         let chapterDocIndex = parseInt(id.split("-").reverse()[0]);
         if (chapterDocIndex !== parseInt(this.tempLocation.chapterDocIndex)) {
@@ -572,15 +563,11 @@ class PdfRender extends GeneralRender {
     if (!subIframe) {
       subIframe = createPDFIframe(chapterDocIndex, doc);
     }
-    console.log(0, subIframe);
     let subDoc = subIframe?.contentDocument;
-    console.log(1, subDoc);
     if (!subDoc) return;
-    console.log(2);
     if (subDoc.body.innerHTML) {
       return;
     }
-    console.log(3);
     subDoc.body.innerHTML = "";
     let blob = await fetch(
       await this.chapterDocList[chapterDocIndex].text.load()

@@ -66,7 +66,6 @@ export const createPDFIframe = (chapterDocIndex: number, doc: Document) => {
   const iframeContainer = doc.getElementById(
     "pdf-container-" + chapterDocIndex
   );
-  console.log("createPDFIframe", chapterDocIndex, iframeContainer);
   if (!iframeContainer) return;
   // Create iframe with absolute positioning
   let iframe = document.createElement("iframe");

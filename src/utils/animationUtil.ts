@@ -171,9 +171,6 @@ export const addPageAnimation = (
   function mouseUpHandler(event) {
     const touch = event.changedTouches[0];
     touchEndX = touch.screenX;
-    console.log("touchEndX", touchEndX);
-    console.log("touchStartX", touchStartX);
-    console.log(mouse.x, PAGE_WIDTH / 2);
     for (var i = 0; i < flips.length; i++) {
       // If this flip was being dragged we animate to its destination
       if (flips[i].dragging) {
