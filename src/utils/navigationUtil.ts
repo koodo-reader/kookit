@@ -11,6 +11,7 @@ import { cleanText } from "../libs/html";
 import Chinese from "chinese-s2t";
 import _ from "underscore";
 import rangy from "rangy/lib/rangy-core.js";
+
 declare var window: any;
 let lock = false;
 export const getBlockElement = (Element) => {
@@ -48,6 +49,7 @@ export const handleScrollPage = async (
       }, 1000);
     }
   }
+  console.log(width + gap, "width + gap");
   if (delta > 0) {
     // previous page
     doc.body.scrollBy({

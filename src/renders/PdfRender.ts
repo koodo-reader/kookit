@@ -9,6 +9,7 @@ import {
   getPdfScale,
   getPDFVisibleText,
   handleHighlightPDFNode,
+  handleIOSScrollPage,
   handlePDFLayout,
   handleScrollPDFPosition,
   isPDFScrolledIntoView,
@@ -204,6 +205,27 @@ class PdfRender extends GeneralRender {
         subIframe.parentElement?.getBoundingClientRect().height || 0;
       iframe.style.height = iframeHeight * this.chapterDocList.length + "px";
     }
+    if (this.readerMode === "single") {
+      let subContainers = doc.querySelectorAll(".pdf-container");
+      for (let index = 0; index < subContainers.length; index++) {
+        let subContainer: any = subContainers[index];
+        if (
+          this.element.clientHeight >
+          parseFloat(getComputedStyle(subContainer).paddingTop)
+        ) {
+          subContainer.style.height =
+            this.element.clientHeight -
+            parseFloat(getComputedStyle(subContainer).paddingTop) +
+            "px";
+        } else {
+          subContainer.style.marginBottom =
+            this.element.clientHeight -
+            parseFloat(getComputedStyle(subContainer).paddingTop) +
+            "px";
+        }
+      }
+      // let paddingTop = parseFloat(getComputedStyle(iframeContainer).paddingTop);
+    }
     await handleScrollPDFPosition(
       parseInt(chapterDocIndex),
       this.readerMode,
@@ -213,7 +235,7 @@ class PdfRender extends GeneralRender {
     this.trigger("page-changed");
     // this.addPageAnimation();
   }
-  async prev() {
+  async prev(platform?: string) {
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) {
@@ -227,15 +249,28 @@ class PdfRender extends GeneralRender {
         behavior: "smooth",
       });
     } else {
-      await handleScrollPage(
-        this.element,
-        this.animation,
-        1,
-        doc,
-        this.flipToNextPage,
-        this.flipToPrevPage,
-        this.isMobile
-      );
+      if (platform === "ios" && this.readerMode === "single") {
+        await handleIOSScrollPage(
+          this.element,
+          this.animation,
+          1,
+          doc,
+          this.flipToNextPage,
+          this.flipToPrevPage,
+          this.isMobile
+        );
+      } else {
+        await handleScrollPage(
+          this.element,
+          this.animation,
+          1,
+          doc,
+          this.flipToNextPage,
+          this.flipToPrevPage,
+          this.isMobile
+        );
+      }
+
       await this.renderPdfPage(
         parseInt(this.tempLocation.chapterDocIndex) -
           (this.readerMode === "double" ? 2 : 1),
@@ -245,7 +280,7 @@ class PdfRender extends GeneralRender {
 
     await this.record();
   }
-  async next() {
+  async next(platform?: string) {
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) {
@@ -260,15 +295,28 @@ class PdfRender extends GeneralRender {
       });
     } else {
       // single and double readerMode under normal condition
-      await handleScrollPage(
-        this.element,
-        this.animation,
-        -1,
-        doc,
-        this.flipToNextPage,
-        this.flipToPrevPage,
-        this.isMobile
-      );
+      if (platform === "ios" && this.readerMode === "single") {
+        await handleIOSScrollPage(
+          this.element,
+          this.animation,
+          -1,
+          doc,
+          this.flipToNextPage,
+          this.flipToPrevPage,
+          this.isMobile
+        );
+      } else {
+        await handleScrollPage(
+          this.element,
+          this.animation,
+          -1,
+          doc,
+          this.flipToNextPage,
+          this.flipToPrevPage,
+          this.isMobile
+        );
+      }
+
       await this.renderPdfPage(
         parseInt(this.tempLocation.chapterDocIndex) +
           (this.readerMode === "double" ? 2 : 1),

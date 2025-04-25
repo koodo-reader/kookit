@@ -1,4 +1,3 @@
-import { create } from "domain";
 import ChapterDoc from "../model/chapterDoc";
 import { convertStyleNum } from "./layoutUtil";
 import _ from "underscore";
@@ -59,7 +58,7 @@ export const createPDFContainer = (
     // Set aspect ratio based on PDF page dimensions
     const aspectRatio = viewport?.width / viewport?.height || 0.75; // Default to 3:4 if viewport unknown
     iframeContainer.style.paddingTop = `${(1 / aspectRatio) * 100}%`;
-    if (readerMode !== "scroll") {
+    if (readerMode === "double") {
       //break-inside: avoid;
       iframeContainer.style.breakInside = "avoid";
     }
@@ -219,4 +218,50 @@ export const getPDFSearchResult = async (
     }
   }
   return _.uniq(searchResult, "excerpt");
+};
+export const handleIOSScrollPage = async (
+  element: HTMLElement,
+  animation: string,
+  delta: number,
+  doc: Document,
+  flipToNextPage: () => void,
+  flipToPrevPage: () => void,
+  isMobile: string | undefined
+) => {
+  let section = Math.floor(element.clientWidth / 12);
+  let gap = section % 2 === 0 ? section : section - 1;
+  const width = element.clientWidth;
+  if (animation === "mimical" && isMobile !== "yes") {
+    let bookDiv = document.getElementById("book");
+    if (bookDiv) {
+      bookDiv.style.display = "block";
+      if (delta > 0) {
+        flipToPrevPage();
+      } else if (delta < 0) {
+        flipToNextPage();
+      }
+      setTimeout(() => {
+        if (!bookDiv) return {};
+        bookDiv.style.display = "none";
+      }, 1000);
+    }
+  }
+  console.log(width + gap, "width + gap");
+  if (delta > 0) {
+    // previous page
+    doc.body.scrollBy({
+      top: 0,
+      left: (-width - gap) / 2,
+      behavior:
+        animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
+    });
+  } else if (delta < 0) {
+    // next page
+    doc.body.scrollBy({
+      top: 0,
+      left: (width + gap) / 2,
+      behavior:
+        animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
+    });
+  }
 };
