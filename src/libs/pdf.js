@@ -25,8 +25,8 @@ const textLayerBuilderCSS = async () => await fetchText(pdfjsPath('text_layer_bu
 // https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/annotation_layer_builder.css
 const annotationLayerBuilderCSS = async () => await fetchText(pdfjsPath('annotation_layer_builder.css'))
 
-const render = async (page, doc, zoom) => {
-  const scale = zoom * window.devicePixelRatio
+const render = async (page, doc, zoom, isMobile) => {
+  const scale = zoom * devicePixelRatio
   let docLayer = doc.querySelector('#koodoPDFLayer')
   docLayer.style.visibility = 'hidden'
   docLayer.style.transform = `scale(${1 / devicePixelRatio})`
@@ -77,57 +77,56 @@ const render = async (page, doc, zoom) => {
     container.classList.add('selecting');
     isSelecting = true
   }
-  container.onpointerup = () => {
-    container.classList.remove('selecting');
-    isSelecting = false;
-    endOfContent.remove()
-    container.append(endOfContent)
-  }
-  container.onpointermove = (e) => {
-    if (!isSelecting) return
-    let element = e.target.closest('.textLayer > span')
-    // Check if the target or any of its parents is a span element within the text layer
-    const isText = element !== null
-    container.style.cursor = isText ? 'text' : 'default'
-    //if not, insert end of content element next to closest element
-    //remove end of content element from container
-    if (isText) {
-      closestElement = element
+  if (isMobile !== "yes") {
+    container.onpointerup = () => {
+      container.classList.remove('selecting');
+      isSelecting = false;
+      endOfContent.remove()
+      container.append(endOfContent)
     }
+    container.onpointermove = (e) => {
+      if (!isSelecting) return
+      let element = e.target.closest('.textLayer > span')
+      // Check if the target or any of its parents is a span element within the text layer
+      const isText = element !== null
+      container.style.cursor = isText ? 'text' : 'default'
+      //if not, insert end of content element next to closest element
+      //remove end of content element from container
+      if (isText) {
+        closestElement = element
+      }
 
-    endOfContent.remove()
-    container.insertBefore(endOfContent, closestElement);
+      endOfContent.remove()
+      container.insertBefore(endOfContent, closestElement);
 
-  }
-  //adapt to touch screen
-  doc.addEventListener('selectstart', () => {
-    container.classList.add('selecting');
-
-    isSelecting = true
-  })
-  doc.addEventListener('selectionchange', (e) => {
-    if (!isSelecting) return
-    // get the end element of the current selection
-    let iWin = doc?.defaultView;
-    var range = iWin.getSelection().getRangeAt(0);
-    // get the end element of the current range
-    var endNode = range.endContainer;
-    // Get the parent HTMLElement. If endNode is a Text node, parentNode is the element.
-    // If endNode is already an element (less common for endContainer), use it directly.
-    let element = endNode.nodeType === Node.TEXT_NODE ? endNode.parentNode : endNode;
-    element = element.closest('.textLayer > span')
-    // Check if the target or any of its parents is a span element within the text layer
-    const isText = element !== null
-    container.style.cursor = isText ? 'text' : 'default'
-    //if not, insert end of content element next to closest element
-    //remove end of content element from container
-    if (isText) {
-      closestElement = element
     }
+  } else {
+    //adapt to touch screen
+    doc.addEventListener('selectionchange', (e) => {
+      if (!isSelecting) return
+      // get the end element of the current selection
+      let iWin = doc?.defaultView;
+      var range = iWin.getSelection().getRangeAt(0);
+      // get the end element of the current range
+      var endNode = range.endContainer;
+      // Get the parent HTMLElement. If endNode is a Text node, parentNode is the element.
+      // If endNode is already an element (less common for endContainer), use it directly.
+      let element = endNode.nodeType === Node.TEXT_NODE ? endNode.parentNode : endNode;
+      element = element.closest('.textLayer > span')
+      // Check if the target or any of its parents is a span element within the text layer
+      const isText = element !== null
+      container.style.cursor = isText ? 'text' : 'default'
+      //if not, insert end of content element next to closest element
+      //remove end of content element from container
+      if (isText) {
+        closestElement = element
+      }
+      endOfContent.remove()
+      container.insertBefore(endOfContent, closestElement.nextSibling);
+    })
+  }
 
-    endOfContent.remove()
-    container.insertBefore(endOfContent, closestElement);
-  })
+
 
   const div = doc.querySelector('#annotationLayer')
   await new pdfjsLib.AnnotationLayer({ page, viewport, div }).render({
@@ -229,8 +228,8 @@ export const makePDF = async (file, readerMode) => {
       let page = await pdf.getPage(i + 1)
       page.cleanup()
     },
-    render: async (doc, scale) => {
-      await render(await pdf.getPage(i + 1), doc, scale);
+    render: async (doc, scale, isMobile) => {
+      await render(await pdf.getPage(i + 1), doc, scale, isMobile);
     },
     getTextContent: async () => {
       const page = await pdf.getPage(i + 1)

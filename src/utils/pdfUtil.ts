@@ -45,7 +45,8 @@ export const handlePDFLayout = (
 export const createPDFContainer = (
   element: HTMLElement,
   chapterDocList: ChapterDoc[],
-  viewport: any
+  viewport: any,
+  readerMode: string
 ) => {
   for (let index = 0; index < chapterDocList.length; index++) {
     // Create container with aspect ratio
@@ -58,6 +59,10 @@ export const createPDFContainer = (
     // Set aspect ratio based on PDF page dimensions
     const aspectRatio = viewport?.width / viewport?.height || 0.75; // Default to 3:4 if viewport unknown
     iframeContainer.style.paddingTop = `${(1 / aspectRatio) * 100}%`;
+    if (readerMode !== "scroll") {
+      //break-inside: avoid;
+      iframeContainer.style.breakInside = "avoid";
+    }
 
     element.appendChild(iframeContainer);
   }

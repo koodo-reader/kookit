@@ -1269,12 +1269,11 @@ export const addAppleTouchEvent = (
         sectionWidth: pageSize.sectionWidth,
         gap: pageSize.gap,
       };
-
       rangy.init();
       let charRange = null;
       if (format === "PDF") {
         let target: any = event.target;
-        let ownerDoc = target;
+        let ownerDoc = target.ownerDocument;
         let targetIframe = ownerDoc?.defaultView?.frameElement;
         let id = targetIframe?.getAttribute("id") || "";
         let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
@@ -1283,7 +1282,6 @@ export const addAppleTouchEvent = (
       } else {
         charRange = await render.getHightlightCoords();
       }
-
       window.ReactNativeWebView.postMessage(
         JSON.stringify({
           event: "select-text",

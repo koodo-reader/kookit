@@ -14,25 +14,28 @@ export const handleIframeHeight = async (
   iframe: any,
   doc: Document
 ) => {
-  await Promise.all(
-    Array.from([...doc.images, ...doc.querySelectorAll("image")]).map(
-      (img: any) => {
-        if (img.complete) return Promise.resolve(img.naturalHeight !== 0);
-        return new Promise((resolve) => {
-          img.addEventListener("load", () => resolve(true));
-          img.addEventListener("error", () => resolve(false));
-        });
-      }
-    )
-  ).then((results) => {
-    if (results.every((res) => res))
-      console.info("all images loaded successfully!!");
-    else console.error("some images failed to load, all finished loading");
-  });
-
+  await Promise.race([
+    Promise.all(
+      Array.from([...doc.images, ...doc.querySelectorAll("image")]).map(
+        (img: any) => {
+          if (img.complete) return Promise.resolve(img.naturalHeight !== 0);
+          return new Promise((resolve) => {
+            img.addEventListener("load", () => resolve(true));
+            img.addEventListener("error", () => resolve(false));
+          });
+        }
+      )
+    ),
+    new Promise((resolve, reject) => {
+      setTimeout(() => {
+        console.info("image load timeout");
+        // reject(new Error("Timeout"));
+        resolve("image load timeout");
+      }, 3000);
+    }),
+  ]);
   await handleImageSize(element, readerMode, format, doc);
   handleTextStyle(doc);
-
   if (readerMode !== "scroll") {
     iframe.height = element.clientHeight + "px";
     if (readerMode === "double") {

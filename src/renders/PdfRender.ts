@@ -36,7 +36,8 @@ class PdfRender extends GeneralRender {
       createPDFContainer(
         doc.body || (doc.documentElement as HTMLElement),
         this.chapterDocList,
-        viewport
+        viewport,
+        this.readerMode
       );
       let scrollTimeout: any = null;
       if (this.readerMode === "scroll") {
@@ -583,7 +584,7 @@ class PdfRender extends GeneralRender {
     await this.chapterDocList[chapterDocIndex].text.render(
       subDoc,
       scale,
-      this.readerMode
+      this.isMobile
     );
     this.trigger("rendered");
   }
