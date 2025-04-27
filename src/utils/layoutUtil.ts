@@ -119,10 +119,13 @@ export const handleImageMarker = (bookStr) => {
       if (imgDomList[i].tagName === "image") {
         continue;
       }
-      var newItem = document.createElement("address");
+      var newItem = document.createElement("kookitmarker");
       var textnode = document.createTextNode("img");
       newItem.appendChild(textnode);
-      newItem.setAttribute("style", "visibility: hidden; position: absolute");
+      newItem.setAttribute(
+        "style",
+        "visibility: hidden; position: absolute;display: inline-block; width: 0; height: 0;"
+      );
       imgDomList[i]?.insertAdjacentElement("afterend", newItem);
     }
     return chapterDoc.documentElement.innerHTML;

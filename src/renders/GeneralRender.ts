@@ -276,7 +276,7 @@ class GeneralRender extends EventEmitter {
           const temp: Element = currentNode as Element;
           if (
             temp.tagName &&
-            "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address".indexOf(
+            "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address,kookitmarker".indexOf(
               temp.tagName.toLowerCase()
             ) > -1
           ) {
@@ -643,7 +643,7 @@ class GeneralRender extends EventEmitter {
     if (this.convertChinese === "Simplified To Traditional") {
       doc
         .querySelectorAll(
-          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address"
+          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address,kookitmarker"
         )
         .forEach((item) => {
           item.innerHTML = item.innerHTML
@@ -654,7 +654,7 @@ class GeneralRender extends EventEmitter {
     } else if (this.convertChinese === "Traditional To Simplified") {
       doc
         .querySelectorAll(
-          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address"
+          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address,kookitmarker"
         )
         .forEach((item) => {
           item.innerHTML = item.innerHTML

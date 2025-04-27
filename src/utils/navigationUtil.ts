@@ -17,7 +17,7 @@ let lock = false;
 export const getBlockElement = (Element) => {
   return Array.from(
     Element.querySelectorAll(
-      "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address"
+      "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address,kookitmarker"
     )
   ) as HTMLElement[];
 };
@@ -647,7 +647,7 @@ export const isParentBlock = (myDiv: Element) => {
   var children = myDiv.children;
   let flag = false;
   var blockRegex =
-    /^(address|section|blockquote|body|center|dir|div|dl|fieldset|form|h[1-6]|hr|isindex|menu|noframes|noscript|ol|p|pre|table|ul|dd|dt|frameset|li|tbody|td|tfoot|th|thead|tr|html)$/i;
+    /^(address|kookitmarker|section|blockquote|body|center|dir|div|dl|fieldset|form|h[1-6]|hr|isindex|menu|noframes|noscript|ol|p|pre|table|ul|dd|dt|frameset|li|tbody|td|tfoot|th|thead|tr|html)$/i;
   let blockElementList = Array.from(children).filter((item) =>
     blockRegex.test(item.nodeName)
   );

@@ -15,7 +15,7 @@ export const makeHtmlBook = (
   }
   for (let i = 0; i < chapterDomList.length; i++) {
     // this.chapterDomList[i].id = this.chapterList[i].id;
-    var newItem = document.createElement("address");
+    var newItem = document.createElement("kookitmarker");
     var textnode = document.createTextNode(" ");
     newItem.appendChild(textnode);
 
@@ -192,7 +192,7 @@ const getChapterDoc = (bookStr: string) => {
     href: string;
   }[] = [];
   let chapterStrList: any = bookStr
-    .split("<address> </address>")
+    .split("<kookitmarker> </kookitmarker>")
     .filter((item) => item.trim() !== "");
   let titleList: string[] = chapterStrList.map((item) => {
     return getHFromStr(item) || getTitleFromStr(item);
