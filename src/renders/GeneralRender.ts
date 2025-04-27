@@ -228,7 +228,6 @@ class GeneralRender extends EventEmitter {
         doc
       );
     }
-    console.log("71");
     await this.record();
     this.trigger("rendered");
   }
@@ -300,7 +299,6 @@ class GeneralRender extends EventEmitter {
       page,
       doc
     );
-    console.log("72");
     await this.record();
     this.trigger("rendered");
     // this.addPageAnimation();
@@ -348,7 +346,6 @@ class GeneralRender extends EventEmitter {
     } else {
       this.element.scrollTo(0, top);
     }
-    console.log("73");
     await this.record();
     this.trigger("rendered");
   }
@@ -407,11 +404,9 @@ class GeneralRender extends EventEmitter {
         this.isMobile
       );
     }
-    console.log("74");
     await this.record();
   }
   async next() {
-    console.log("nextsadfds");
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) {
@@ -462,7 +457,6 @@ class GeneralRender extends EventEmitter {
         this.isMobile
       );
     }
-    console.log("75");
     await this.record();
   }
   async prevChapter() {
@@ -479,7 +473,6 @@ class GeneralRender extends EventEmitter {
       doc,
       iframe
     );
-    console.log("76");
     await this.record();
     this.trigger("rendered");
   }
@@ -497,7 +490,6 @@ class GeneralRender extends EventEmitter {
       doc,
       iframe
     );
-    console.log("77");
     await this.record();
     this.trigger("rendered");
   }
@@ -534,7 +526,6 @@ class GeneralRender extends EventEmitter {
     return progressInfo(this.readerMode, doc, this.element);
   }
   async record() {
-    console.log("recorded");
     if (this.animation !== "") {
       await new Promise((r) => setTimeout(r, 1000));
     }

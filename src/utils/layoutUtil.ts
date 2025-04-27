@@ -157,10 +157,8 @@ export const progressInfo = (
   // if (parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") === 1) {
   //   await new Promise((r) => setTimeout(r, 1000));
   // }
-  console.log(doc.body.scrollWidth, doc.body.clientWidth, doc.body.scrollLeft);
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  console.log(element.clientWidth, gap);
   return {
     totalPage:
       readerMode === "scroll"

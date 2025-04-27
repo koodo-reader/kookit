@@ -49,7 +49,6 @@ export const handleScrollPage = async (
       }, 1000);
     }
   }
-  console.log(width + gap, "width + gap");
   if (delta > 0) {
     // previous page
     doc.body.scrollBy({

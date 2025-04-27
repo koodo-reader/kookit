@@ -132,7 +132,6 @@ export const addAndroidTouchEvent = (
 
         if (elapsedTime >= duration) {
           // Animation complete - set final position
-          console.log(snapX, "snapX");
           doc.body.scrollLeft = snapX;
 
           // Clean up acceleration hints
@@ -146,7 +145,6 @@ export const addAndroidTouchEvent = (
         // Calculate new position using easing
         const progress = easeOutCubic(elapsedTime / duration);
         const newLeft = startLeft + distance * progress;
-        console.log(newLeft, "newLeft");
         // Update scroll position
         doc.body.scrollLeft = newLeft;
 
@@ -473,7 +471,6 @@ export const addAppleTouchEvent = (
     const timeDiff = touchEndTime - touchStartTime;
     const distX = touchEndX - touchStartX;
     const distY = touchEndY - touchStartY;
-    console.log(touch.clientX, touch.screenX, "safsdf");
     if (isDragging && animation === "mimical" && readerMode !== "scroll") {
       isDragging = false;
       render.mouseUpHandler(event);
@@ -503,12 +500,6 @@ export const addAppleTouchEvent = (
       if (window.scrollAnimationId) {
         cancelAnimationFrame(window.scrollAnimationId);
       }
-      console.log(
-        doc.body.scrollWidth,
-        doc.body.scrollLeft,
-        element.clientWidth,
-        doc.body.scrollWidth - doc.body.scrollLeft - element.clientWidth
-      );
       if (
         Math.abs(
           doc.body.scrollWidth - doc.body.scrollLeft - element.clientWidth
@@ -575,7 +566,6 @@ export const addAppleTouchEvent = (
         const elapsedTime = currentTime - startTime;
 
         if (elapsedTime >= duration) {
-          console.log(snapX, "snapX");
           // Animation complete - set final position
           doc.body.scrollLeft = snapX;
 
@@ -590,7 +580,6 @@ export const addAppleTouchEvent = (
         // Calculate new position using easing
         const progress = easeOutCubic(elapsedTime / duration);
         const newLeft = startLeft + distance * progress;
-        console.log(newLeft, "newLeft");
         // Update scroll position
         doc.body.scrollLeft = newLeft;
 
@@ -663,7 +652,6 @@ export const addAppleTouchEvent = (
           normalizedX = normalizedX + width / 2;
         }
       }
-      console.log("normalizedX", normalizedX);
       let result = "";
       // For pagination mode: keep original 3x3 grid
       const cellWidth = width / 3;
@@ -757,7 +745,6 @@ export const addAppleTouchEvent = (
       lastTouchX = touchCurrentX;
       // Apply hardware acceleration to the body
       // doc.body.style.transform = "translateZ(0)";
-      console.log(readerMode, animation);
       if (animation === "mimical" && readerMode !== "scroll") {
         window.ReactNativeWebView.postMessage(
           JSON.stringify({ event: "swipe-start" })
@@ -780,7 +767,6 @@ export const addAppleTouchEvent = (
 
       // Use transform instead of scrollBy for smoother rendering
       const currentScrollLeft = doc.body.scrollLeft;
-      console.log(currentScrollLeft - deltaX, "currentScrollLeft");
       doc.body.scrollLeft = currentScrollLeft - deltaX;
 
       // Update last position
