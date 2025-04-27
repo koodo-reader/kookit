@@ -189,6 +189,7 @@ export const handleHighlightPDFNode = (
     );
   });
   if (nodes.length > 0) {
+    console.log("setstyle");
     nodes[0].setAttribute("style", nodes[0].getAttribute("style") + style);
   }
 };

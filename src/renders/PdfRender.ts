@@ -249,7 +249,7 @@ class PdfRender extends GeneralRender {
         behavior: "smooth",
       });
     } else {
-      if (platform === "ios" && this.readerMode === "single") {
+      if (platform === "ios") {
         await handleIOSScrollPage(
           this.element,
           this.animation,
@@ -295,7 +295,7 @@ class PdfRender extends GeneralRender {
       });
     } else {
       // single and double readerMode under normal condition
-      if (platform === "ios" && this.readerMode === "single") {
+      if (platform === "ios") {
         await handleIOSScrollPage(
           this.element,
           this.animation,

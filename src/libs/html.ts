@@ -215,8 +215,19 @@ const txtToHtml = (text: string, parserRegex: string, bookLocation?: any) => {
   }
 
   const htmlParts: string[] = []; // Use an array to store HTML parts
+  let isRefresh = false;
+  if (bookLocation && bookLocation.refresh) {
+    isRefresh = true;
+  }
 
-  if (bookLocation && bookLocation.text && lines.length > 10000) {
+  if (lines.length > 10000 && !isRefresh) {
+    if (!bookLocation || !bookLocation.text) {
+      bookLocation = {
+        text: lines[0],
+        chapterTitle: "",
+        chapterDocIndex: 0,
+      };
+    }
     // --- Slicing and Title Identification Logic ---
     let targetLineIndex = lines.findIndex((item) => {
       // Optimization: cleanText called only once here if needed often

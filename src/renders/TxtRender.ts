@@ -42,7 +42,7 @@ class TxtRender extends GeneralRender {
     }
   }
   async refreshContent() {
-    await this.parse();
+    await this.parse({ refresh: true });
     let parser = new GeneralParser(this.book);
     this.chapterList = await parser.getChapter(this.book.toc);
     this.chapterDocList = await parser.getChapterDoc();

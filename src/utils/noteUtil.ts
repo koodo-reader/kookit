@@ -86,7 +86,7 @@ export const showPDFHighlight = (
         Math.abs(bounds[0] - bounds[2]) +
         "px; height:" +
         Math.abs(bounds[1] - bounds[3]) +
-        "px; z-index: 1;opacity: " +
+        "px; z-index: 1; cursor: pointer; opacity: " +
         (colorCode.indexOf("color") > -1 ? 0.3 : 1) +
         ";"
     );

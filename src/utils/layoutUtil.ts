@@ -145,26 +145,35 @@ export const createIframe = (element: HTMLElement, styleStr: string = "") => {
   element.appendChild(iframe);
 };
 
-export const progressInfo = (readerMode: string, doc: Document) => {
+export const progressInfo = (
+  readerMode: string,
+  doc: Document,
+  element: any
+) => {
   //TODO 是否有必要保留延时
   // if (parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") === 1) {
   //   await new Promise((r) => setTimeout(r, 1000));
   // }
+  console.log(doc.body.scrollWidth, doc.body.clientWidth, doc.body.scrollLeft);
+  let section = Math.floor(element.clientWidth / 12);
+  let gap = section % 2 === 0 ? section : section - 1;
+  console.log(element.clientWidth, gap);
   return {
     totalPage:
       readerMode === "scroll"
         ? 1
         : readerMode === "single"
         ? Math.round(
-            parseFloat(doc.body.scrollWidth / doc.body.clientWidth + "")
+            parseFloat(doc.body.scrollWidth / (doc.body.clientWidth + gap) + "")
           )
         : Math.round(
-            parseFloat(doc.body.scrollWidth / doc.body.clientWidth + "")
+            parseFloat(doc.body.scrollWidth / (doc.body.clientWidth + gap) + "")
           ) * 2,
     currentPage:
       Math.round(
         parseFloat(
-          convertStyleNum(doc.body.scrollLeft) / doc.body.clientWidth + ""
+          convertStyleNum(doc.body.scrollLeft) / (doc.body.clientWidth + gap) +
+            ""
         )
       ) + 1,
   };

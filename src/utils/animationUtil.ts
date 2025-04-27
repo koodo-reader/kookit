@@ -175,10 +175,13 @@ export const addPageAnimation = (
       // If this flip was being dragged we animate to its destination
       if (flips[i].dragging) {
         // Figure out which page we should go to next depending on the flip direction
-        if (mouse.x < PAGE_WIDTH / 2 && touchEndX - touchStartX < 0) {
+        if (mouse.x < (PAGE_WIDTH / 4) * 3 && touchEndX - touchStartX < 0) {
           flips[i].target = -1;
           pageNum = Math.min(pageNum + 1, flips.length);
-        } else if (mouse.x > PAGE_WIDTH / 2 && touchEndX - touchStartX > 0) {
+        } else if (
+          mouse.x > (PAGE_WIDTH / 4) * 1 &&
+          touchEndX - touchStartX > 0
+        ) {
           flips[i].target = 1;
           pageNum = Math.max(pageNum - 1, 0);
         } else {
