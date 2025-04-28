@@ -349,91 +349,86 @@ export const addAndroidTouchEvent = (
       if (selectionTimeout) {
         clearTimeout(selectionTimeout);
       }
-      selectionTimeout = setTimeout(
-        async () => {
-          const selectedText = iWin.getSelection().toString().trim();
-          if (selectedText) {
-            var range = iWin.getSelection().getRangeAt(0);
-            let pageSize = render.getPageSize();
-            var rect = range.getBoundingClientRect();
-            if (format === "PDF") {
-              let clientRects = range.getClientRects();
-              if (clientRects.length > 0) {
-                //combine all the rects
-                clientRects = Array.from(clientRects).filter((item: any) => {
-                  return (
-                    Math.abs(item.height - pageSize.sectionHeight) > 10 &&
-                    Math.abs(item.width - pageSize.sectionWidth) > 10 &&
-                    item.height > 0 &&
-                    item.width > 0
-                  );
-                });
-                let minTop = Infinity;
-                let minLeft = Infinity;
-                let maxBottom = -Infinity;
-                let maxRight = -Infinity;
+      selectionTimeout = setTimeout(async () => {
+        const selectedText = iWin.getSelection().toString().trim();
+        if (selectedText) {
+          var range = iWin.getSelection().getRangeAt(0);
+          let pageSize = render.getPageSize();
+          var rect = range.getBoundingClientRect();
+          if (format === "PDF") {
+            let clientRects = range.getClientRects();
+            if (clientRects.length > 0) {
+              //combine all the rects
+              clientRects = Array.from(clientRects).filter((item: any) => {
+                return (
+                  Math.abs(item.height - pageSize.sectionHeight) > 10 &&
+                  Math.abs(item.width - pageSize.sectionWidth) > 10 &&
+                  item.height > 0 &&
+                  item.width > 0
+                );
+              });
+              let minTop = Infinity;
+              let minLeft = Infinity;
+              let maxBottom = -Infinity;
+              let maxRight = -Infinity;
 
-                for (let i = 0; i < clientRects.length; i++) {
-                  const rect = clientRects[i];
-                  minTop = Math.min(minTop, rect.top);
-                  minLeft = Math.min(minLeft, rect.left);
-                  maxBottom = Math.max(maxBottom, rect.bottom);
-                  maxRight = Math.max(maxRight, rect.right);
-                }
-
-                // Create the combined rectangle object
-                const combinedRect = {
-                  top: minTop,
-                  left: minLeft,
-                  bottom: maxBottom,
-                  right: maxRight,
-                  width: maxRight - minLeft,
-                  height: maxBottom - minTop,
-                };
-                rect = combinedRect;
+              for (let i = 0; i < clientRects.length; i++) {
+                const rect = clientRects[i];
+                minTop = Math.min(minTop, rect.top);
+                minLeft = Math.min(minLeft, rect.left);
+                maxBottom = Math.max(maxBottom, rect.bottom);
+                maxRight = Math.max(maxRight, rect.right);
               }
-            }
 
-            var position = {
-              top: rect.top - element.scrollTop,
-              left: rect.left,
-              width: rect.width,
-              height: rect.height,
-              screenWidth: window.innerWidth,
-              screenHeight: window.innerHeight,
-              sectionHeight: pageSize.sectionHeight,
-              chapterDocIndex: 0,
-              sectionWidth: pageSize.sectionWidth,
-              gap: pageSize.gap,
-            };
-            rangy.init();
-            let charRange = null;
-            if (format === "PDF") {
-              let target: any = event.target;
-              let ownerDoc = target;
-              let targetIframe = ownerDoc?.defaultView?.frameElement;
-              let id = targetIframe?.getAttribute("id") || "";
-              let chapterDocIndex = id
-                ? parseInt(id.split("-").reverse()[0])
-                : 0;
-              charRange = await render.getHightlightCoords(chapterDocIndex);
-              position.chapterDocIndex = chapterDocIndex;
-            } else {
-              charRange = await render.getHightlightCoords();
+              // Create the combined rectangle object
+              const combinedRect = {
+                top: minTop,
+                left: minLeft,
+                bottom: maxBottom,
+                right: maxRight,
+                width: maxRight - minLeft,
+                height: maxBottom - minTop,
+              };
+              rect = combinedRect;
             }
-
-            window.ReactNativeWebView.postMessage(
-              JSON.stringify({
-                event: "select-text",
-                selectedText: selectedText,
-                position: position,
-                range: charRange,
-              })
-            );
           }
-        },
-        format === "PDF" ? 300 : 200
-      ); // Debounce selection events
+
+          var position = {
+            top: rect.top - element.scrollTop,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            screenWidth: window.innerWidth,
+            screenHeight: window.innerHeight,
+            sectionHeight: pageSize.sectionHeight,
+            chapterDocIndex: 0,
+            sectionWidth: pageSize.sectionWidth,
+            gap: pageSize.gap,
+          };
+          rangy.init();
+          let charRange = null;
+          if (format === "PDF") {
+            let target: any = event.target;
+            let ownerDoc = target;
+            let targetIframe = ownerDoc?.defaultView?.frameElement;
+            let id = targetIframe?.getAttribute("id") || "";
+            let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
+            charRange = await render.getHightlightCoords(chapterDocIndex);
+            position.chapterDocIndex = chapterDocIndex;
+          } else {
+            charRange = await render.getHightlightCoords();
+          }
+
+          window.ReactNativeWebView.postMessage(
+            JSON.stringify({
+              event: "select-text",
+              selectedText: selectedText,
+              position: position,
+              range: charRange,
+            })
+          );
+        }
+      }, 100); // Debounce selection events
     },
     false
   );
