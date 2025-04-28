@@ -226,7 +226,9 @@ export const handleIOSScrollPage = async (
   doc: Document,
   flipToNextPage: () => void,
   flipToPrevPage: () => void,
-  isMobile: string | undefined
+  isMobile: string | undefined,
+  chapterDocIndex: number,
+  readerMode: string
 ) => {
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
@@ -248,19 +250,27 @@ export const handleIOSScrollPage = async (
   }
   if (delta > 0) {
     // previous page
-    doc.body.scrollBy({
-      top: 0,
-      left: (-width - gap) / 2,
-      behavior:
-        animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
-    });
+    if (readerMode === "single") {
+      let subContainer = doc.querySelector(
+        "#pdf-container-" + (chapterDocIndex - 1)
+      );
+      if (subContainer) {
+        subContainer.scrollIntoView();
+      }
+    } else {
+      doc.body.scrollBy(-(width + gap) / 2, 0);
+    }
   } else if (delta < 0) {
     // next page
-    doc.body.scrollBy({
-      top: 0,
-      left: (width + gap) / 2,
-      behavior:
-        animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
-    });
+    if (readerMode === "single") {
+      let subContainer = doc.querySelector(
+        "#pdf-container-" + (chapterDocIndex + 1)
+      );
+      if (subContainer) {
+        subContainer.scrollIntoView();
+      }
+    } else {
+      doc.body.scrollBy((width + gap) / 2, 0);
+    }
   }
 };

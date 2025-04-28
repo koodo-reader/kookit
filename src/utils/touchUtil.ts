@@ -11,6 +11,7 @@ export const addAndroidTouchEvent = (
   render: any
 ) => {
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
+  let outerDoc: any = render.getDocument();
   let touchStartTime = 0;
   let touchStartX = 0;
   let touchStartY = 0;
@@ -62,13 +63,16 @@ export const addAndroidTouchEvent = (
     // Replace the scrollTo implementation with this optimized version
 
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
+      let tempDoc = format === "PDF" ? outerDoc : doc;
       // Clean up any existing animation
       if (window.scrollAnimationId) {
         cancelAnimationFrame(window.scrollAnimationId);
       }
       if (
         Math.abs(
-          doc.body.scrollWidth - doc.body.scrollLeft - element.clientWidth
+          tempDoc.body.scrollWidth -
+            tempDoc.body.scrollLeft -
+            element.clientWidth
         ) < 10
       ) {
         if (selectionTimeout) {
@@ -79,7 +83,7 @@ export const addAndroidTouchEvent = (
         }, 300); // Debounce selection events
         return;
       }
-      if (doc.body.scrollLeft === 0) {
+      if (tempDoc.body.scrollLeft === 0) {
         if (selectionTimeout) {
           clearTimeout(selectionTimeout);
         }
@@ -88,9 +92,9 @@ export const addAndroidTouchEvent = (
         }, 300); // Debounce selection events
         return;
       }
-      doc.body.style.transform = "";
+      tempDoc.body.style.transform = "";
       let pageWidth = element.clientWidth + gap;
-      let scrollLeft = doc.body.scrollLeft;
+      let scrollLeft = tempDoc.body.scrollLeft;
 
       // Improved snapping logic
       let snapX;
@@ -110,19 +114,22 @@ export const addAndroidTouchEvent = (
       }
 
       // Ensure we don't go out of bounds
-      snapX = Math.max(0, Math.min(snapX, doc.body.scrollWidth - pageWidth));
-      if (doc.body.scrollWidth - snapX < pageWidth + gap) {
-        snapX = doc.body.scrollWidth;
+      snapX = Math.max(
+        0,
+        Math.min(snapX, tempDoc.body.scrollWidth - pageWidth)
+      );
+      if (tempDoc.body.scrollWidth - snapX < pageWidth + gap) {
+        snapX = tempDoc.body.scrollWidth;
       }
 
       // Use custom smooth scrolling with requestAnimationFrame instead of browser's scrollTo
       const startTime = performance.now();
-      const startLeft = doc.body.scrollLeft;
+      const startLeft = tempDoc.body.scrollLeft;
       const distance = snapX - startLeft;
       const duration = 300; // milliseconds
 
       // Apply hardware acceleration before animation starts
-      doc.body.style.willChange = "scroll-position";
+      tempDoc.body.style.willChange = "scroll-position";
 
       // Custom easing function for natural movement
       const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
@@ -132,10 +139,10 @@ export const addAndroidTouchEvent = (
 
         if (elapsedTime >= duration) {
           // Animation complete - set final position
-          doc.body.scrollLeft = snapX;
+          tempDoc.body.scrollLeft = snapX;
 
           // Clean up acceleration hints
-          doc.body.style.willChange = "auto";
+          tempDoc.body.style.willChange = "auto";
 
           render.record();
           isDragging = false;
@@ -146,7 +153,7 @@ export const addAndroidTouchEvent = (
         const progress = easeOutCubic(elapsedTime / duration);
         const newLeft = startLeft + distance * progress;
         // Update scroll position
-        doc.body.scrollLeft = newLeft;
+        tempDoc.body.scrollLeft = newLeft;
 
         // Continue animation
         window.scrollAnimationId = requestAnimationFrame(animateScroll);
@@ -298,12 +305,12 @@ export const addAndroidTouchEvent = (
     }
     // If we're in dragging mode, apply direct transform for better performance
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
+      let tempDoc = format === "PDF" ? outerDoc : doc;
       // Calculate the delta since last move event
       const deltaX = touchCurrentX - lastTouchX;
 
-      // Use transform instead of scrollBy for smoother rendering
-      const currentScrollLeft = doc.body.scrollLeft;
-      doc.body.scrollLeft = currentScrollLeft - deltaX;
+      const currentScrollLeft = tempDoc.body.scrollLeft;
+      tempDoc.body.scrollLeft = currentScrollLeft - deltaX;
 
       // Update last position
       lastTouchX = touchCurrentX;
@@ -443,6 +450,7 @@ export const addAppleTouchEvent = (
   render: any
 ) => {
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
+  let outerDoc: any = render.getDocument();
   let touchStartTime = 0;
   let touchStartX = 0;
   let touchStartY = 0;
@@ -492,13 +500,16 @@ export const addAppleTouchEvent = (
     }
     // Replace the scrollTo implementation with this optimized version
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
+      let tempDoc = format === "PDF" ? outerDoc : doc;
       // Clean up any existing animation
       if (window.scrollAnimationId) {
         cancelAnimationFrame(window.scrollAnimationId);
       }
       if (
         Math.abs(
-          doc.body.scrollWidth - doc.body.scrollLeft - element.clientWidth
+          tempDoc.body.scrollWidth -
+            tempDoc.body.scrollLeft -
+            element.clientWidth
         ) < 10
       ) {
         if (selectionTimeout) {
@@ -509,7 +520,7 @@ export const addAppleTouchEvent = (
         }, 300); // Debounce selection events
         return;
       }
-      if (doc.body.scrollLeft === 0) {
+      if (tempDoc.body.scrollLeft === 0) {
         if (selectionTimeout) {
           clearTimeout(selectionTimeout);
         }
@@ -519,9 +530,9 @@ export const addAppleTouchEvent = (
         return;
       }
 
-      doc.body.style.transform = "";
+      tempDoc.body.style.transform = "";
       let pageWidth = element.clientWidth + gap;
-      let scrollLeft = doc.body.scrollLeft;
+      let scrollLeft = tempDoc.body.scrollLeft;
 
       // Improved snapping logic
       let snapX;
@@ -541,19 +552,22 @@ export const addAppleTouchEvent = (
       }
 
       // Ensure we don't go out of bounds
-      snapX = Math.max(0, Math.min(snapX, doc.body.scrollWidth - pageWidth));
-      if (doc.body.scrollWidth - snapX < pageWidth + gap) {
-        snapX = doc.body.scrollWidth;
+      snapX = Math.max(
+        0,
+        Math.min(snapX, tempDoc.body.scrollWidth - pageWidth)
+      );
+      if (tempDoc.body.scrollWidth - snapX < pageWidth + gap) {
+        snapX = tempDoc.body.scrollWidth;
       }
 
       // Use custom smooth scrolling with requestAnimationFrame instead of browser's scrollTo
       const startTime = performance.now();
-      const startLeft = doc.body.scrollLeft;
+      const startLeft = tempDoc.body.scrollLeft;
       const distance = snapX - startLeft;
       const duration = 300; // milliseconds
 
       // Apply hardware acceleration before animation starts
-      doc.body.style.willChange = "scroll-position";
+      tempDoc.body.style.willChange = "scroll-position";
 
       // Custom easing function for natural movement
       const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
@@ -563,10 +577,10 @@ export const addAppleTouchEvent = (
 
         if (elapsedTime >= duration) {
           // Animation complete - set final position
-          doc.body.scrollLeft = snapX;
+          tempDoc.body.scrollLeft = snapX;
 
           // Clean up acceleration hints
-          doc.body.style.willChange = "auto";
+          tempDoc.body.style.willChange = "auto";
 
           render.record();
           isDragging = false;
@@ -577,7 +591,7 @@ export const addAppleTouchEvent = (
         const progress = easeOutCubic(elapsedTime / duration);
         const newLeft = startLeft + distance * progress;
         // Update scroll position
-        doc.body.scrollLeft = newLeft;
+        tempDoc.body.scrollLeft = newLeft;
 
         // Continue animation
         window.scrollAnimationId = requestAnimationFrame(animateScroll);
@@ -758,12 +772,13 @@ export const addAppleTouchEvent = (
     }
     // If we're in dragging mode, apply direct transform for better performance
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
+      let tempDoc = format === "PDF" ? outerDoc : doc;
       // Calculate the delta since last move event
       const deltaX = touchCurrentX - lastTouchX;
 
       // Use transform instead of scrollBy for smoother rendering
-      const currentScrollLeft = doc.body.scrollLeft;
-      doc.body.scrollLeft = currentScrollLeft - deltaX;
+      const currentScrollLeft = tempDoc.body.scrollLeft;
+      tempDoc.body.scrollLeft = currentScrollLeft - deltaX;
 
       // Update last position
       lastTouchX = touchCurrentX;

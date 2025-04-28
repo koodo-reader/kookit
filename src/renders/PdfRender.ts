@@ -257,7 +257,9 @@ class PdfRender extends GeneralRender {
           doc,
           this.flipToNextPage,
           this.flipToPrevPage,
-          this.isMobile
+          this.isMobile,
+          parseInt(this.tempLocation.chapterDocIndex || "0"),
+          this.readerMode
         );
       } else {
         await handleScrollPage(
@@ -303,7 +305,9 @@ class PdfRender extends GeneralRender {
           doc,
           this.flipToNextPage,
           this.flipToPrevPage,
-          this.isMobile
+          this.isMobile,
+          parseInt(this.tempLocation.chapterDocIndex || "0"),
+          this.readerMode
         );
       } else {
         await handleScrollPage(
