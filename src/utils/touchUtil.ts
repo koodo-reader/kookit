@@ -61,7 +61,7 @@ export const addAndroidTouchEvent = (
     }
     // Replace the scrollTo implementation with this optimized version
 
-    if (isDragging && animation === "sliding") {
+    if (isDragging && animation === "sliding" && readerMode !== "scroll") {
       // Clean up any existing animation
       if (window.scrollAnimationId) {
         cancelAnimationFrame(window.scrollAnimationId);
@@ -297,7 +297,7 @@ export const addAndroidTouchEvent = (
       render.mouseMoveHandler(event);
     }
     // If we're in dragging mode, apply direct transform for better performance
-    if (isDragging && animation === "sliding") {
+    if (isDragging && animation === "sliding" && readerMode !== "scroll") {
       // Calculate the delta since last move event
       const deltaX = touchCurrentX - lastTouchX;
 
@@ -453,6 +453,7 @@ export const addAppleTouchEvent = (
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   let onTouchEnd = async function (event) {
+    console.log("touchend", readerMode);
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
       event.preventDefault();
@@ -490,7 +491,7 @@ export const addAppleTouchEvent = (
       return;
     }
     // Replace the scrollTo implementation with this optimized version
-    if (isDragging && animation === "sliding") {
+    if (isDragging && animation === "sliding" && readerMode !== "scroll") {
       // Clean up any existing animation
       if (window.scrollAnimationId) {
         cancelAnimationFrame(window.scrollAnimationId);
@@ -756,7 +757,7 @@ export const addAppleTouchEvent = (
       render.mouseMoveHandler(event);
     }
     // If we're in dragging mode, apply direct transform for better performance
-    if (isDragging && animation === "sliding") {
+    if (isDragging && animation === "sliding" && readerMode !== "scroll") {
       // Calculate the delta since last move event
       const deltaX = touchCurrentX - lastTouchX;
 
