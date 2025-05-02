@@ -22,6 +22,7 @@ export const getPdfScale = async (
   if (readerMode === "scroll") {
     scale = viewWidth / width;
   }
+  console.log(viewWidth, width, scale);
   return scale;
 };
 export const handlePDFLayout = (
@@ -36,7 +37,7 @@ export const handlePDFLayout = (
   doc.body.setAttribute(
     "style",
     element.getAttribute("style") +
-      `height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action: pan-y; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
+      `height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action: manipulation; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
         (element.clientWidth - gap) / scale
       }px;`
   );

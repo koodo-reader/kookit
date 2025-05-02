@@ -26,7 +26,9 @@ const textLayerBuilderCSS = async () => await fetchText(pdfjsPath('text_layer_bu
 const annotationLayerBuilderCSS = async () => await fetchText(pdfjsPath('annotation_layer_builder.css'))
 
 const render = async (page, doc, zoom, isMobile) => {
+  let devicePixelRatio = window.devicePixelRatio * (isMobile === "yes" ? (1 / zoom) * 1.25 : 1)
   const scale = zoom * devicePixelRatio
+  console.log('Rendering page', page.pageNumber, zoom, devicePixelRatio, scale)
   let docLayer = doc.querySelector('#koodoPDFLayer')
   docLayer.style.visibility = 'hidden'
   docLayer.style.transform = `scale(${1 / devicePixelRatio})`

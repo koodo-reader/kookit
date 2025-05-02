@@ -205,10 +205,16 @@ class PdfRender extends GeneralRender {
         subIframe.parentElement?.getBoundingClientRect().height || 0;
       iframe.style.height = iframeHeight * this.chapterDocList.length + "px";
     }
-    if (this.readerMode === "single") {
+    if (this.readerMode === "single" || this.readerMode === "double") {
       let subContainers = doc.querySelectorAll(".pdf-container");
       for (let index = 0; index < subContainers.length; index++) {
         let subContainer: any = subContainers[index];
+        subContainer.style.top = `calc(${this.element.clientHeight / 2}px - ${
+          subContainer.getBoundingClientRect().height / 2
+        }px)`;
+        if (this.readerMode === "double") {
+          continue;
+        }
         if (
           this.element.clientHeight >
           parseFloat(getComputedStyle(subContainer).paddingTop)
@@ -633,6 +639,7 @@ class PdfRender extends GeneralRender {
       this.chapterDocList,
       chapterDocIndex
     );
+
     await this.chapterDocList[chapterDocIndex].text.render(
       subDoc,
       scale,

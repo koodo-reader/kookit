@@ -269,7 +269,10 @@ export const addAndroidTouchEvent = (
 
     // Prevent default to stop browser scroll behavior
     event.preventDefault();
-
+    if (window.visualViewport.scale > 1) {
+      event.preventDefault();
+      return;
+    }
     const touch = event.touches[0];
     const touchCurrentX = touch.screenX;
     const touchCurrentY = touch.screenY;
@@ -731,6 +734,10 @@ export const addAppleTouchEvent = (
       (!isDragging && Math.abs(event.touches[0].screenX - touchStartX) <= 10) ||
       selectedText
     ) {
+      return;
+    }
+    if (window.visualViewport.scale > 1) {
+      event.preventDefault();
       return;
     }
 
