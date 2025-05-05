@@ -67,7 +67,7 @@ export const addPageAnimation = (
   backgroundColor: string
 ) => {
   // Example usage: create a book element with 3 sections
-  createBookElement(totalPage);
+  createBookElement(totalPage + 1);
   var WINDOW_WIDTH = window.innerWidth;
   var WINDOW_HEIGHT = window.innerHeight;
 

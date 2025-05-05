@@ -189,6 +189,13 @@ export const handleTextStyle = (doc: Document) => {
       element.className = element.className + " kookit-text";
     }
   }
+  let titleNodes = doc.querySelectorAll("h1, h2, h3, h4, h5, h6, title") as any;
+  for (let index = 0; index < titleNodes.length; index++) {
+    const element = titleNodes[index];
+    if (element.className.indexOf("kookit-title") === -1) {
+      element.className = element.className + " kookit-title";
+    }
+  }
 };
 export const getImageMeta = async (url) => {
   const img = new Image();

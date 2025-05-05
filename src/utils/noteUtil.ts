@@ -155,7 +155,9 @@ export const highlightRange = (
         rect.width +
         "px; height:" +
         rect.height +
-        "px; z-index:-1;"
+        "px; z-index:-1;opacity: " +
+        (colorCode.indexOf("color") > -1 ? 0.8 : 1) +
+        "; cursor: pointer;"
     );
     newNode.setAttribute("class", " kookit-note");
     newNode.setAttribute("data-key", noteKey);

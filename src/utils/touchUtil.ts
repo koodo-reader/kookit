@@ -1,6 +1,47 @@
 import rangy from "rangy/lib/rangy-core.js";
 
 declare var window: any;
+const preventLinkNavigation = (event) => {
+  const target = event.target;
+  if (!target) return;
+
+  const linkElement = findLinkElement(target);
+  if (linkElement) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Get href from the link
+    const href = linkElement.getAttribute("href");
+
+    // Send message to React Native with link details
+    window.ReactNativeWebView.postMessage(
+      JSON.stringify({
+        event: "link-clicked",
+        href: href,
+      })
+    );
+
+    return false;
+  }
+};
+function findLinkElement(element) {
+  // Check if the element itself is a link
+  if (element.tagName === "A") {
+    return element;
+  }
+
+  // Traverse up the DOM tree to check for parent links
+  // This handles cases where the click target is a child element inside a link
+  let currentElement = element;
+  while (currentElement && currentElement.tagName !== "BODY") {
+    if (currentElement.tagName === "A") {
+      return currentElement;
+    }
+    currentElement = currentElement.parentElement;
+  }
+
+  return null;
+}
 export const addAndroidTouchEvent = (
   doc: Document,
   iframe: any,
@@ -242,6 +283,9 @@ export const addAndroidTouchEvent = (
     }
   };
   let onTouchStart = function (event) {
+    if (preventLinkNavigation(event) === false) {
+      return;
+    }
     const target: any = event.target;
     if (!target) return;
     if (target.tagName === "IMG") {
@@ -327,6 +371,9 @@ export const addAndroidTouchEvent = (
   doc.addEventListener("touchend", onTouchEnd, false);
   doc.addEventListener("touchstart", onTouchStart, false);
   doc.addEventListener("touchmove", onTouchMove, false);
+  // Add this with the other event listeners
+  doc.addEventListener("click", preventLinkNavigation, true); // Use capturing phase
+
   // doc.body.ontouchend = onTouchEnd;
   // doc.body.ontouchstart = onTouchStart;
   // doc.body.ontouchmove = onTouchMove;
@@ -464,7 +511,6 @@ export const addAppleTouchEvent = (
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   let onTouchEnd = async function (event) {
-    console.log("touchend", readerMode);
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
       event.preventDefault();
@@ -708,6 +754,9 @@ export const addAppleTouchEvent = (
     }
   };
   let onTouchStart = function (event) {
+    if (preventLinkNavigation(event) === false) {
+      return;
+    }
     const target: any = event.target;
     if (!target) return;
     if (target.tagName === "IMG") {
@@ -799,6 +848,9 @@ export const addAppleTouchEvent = (
   doc.addEventListener("touchend", onTouchEnd, false);
   doc.addEventListener("touchstart", onTouchStart, false);
   doc.addEventListener("touchmove", onTouchMove, false);
+  // Add this with the other event listeners
+  doc.addEventListener("click", preventLinkNavigation, true); // Use capturing phase
+
   // doc.body.ontouchend = onTouchEnd;
   // doc.body.ontouchstart = onTouchStart;
   // doc.body.ontouchmove = onTouchMove;

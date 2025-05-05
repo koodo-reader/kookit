@@ -22,7 +22,6 @@ export const getPdfScale = async (
   if (readerMode === "scroll") {
     scale = viewWidth / width;
   }
-  console.log(viewWidth, width, scale);
   return scale;
 };
 export const handlePDFLayout = (
