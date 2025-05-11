@@ -202,17 +202,20 @@ export const handleRenderChapter = async (
   let bodyAttrs = getBodyAttributes(chapterText);
 
   doc.body.innerHTML = chapterText;
-  if (bodyAttrs) {
-    Object.keys(bodyAttrs).forEach((key) => {
-      if (key === "style") {
-        doc.body.setAttribute(
-          key,
-          bodyAttrs[key] + " " + doc.body.getAttribute(key)
-        );
-      } else {
-        doc.body.setAttribute(key, bodyAttrs[key]);
-      }
-    });
+
+  if (bodyAttrs["style"]) {
+    doc.body.setAttribute(
+      "style",
+      bodyAttrs["style"] + " " + doc.body.getAttribute("style")
+    );
+  } else if (bodyAttrs["class"]) {
+    doc.body.setAttribute("class", bodyAttrs["class"]);
+  } else if (bodyAttrs["id"]) {
+    doc.body.setAttribute("id", bodyAttrs["id"]);
+  } else if (!bodyAttrs["class"]) {
+    doc.body.removeAttribute("class");
+  } else if (!bodyAttrs["id"]) {
+    doc.body.removeAttribute("id");
   }
 
   await handleCssLink(doc);
