@@ -73,13 +73,16 @@ export const handleOneChapterDoc = async (item, isSearch: boolean) => {
     let blob = await fetch(await item.load()).then((r) => r.blob());
     chapterText = await blob.text();
   }
+  console.log("chapterText", chapterText);
   if (isSearch) {
     return chapterText;
   }
   if (item.loadAsset) {
     chapterText = await handlePrecacheAssets(chapterText, item.loadAsset);
   }
+  console.log("chapterText after handlePrecacheAssets1", chapterText);
   chapterText = handleImageMarker(chapterText);
+  console.log("chapterText after handleImageMarker11", chapterText);
   return chapterText;
 };
 export const getImageElement = (Element) => {
