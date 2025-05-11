@@ -194,11 +194,26 @@ export const handleRenderChapter = async (
   if (chapterDocIndex === -1 || chapterDocIndex > chapterDocList.length - 1) {
     chapterDocIndex = 0;
   }
-
-  doc.body.innerHTML = await handleOneChapterDoc(
+  let chapterText = await handleOneChapterDoc(
     chapterDocList[chapterDocIndex].text,
     false
   );
+
+  let bodyAttrs = getBodyAttributes(chapterText);
+
+  doc.body.innerHTML = chapterText;
+  if (bodyAttrs) {
+    Object.keys(bodyAttrs).forEach((key) => {
+      if (key === "style") {
+        doc.body.setAttribute(
+          key,
+          bodyAttrs[key] + " " + doc.body.getAttribute(key)
+        );
+      } else {
+        doc.body.setAttribute(key, bodyAttrs[key]);
+      }
+    });
+  }
 
   await handleCssLink(doc);
   tempLocation.chapterTitle = chapterTitle;
@@ -210,6 +225,26 @@ export const handleRenderChapter = async (
   await handleScrollPosition(element, readerMode, "", "", "", "", doc);
 };
 
+export function getBodyAttributes(htmlStr: string) {
+  // 匹配 <body> 开始标签（忽略大小写）
+  const bodyTagMatch = htmlStr.match(/<body\b([^>]*)>/i);
+  if (!bodyTagMatch) return {};
+
+  // 提取属性字符串（如 'id="main" class=dark'）
+  const attrStr = bodyTagMatch[1];
+  const attributes = {};
+
+  // 匹配属性键值对
+  const attrRegex = /([\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^>\s]+))/g;
+  let match;
+
+  while ((match = attrRegex.exec(attrStr)) !== null) {
+    const value = match[2] || match[3] || match[4] || "";
+    attributes[match[1]] = value;
+  }
+
+  return attributes;
+}
 export const handleCssLink = async (doc) => {
   let linkList = Array.from(doc.getElementsByTagName("link"));
   if (linkList.length === 0) {

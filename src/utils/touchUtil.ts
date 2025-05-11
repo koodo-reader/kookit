@@ -216,6 +216,10 @@ export const addAndroidTouchEvent = (
       );
       return;
     }
+    if (window.visualViewport.scale > 1 && format === "PDF") {
+      event.preventDefault();
+      return;
+    }
     if (
       timeDiff < timeThreshold &&
       Math.abs(distX) < swipeThreshold &&
@@ -313,7 +317,7 @@ export const addAndroidTouchEvent = (
 
     // Prevent default to stop browser scroll behavior
     event.preventDefault();
-    if (window.visualViewport.scale > 1) {
+    if (window.visualViewport.scale > 1 && format === "PDF") {
       event.preventDefault();
       return;
     }
@@ -476,6 +480,11 @@ export const addAndroidTouchEvent = (
                 : 0;
               charRange = await render.getHightlightCoords(chapterDocIndex);
               position.chapterDocIndex = chapterDocIndex;
+              let subContainer = targetIframe.parentElement;
+              if (subContainer) {
+                position.top =
+                  position.top + parseFloat(getComputedStyle(subContainer).top);
+              }
             } else {
               charRange = await render.getHightlightCoords();
             }
@@ -685,6 +694,11 @@ export const addAppleTouchEvent = (
         let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
         position.chapterDocIndex = chapterDocIndex;
         charRange = await render.getHightlightCoords(chapterDocIndex);
+        let subContainer = targetIframe.parentElement;
+        if (subContainer) {
+          position.top =
+            position.top + parseFloat(getComputedStyle(subContainer).top);
+        }
       } else {
         charRange = await render.getHightlightCoords();
       }
@@ -717,6 +731,10 @@ export const addAppleTouchEvent = (
         if (chapterDocIndex % 2 === 1) {
           normalizedX = normalizedX + width / 2;
         }
+      }
+      if (window.visualViewport.scale > 1 && format === "PDF") {
+        event.preventDefault();
+        return;
       }
       let result = "";
       // For pagination mode: keep original 3x3 grid
@@ -792,7 +810,7 @@ export const addAppleTouchEvent = (
     ) {
       return;
     }
-    if (window.visualViewport.scale > 1) {
+    if (window.visualViewport.scale > 1 && format === "PDF") {
       event.preventDefault();
       return;
     }

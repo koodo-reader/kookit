@@ -367,6 +367,17 @@ class PdfRender extends GeneralRender {
   }
   async handlePDFRecord(doc: Document) {
     let subContainers = doc.querySelectorAll(".pdf-container");
+    if (
+      subContainers.length > 0 &&
+      isPDFScrolledIntoView(
+        this.element,
+        subContainers[subContainers.length - 1] as HTMLElement,
+        this.readerMode
+      )
+    ) {
+      this.handleRecord(subContainers[subContainers.length - 1] as HTMLElement);
+      return;
+    }
     for (let index = 0; index < subContainers.length; index++) {
       let subContainer = subContainers[index];
       if (
@@ -376,22 +387,24 @@ class PdfRender extends GeneralRender {
           this.readerMode
         )
       ) {
-        let id = subContainer.getAttribute("id");
-        if (!id) continue;
-        let chapterDocIndex = parseInt(id.split("-").reverse()[0]);
-        if (chapterDocIndex !== parseInt(this.tempLocation.chapterDocIndex)) {
-          this.tempLocation.chapterDocIndex = chapterDocIndex + "";
-          this.tempLocation.percentage =
-            chapterDocIndex / this.chapterDocList.length + "";
-          this.tempLocation.chapterHref =
-            this.chapterDocList[chapterDocIndex].href;
-          this.tempLocation.chapterTitle =
-            this.chapterDocList[chapterDocIndex].label;
-          this.tempLocation.text = "";
-          this.trigger("page-changed");
-        }
+        this.handleRecord(subContainer as HTMLElement);
         break;
       }
+    }
+  }
+  handleRecord(subContainer: HTMLElement) {
+    let id = subContainer.getAttribute("id");
+    if (!id) return;
+    let chapterDocIndex = parseInt(id.split("-").reverse()[0]);
+    if (chapterDocIndex !== parseInt(this.tempLocation.chapterDocIndex)) {
+      this.tempLocation.chapterDocIndex = chapterDocIndex + "";
+      this.tempLocation.percentage =
+        chapterDocIndex / (this.chapterDocList.length - 1) + "";
+      this.tempLocation.chapterHref = this.chapterDocList[chapterDocIndex].href;
+      this.tempLocation.chapterTitle =
+        this.chapterDocList[chapterDocIndex].label;
+      this.tempLocation.text = "";
+      this.trigger("page-changed");
     }
   }
   async getMetadata() {
