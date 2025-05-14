@@ -1,6 +1,22 @@
 import rangy from "rangy/lib/rangy-core.js";
 
 declare var window: any;
+function getScreenLeftOffset() {
+  if (window.visualViewport) {
+    return window.visualViewport.offsetLeft;
+  } else {
+    // 回退到滚动偏移量，注意可能不准确
+    return window.pageXOffset || document.documentElement.scrollLeft || 0;
+  }
+}
+function getScreenTopOffset() {
+  if (window.visualViewport) {
+    return window.visualViewport.offsetTop;
+  } else {
+    // 回退到滚动偏移量，注意可能不准确
+    return window.pageYOffset || document.documentElement.scrollTop || 0;
+  }
+}
 const preventLinkNavigation = (event) => {
   const target = event.target;
   if (!target) return;
@@ -216,10 +232,6 @@ export const addAndroidTouchEvent = (
       );
       return;
     }
-    if (window.visualViewport.scale > 1 && format === "PDF") {
-      event.preventDefault();
-      return;
-    }
     if (
       timeDiff < timeThreshold &&
       Math.abs(distX) < swipeThreshold &&
@@ -391,9 +403,13 @@ export const addAndroidTouchEvent = (
     return false;
   };
   let scrollLeft = 0;
+  let offsetLeft = 0;
+  let offsetTop = 0;
   doc.addEventListener(
     "selectstart",
     (event) => {
+      offsetLeft = getScreenLeftOffset();
+      offsetTop = getScreenTopOffset();
       if (readerMode === "scroll") return;
       scrollLeft = doc.body.scrollLeft;
       //prevent doc.body from scrolling
@@ -467,6 +483,8 @@ export const addAndroidTouchEvent = (
               sectionWidth: pageSize.sectionWidth,
               gap: pageSize.gap,
               scale: window.visualViewport.scale,
+              offsetLeft: offsetLeft,
+              offsetTop: offsetTop,
             };
             rangy.init();
             let charRange = null;
@@ -505,6 +523,7 @@ export const addAndroidTouchEvent = (
     false
   );
 };
+
 export const addAppleTouchEvent = (
   doc: Document,
   iframe: any,
@@ -683,6 +702,8 @@ export const addAppleTouchEvent = (
         sectionWidth: pageSize.sectionWidth,
         gap: pageSize.gap,
         scale: window.visualViewport.scale,
+        offsetLeft: getScreenLeftOffset(),
+        offsetTop: getScreenTopOffset(),
       };
       rangy.init();
       let charRange = null;
@@ -731,10 +752,6 @@ export const addAppleTouchEvent = (
         if (chapterDocIndex % 2 === 1) {
           normalizedX = normalizedX + width / 2;
         }
-      }
-      if (window.visualViewport.scale > 1 && format === "PDF") {
-        event.preventDefault();
-        return;
       }
       let result = "";
       // For pagination mode: keep original 3x3 grid
