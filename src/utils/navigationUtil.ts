@@ -7,12 +7,10 @@ import {
   progressInfo,
 } from "./layoutUtil";
 import Chapter from "../model/chapter";
-import { cleanText } from "../libs/html";
 import Chinese from "chinese-s2t";
 import _ from "underscore";
-import rangy from "rangy/lib/rangy-core.js";
+import { cleanText } from "../libs/textProcessor";
 
-declare var window: any;
 let lock = false;
 export const getBlockElement = (Element) => {
   return Array.from(
