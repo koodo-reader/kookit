@@ -417,13 +417,13 @@ class GeneralRender extends EventEmitter {
         doc.body.scrollWidth -
           convertStyleNum(doc.body.scrollLeft) -
           doc.body.clientWidth
-      ) < 10 &&
+      ) < 20 &&
         this.readerMode !== "scroll") ||
       (Math.abs(
         this.element.scrollHeight -
           convertStyleNum(this.element.scrollTop) -
           this.element.clientHeight
-      ) < 10 &&
+      ) < 20 &&
         this.readerMode === "scroll")
     ) {
       // if the last page
