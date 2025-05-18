@@ -123,7 +123,7 @@ const render = async (page, doc, zoom, isMobile) => {
         closestElement = element
       }
       endOfContent.remove()
-      container.insertBefore(endOfContent, closestElement.nextSibling);
+      container.insertBefore(endOfContent, closestElement.nextSibling.nextSibling.nextSibling);
     })
   }
 

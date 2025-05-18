@@ -326,7 +326,9 @@ export const handleLayout = (
   style.textContent =
     "p,empty-line{display: inherit;margin-block-start: inherit;margin-block-end: inherit;margin-inline-start: inherit;margin-inline-end: inherit;}body{margin: 0px}";
   doc.head.appendChild(style);
-  if (readerMode === "scroll") return;
+  if (readerMode === "scroll") {
+    return;
+  }
   let scale = readerMode === "double" ? 2 : 1;
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;

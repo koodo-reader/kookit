@@ -165,7 +165,7 @@ export const isTitle = (line: any, parserRegex: string = "") => {
       (line.startsWith("第") && startWithDI(line)) ||
       (line.startsWith("卷") && startWithJUAN(line)) ||
       (line.indexOf("第") > -1 &&
-        line.lastIndexOf("第") < 4 &&
+        line.lastIndexOf("第") < 7 &&
         startWithDI(line.substr(line.indexOf("第")))) ||
       isStartWithNumAndChars(line))
   );

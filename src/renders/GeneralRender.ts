@@ -367,6 +367,14 @@ class GeneralRender extends EventEmitter {
       if (this.tempLocation.chapterDocIndex === "0") {
         return;
       }
+      if (
+        this.animation === "mimical" &&
+        this.readerMode !== "scroll" &&
+        this.isMobile === "yes"
+      ) {
+        //sleep 1s prevent animation stuck
+        await new Promise((r) => setTimeout(r, 500));
+      }
       await handlePrevChapter(
         this.element,
         this.flatChapter(this.chapterList),
@@ -426,6 +434,14 @@ class GeneralRender extends EventEmitter {
       ) < 20 &&
         this.readerMode === "scroll")
     ) {
+      if (
+        this.animation === "mimical" &&
+        this.readerMode !== "scroll" &&
+        this.isMobile === "yes"
+      ) {
+        //sleep 1s prevent animation stuck
+        await new Promise((r) => setTimeout(r, 500));
+      }
       // if the last page
       await handleNextChapter(
         this.element,

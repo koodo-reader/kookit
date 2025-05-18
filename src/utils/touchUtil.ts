@@ -517,7 +517,7 @@ export const addAndroidTouchEvent = (
             );
           }
         },
-        format === "PDF" ? 300 : 100
+        format === "PDF" ? 300 : 300
       ); // Debounce selection events
     },
     false
@@ -777,7 +777,12 @@ export const addAppleTouchEvent = (
       Math.abs(distX) >= swipeThreshold ||
       Math.abs(distY) >= swipeThreshold
     ) {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ event: "swipe" }));
+      console.info("Swipe detected");
+      window.ReactNativeWebView.postMessage(
+        JSON.stringify({
+          event: "swipe",
+        })
+      );
       if (
         readerMode === "scroll" &&
         Math.abs(
