@@ -221,9 +221,13 @@ export const addAndroidTouchEvent = (
 
       return;
     }
-
     var selectedText = iWin.getSelection().toString();
-    if (selectedText) {
+    var isSwiping =
+      Math.abs(distX) >= swipeThreshold || Math.abs(distY) >= swipeThreshold;
+    if (
+      selectedText &&
+      (format !== "PDF" || (format === "PDF" && !isSwiping))
+    ) {
       window.ReactNativeWebView.postMessage(
         JSON.stringify({
           event: "select-text-after-touch",
