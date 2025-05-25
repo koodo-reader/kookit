@@ -181,7 +181,7 @@ export const progressInfo = (
 };
 export const handleTextStyle = (doc: Document) => {
   let textNodes = doc.querySelectorAll(
-    "a, article, cite, div, li, p, span, pre, table, bold, font"
+    "a, article, cite, div, li, p, span, pre, dt, dd, table, bold, font"
   ) as any;
   for (let index = 0; index < textNodes.length; index++) {
     const element = textNodes[index];
@@ -215,6 +215,8 @@ export const handleImageSize = async (
 ) => {
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
+  let scale = readerMode === "double" ? 2 : 1;
+  let pageWidth = (element.clientWidth - gap) / scale;
   let imgs = doc.querySelectorAll("img, image") as any;
   for (let item of imgs) {
     let parentItem = item.parentElement;
@@ -283,14 +285,17 @@ export const handleImageSize = async (
         }
       }
     }
+    console.log(pageWidth, "pagewidth");
     if (maxWidth || maxHeight) {
       item.setAttribute(
         "style",
         (item.getAttribute("style") ? item.getAttribute("style") : "") +
           ";" +
-          `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${
-            maxHeight > 0 ? maxHeight + "px" : ""
-          }; margin: 0 auto; ${
+          `max-width: ${
+            maxWidth > 0 && maxWidth < pageWidth ? maxWidth + "px" : ""
+          };max-height:${
+            readerMode !== "scroll" ? "100%" : ""
+          }; margin: 0 auto; min-width: 0px; min-height: 0px; ${
             format.startsWith("CB")
               ? `margin-left: calc(100% - ${item.clientWidth}px);`
               : ""

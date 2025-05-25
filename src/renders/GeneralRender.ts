@@ -16,7 +16,8 @@ import {
   handleRenderChapter,
   handleScrollPage,
   handleScrollPosition,
-  handleHighlightNode,
+  handleHighlightSearchNode,
+  handleHighlightAudioNode,
 } from "../utils/navigationUtil";
 import EventEmitter from "../utils/EventEmitter";
 import { CFI } from "../libs/cfi";
@@ -275,7 +276,7 @@ class GeneralRender extends EventEmitter {
           const temp: Element = currentNode as Element;
           if (
             temp.tagName &&
-            "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address,kookitmarker".indexOf(
+            "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,li,dt,dd,blockquote,address,kookitmarker".indexOf(
               temp.tagName.toLowerCase()
             ) > -1
           ) {
@@ -425,7 +426,7 @@ class GeneralRender extends EventEmitter {
         doc.body.scrollWidth -
           convertStyleNum(doc.body.scrollLeft) -
           doc.body.clientWidth
-      ) < 20 &&
+      ) < 30 &&
         this.readerMode !== "scroll") ||
       (Math.abs(
         this.element.scrollHeight -
@@ -524,10 +525,15 @@ class GeneralRender extends EventEmitter {
     if (!doc) return "";
     return doc.body.textContent || "";
   }
-  highlightNode(text: string, style: string) {
+  highlightSearchNode(text: string, style: string) {
     let doc = this.getDocument();
     if (!doc) return;
-    handleHighlightNode(text, style, doc);
+    handleHighlightSearchNode(text, style, doc);
+  }
+  highlightAudioNode(text: string, style: string) {
+    let doc = this.getDocument();
+    if (!doc) return;
+    handleHighlightAudioNode(text, style, doc, this.element, this.readerMode);
   }
   async doSearch(keyword: string) {
     if (this.format === "PDF") {
@@ -650,7 +656,7 @@ class GeneralRender extends EventEmitter {
     if (this.convertChinese === "Simplified To Traditional") {
       doc
         .querySelectorAll(
-          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address,kookitmarker"
+          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,li,dt,dd,blockquote,address,kookitmarker"
         )
         .forEach((item) => {
           item.innerHTML = item.innerHTML
@@ -661,7 +667,7 @@ class GeneralRender extends EventEmitter {
     } else if (this.convertChinese === "Traditional To Simplified") {
       doc
         .querySelectorAll(
-          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address,kookitmarker"
+          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,li,dt,dd,blockquote,address,kookitmarker"
         )
         .forEach((item) => {
           item.innerHTML = item.innerHTML

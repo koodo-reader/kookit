@@ -49,7 +49,7 @@ class PdfRender extends GeneralRender {
           scrollTimeout = setTimeout(async () => {
             await this.handlePDFScrollEvent(doc);
             await this.record();
-          }, 200); // Debounce selection events
+          }, 100); // Debounce selection events
         });
       } else {
         doc.addEventListener("scroll", (e) => {
@@ -316,21 +316,21 @@ class PdfRender extends GeneralRender {
   async nextChapter() {
     await this.next();
   }
-  async visibleText() {
-    let doc = this.getDocument();
-    if (!doc) return "";
-    return await getPDFVisibleText(
-      parseInt(this.tempLocation.chapterDocIndex || "0"),
-      this.chapterDocList,
-      this.readerMode
-    );
-  }
-  async audioText() {
-    return await this.visibleText();
-  }
-  async chapterText() {
-    return (await this.visibleText()).join(" ");
-  }
+  // async visibleText() {
+  //   let doc = this.getDocument();
+  //   if (!doc) return "";
+  //   return await getPDFVisibleText(
+  //     parseInt(this.tempLocation.chapterDocIndex || "0"),
+  //     this.chapterDocList,
+  //     this.readerMode
+  //   );
+  // }
+  // async audioText() {
+  //   return await this.visibleText();
+  // }
+  // async chapterText() {
+  //   return (await this.visibleText()).join(" ");
+  // }
   async record(): Promise<void> {
     if (this.animation !== "") {
       await new Promise((r) => setTimeout(r, 1000));

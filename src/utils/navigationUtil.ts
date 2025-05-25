@@ -15,7 +15,7 @@ let lock = false;
 export const getBlockElement = (Element) => {
   return Array.from(
     Element.querySelectorAll(
-      "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,blockquote,address,kookitmarker"
+      "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,li,dt,dd,pre,blockquote,address,kookitmarker"
     )
   ) as HTMLElement[];
 };
@@ -198,13 +198,34 @@ export const handleRenderChapter = async (
   );
 
   let bodyAttrs = getBodyAttributes(chapterText);
+  //get viewport width from chapterText
+  const regex =
+    /<meta[^>]*(?:content=["'][^"']*width=(\d+)|name=["']viewport["'])[^>]*(?:content=["'][^"']*width=(\d+)|name=["']viewport["'])[^>]*/i;
+  const match = chapterText.match(regex);
+  console.log(match);
+  let pageScale = 1;
+
+  if (match) {
+    const viewportWidth = match[1] || match[2];
+    console.log(viewportWidth);
+    let viewportWidthNum = parseInt(viewportWidth);
+    console.log(viewportWidthNum, "viewportWidthNum");
+    if (!isNaN(viewportWidthNum)) {
+      let scale = readerMode === "double" ? 2 : 1;
+      let section = Math.floor(element.clientWidth / 12);
+      let gap = section % 2 === 0 ? section : section - 1;
+      let pageWidth = (element.clientWidth - gap) / scale;
+      pageScale = pageWidth / viewportWidthNum;
+      console.log(pageScale, "pageScale");
+    }
+  }
 
   doc.body.innerHTML = chapterText;
 
   if (bodyAttrs["style"]) {
     doc.body.setAttribute(
       "style",
-      bodyAttrs["style"] + " " + doc.body.getAttribute("style")
+      bodyAttrs["style"] + "; " + doc.body.getAttribute("style")
     );
   } else if (bodyAttrs["class"]) {
     doc.body.setAttribute("class", bodyAttrs["class"]);
@@ -214,6 +235,11 @@ export const handleRenderChapter = async (
     doc.body.removeAttribute("class");
   } else if (!bodyAttrs["id"]) {
     doc.body.removeAttribute("id");
+  }
+  console.log(pageScale, "scalesdfsd");
+  if (pageScale !== 1) {
+    doc.body.style.transform = `scale(${pageScale})`;
+    doc.body.style.transformOrigin = "left top";
   }
 
   await handleCssLink(doc);
@@ -619,24 +645,162 @@ export const getVisibleText = (
     .filter((item) => item.textContent !== "img")
     .map((item) => item.textContent);
 };
-export const handleHighlightNode = (
+export const handleHighlightSearchNode = (
   text: string,
   style: string,
   doc: Document
 ) => {
-  let nodeList = getBlockElement(doc.body);
-  let nodes = nodeList.filter((s) => {
-    if (s.getAttribute("style") === style) {
-      s.setAttribute("style", "");
+  // First remove any existing highlights
+  const existingHighlights = doc.querySelectorAll(
+    `span[data-highlight="true"]`
+  );
+  existingHighlights.forEach((highlight) => {
+    const parent = highlight.parentNode;
+    if (parent) {
+      parent.replaceChild(
+        doc.createTextNode(highlight.textContent || ""),
+        highlight
+      );
     }
-
-    return (
-      ((s as HTMLElement).textContent || "").trim() &&
-      (s as HTMLElement).textContent === text
-    );
   });
+
+  if (!text.trim()) return;
+
+  // Get block elements and find those containing the target text
+  let nodeList = getBlockElement(doc.body);
+  let nodes = nodeList.filter((node) => {
+    const content = (node as HTMLElement).textContent || "";
+    return content.trim() && content.indexOf(text) > -1;
+  });
+
+  // For the first matching node, highlight the text
   if (nodes.length > 0) {
-    nodes[0].setAttribute("style", style);
+    // Function to process text nodes
+    const processNode = (node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const content = node.textContent || "";
+        const index = content.indexOf(text);
+
+        if (index > -1) {
+          // Split the text node and insert the highlight
+          const before = content.substring(0, index);
+          const after = content.substring(index + text.length);
+
+          // Create span with the specified style
+          const highlightSpan = doc.createElement("span");
+          highlightSpan.setAttribute("style", style);
+          highlightSpan.setAttribute("data-highlight", "true");
+          highlightSpan.textContent = text;
+
+          // Replace the original text node with three new nodes
+          const fragment = doc.createDocumentFragment();
+          if (before) fragment.appendChild(doc.createTextNode(before));
+          fragment.appendChild(highlightSpan);
+          if (after) fragment.appendChild(doc.createTextNode(after));
+
+          node.parentNode?.replaceChild(fragment, node);
+          return true; // Text was found and highlighted
+        }
+      }
+      return false; // No match in this node
+    };
+
+    // Process all child nodes recursively until we find a match
+    const walkAndProcess = (node) => {
+      if (processNode(node)) return true;
+
+      // Process children if this node didn't contain the text
+      const childNodes = Array.from(node.childNodes);
+      for (const child of childNodes) {
+        if (walkAndProcess(child)) return true;
+      }
+      return false;
+    };
+
+    for (let i = 0; i < nodes.length; i++) {
+      walkAndProcess(nodes[i]);
+    }
+  }
+};
+export const handleHighlightAudioNode = (
+  text: string,
+  style: string,
+  doc: Document,
+  element: HTMLElement,
+  readerMode: string
+) => {
+  // First remove any existing highlights
+  const existingHighlights = doc.querySelectorAll(
+    `span[data-highlight="true"]`
+  );
+  existingHighlights.forEach((highlight) => {
+    const parent = highlight.parentNode;
+    if (parent) {
+      parent.replaceChild(
+        doc.createTextNode(highlight.textContent || ""),
+        highlight
+      );
+    }
+  });
+
+  if (!text.trim()) return;
+
+  // Get block elements and find those containing the target text
+  let nodeList = getBlockElement(doc.body).filter(
+    (s) =>
+      isScrolledIntoView(element, s as HTMLElement, readerMode) &&
+      ((s as HTMLElement).textContent || "").trim()
+  );
+  let nodes = nodeList.filter((node) => {
+    const content = (node as HTMLElement).textContent || "";
+    return content.trim() && content.indexOf(text) > -1;
+  });
+
+  // For the first matching node, highlight the text
+  if (nodes.length > 0) {
+    // Function to process text nodes
+    const processNode = (node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const content = node.textContent || "";
+        const index = content.indexOf(text);
+
+        if (index > -1) {
+          // Split the text node and insert the highlight
+          const before = content.substring(0, index);
+          const after = content.substring(index + text.length);
+
+          // Create span with the specified style
+          const highlightSpan = doc.createElement("span");
+          highlightSpan.setAttribute("style", style);
+          highlightSpan.setAttribute("data-highlight", "true");
+          highlightSpan.textContent = text;
+
+          // Replace the original text node with three new nodes
+          const fragment = doc.createDocumentFragment();
+          if (before) fragment.appendChild(doc.createTextNode(before));
+          fragment.appendChild(highlightSpan);
+          if (after) fragment.appendChild(doc.createTextNode(after));
+
+          node.parentNode?.replaceChild(fragment, node);
+          return true; // Text was found and highlighted
+        }
+      }
+      return false; // No match in this node
+    };
+
+    // Process all child nodes recursively until we find a match
+    const walkAndProcess = (node) => {
+      if (processNode(node)) return true;
+
+      // Process children if this node didn't contain the text
+      const childNodes = Array.from(node.childNodes);
+      for (const child of childNodes) {
+        if (walkAndProcess(child)) return true;
+      }
+      return false;
+    };
+
+    walkAndProcess(nodes[0]);
   }
 };
 export const getSearchResult = async (
@@ -670,6 +834,7 @@ export const getSearchResult = async (
             chapterHref: chapterDocList[i].href,
             count: "search",
             percentage: i / chapterDocList.length,
+            keyword: keyword,
           }),
         });
       }

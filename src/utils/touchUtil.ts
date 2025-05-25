@@ -544,7 +544,7 @@ export const addAppleTouchEvent = (
   let touchStartY = 0;
   let lastTouchEnd = 0;
   let lastSelectEnd = 0;
-  const swipeThreshold = 30; // Minimum distance in pixels to be considered a swipe
+  let swipeThreshold = 30; // Minimum distance in pixels to be considered a swipe
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
@@ -690,6 +690,8 @@ export const addAppleTouchEvent = (
       return;
     }
     const selectedText = iWin.getSelection().toString().trim();
+    console.log(distX, "distX");
+
     if (selectedText) {
       var range = iWin.getSelection().getRangeAt(0);
       var rect = range.getBoundingClientRect();

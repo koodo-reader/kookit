@@ -213,6 +213,7 @@ export const getPDFSearchResult = async (
           chapterHref: chapterDocList[i].href,
           count: "search",
           percentage: i / chapterDocList.length,
+          keyword: keyword,
         }),
       });
     }
