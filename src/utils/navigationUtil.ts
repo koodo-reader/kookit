@@ -202,21 +202,17 @@ export const handleRenderChapter = async (
   const regex =
     /<meta[^>]*(?:content=["'][^"']*width=(\d+)|name=["']viewport["'])[^>]*(?:content=["'][^"']*width=(\d+)|name=["']viewport["'])[^>]*/i;
   const match = chapterText.match(regex);
-  console.log(match);
   let pageScale = 1;
 
   if (match) {
     const viewportWidth = match[1] || match[2];
-    console.log(viewportWidth);
     let viewportWidthNum = parseInt(viewportWidth);
-    console.log(viewportWidthNum, "viewportWidthNum");
     if (!isNaN(viewportWidthNum)) {
       let scale = readerMode === "double" ? 2 : 1;
       let section = Math.floor(element.clientWidth / 12);
       let gap = section % 2 === 0 ? section : section - 1;
       let pageWidth = (element.clientWidth - gap) / scale;
       pageScale = pageWidth / viewportWidthNum;
-      console.log(pageScale, "pageScale");
     }
   }
 
@@ -236,7 +232,6 @@ export const handleRenderChapter = async (
   } else if (!bodyAttrs["id"]) {
     doc.body.removeAttribute("id");
   }
-  console.log(pageScale, "scalesdfsd");
   if (pageScale !== 1) {
     doc.body.style.transform = `scale(${pageScale})`;
     doc.body.style.transformOrigin = "left top";

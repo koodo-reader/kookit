@@ -226,6 +226,7 @@ export const handleImageSize = async (
     let height = item.naturalHeight;
     if (item.tagName === "image") {
       let img = await getImageMeta(item.getAttribute("xlink:href"));
+      console.log(img.naturalWidth);
       width = img.naturalWidth;
       height = img.naturalHeight;
     }
@@ -285,22 +286,26 @@ export const handleImageSize = async (
         }
       }
     }
-    console.log(pageWidth, "pagewidth");
+    console.log(maxWidth, pageWidth);
     if (maxWidth || maxHeight) {
       item.setAttribute(
         "style",
         (item.getAttribute("style") ? item.getAttribute("style") : "") +
           ";" +
           `max-width: ${
-            maxWidth > 0 && maxWidth < pageWidth ? maxWidth + "px" : ""
+            maxWidth > 0 && maxWidth <= pageWidth ? maxWidth + "px" : ""
           };max-height:${
-            readerMode !== "scroll" ? "100%" : ""
+            readerMode !== "scroll" ? maxHeight + "px" : ""
           }; margin: 0 auto; min-width: 0px; min-height: 0px; ${
             format.startsWith("CB")
               ? `margin-left: calc(100% - ${item.clientWidth}px);`
               : ""
           }`
       );
+    }
+    if (item.tagName === "image") {
+      item.parentElement?.setAttribute("width", maxWidth);
+      item.parentElement?.setAttribute("height", maxHeight);
     }
     if (format.startsWith("CB") && readerMode === "scroll") {
       item.setAttribute(

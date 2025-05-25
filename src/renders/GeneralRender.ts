@@ -421,12 +421,18 @@ class GeneralRender extends EventEmitter {
     if (!doc || !iframe) {
       return;
     }
+    console.log(
+      "next",
+      doc.body.scrollWidth -
+        convertStyleNum(doc.body.scrollLeft) -
+        doc.body.clientWidth
+    );
     if (
       (Math.abs(
         doc.body.scrollWidth -
           convertStyleNum(doc.body.scrollLeft) -
           doc.body.clientWidth
-      ) < 30 &&
+      ) < 50 &&
         this.readerMode !== "scroll") ||
       (Math.abs(
         this.element.scrollHeight -

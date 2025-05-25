@@ -690,7 +690,6 @@ export const addAppleTouchEvent = (
       return;
     }
     const selectedText = iWin.getSelection().toString().trim();
-    console.log(distX, "distX");
 
     if (selectedText) {
       var range = iWin.getSelection().getRangeAt(0);
