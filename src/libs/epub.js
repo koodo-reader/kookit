@@ -812,8 +812,7 @@ export class EPUB {
           resolveHref: (href) => resolveURL(href, item.href),
           loadMediaOverlay: () => this.loadMediaOverlay(item),
         };
-      })
-      .filter((s) => s);
+      });
 
     const { navPath, ncxPath } = this.resources;
     if (navPath)

@@ -192,6 +192,11 @@ export const handleRenderChapter = async (
   if (chapterDocIndex === -1 || chapterDocIndex > chapterDocList.length - 1) {
     chapterDocIndex = 0;
   }
+  console.log(
+    "chapterDocIndex",
+    chapterDocIndex,
+    chapterDocList[chapterDocIndex]
+  );
   let chapterText = await handleOneChapterDoc(
     chapterDocList[chapterDocIndex].text,
     false

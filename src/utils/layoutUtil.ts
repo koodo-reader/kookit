@@ -288,14 +288,13 @@ export const handleImageSize = async (
     }
     console.log(maxWidth, pageWidth);
     if (maxWidth || maxHeight) {
+      //轻易不要改这里，很容易出问题
       item.setAttribute(
         "style",
         (item.getAttribute("style") ? item.getAttribute("style") : "") +
           ";" +
-          `max-width: ${
-            maxWidth > 0 && maxWidth <= pageWidth ? maxWidth + "px" : ""
-          };max-height:${
-            readerMode !== "scroll" ? maxHeight + "px" : ""
+          `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${
+            maxHeight > 0 ? maxHeight + "px" : ""
           }; margin: 0 auto; min-width: 0px; min-height: 0px; ${
             format.startsWith("CB")
               ? `margin-left: calc(100% - ${item.clientWidth}px);`

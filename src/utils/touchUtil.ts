@@ -1,6 +1,26 @@
 import rangy from "rangy/lib/rangy-core.js";
 
 declare var window: any;
+async function blobUrlToBase64(blobUrl) {
+  try {
+    // 1. 获取Blob数据
+    const response = await fetch(blobUrl);
+    const blob = await response.blob();
+
+    // 2. 将Blob转换为Base64
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result); // 成功时返回Base64字符串
+      reader.onerror = reject; // 失败时拒绝Promise
+      reader.readAsDataURL(blob); // 开始读取
+    });
+
+    return base64; // 返回形如 "data:image/png;base64,..." 的字符串
+  } catch (error) {
+    console.error("转换失败:", error);
+    throw error; // 抛出错误
+  }
+}
 function getScreenLeftOffset() {
   if (window.visualViewport) {
     return window.visualViewport.offsetLeft;
@@ -17,7 +37,7 @@ function getScreenTopOffset() {
     return window.pageYOffset || document.documentElement.scrollTop || 0;
   }
 }
-const preventLinkNavigation = (event) => {
+const preventLinkNavigation = (event: any, doc: any, render: any) => {
   const target = event.target;
   if (!target) return;
 
@@ -28,12 +48,33 @@ const preventLinkNavigation = (event) => {
 
     // Get href from the link
     const href = linkElement.getAttribute("href");
+    let footnote = "";
+    if (href && href.startsWith("#")) {
+      let id = href.split("#").reverse()[0];
+      let node = doc.body.querySelector("#" + id);
+      if (!node) return false;
+      //将html代码中的img标签由blob转换为base64
+      footnote = node.textContent;
+    }
+    if (href && !href.startsWith("#")) {
+      let chapterInfo = render.resolveChapter(href);
+      console.log("chapterInfo:", JSON.stringify(chapterInfo));
+      if (chapterInfo) {
+        render.goToChapter(
+          chapterInfo.index,
+          chapterInfo.href,
+          chapterInfo.label
+        );
+        return;
+      }
+    }
 
     // Send message to React Native with link details
     window.ReactNativeWebView.postMessage(
       JSON.stringify({
         event: "link-clicked",
         href: href,
+        footnote: footnote,
       })
     );
 
@@ -58,6 +99,19 @@ function findLinkElement(element) {
 
   return null;
 }
+function getTouchAction(col: number, row: number, touchControlRule: any) {
+  //根据col和row获取对应的区域编号，从左到右，从上到下，1-9
+  const areaIndex = row * 3 + col + 1; // 1-9
+  //如果区域编号在touchControlRule中存在，则返回对应的action
+  if (touchControlRule.layout["A"].area.includes(areaIndex)) {
+    return touchControlRule["touchControlA"];
+  } else if (touchControlRule.layout["B"].area.includes(areaIndex)) {
+    return touchControlRule["touchControlB"];
+  } else if (touchControlRule.layout["C"].area.includes(areaIndex)) {
+    return touchControlRule["touchControlC"];
+  }
+  return "right";
+}
 export const addAndroidTouchEvent = (
   doc: Document,
   iframe: any,
@@ -65,6 +119,7 @@ export const addAndroidTouchEvent = (
   readerMode: string,
   animation: string,
   format: string,
+  touchControlRule: any,
   render: any
 ) => {
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
@@ -236,6 +291,23 @@ export const addAndroidTouchEvent = (
       );
       return;
     }
+    console.log("timeDiff:", timeDiff);
+    if (timeDiff > timeThreshold) {
+      const target: any = event.target;
+      if (!target) return;
+      if (target.tagName === "IMG" || target.tagName === "image") {
+        const imgSrc = target.src || target.getAttribute("xlink:href");
+        //blob to base64
+        if (imgSrc.startsWith("blob:")) {
+          blobUrlToBase64(imgSrc).then((base64) => {
+            window.ReactNativeWebView.postMessage(
+              JSON.stringify({ event: "view-image", imgSrc: base64 })
+            );
+          });
+        }
+        return;
+      }
+    }
     if (
       timeDiff < timeThreshold &&
       Math.abs(distX) < swipeThreshold &&
@@ -248,36 +320,15 @@ export const addAndroidTouchEvent = (
       var cellHeight = height / 3;
       var col = Math.floor(touchEndX / cellWidth);
       var row = Math.floor(touchEndY / cellHeight);
-      var result = "";
-
-      if (
-        (row === 0 && (col === 0 || col === 1)) || // Top-left and Top-middle
-        (row === 1 && col === 0) || // Middle-left
-        (row === 2 && col === 0) || // Bottom-left
-        (row === 0 && col === 1) // Middle-top
-      ) {
-        result = "left";
-      } else if (row === 1 && col === 1) {
-        result = "center";
-      } else if (
-        (row === 0 && col === 2) || // Top-right
-        (row === 1 && col === 2) || // Middle-right
-        (row === 2 && col === 2) || // Bottom-right
-        (row === 2 && col === 1) // Middle-bottom
-      ) {
-        result = "right";
-      }
-      // if (
-      //   col === 0 // Left column (left third of screen)
-      // ) {
-      //   result = "left";
-      // } else if (col === 1) {
-      //   // Middle column (middle third of screen)
-      //   result = "center";
-      // } else if (col === 2) {
-      //   // Right column (right third of screen)
-      //   result = "right";
-      // }
+      console.log(
+        "col:",
+        col,
+        "row:",
+        row,
+        "touchControlRule:",
+        JSON.stringify(touchControlRule)
+      );
+      var result = getTouchAction(col, row, touchControlRule);
       window.ReactNativeWebView.postMessage(JSON.stringify({ event: result }));
     } else if (
       Math.abs(distX) >= swipeThreshold ||
@@ -303,22 +354,16 @@ export const addAndroidTouchEvent = (
     }
   };
   let onTouchStart = function (event) {
-    if (preventLinkNavigation(event) === false) {
+    touchStartTime = Date.now();
+    if (preventLinkNavigation(event, doc, render) === false) {
       return;
     }
-    const target: any = event.target;
-    if (!target) return;
-    if (target.tagName === "IMG") {
-      const imgSrc = target.src || target.getAttribute("xlink:href");
-      window.ReactNativeWebView.postMessage(
-        JSON.stringify({ event: "view-image", imgSrc: imgSrc })
-      );
-    }
+
     if (event.touches.length > 1) {
       event.preventDefault();
     }
     const touch = event.touches[0];
-    touchStartTime = Date.now();
+
     touchStartX = touch.screenX;
     touchStartY = touch.screenY;
   };
@@ -392,7 +437,13 @@ export const addAndroidTouchEvent = (
   doc.addEventListener("touchstart", onTouchStart, false);
   doc.addEventListener("touchmove", onTouchMove, false);
   // Add this with the other event listeners
-  doc.addEventListener("click", preventLinkNavigation, true); // Use capturing phase
+  doc.addEventListener(
+    "click",
+    (event) => {
+      preventLinkNavigation(event, doc, render);
+    },
+    true
+  ); // Use capturing phase
 
   // doc.body.ontouchend = onTouchEnd;
   // doc.body.ontouchstart = onTouchStart;
@@ -535,6 +586,7 @@ export const addAppleTouchEvent = (
   readerMode: string,
   animation: string,
   format: string,
+  touchControlRules: any,
   render: any
 ) => {
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
@@ -738,6 +790,22 @@ export const addAppleTouchEvent = (
       );
       return;
     }
+    if (timeDiff > timeThreshold) {
+      const target: any = event.target;
+      if (!target) return;
+      if (target.tagName === "IMG" || target.tagName === "image") {
+        const imgSrc = target.src || target.getAttribute("xlink:href");
+        //blob to base64
+        if (imgSrc.startsWith("blob:")) {
+          blobUrlToBase64(imgSrc).then((base64) => {
+            window.ReactNativeWebView.postMessage(
+              JSON.stringify({ event: "view-image", imgSrc: base64 })
+            );
+          });
+        }
+        return;
+      }
+    }
     if (
       timeDiff < timeThreshold &&
       Math.abs(distX) < swipeThreshold &&
@@ -758,24 +826,13 @@ export const addAppleTouchEvent = (
           normalizedX = normalizedX + width / 2;
         }
       }
-      let result = "";
+
       // For pagination mode: keep original 3x3 grid
       const cellWidth = width / 3;
       const cellHeight = height / 3;
       const col = Math.min(Math.floor(normalizedX / cellWidth), 2);
       const row = Math.min(Math.floor(normalizedY / cellHeight), 2);
-
-      if (
-        col === 0 // Left column (left third of screen)
-      ) {
-        result = "left";
-      } else if (col === 1) {
-        // Middle column (middle third of screen)
-        result = "center";
-      } else if (col === 2) {
-        // Right column (right third of screen)
-        result = "right";
-      }
+      let result = getTouchAction(col, row, touchControlRules);
 
       window.ReactNativeWebView.postMessage(JSON.stringify({ event: result }));
     } else if (
@@ -806,16 +863,8 @@ export const addAppleTouchEvent = (
     }
   };
   let onTouchStart = function (event) {
-    if (preventLinkNavigation(event) === false) {
+    if (preventLinkNavigation(event, doc, render) === false) {
       return;
-    }
-    const target: any = event.target;
-    if (!target) return;
-    if (target.tagName === "IMG") {
-      const imgSrc = target.src || target.getAttribute("xlink:href");
-      window.ReactNativeWebView.postMessage(
-        JSON.stringify({ event: "view-image", imgSrc: imgSrc })
-      );
     }
     if (event.touches.length > 1) {
       event.preventDefault();
@@ -901,7 +950,13 @@ export const addAppleTouchEvent = (
   doc.addEventListener("touchstart", onTouchStart, false);
   doc.addEventListener("touchmove", onTouchMove, false);
   // Add this with the other event listeners
-  doc.addEventListener("click", preventLinkNavigation, true); // Use capturing phase
+  doc.addEventListener(
+    "click",
+    (event) => {
+      preventLinkNavigation(event, doc, render);
+    },
+    true
+  ); // Use capturing phase
 
   // doc.body.ontouchend = onTouchEnd;
   // doc.body.ontouchstart = onTouchStart;

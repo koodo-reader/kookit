@@ -203,6 +203,7 @@ class GeneralRender extends EventEmitter {
     }
   }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
+    console.log("goToChapter", chapterDocIndex, chapterHref, chapterTitle);
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -736,7 +737,7 @@ class GeneralRender extends EventEmitter {
   }
   async displayFontUrl(fontName: string, fontUrl: string) {
     let doc = this.getDocument();
-    if (!doc) return;
+    if (!doc || fontUrl.length === 0) return;
     // 使用 FontFace API 创建字体
     const font = new FontFace(fontName, `url(${fontUrl})`);
 
@@ -790,7 +791,7 @@ class GeneralRender extends EventEmitter {
     });
     return [iframe, ...iframeElements];
   }
-  addTouchEvent(isAndroid: string) {
+  addTouchEvent(isAndroid: string, touchControlRule: any) {
     let docs = this.getAllDocuments();
     let iframes = this.getAllIframes();
     for (let index = 0; index < docs.length; index++) {
@@ -810,6 +811,7 @@ class GeneralRender extends EventEmitter {
           this.readerMode,
           this.animation,
           this.format,
+          touchControlRule,
           this
         );
       } else {
@@ -820,6 +822,7 @@ class GeneralRender extends EventEmitter {
           this.readerMode,
           this.animation,
           this.format,
+          touchControlRule,
           this
         );
       }
