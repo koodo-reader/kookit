@@ -58,7 +58,6 @@ const preventLinkNavigation = (event: any, doc: any, render: any) => {
     }
     if (href && !href.startsWith("#")) {
       let chapterInfo = render.resolveChapter(href);
-      console.log("chapterInfo:", JSON.stringify(chapterInfo));
       if (chapterInfo) {
         render.goToChapter(
           chapterInfo.index,
@@ -291,7 +290,6 @@ export const addAndroidTouchEvent = (
       );
       return;
     }
-    console.log("timeDiff:", timeDiff);
     if (timeDiff > timeThreshold) {
       const target: any = event.target;
       if (!target) return;
@@ -320,14 +318,6 @@ export const addAndroidTouchEvent = (
       var cellHeight = height / 3;
       var col = Math.floor(touchEndX / cellWidth);
       var row = Math.floor(touchEndY / cellHeight);
-      console.log(
-        "col:",
-        col,
-        "row:",
-        row,
-        "touchControlRule:",
-        JSON.stringify(touchControlRule)
-      );
       var result = getTouchAction(col, row, touchControlRule);
       window.ReactNativeWebView.postMessage(JSON.stringify({ event: result }));
     } else if (

@@ -18,6 +18,8 @@ import {
   handleScrollPosition,
   handleHighlightSearchNode,
   handleHighlightAudioNode,
+  getBlockElement,
+  isParentBlock,
 } from "../utils/navigationUtil";
 import EventEmitter from "../utils/EventEmitter";
 import { CFI } from "../libs/cfi";
@@ -116,6 +118,38 @@ class GeneralRender extends EventEmitter {
       gap: gap,
     };
   }
+  scrollToText(text: string) {
+    let doc = this.getDocument();
+    if (!doc) return;
+    let nodeList = getBlockElement(doc.body).filter(
+      (item) => !isParentBlock(item)
+    );
+    let audioNodes = nodeList.filter(
+      (s) => ((s as HTMLElement).textContent || "").indexOf(text) > -1
+    );
+    if (audioNodes.length > 0) {
+      let targetNode: any = audioNodes[0];
+      let left = targetNode
+        ? convertStyleNum(targetNode.offsetLeft) -
+          convertStyleNum(
+            targetNode.marginLeft ||
+              parseFloat(getComputedStyle(targetNode).marginLeft)
+          )
+        : 0;
+      let top = targetNode
+        ? convertStyleNum(targetNode.offsetTop) -
+          convertStyleNum(
+            targetNode.marginTop ||
+              parseFloat(getComputedStyle(targetNode).marginTop)
+          )
+        : 0;
+      if (this.readerMode !== "scroll") {
+        doc.body.scrollTo(left, 0);
+      } else {
+        this.element.scrollTo(0, top);
+      }
+    }
+  }
   resolveChapter(href: string) {
     let path = href;
     let chapterIndex = -1;
@@ -203,7 +237,6 @@ class GeneralRender extends EventEmitter {
     }
   }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
-    console.log("goToChapter", chapterDocIndex, chapterHref, chapterTitle);
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -422,12 +455,6 @@ class GeneralRender extends EventEmitter {
     if (!doc || !iframe) {
       return;
     }
-    console.log(
-      "next",
-      doc.body.scrollWidth -
-        convertStyleNum(doc.body.scrollLeft) -
-        doc.body.clientWidth
-    );
     if (
       (Math.abs(
         doc.body.scrollWidth -

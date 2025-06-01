@@ -226,7 +226,6 @@ export const handleImageSize = async (
     let height = item.naturalHeight;
     if (item.tagName === "image") {
       let img = await getImageMeta(item.getAttribute("xlink:href"));
-      console.log(img.naturalWidth);
       width = img.naturalWidth;
       height = img.naturalHeight;
     }
@@ -286,7 +285,6 @@ export const handleImageSize = async (
         }
       }
     }
-    console.log(maxWidth, pageWidth);
     if (maxWidth || maxHeight) {
       //轻易不要改这里，很容易出问题
       item.setAttribute(

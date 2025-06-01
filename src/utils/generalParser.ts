@@ -25,11 +25,6 @@ class GeneralParser {
         toc.map(async (item) => {
           let index = -1;
           try {
-            console.log(
-              "item.href",
-              item.href,
-              await this.book.resolveHref(item.href)
-            );
             index =
               item.href && (await this.book.resolveHref(item.href))
                 ? (await this.book.resolveHref(item.href)).index
