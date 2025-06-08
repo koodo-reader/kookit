@@ -443,6 +443,20 @@ export const addAndroidTouchEvent = (
   // iWin.ontouchmove = onTouchMove;
   let selectionTimeout: any = null;
   doc.body.oncontextmenu = function (event) {
+    const target: any = event.target;
+    if (!target) return;
+    if (target.tagName === "IMG" || target.tagName === "image") {
+      const imgSrc = target.src || target.getAttribute("xlink:href");
+      //blob to base64
+      if (imgSrc.startsWith("blob:")) {
+        blobUrlToBase64(imgSrc).then((base64) => {
+          window.ReactNativeWebView.postMessage(
+            JSON.stringify({ event: "view-image", imgSrc: base64 })
+          );
+        });
+      }
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     return false;

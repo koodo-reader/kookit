@@ -22,13 +22,13 @@ class GeneralParser {
   async getChapter(toc) {
     if (toc) {
       this.chapterList = await Promise.all<Chapter>(
-        toc.map(async (item) => {
-          let index = -1;
+        toc.map(async (item, index) => {
+          let chapterIndex = index;
           try {
-            index =
+            chapterIndex =
               item.href && (await this.book.resolveHref(item.href))
                 ? (await this.book.resolveHref(item.href)).index
-                : -1;
+                : chapterIndex;
           } catch (error) {
             console.error(error);
           }
@@ -36,9 +36,9 @@ class GeneralParser {
           return {
             label: this.unescapeHtml(item.label)
               ? this.unescapeHtml(item.label)
-              : index + "",
-            href: item.href ? item.href : "title" + index,
-            index: index,
+              : chapterIndex + "",
+            href: item.href ? item.href : "title" + chapterIndex,
+            index: chapterIndex,
             subitems: item.subitems ? await this.getChapter(item.subitems) : [],
           } as Chapter;
         })
