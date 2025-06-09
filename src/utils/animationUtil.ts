@@ -358,14 +358,12 @@ export const addPageAnimation = (
   }
   return {
     flipToNextPage: () => {
-      console.info("flipToNextPage");
       if (pageNum + 1 < flips.length) {
         flips[pageNum].target = -1;
         pageNum = Math.min(pageNum + 1, flips.length);
       }
     },
     flipToPrevPage: () => {
-      console.info("flipToPrevPage");
       if (pageNum - 1 >= 0) {
         flips[pageNum - 1].target = 1;
         pageNum = Math.max(pageNum - 1, 0);

@@ -28,7 +28,6 @@ export const handleIframeHeight = async (
     ),
     new Promise((resolve, reject) => {
       setTimeout(() => {
-        console.info("image load timeout");
         // reject(new Error("Timeout"));
         resolve("image load timeout");
       }, 3000);

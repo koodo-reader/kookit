@@ -132,8 +132,6 @@ export const addAndroidTouchEvent = (
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   let onTouchEnd = function (event) {
-    console.info("touchend");
-
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
       event.preventDefault();
@@ -324,7 +322,6 @@ export const addAndroidTouchEvent = (
       Math.abs(distX) >= swipeThreshold ||
       Math.abs(distY) >= swipeThreshold
     ) {
-      console.info("Swipe detected");
       window.ReactNativeWebView.postMessage(JSON.stringify({ event: "swipe" }));
       if (
         readerMode === "scroll" &&
@@ -345,7 +342,11 @@ export const addAndroidTouchEvent = (
   };
   let onTouchStart = function (event) {
     touchStartTime = Date.now();
-    if (preventLinkNavigation(event, doc, render) === false) {
+    const target = event.target;
+    if (!target) return;
+
+    const linkElement = findLinkElement(target);
+    if (linkElement) {
       return;
     }
 
@@ -843,7 +844,6 @@ export const addAppleTouchEvent = (
       Math.abs(distX) >= swipeThreshold ||
       Math.abs(distY) >= swipeThreshold
     ) {
-      console.info("Swipe detected");
       window.ReactNativeWebView.postMessage(
         JSON.stringify({
           event: "swipe",
@@ -867,7 +867,11 @@ export const addAppleTouchEvent = (
     }
   };
   let onTouchStart = function (event) {
-    if (preventLinkNavigation(event, doc, render) === false) {
+    const target = event.target;
+    if (!target) return;
+
+    const linkElement = findLinkElement(target);
+    if (linkElement) {
       return;
     }
     if (event.touches.length > 1) {

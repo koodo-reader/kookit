@@ -272,12 +272,6 @@ export const handleCssLink = async (doc) => {
   if (linkList.length === 0) {
     return;
   }
-  for (let index = 0; index < linkList.length; index++) {
-    const link: any = linkList[index];
-    link.onload = () => {
-      console.info("finished");
-    };
-  }
   let styleSheetPromises: any = [];
   for (let index = 0; index < linkList.length; index++) {
     const link: any = linkList[index];
@@ -294,7 +288,6 @@ export const handleCssLink = async (doc) => {
       Promise.all(styleSheetPromises),
       new Promise((resolve, reject) => {
         setTimeout(() => {
-          console.info("css load timeout");
           // reject(new Error("Timeout"));
           resolve("css load timeout");
         }, 1000);
@@ -338,7 +331,6 @@ export const handleScrollPosition = async (
       );
     });
     if (targetNodeList.length === 0) {
-      console.info("failed");
       return;
     }
     targetNode = getCloestBlock(targetNodeList[0], element, readerMode);
