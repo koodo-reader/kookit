@@ -25,13 +25,16 @@ const textLayerBuilderCSS = async () => await fetchText(pdfjsPath('text_layer_bu
 // https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/annotation_layer_builder.css
 const annotationLayerBuilderCSS = async () => await fetchText(pdfjsPath('annotation_layer_builder.css'))
 
-const render = async (page, doc, zoom, isMobile) => {
+const render = async (page, doc, zoom, isMobile, isDarkMode) => {
   let devicePixelRatio = window.devicePixelRatio * (isMobile === "yes" ? (1 / zoom) * 1.5 : 1)
   const scale = zoom * devicePixelRatio
   let docLayer = doc.querySelector('#koodoPDFLayer')
   docLayer.style.visibility = 'hidden'
   docLayer.style.transform = `scale(${1 / devicePixelRatio})`
   docLayer.style.transformOrigin = 'top left'
+  if (isDarkMode === "yes") {
+    docLayer.style.filter = 'invert(1) hue-rotate(180deg) contrast(0.95)';
+  }
   docLayer.style.setProperty('--scale-factor', scale)
   const viewport = page.getViewport({ scale })
 
@@ -229,8 +232,8 @@ export const makePDF = async (file, readerMode) => {
       let page = await pdf.getPage(i + 1)
       page.cleanup()
     },
-    render: async (doc, scale, isMobile) => {
-      await render(await pdf.getPage(i + 1), doc, scale, isMobile);
+    render: async (doc, scale, isMobile, isDarkMode) => {
+      await render(await pdf.getPage(i + 1), doc, scale, isMobile, isDarkMode);
     },
     getTextContent: async () => {
       const page = await pdf.getPage(i + 1)

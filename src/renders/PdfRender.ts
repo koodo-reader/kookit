@@ -656,7 +656,8 @@ class PdfRender extends GeneralRender {
     await this.chapterDocList[chapterDocIndex].text.render(
       subDoc,
       scale,
-      this.isMobile
+      this.isMobile,
+      this.isDarkMode
     );
     this.trigger("rendered");
   }
