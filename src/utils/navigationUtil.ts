@@ -199,22 +199,6 @@ export const handleRenderChapter = async (
 
   let bodyAttrs = getBodyAttributes(chapterText);
   //get viewport width from chapterText
-  const regex =
-    /<meta[^>]*(?:content=["'][^"']*width=(\d+)|name=["']viewport["'])[^>]*(?:content=["'][^"']*width=(\d+)|name=["']viewport["'])[^>]*/i;
-  const match = chapterText.match(regex);
-  let pageScale = 1;
-
-  if (match) {
-    const viewportWidth = match[1] || match[2];
-    let viewportWidthNum = parseInt(viewportWidth);
-    if (!isNaN(viewportWidthNum)) {
-      let scale = readerMode === "double" ? 2 : 1;
-      let section = Math.floor(element.clientWidth / 12);
-      let gap = section % 2 === 0 ? section : section - 1;
-      let pageWidth = (element.clientWidth - gap) / scale;
-      pageScale = pageWidth / viewportWidthNum;
-    }
-  }
 
   doc.body.innerHTML = chapterText;
 
@@ -231,10 +215,6 @@ export const handleRenderChapter = async (
     doc.body.removeAttribute("class");
   } else if (!bodyAttrs["id"]) {
     doc.body.removeAttribute("id");
-  }
-  if (pageScale !== 1) {
-    doc.body.style.transform = `scale(${pageScale})`;
-    doc.body.style.transformOrigin = "left top";
   }
 
   await handleCssLink(doc);

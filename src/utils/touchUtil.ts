@@ -37,7 +37,7 @@ function getScreenTopOffset() {
     return window.pageYOffset || document.documentElement.scrollTop || 0;
   }
 }
-const preventLinkNavigation = (event: any, doc: any, render: any) => {
+const preventLinkNavigation = async (event: any, doc: any, render: any) => {
   const target = event.target;
   if (!target) return;
 
@@ -49,22 +49,36 @@ const preventLinkNavigation = (event: any, doc: any, render: any) => {
     // Get href from the link
     const href = linkElement.getAttribute("href");
     let footnote = "";
-    if (href && href.startsWith("#")) {
+    if (href && href.indexOf("#") > -1) {
       let id = href.split("#").reverse()[0];
       let node = doc.body.querySelector("#" + id);
-      if (!node) return false;
+      if (!node) {
+        if (href.indexOf("#") !== 0) {
+          let chapterInfo = render.resolveChapter(href);
+          if (chapterInfo) {
+            await render.goToChapter(
+              chapterInfo.index,
+              chapterInfo.href,
+              chapterInfo.label
+            );
+          }
+          await render.goToNode(doc.body.querySelector("#" + id) || doc.body);
+          return true;
+        }
+      }
+      if (node.textContent.trim() === event.target.textContent.trim()) {
+        node = node.parentElement;
+      }
       //将html代码中的img标签由blob转换为base64
       footnote = node.textContent;
-    }
-    if (href && !href.startsWith("#")) {
+    } else if (href) {
       let chapterInfo = render.resolveChapter(href);
       if (chapterInfo) {
-        render.goToChapter(
+        await render.goToChapter(
           chapterInfo.index,
           chapterInfo.href,
           chapterInfo.label
         );
-        return;
       }
     }
 
