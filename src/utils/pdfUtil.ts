@@ -54,10 +54,14 @@ export const createPDFContainer = (
     iframeContainer.style.width = "100%";
     iframeContainer.id = "pdf-container-" + index;
     iframeContainer.className = "pdf-container";
+    if (readerMode === "single") {
+      iframeContainer.style.paddingTop = element.clientHeight + "px";
+    } else {
+      // Set aspect ratio based on PDF page dimensions
+      const aspectRatio = viewport?.width / viewport?.height || 0.75; // Default to 3:4 if viewport unknown
+      iframeContainer.style.paddingTop = `${(1 / aspectRatio) * 100}%`;
+    }
 
-    // Set aspect ratio based on PDF page dimensions
-    const aspectRatio = viewport?.width / viewport?.height || 0.75; // Default to 3:4 if viewport unknown
-    iframeContainer.style.paddingTop = `${(1 / aspectRatio) * 100}%`;
     if (readerMode === "double") {
       //break-inside: avoid;
       iframeContainer.style.breakInside = "avoid";

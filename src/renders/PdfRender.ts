@@ -626,55 +626,46 @@ class PdfRender extends GeneralRender {
       this.chapterDocList,
       chapterDocIndex
     );
-    if (this.readerMode === "single" || this.readerMode === "double") {
-      let subContainer: any = doc.querySelector(
-        "#pdf-container-" + chapterDocIndex
-      );
-      if (!subContainer) return;
-      subContainer.style.top = `calc(${this.element.clientHeight / 2}px - ${
-        subContainer.getBoundingClientRect().height / 2
-      }px)`;
-      if (this.readerMode === "single") {
-        if (
-          this.element.clientHeight >
-          parseFloat(getComputedStyle(subContainer).paddingTop)
-        ) {
-          subContainer.style.height =
-            this.element.clientHeight -
-            parseFloat(getComputedStyle(subContainer).paddingTop) +
-            "px";
-        } else {
-          subContainer.style.marginBottom =
-            this.element.clientHeight -
-            parseFloat(getComputedStyle(subContainer).paddingTop) +
-            "px";
-        }
-      }
 
-      // let paddingTop = parseFloat(getComputedStyle(iframeContainer).paddingTop);
-    }
     await this.chapterDocList[chapterDocIndex].text.render(
       subDoc,
       scale,
       this.isMobile,
       this.isDarkMode
     );
+    if (this.readerMode === "single" || this.readerMode === "double") {
+      let subDoc = this.getSubDocument(chapterDocIndex);
+      if (!subDoc) return;
+      let docLayer: any = subDoc.querySelector("#koodoPDFLayer");
+      if (docLayer) {
+        docLayer.style.marginTop = `calc(${this.element.clientHeight / 2}px - ${
+          docLayer.getBoundingClientRect().height / 2
+        }px)`;
+      }
+    }
     this.trigger("rendered");
   }
   async handleUnloadPDFChapter(chapterDocIndex: number, doc: Document) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
     }
-    let subIframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
-    let subDoc = subIframe?.contentDocument;
-    if (!subDoc) return;
-    if (subDoc.body.innerHTML === "") {
+    let subContainer: any = doc.querySelector(
+      "#pdf-container-" + chapterDocIndex
+    );
+    if (!subContainer) return;
+    if (subContainer.innerHTML === "") {
       return;
     }
     await this.chapterDocList[chapterDocIndex].text.unload();
-    subDoc.body.innerHTML = "";
+
+    subContainer.innerHTML = "";
   }
   async renderPdfPage(chapterDocIndex: number, doc: Document) {
+    if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
+      return;
+    } else if (chapterDocIndex > 2) {
+      await this.handleUnloadPDFChapter(chapterDocIndex - 2, doc);
+    }
     await this.handleRenderPDFChapter(chapterDocIndex, doc);
 
     await this.handleRenderPDFChapter(chapterDocIndex + 1, doc);
