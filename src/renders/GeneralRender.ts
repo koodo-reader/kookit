@@ -55,6 +55,8 @@ class GeneralRender extends EventEmitter {
   mouseMoveHandler: (event: TouchEvent) => void;
   isMobile: string | undefined;
   touchEventSet: any;
+  scrollTimer: any;
+  recordTimer: any;
   constructor(config: {
     readerMode: string;
     format: string;
@@ -558,6 +560,41 @@ class GeneralRender extends EventEmitter {
     let doc = this.getDocument();
     if (!doc) return "";
     return doc.body.textContent || "";
+  }
+  autoScroll(rate: number, isStart: string) {
+    let doc = this.getDocument();
+    if (!doc) return;
+    if (this.scrollTimer) {
+      clearInterval(this.scrollTimer);
+      this.scrollTimer = null;
+    }
+    if (this.recordTimer) {
+      clearInterval(this.recordTimer);
+      this.recordTimer = null;
+    }
+    if (isStart === "no" || this.readerMode !== "scroll") {
+      return;
+    }
+    this.scrollTimer = setInterval(() => {
+      this.element.scrollBy({
+        left: 0,
+        top: rate * 3,
+      });
+    }, 30);
+    this.recordTimer = setInterval(() => {
+      if (
+        this.readerMode === "scroll" &&
+        Math.abs(
+          this.element.scrollHeight -
+            this.element.scrollTop -
+            this.element.clientHeight
+        ) < 10
+      ) {
+        this.nextChapter();
+      }
+      this.record();
+    }, 3000); // record every 5 seconds
+    // scroll by rate
   }
   highlightSearchNode(text: string, style: string) {
     let doc = this.getDocument();
