@@ -197,6 +197,23 @@ export const makePDF = async (file, readerMode) => {
     standardFontDataUrl: pdfjsPath('standard_fonts/'),
     isEvalSupported: false,
   }).promise
+  let isScannedPdf = false
+
+  let testedPage = pdf.numPages > 0 ? await pdf.getPage(Math.floor(pdf.numPages / 2) + 1) : null
+  if (testedPage) {
+    const textContent = await testedPage.getTextContent()
+    isScannedPdf = textContent.items.length === 0
+    // 进一步检查文本有效性（避免误判带OCR的扫描件）
+    if (textContent.items.length > 0) {
+      const totalChars = textContent.items.reduce(
+        (sum, item) => sum + item.str.trim().length, 0
+      );
+      // 阈值策略：字符少于50或文本覆盖率过低
+      isScannedPdf = totalChars < 50;
+    }
+    testedPage.cleanup()
+  }
+
 
   const book = { rendition: { layout: 'pre-paginated' } }
 
@@ -209,6 +226,7 @@ export const makePDF = async (file, readerMode) => {
     description: metadata?.get('dc:description') ?? info?.Subject,
     language: metadata?.get('dc:language'),
     publisher: metadata?.get('dc:publisher'),
+    isScannedPdf,
     subject: metadata?.get('dc:subject'),
     identifier: metadata?.get('dc:identifier'),
     source: metadata?.get('dc:source'),

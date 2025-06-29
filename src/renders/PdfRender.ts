@@ -387,7 +387,13 @@ class PdfRender extends GeneralRender {
         await this.parse();
       }
       let parser = new GeneralParser(this.book);
-      return await parser.getMetadata();
+      let metadata = await parser.getMetadata();
+      return {
+        ...metadata,
+        description:
+          (metadata.description ? metadata.description : "") +
+          (this.book.metadata.isScannedPdf ? "\nscanned PDF" : ""),
+      };
     } catch (error) {
       console.error(error);
       throw error;
@@ -664,7 +670,7 @@ class PdfRender extends GeneralRender {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
     } else if (chapterDocIndex > 2) {
-      await this.handleUnloadPDFChapter(chapterDocIndex - 2, doc);
+      await this.handleUnloadPDFChapter(chapterDocIndex - 3, doc);
     }
     await this.handleRenderPDFChapter(chapterDocIndex, doc);
 

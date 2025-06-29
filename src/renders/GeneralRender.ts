@@ -578,7 +578,8 @@ class GeneralRender extends EventEmitter {
     this.scrollTimer = setInterval(() => {
       this.element.scrollBy({
         left: 0,
-        top: rate * 3,
+        top: rate * 2.5,
+        behavior: "smooth",
       });
     }, 30);
     this.recordTimer = setInterval(() => {

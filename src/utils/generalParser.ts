@@ -116,6 +116,7 @@ class GeneralParser {
         reader.readAsDataURL(blob);
         reader.onloadend = () => {
           resolve({
+            ...metadata,
             name: metadata.title,
             author: author,
             description: metadata.description,
@@ -127,6 +128,7 @@ class GeneralParser {
         console.error(error);
         try {
           resolve({
+            ...metadata,
             name: metadata.title,
             author: author,
             description: metadata.description,
