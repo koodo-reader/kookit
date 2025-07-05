@@ -192,7 +192,7 @@ export const handleTextStyle = (doc: Document) => {
   for (let index = 0; index < titleNodes.length; index++) {
     const element = titleNodes[index];
     if (element.className.indexOf("kookit-title") === -1) {
-      element.className = element.className + " kookit-title";
+      element.className = "kookit-title " + element.className;
     }
   }
 };

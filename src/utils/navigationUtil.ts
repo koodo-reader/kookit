@@ -221,7 +221,13 @@ export const handleRenderChapter = async (
   tempLocation.chapterTitle = chapterTitle;
   tempLocation.chapterHref = chapterHref;
   tempLocation.chapterDocIndex = chapterDocIndex + "";
-  tempLocation.percentage = chapterDocIndex / chapterDocList.length + "";
+  let emptyChapterDocLengthBeforeCurrentChapter = chapterDocList.filter(
+    (item, index) => index < chapterDocIndex && item.href === ""
+  ).length;
+  tempLocation.percentage =
+    (chapterDocIndex - emptyChapterDocLengthBeforeCurrentChapter) /
+      chapterDocList.filter((item) => item.href !== "").length +
+    "";
   tempLocation.text = "";
   await handleIframeHeight(element, readerMode, format, iframe, doc);
   await handleScrollPosition(element, readerMode, "", "", "", "", doc);
@@ -424,9 +430,16 @@ export const handleRecord = async (
     tempLocation.text = firstVisibleNode.textContent || "";
     tempLocation.count = count + "";
     tempLocation.page = "";
+    let emptyChapterDocLengthBeforeCurrentChapter = chapterDocList.filter(
+      (item, index) =>
+        index < parseInt(tempLocation.chapterDocIndex) && item.href === ""
+    ).length;
     tempLocation.percentage =
-      parseInt(tempLocation.chapterDocIndex) / chapterDocList.length +
-      (1 / chapterDocList.length) * (count / nodeList.length) +
+      (parseInt(tempLocation.chapterDocIndex) -
+        emptyChapterDocLengthBeforeCurrentChapter) /
+        chapterDocList.filter((item) => item.href !== "").length +
+      (1 / chapterDocList.filter((item) => item.href !== "").length) *
+        (count / nodeList.length) +
       "";
   } else {
     tempLocation.page =

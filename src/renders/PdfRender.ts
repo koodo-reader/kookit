@@ -17,9 +17,11 @@ import {
 import { handleScrollPage } from "../utils/navigationUtil.js";
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
+  isStartFromEven: string = "no";
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ format: "PDF", ...config, convertChinese: "Default" });
     this.pdfBuffer = pdfBuffer;
+    this.isStartFromEven = config.isStartFromEven || "no";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -30,6 +32,25 @@ class PdfRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
+      console.log("chapterDocList", this.chapterDocList);
+      if (this.isStartFromEven === "yes") {
+        this.chapterDocList = [
+          {
+            label: "",
+            text: {
+              load: async () => "",
+              render: async () => {},
+              unload: async () => {},
+              getPage: async () => null,
+              getDimension: async () => ({ width: 0, height: 0 }),
+              getScale: async () => 1,
+              getPageCount: async () => 0,
+            },
+            href: "",
+          },
+          ...this.chapterDocList,
+        ];
+      }
       createIframe(element);
       const viewport = await this.chapterDocList[0].text.getDimension();
       let doc: any = this.getDocument();
