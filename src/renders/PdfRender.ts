@@ -32,7 +32,6 @@ class PdfRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
-      console.log("chapterDocList", this.chapterDocList);
       if (this.isStartFromEven === "yes") {
         this.chapterDocList = [
           {
