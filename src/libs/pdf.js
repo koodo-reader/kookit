@@ -183,20 +183,52 @@ const makeTOCItem = item => ({
   href: item.dest ? JSON.stringify(item.dest) : null,
   subitems: item.items.length ? item.items.map(makeTOCItem) : null,
 })
-
-export const makePDF = async (file, readerMode) => {
-  const transport = new pdfjsLib.PDFDataRangeTransport(file.size, [])
-  transport.requestDataRange = (begin, end) => {
-    file.slice(begin, end).arrayBuffer().then(chunk => {
-      transport.onDataRange(begin, chunk)
-    })
+function getPasswordPrompt(type = "need") {
+  const lang = navigator.language?.toLowerCase() || "en";
+  if (lang.startsWith("zh")) {
+    return type === "need"
+      ? "请输入PDF密码："
+      : "密码错误，请重新输入：";
   }
-  const pdf = await pdfjsLib.getDocument({
-    range: transport,
-    cMapUrl: pdfjsPath('cmaps/'),
-    standardFontDataUrl: pdfjsPath('standard_fonts/'),
-    isEvalSupported: false,
-  }).promise
+  // 可扩展更多语言
+  return type === "need"
+    ? "Need password to open this PDF:"
+    : "Incorrect password, please try again:";
+}
+export const makePDF = async (file, password) => {
+  let pdf;
+  while (true) {
+    // 每次都新建 transport，避免 no PDFDataTransportStreamRangeReader instance found 错误
+    const transport = new pdfjsLib.PDFDataRangeTransport(file.size, []);
+    transport.requestDataRange = (begin, end) => {
+      file.slice(begin, end).arrayBuffer().then(chunk => {
+        transport.onDataRange(begin, chunk)
+      })
+    }
+    try {
+      pdf = await pdfjsLib.getDocument({
+        range: transport,
+        cMapUrl: pdfjsPath('cmaps/'),
+        standardFontDataUrl: pdfjsPath('standard_fonts/'),
+        isEvalSupported: false,
+        password,
+      }).promise;
+      break; // 成功加载，跳出循环
+    } catch (e) {
+      if (e.name === 'PasswordException') {
+        if (e.code === pdfjsLib.PasswordResponses.NEED_PASSWORD) {
+          password = prompt(getPasswordPrompt("need"));
+        } else if (e.code === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD) {
+          password = prompt(getPasswordPrompt("incorrect"));
+        }
+        if (!password) {
+          throw new Error('PDF loading failed: no password provided');
+        }
+      } else {
+        throw e;
+      }
+    }
+  }
   let isScannedPdf = false
 
   let testedPage = pdf.numPages > 0 ? await pdf.getPage(Math.floor(pdf.numPages / 2) + 1) : null
@@ -226,12 +258,13 @@ export const makePDF = async (file, readerMode) => {
     description: metadata?.get('dc:description') ?? info?.Subject,
     language: metadata?.get('dc:language'),
     publisher: metadata?.get('dc:publisher'),
-    isScannedPdf,
     subject: metadata?.get('dc:subject'),
     identifier: metadata?.get('dc:identifier'),
     source: metadata?.get('dc:source'),
     rights: metadata?.get('dc:rights'),
   }
+  book.metadata.description = (book.metadata.description ? book.metadata.description : "") +
+    (isScannedPdf ? "\nscanned PDF" : "") + (password ? ("\nprotected PDF: #" + password + "#") : "")
 
   const outline = await pdf.getOutline()
   book.toc = outline?.map(makeTOCItem)

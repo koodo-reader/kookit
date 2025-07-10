@@ -565,7 +565,7 @@ class GeneralRender extends EventEmitter {
     let doc = this.getDocument();
     if (!doc) return;
     if (this.scrollTimer) {
-      clearInterval(this.scrollTimer);
+      cancelAnimationFrame(this.scrollTimer);
       this.scrollTimer = null;
     }
     if (this.recordTimer) {
@@ -575,13 +575,48 @@ class GeneralRender extends EventEmitter {
     if (isStart === "no" || this.readerMode !== "scroll") {
       return;
     }
-    this.scrollTimer = setInterval(() => {
-      this.element.scrollBy({
-        left: 0,
-        top: rate * 2.5,
-        behavior: "smooth",
-      });
-    }, 30);
+
+    let accumulatedScroll = 0; // 累积滚动量
+    let frameCount = 0; // 帧计数器
+
+    const scrollStep = () => {
+      accumulatedScroll += rate;
+      frameCount++;
+
+      // 对于慢速滚动，使用更精细的控制
+      if (Math.abs(rate) < 1) {
+        // 每隔一定帧数或累积到足够像素时滚动
+        const shouldScroll =
+          Math.abs(accumulatedScroll) >= 0.5 ||
+          frameCount % Math.max(1, Math.floor(30 / Math.abs(rate))) === 0;
+
+        if (shouldScroll && Math.abs(accumulatedScroll) >= 0.1) {
+          const scrollAmount = Math.round(accumulatedScroll * 10) / 10; // 保留一位小数
+          this.element.scrollBy({
+            left: 0,
+            top: scrollAmount,
+            behavior: "auto",
+          });
+          accumulatedScroll = 0; // 重置累积量
+          frameCount = 0; // 重置帧计数
+        }
+      } else {
+        // 快速滚动时保持原有逻辑
+        if (Math.abs(accumulatedScroll) >= 1) {
+          const scrollAmount = Math.floor(accumulatedScroll);
+          this.element.scrollBy({
+            left: 0,
+            top: scrollAmount,
+            behavior: "auto",
+          });
+          accumulatedScroll -= scrollAmount; // 减去已滚动的量
+        }
+      }
+
+      this.scrollTimer = requestAnimationFrame(scrollStep);
+    };
+    this.scrollTimer = requestAnimationFrame(scrollStep);
+
     this.recordTimer = setInterval(() => {
       if (
         this.readerMode === "scroll" &&
@@ -594,8 +629,7 @@ class GeneralRender extends EventEmitter {
         this.nextChapter();
       }
       this.record();
-    }, 3000); // record every 5 seconds
-    // scroll by rate
+    }, 3000);
   }
   highlightSearchNode(text: string, style: string) {
     let doc = this.getDocument();

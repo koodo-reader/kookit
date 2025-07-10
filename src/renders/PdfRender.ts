@@ -18,10 +18,12 @@ import { handleScrollPage } from "../utils/navigationUtil.js";
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
   isStartFromEven: string = "no";
+  password: string = "";
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ format: "PDF", ...config, convertChinese: "Default" });
     this.pdfBuffer = pdfBuffer;
     this.isStartFromEven = config.isStartFromEven || "no";
+    this.password = config.password || "";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -113,7 +115,7 @@ class PdfRender extends GeneralRender {
         type: blob.type,
       });
       if (await isPDF(file)) {
-        this.book = await makePDF(file, this.readerMode);
+        this.book = await makePDF(file, this.password);
       }
     } catch (error) {
       console.error(error);
@@ -408,12 +410,7 @@ class PdfRender extends GeneralRender {
       }
       let parser = new GeneralParser(this.book);
       let metadata = await parser.getMetadata();
-      return {
-        ...metadata,
-        description:
-          (metadata.description ? metadata.description : "") +
-          (this.book.metadata.isScannedPdf ? "\nscanned PDF" : ""),
-      };
+      return metadata;
     } catch (error) {
       console.error(error);
       throw error;
