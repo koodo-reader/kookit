@@ -5,17 +5,18 @@ export const getPdfScale = async (
   element: HTMLElement,
   readerMode: string,
   chapterDocList: ChapterDoc[],
-  chapterDocIndex: number
+  chapterDocIndex: number,
+  doc: any
 ) => {
   let { width, height } = await chapterDocList[
     chapterDocIndex
   ].text.getDimension();
   let columnNum = readerMode === "double" ? 2 : 1;
-  let section = Math.floor(element.clientWidth / 12);
+  let section = Math.floor(doc.body.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  let viewWidth = (element.clientWidth - gap) / columnNum;
+  let viewWidth = (doc.body.clientWidth - gap) / columnNum;
   if (readerMode === "single") {
-    viewWidth = element.clientWidth;
+    viewWidth = doc.body.clientWidth;
   }
   let viewHeight = element.clientHeight;
   let scale = Math.min(viewWidth / width, viewHeight / height);
@@ -31,13 +32,13 @@ export const handlePDFLayout = (
 ) => {
   if (readerMode === "scroll") return;
   let scale = readerMode === "double" ? 2 : 1;
-  let section = Math.floor(element.clientWidth / 12);
+  let section = Math.floor(doc.body.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   doc.body.setAttribute(
     "style",
     element.getAttribute("style") +
       `height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action: manipulation; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
-        (element.clientWidth - gap) / scale
+        (doc.body.clientWidth - gap) / scale
       }px;`
   );
 };
@@ -130,13 +131,14 @@ export const handleScrollPDFPosition = async (
 export const isPDFScrolledIntoView = (
   element: HTMLElement,
   el: HTMLElement,
-  readerMode: string
+  readerMode: string,
+  doc: any
 ) => {
   var isVisible = false;
   var rect = el.getBoundingClientRect();
   if (readerMode !== "scroll") {
     let elemLeft = rect.left;
-    isVisible = elemLeft > -10 && elemLeft <= element.clientWidth;
+    isVisible = elemLeft > -10 && elemLeft <= doc.body.clientWidth;
   } else {
     let elemTop = rect.top;
     let elemBottom = rect.bottom;
@@ -235,9 +237,9 @@ export const handleIOSScrollPage = async (
   chapterDocIndex: number,
   readerMode: string
 ) => {
-  let section = Math.floor(element.clientWidth / 12);
+  let section = Math.floor(doc.body.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  const width = element.clientWidth;
+  const width = doc.body.clientWidth;
   if (animation === "mimical" && isMobile !== "yes") {
     let bookDiv = document.getElementById("book");
     if (bookDiv) {

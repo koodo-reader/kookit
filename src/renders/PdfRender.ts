@@ -19,11 +19,13 @@ class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
   isStartFromEven: string = "no";
   password: string = "";
+  scale: number = 1;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ format: "PDF", ...config, convertChinese: "Default" });
     this.pdfBuffer = pdfBuffer;
     this.isStartFromEven = config.isStartFromEven || "no";
     this.password = config.password || "";
+    this.scale = config.scale || 1;
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -52,7 +54,17 @@ class PdfRender extends GeneralRender {
           ...this.chapterDocList,
         ];
       }
-      createIframe(element);
+      if (
+        document.body.clientWidth * Math.abs(this.scale) -
+          document.body.clientWidth * 0.4 >
+          document.body.clientWidth &&
+        this.readerMode !== "double"
+      ) {
+        createIframe(element, this.scale);
+      } else {
+        createIframe(element);
+      }
+
       const viewport = await this.chapterDocList[0].text.getDimension();
       let doc: any = this.getDocument();
       if (!doc) return;
@@ -100,7 +112,8 @@ class PdfRender extends GeneralRender {
         isPDFScrolledIntoView(
           this.element,
           subContainer as HTMLElement,
-          this.readerMode
+          this.readerMode,
+          doc
         )
       ) {
         await this.renderPdfPage(chapterDocIndex, doc);
@@ -139,20 +152,21 @@ class PdfRender extends GeneralRender {
     }
   }
   getPageSize() {
-    let scale = this.readerMode === "double" ? 2 : 1;
-    let section = Math.floor(this.element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
     let doc = this.getDocument();
     if (!doc) return;
+    let scale = this.readerMode === "double" ? 2 : 1;
+    let section = Math.floor(doc.body.clientWidth / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+
     let subIframe = doc.querySelectorAll("iframe")[0];
     let iframeHeight = subIframe?.getBoundingClientRect().height;
     return {
-      width: this.element.clientWidth,
+      width: doc.body.clientWidth,
       height: this.element.clientHeight,
       left: this.element.offsetLeft,
       top: this.element.offsetTop,
       scrollTop: this.element.scrollTop,
-      sectionWidth: (this.element.clientWidth - gap) / scale,
+      sectionWidth: (doc.body.clientWidth - gap) / scale,
       sectionHeight: iframeHeight,
       gap: gap,
     };
@@ -368,7 +382,8 @@ class PdfRender extends GeneralRender {
       isPDFScrolledIntoView(
         this.element,
         subContainers[subContainers.length - 1] as HTMLElement,
-        this.readerMode
+        this.readerMode,
+        doc
       )
     ) {
       this.handleRecord(subContainers[subContainers.length - 1] as HTMLElement);
@@ -380,7 +395,8 @@ class PdfRender extends GeneralRender {
         isPDFScrolledIntoView(
           this.element,
           subContainer as HTMLElement,
-          this.readerMode
+          this.readerMode,
+          doc
         )
       ) {
         this.handleRecord(subContainer as HTMLElement);
@@ -488,7 +504,8 @@ class PdfRender extends GeneralRender {
       this.element,
       this.readerMode,
       this.chapterDocList,
-      pageIndex
+      pageIndex,
+      doc
     );
     var viewport = page.getViewport({ scale: scale });
     let canvas = doc.querySelector("canvas");
@@ -560,7 +577,8 @@ class PdfRender extends GeneralRender {
         this.element,
         this.readerMode,
         this.chapterDocList,
-        pageIndex
+        pageIndex,
+        doc
       );
       try {
         showPDFHighlight(
@@ -610,7 +628,8 @@ class PdfRender extends GeneralRender {
       this.element,
       this.readerMode,
       this.chapterDocList,
-      pageIndex
+      pageIndex,
+      doc
     );
     showPDFHighlight(
       selected,
@@ -647,7 +666,8 @@ class PdfRender extends GeneralRender {
       this.element,
       this.readerMode,
       this.chapterDocList,
-      chapterDocIndex
+      chapterDocIndex,
+      doc
     );
 
     await this.chapterDocList[chapterDocIndex].text.render(

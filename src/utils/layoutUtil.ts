@@ -130,11 +130,11 @@ export const handleImageMarker = (bookStr) => {
     return chapterDoc.documentElement.innerHTML;
   }
 };
-export const createIframe = (element: HTMLElement, styleStr: string = "") => {
+export const createIframe = (element: HTMLElement, scale?: number) => {
   var iframe = document.createElement("iframe");
-  iframe.style.width = "100%";
-  iframe.style.border = "0";
+  iframe.style.width = scale ? scale * 100 + "%" : "100%";
   iframe.style.margin = "0";
+  iframe.style.border = "0";
   iframe.style.padding = "0";
   iframe.style.minHeight = "calc(100% - 2px)";
   iframe.style.fontSize = "100%";
@@ -145,6 +145,10 @@ export const createIframe = (element: HTMLElement, styleStr: string = "") => {
   iframe.style.verticalAlign = "baseline";
   element.innerHTML = "";
   element.appendChild(iframe);
+  // 控制iframe滚动到页面水平正中的位置
+  if (scale) {
+    element.scrollLeft = element.scrollWidth / 2 - element.clientWidth / 2;
+  }
 };
 
 export const progressInfo = (
@@ -340,7 +344,9 @@ export const handleLayout = (
   let gap = section % 2 === 0 ? section : section - 1;
   doc.body.setAttribute(
     "style",
-    `width: auto;height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action:none; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
+    `width: ${
+      element.clientWidth + "px"
+    };height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action:none; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
       (element.clientWidth - gap) / scale
     }px;`
   );

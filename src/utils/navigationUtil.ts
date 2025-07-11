@@ -32,6 +32,7 @@ export const handleScrollPage = async (
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   const width = element.clientWidth;
+
   if (animation === "mimical" && isMobile !== "yes") {
     let bookDiv = document.getElementById("book");
     if (bookDiv) {
@@ -47,19 +48,36 @@ export const handleScrollPage = async (
       }, 1000);
     }
   }
+
+  const currentScrollLeft = doc.body.scrollLeft;
+  const scrollDistance = width + gap;
+
   if (delta > 0) {
-    // previous page
-    doc.body.scrollBy({
+    // previous page - 计算当前页数并减1
+    const currentPage = Math.round(currentScrollLeft / scrollDistance);
+    const targetPage = Math.max(0, currentPage - 1);
+    const targetScrollLeft = targetPage * scrollDistance;
+    console.log(
+      "scroll to previous page",
+      targetScrollLeft,
+      "page:",
+      targetPage
+    );
+    doc.body.scrollTo({
       top: 0,
-      left: -width - gap,
+      left: targetScrollLeft,
       behavior:
         animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
     });
   } else if (delta < 0) {
-    // next page
-    doc.body.scrollBy({
+    // next page - 计算当前页数并加1
+    const currentPage = Math.round(currentScrollLeft / scrollDistance);
+    const targetPage = currentPage + 1;
+    const targetScrollLeft = targetPage * scrollDistance;
+    console.log("scroll to next page", targetScrollLeft, "page:", targetPage);
+    doc.body.scrollTo({
       top: 0,
-      left: width + gap,
+      left: targetScrollLeft,
       behavior:
         animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
     });
