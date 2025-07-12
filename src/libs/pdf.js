@@ -19,7 +19,19 @@ const isElectron = () => {
 
   return false;
 }
-
+function vexPromptAsync(message, placeholder = '', value = '') {
+  return new Promise((resolve) => {
+    console.log(vex)
+    vex.dialog.prompt({
+      message,
+      placeholder,
+      value,
+      callback: function (input) {
+        resolve(input);
+      }
+    });
+  });
+}
 // https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/text_layer_builder.css
 const textLayerBuilderCSS = async () => await fetchText(pdfjsPath('text_layer_builder.css'))
 // https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/annotation_layer_builder.css
@@ -78,6 +90,16 @@ const render = async (page, doc, zoom, isMobile, isDarkMode) => {
   let closestElement = null
   // TODO: this only works in Firefox; see https://github.com/mozilla/pdf.js/pull/17923
   container.onpointerdown = () => {
+    let iWin = doc?.defaultView;
+    const selectedText = iWin.getSelection().toString().trim();
+    if (selectedText.length > 0) {
+      // if there is already selected text, do not start selecting
+      container.classList.remove('selecting');
+      isSelecting = false;
+      endOfContent.remove()
+      container.append(endOfContent)
+      return
+    }
     container.classList.add('selecting');
     isSelecting = true
   }
@@ -217,9 +239,22 @@ export const makePDF = async (file, password) => {
     } catch (e) {
       if (e.name === 'PasswordException') {
         if (e.code === pdfjsLib.PasswordResponses.NEED_PASSWORD) {
-          password = prompt(getPasswordPrompt("need"));
+          // 如果是 Electron 环境，使用 electron-prompt 获取密码
+          if (isElectron()) {
+            password = await vexPromptAsync(getPasswordPrompt("need"), '', '');
+            vex.closeAll(); // 关闭对话框
+          } else {
+            password = prompt(getPasswordPrompt("need"));
+          }
+
         } else if (e.code === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD) {
-          password = prompt(getPasswordPrompt("incorrect"));
+          if (isElectron()) {
+            password = await vexPromptAsync(getPasswordPrompt("incorrect"), '', '');
+            vex.closeAll(); // 关闭对话框
+          } else {
+            password = prompt(getPasswordPrompt("incorrect"));
+          }
+
         }
         if (!password) {
           throw new Error('PDF loading failed: no password provided');

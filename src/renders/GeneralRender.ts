@@ -152,6 +152,48 @@ class GeneralRender extends EventEmitter {
       }
     }
   }
+  async goToPage(targetPage: number) {
+    if (this.readerMode === "scroll") {
+      if (targetPage < 0) {
+        targetPage = 1;
+      }
+
+      let top = (targetPage - 1) * (this.element.clientHeight - 50);
+      this.element.scrollTo(0, top);
+    } else {
+      let doc = this.getDocument();
+      if (!doc) return;
+      let section = Math.floor(this.element.clientWidth / 12);
+      let gap = section % 2 === 0 ? section : section - 1;
+      const width = this.element.clientWidth;
+      const scrollDistance = width + gap;
+      if (this.readerMode === "double") {
+        targetPage =
+          (targetPage % 2 === 0 ? targetPage - 2 : targetPage - 1) / 2;
+      } else {
+        targetPage = targetPage - 1;
+      }
+      if (targetPage < 0) {
+        targetPage = 0;
+      }
+      const targetScrollLeft = targetPage * scrollDistance;
+      console.log(
+        "scroll to previous page",
+        targetScrollLeft,
+        "page:",
+        targetPage
+      );
+      doc.body.scrollTo({
+        top: 0,
+        left: targetScrollLeft,
+        behavior:
+          this.animation === "sliding" && this.isMobile !== "yes"
+            ? "smooth"
+            : "auto",
+      });
+    }
+    await this.record();
+  }
   resolveChapter(href: string) {
     let path = href;
     let chapterIndex = -1;
@@ -756,7 +798,7 @@ class GeneralRender extends EventEmitter {
       iframe
     );
   }
-  tsTransform = () => {
+  tranformText = () => {
     let doc = this.getDocument();
     if (!doc) return;
     if (this.convertChinese === "Simplified To Traditional") {

@@ -165,7 +165,7 @@ export const progressInfo = (
   return {
     totalPage:
       readerMode === "scroll"
-        ? 1
+        ? Math.floor(element.scrollHeight / (element.clientHeight - 50))
         : readerMode === "single"
         ? Math.round(
             parseFloat(doc.body.scrollWidth / (doc.body.clientWidth + gap) + "")
@@ -174,12 +174,15 @@ export const progressInfo = (
             parseFloat(doc.body.scrollWidth / (doc.body.clientWidth + gap) + "")
           ) * 2,
     currentPage:
-      Math.round(
-        parseFloat(
-          convertStyleNum(doc.body.scrollLeft) / (doc.body.clientWidth + gap) +
-            ""
-        )
-      ) + 1,
+      readerMode === "scroll"
+        ? Math.floor(element.scrollTop / (element.clientHeight - 50)) + 1
+        : Math.round(
+            parseFloat(
+              convertStyleNum(doc.body.scrollLeft) /
+                (doc.body.clientWidth + gap) +
+                ""
+            )
+          ) + 1,
   };
 };
 export const handleTextStyle = (doc: Document) => {

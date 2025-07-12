@@ -352,6 +352,21 @@ class PdfRender extends GeneralRender {
   async nextChapter() {
     await this.next();
   }
+  async goToPage(targetPage: number): Promise<void> {
+    let chapterDocIndex = Math.floor(targetPage - 1);
+    if (chapterDocIndex >= this.chapterDocList.length) {
+      chapterDocIndex = this.chapterDocList.length - 1;
+    }
+    if (chapterDocIndex < 0) {
+      chapterDocIndex = 0;
+    }
+    await this.goToChapter(
+      chapterDocIndex,
+      this.chapterDocList[chapterDocIndex].href,
+      this.chapterDocList[chapterDocIndex].label
+    );
+    await this.record();
+  }
   async visibleText() {
     let doc = this.getDocument();
     if (!doc) return "";
