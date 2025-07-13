@@ -21,7 +21,6 @@ const isElectron = () => {
 }
 function vexPromptAsync(message, placeholder = '', value = '') {
   return new Promise((resolve) => {
-    console.log(vex)
     vex.dialog.prompt({
       message,
       placeholder,
@@ -163,8 +162,9 @@ const render = async (page, doc, zoom, isMobile, isDarkMode) => {
       addLinkAttributes: (link, url) => link.href = url,
     },
   })
-  docLayer.style.marginLeft = `calc(50% - ${docLayer.getBoundingClientRect().width / 2}px)`
-  docLayer.style.visibility = 'visible'
+
+
+
 }
 
 const renderPage = async (page, getImageBlob) => {

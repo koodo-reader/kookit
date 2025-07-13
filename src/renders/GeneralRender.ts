@@ -177,12 +177,6 @@ class GeneralRender extends EventEmitter {
         targetPage = 0;
       }
       const targetScrollLeft = targetPage * scrollDistance;
-      console.log(
-        "scroll to previous page",
-        targetScrollLeft,
-        "page:",
-        targetPage
-      );
       doc.body.scrollTo({
         top: 0,
         left: targetScrollLeft,

@@ -15,6 +15,7 @@ import {
   isPDFScrolledIntoView,
 } from "../utils/pdfUtil.js";
 import { handleScrollPage } from "../utils/navigationUtil.js";
+declare var window: any;
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
   isStartFromEven: string = "no";
@@ -509,10 +510,10 @@ class PdfRender extends GeneralRender {
       chapterDocIndex !== undefined
         ? chapterDocIndex
         : parseInt(this.tempLocation.chapterDocIndex);
-    let doc = this.getSubDocument(chapterDocIndex);
-    if (!doc) return;
+    let subDoc = this.getSubDocument(chapterDocIndex);
+    if (!subDoc) return;
 
-    var selectionRects = doc.getSelection()!.getRangeAt(0).getClientRects();
+    var selectionRects = subDoc.getSelection()!.getRangeAt(0).getClientRects();
 
     let page = await this.chapterDocList[pageIndex].text.getPage();
     let scale = await getPdfScale(
@@ -520,10 +521,10 @@ class PdfRender extends GeneralRender {
       this.readerMode,
       this.chapterDocList,
       pageIndex,
-      doc
+      subDoc
     );
     var viewport = page.getViewport({ scale: scale });
-    let canvas = doc.querySelector("canvas");
+    let canvas = subDoc.querySelector("canvas");
     var pageRect: any = canvas?.getClientRects()[0];
 
     let tempRect: {
@@ -575,11 +576,12 @@ class PdfRender extends GeneralRender {
   async renderHighlighters(notes: any[], handleNoteClick: any) {
     if (notes.length === 0) return;
     let chapterIndex = notes[0].chapterIndex;
-    let iframe = this.getSubIframe(chapterIndex);
-    let doc = this.getSubDocument(chapterIndex);
-    if (!doc || !iframe) return;
-    clearHighlight(doc);
-    let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
+    let subIframe = this.getSubIframe(chapterIndex);
+    let subDoc = this.getSubDocument(chapterIndex);
+    if (!subDoc || !subIframe) return;
+    clearHighlight(subDoc);
+    let iWin: any =
+      subIframe.contentWindow || subIframe.contentDocument?.defaultView;
     for (let index = 0; index < notes.length; index++) {
       const item = notes[index];
       let selected = JSON.parse(item.range);
@@ -593,7 +595,7 @@ class PdfRender extends GeneralRender {
         this.readerMode,
         this.chapterDocList,
         pageIndex,
-        doc
+        subDoc
       );
       try {
         showPDFHighlight(
@@ -603,7 +605,7 @@ class PdfRender extends GeneralRender {
           handleNoteClick,
           page,
           scale,
-          doc
+          subDoc
         );
       } catch (e) {
         console.warn(
@@ -634,8 +636,8 @@ class PdfRender extends GeneralRender {
   }
   async createOneNote(item: any, handleNoteClick: any) {
     let iframe = this.getSubIframe(item.chapterIndex);
-    let doc = this.getSubDocument(item.chapterIndex);
-    if (!doc || !iframe) return;
+    let subDoc = this.getSubDocument(item.chapterIndex);
+    if (!subDoc || !iframe) return;
     let selected = JSON.parse(item.range);
     var pageIndex = parseInt(selected.page + "");
     let page = await this.chapterDocList[pageIndex].text.getPage();
@@ -644,7 +646,7 @@ class PdfRender extends GeneralRender {
       this.readerMode,
       this.chapterDocList,
       pageIndex,
-      doc
+      subDoc
     );
     showPDFHighlight(
       selected,
@@ -653,7 +655,7 @@ class PdfRender extends GeneralRender {
       handleNoteClick,
       page,
       scale,
-      doc
+      subDoc
     );
     this.clearSelection();
   }
@@ -682,41 +684,51 @@ class PdfRender extends GeneralRender {
       this.readerMode,
       this.chapterDocList,
       chapterDocIndex,
-      doc
+      subDoc
     );
-
     await this.chapterDocList[chapterDocIndex].text.render(
       subDoc,
       scale,
       this.isMobile,
       this.isDarkMode
     );
+    let docLayer: any = subDoc.querySelector("#koodoPDFLayer");
+    if (!docLayer) {
+      return;
+    }
     if (this.readerMode === "single" || this.readerMode === "double") {
-      let subDoc = this.getSubDocument(chapterDocIndex);
-      if (!subDoc) return;
-      let docLayer: any = subDoc.querySelector("#koodoPDFLayer");
-      if (docLayer) {
-        docLayer.style.marginTop = `calc(${this.element.clientHeight / 2}px - ${
-          docLayer.getBoundingClientRect().height / 2
-        }px)`;
+      let additionalHeight =
+        this.element.clientHeight / 2 -
+        docLayer.getBoundingClientRect().height / 2;
+      docLayer.style.marginTop = additionalHeight + "px";
+      subIframe.style.height =
+        docLayer.getBoundingClientRect().height + additionalHeight + "px";
+
+      let noteLayer: any = subDoc.querySelector(".noteLayer");
+      if (noteLayer) {
+        noteLayer.style.position = "relative";
       }
     }
+    if (this.readerMode !== "scroll") {
+      docLayer.style.marginLeft = `calc(50% - ${
+        docLayer.getBoundingClientRect().width / 2
+      }px)`;
+    }
+    docLayer.style.visibility = "visible";
+    window.chapterDocIndex = chapterDocIndex;
     this.trigger("rendered");
   }
   async handleUnloadPDFChapter(chapterDocIndex: number, doc: Document) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
     }
-    let subContainer: any = doc.querySelector(
-      "#pdf-container-" + chapterDocIndex
-    );
-    if (!subContainer) return;
-    if (subContainer.innerHTML === "") {
+    let subDoc = this.getSubDocument(chapterDocIndex);
+    if (!subDoc) return;
+    if (subDoc.body.innerHTML === "") {
       return;
     }
     await this.chapterDocList[chapterDocIndex].text.unload();
-
-    subContainer.innerHTML = "";
+    subDoc.body.innerHTML = "";
   }
   async renderPdfPage(chapterDocIndex: number, doc: Document) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {

@@ -57,12 +57,6 @@ export const handleScrollPage = async (
     const currentPage = Math.round(currentScrollLeft / scrollDistance);
     const targetPage = Math.max(0, currentPage - 1);
     const targetScrollLeft = targetPage * scrollDistance;
-    console.log(
-      "scroll to previous page",
-      targetScrollLeft,
-      "page:",
-      targetPage
-    );
     doc.body.scrollTo({
       top: 0,
       left: targetScrollLeft,
@@ -74,7 +68,6 @@ export const handleScrollPage = async (
     const currentPage = Math.round(currentScrollLeft / scrollDistance);
     const targetPage = currentPage + 1;
     const targetScrollLeft = targetPage * scrollDistance;
-    console.log("scroll to next page", targetScrollLeft, "page:", targetPage);
     doc.body.scrollTo({
       top: 0,
       left: targetScrollLeft,

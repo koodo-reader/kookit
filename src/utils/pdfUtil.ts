@@ -11,13 +11,8 @@ export const getPdfScale = async (
   let { width, height } = await chapterDocList[
     chapterDocIndex
   ].text.getDimension();
-  let columnNum = readerMode === "double" ? 2 : 1;
-  let section = Math.floor(doc.body.clientWidth / 12);
-  let gap = section % 2 === 0 ? section : section - 1;
-  let viewWidth = (doc.body.clientWidth - gap) / columnNum;
-  if (readerMode === "single") {
-    viewWidth = doc.body.clientWidth;
-  }
+
+  let viewWidth = doc.body.clientWidth;
   let viewHeight = element.clientHeight;
   let scale = Math.min(viewWidth / width, viewHeight / height);
   if (readerMode === "scroll") {
