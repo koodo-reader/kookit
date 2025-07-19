@@ -1233,7 +1233,10 @@ class KF8 {
     }
   }
   async loadResourceBlob(str) {
-    const { resourceType, id, type } = parseResourceURI(str);
+    let { resourceType, id, type } = parseResourceURI(str);
+    if (type === "image/jpg") {
+      type = "image/jpeg"
+    }
     const raw =
       resourceType === "flow"
         ? await this.loadFlow(id)

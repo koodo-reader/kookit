@@ -512,7 +512,6 @@ class PdfRender extends GeneralRender {
         : parseInt(this.tempLocation.chapterDocIndex);
     let subDoc = this.getSubDocument(chapterDocIndex);
     if (!subDoc) return;
-
     var selectionRects = subDoc.getSelection()!.getRangeAt(0).getClientRects();
 
     let page = await this.chapterDocList[pageIndex].text.getPage();
@@ -574,6 +573,7 @@ class PdfRender extends GeneralRender {
     return { page: pageIndex, coords: selected, readerMode: this.readerMode };
   }
   async renderHighlighters(notes: any[], handleNoteClick: any) {
+    console.log(JSON.stringify(notes));
     if (notes.length === 0) return;
     let chapterIndex = notes[0].chapterIndex;
     let subIframe = this.getSubIframe(chapterIndex);

@@ -50,7 +50,7 @@ class TxtRender extends GeneralRender {
   }
   async preCache() {
     if (!this.book) {
-      await this.parse();
+      await this.parse({ refresh: true });
     }
     return await getCache(this.book);
   }

@@ -457,6 +457,96 @@ export const addAndroidTouchEvent = (
   // iWin.ontouchstart = onTouchStart;
   // iWin.ontouchmove = onTouchMove;
   let selectionTimeout: any = null;
+  let startSelectionTime = 0;
+  let selectionCount = 0;
+  let triggerSelectionMenu = async (event: any) => {
+    const selectedText = iWin.getSelection().toString().trim();
+    if (selectedText) {
+      var range = iWin.getSelection().getRangeAt(0);
+      let pageSize = render.getPageSize();
+      var rect = range.getBoundingClientRect();
+      if (format === "PDF") {
+        let clientRects = range.getClientRects();
+        if (clientRects.length > 0) {
+          //combine all the rects
+          clientRects = Array.from(clientRects).filter((item: any) => {
+            return (
+              Math.abs(item.height - pageSize.sectionHeight) > 10 &&
+              Math.abs(item.width - pageSize.sectionWidth) > 10 &&
+              item.height > 0 &&
+              item.width > 0
+            );
+          });
+          let minTop = Infinity;
+          let minLeft = Infinity;
+          let maxBottom = -Infinity;
+          let maxRight = -Infinity;
+
+          for (let i = 0; i < clientRects.length; i++) {
+            const rect = clientRects[i];
+            minTop = Math.min(minTop, rect.top);
+            minLeft = Math.min(minLeft, rect.left);
+            maxBottom = Math.max(maxBottom, rect.bottom);
+            maxRight = Math.max(maxRight, rect.right);
+          }
+
+          // Create the combined rectangle object
+          const combinedRect = {
+            top: minTop,
+            left: minLeft,
+            bottom: maxBottom,
+            right: maxRight,
+            width: maxRight - minLeft,
+            height: maxBottom - minTop,
+          };
+          rect = combinedRect;
+        }
+      }
+      var position: any = {
+        top: rect.top - element.scrollTop,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        screenWidth: window.innerWidth,
+        screenHeight: window.innerHeight,
+        sectionHeight: pageSize.sectionHeight,
+        sectionWidth: pageSize.sectionWidth,
+        gap: pageSize.gap,
+        scale: window.visualViewport.scale,
+        offsetLeft: offsetLeft,
+        offsetTop: offsetTop,
+      };
+      rangy.init();
+      let charRange = null;
+      if (format === "PDF") {
+        try {
+          let target: any = event.target;
+          let targetIframe = target.ownerDocument?.defaultView?.frameElement;
+          let id = targetIframe?.getAttribute("id") || "";
+          let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
+          charRange = await render.getHightlightCoords(chapterDocIndex);
+          position.chapterDocIndex = chapterDocIndex;
+          let subContainer = targetIframe.parentElement;
+          if (subContainer) {
+            position.top =
+              position.top + parseFloat(getComputedStyle(subContainer).top);
+          }
+        } catch (error) {
+          console.log("Error getting highlight coords:", error);
+        }
+      } else {
+        charRange = await render.getHightlightCoords();
+      }
+      window.ReactNativeWebView.postMessage(
+        JSON.stringify({
+          event: "select-text",
+          selectedText: selectedText,
+          position: position,
+          range: charRange,
+        })
+      );
+    }
+  };
   doc.body.oncontextmenu = function (event) {
     const target: any = event.target;
     if (!target) return;
@@ -472,8 +562,19 @@ export const addAndroidTouchEvent = (
       }
       return;
     }
+    if (Date.now() - startSelectionTime < 100) {
+      setTimeout(() => {
+        if (selectionCount === 1) {
+          triggerSelectionMenu(event);
+        }
+      }, 600);
+    } else {
+      triggerSelectionMenu(event);
+    }
+
     event.preventDefault();
     event.stopPropagation();
+
     return false;
   };
   let scrollLeft = 0;
@@ -482,117 +583,25 @@ export const addAndroidTouchEvent = (
   doc.addEventListener(
     "selectstart",
     (event) => {
+      selectionCount = 0;
+      startSelectionTime = Date.now();
       offsetLeft = getScreenLeftOffset();
       offsetTop = getScreenTopOffset();
       if (readerMode === "scroll") return;
       scrollLeft = doc.body.scrollLeft;
+
       //prevent doc.body from scrolling
     },
     false
   );
+
   doc.addEventListener(
     "selectionchange",
     (event) => {
       if (scrollLeft > 0) {
         doc.body.scrollLeft = scrollLeft;
       }
-
-      if (selectionTimeout) {
-        clearTimeout(selectionTimeout);
-      }
-      selectionTimeout = setTimeout(
-        async () => {
-          const selectedText = iWin.getSelection().toString().trim();
-          if (selectedText) {
-            var range = iWin.getSelection().getRangeAt(0);
-            let pageSize = render.getPageSize();
-            var rect = range.getBoundingClientRect();
-            if (format === "PDF") {
-              let clientRects = range.getClientRects();
-              if (clientRects.length > 0) {
-                //combine all the rects
-                clientRects = Array.from(clientRects).filter((item: any) => {
-                  return (
-                    Math.abs(item.height - pageSize.sectionHeight) > 10 &&
-                    Math.abs(item.width - pageSize.sectionWidth) > 10 &&
-                    item.height > 0 &&
-                    item.width > 0
-                  );
-                });
-                let minTop = Infinity;
-                let minLeft = Infinity;
-                let maxBottom = -Infinity;
-                let maxRight = -Infinity;
-
-                for (let i = 0; i < clientRects.length; i++) {
-                  const rect = clientRects[i];
-                  minTop = Math.min(minTop, rect.top);
-                  minLeft = Math.min(minLeft, rect.left);
-                  maxBottom = Math.max(maxBottom, rect.bottom);
-                  maxRight = Math.max(maxRight, rect.right);
-                }
-
-                // Create the combined rectangle object
-                const combinedRect = {
-                  top: minTop,
-                  left: minLeft,
-                  bottom: maxBottom,
-                  right: maxRight,
-                  width: maxRight - minLeft,
-                  height: maxBottom - minTop,
-                };
-                rect = combinedRect;
-              }
-            }
-
-            var position = {
-              top: rect.top - element.scrollTop,
-              left: rect.left,
-              width: rect.width,
-              height: rect.height,
-              screenWidth: window.innerWidth,
-              screenHeight: window.innerHeight,
-              sectionHeight: pageSize.sectionHeight,
-              chapterDocIndex: 0,
-              sectionWidth: pageSize.sectionWidth,
-              gap: pageSize.gap,
-              scale: window.visualViewport.scale,
-              offsetLeft: offsetLeft,
-              offsetTop: offsetTop,
-            };
-            rangy.init();
-            let charRange = null;
-            if (format === "PDF") {
-              let target: any = event.target;
-              let ownerDoc = target;
-              let targetIframe = ownerDoc?.defaultView?.frameElement;
-              let id = targetIframe?.getAttribute("id") || "";
-              let chapterDocIndex = id
-                ? parseInt(id.split("-").reverse()[0])
-                : 0;
-              charRange = await render.getHightlightCoords(chapterDocIndex);
-              position.chapterDocIndex = chapterDocIndex;
-              let subContainer = targetIframe.parentElement;
-              if (subContainer) {
-                position.top =
-                  position.top + parseFloat(getComputedStyle(subContainer).top);
-              }
-            } else {
-              charRange = await render.getHightlightCoords();
-            }
-
-            window.ReactNativeWebView.postMessage(
-              JSON.stringify({
-                event: "select-text",
-                selectedText: selectedText,
-                position: position,
-                range: charRange,
-              })
-            );
-          }
-        },
-        format === "PDF" ? 300 : 300
-      ); // Debounce selection events
+      selectionCount++;
     },
     false
   );
@@ -766,7 +775,7 @@ export const addAppleTouchEvent = (
       var range = iWin.getSelection().getRangeAt(0);
       var rect = range.getBoundingClientRect();
       var pageSize = render.getPageSize();
-      var position = {
+      var position: any = {
         top: rect.top - element.scrollTop,
         left: rect.left,
         width: rect.width,
@@ -774,7 +783,6 @@ export const addAppleTouchEvent = (
         screenWidth: window.innerWidth,
         screenHeight: window.innerHeight,
         sectionHeight: pageSize.sectionHeight,
-        chapterDocIndex: 0,
         sectionWidth: pageSize.sectionWidth,
         gap: pageSize.gap,
         scale: window.visualViewport.scale,
