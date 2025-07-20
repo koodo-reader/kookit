@@ -224,7 +224,6 @@ export const handleImageSize = async (
   let scale = readerMode === "double" ? 2 : 1;
   let pageWidth = (element.clientWidth - gap) / scale;
   let imgs = doc.querySelectorAll("img, image") as any;
-  console.log(imgs);
   for (let item of imgs) {
     let parentItem = item.parentElement;
     let maxHeight = 0;
@@ -248,18 +247,8 @@ export const handleImageSize = async (
       parentItem.clientHeight &&
       parentItem.clientWidth
     ) {
-      console.log(
-        "parentItem",
-        parentItem,
-        parentItem.clientHeight,
-        parentItem.clientWidth
-      );
       let isImageScaleLargerThanElement =
         height / width > parentItem.clientHeight / parentItem.clientWidth;
-      console.log(
-        "isImageScaleLargerThanElement",
-        isImageScaleLargerThanElement
-      );
       if (isImageScaleLargerThanElement) {
         maxHeight = parentItem.clientHeight;
         maxWidth = parseInt((maxHeight * width) / height + "");
@@ -267,14 +256,12 @@ export const handleImageSize = async (
         maxWidth = parentItem.clientWidth;
         maxHeight = parseInt((maxWidth * height) / width + "");
       }
-      console.log("maxWidth", maxWidth, "maxHeight", maxHeight);
       if (maxHeight > doc.body.clientHeight) {
         maxWidth = parseInt(
           maxWidth * (doc.body.clientHeight / maxHeight) + ""
         );
         maxHeight = doc.body.clientHeight;
       }
-      console.log("maxWidth", maxWidth, "maxHeight", maxHeight);
     } else if (
       parentItem &&
       parentItem.clientWidth &&
@@ -310,7 +297,6 @@ export const handleImageSize = async (
         }
       }
     }
-    console.log("maxWidth", maxWidth, "maxHeight", maxHeight);
     if (maxWidth || maxHeight) {
       //轻易不要改这里，很容易出问题
       item.setAttribute(

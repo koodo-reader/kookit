@@ -573,7 +573,6 @@ class PdfRender extends GeneralRender {
     return { page: pageIndex, coords: selected, readerMode: this.readerMode };
   }
   async renderHighlighters(notes: any[], handleNoteClick: any) {
-    console.log(JSON.stringify(notes));
     if (notes.length === 0) return;
     let chapterIndex = notes[0].chapterIndex;
     let subIframe = this.getSubIframe(chapterIndex);
