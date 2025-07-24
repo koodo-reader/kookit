@@ -20,6 +20,7 @@ class PdfTextRender extends GeneralRender {
   paraSpacingValue: number = 1.5; // 段落间距
   titleSizeValue: number = 1.2; // 标题大小倍数
   isFinishOCR: boolean = false;
+  ocrEngine: string;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ format: "PDFTEXT", ...config });
     this.pdfBuffer = pdfBuffer;
@@ -30,6 +31,7 @@ class PdfTextRender extends GeneralRender {
     this.titleSizeValue = parseFloat(config.titleSizeValue) || 1.2; // 支持配置标题大小倍数
     this.cache = {};
     this.processingPromises = new Map();
+    this.ocrEngine = config.ocrEngine || "tesseract"; // 支持配置OCR引擎
   }
 
   renderTo(element: HTMLElement) {
@@ -122,10 +124,13 @@ class PdfTextRender extends GeneralRender {
   }
   performOCR = async (imageUrl) => {
     try {
-      const result = await this.worker.recognize(imageUrl);
-      console.log(result, "asdfsdfsdf");
-      // await this.worker.terminate();
-      return result.data.text;
+      if (this.ocrEngine === "tesseract") {
+        const result = await this.worker.recognize(imageUrl);
+        console.log(result, "asdfsdfsdf");
+        // await this.worker.terminate();
+        return result.data.text;
+      } else if (this.ocrEngine === "system") {
+      }
     } catch (error) {
       console.error("OCR Error:", error);
       throw error;
@@ -309,7 +314,7 @@ class PdfTextRender extends GeneralRender {
       if (await isPDF(file)) {
         this.book = await makePDF(file, this.password);
       }
-      if (this.isScannedPDF === "yes") {
+      if (this.isScannedPDF === "yes" && this.ocrEngine === "tesseract") {
         const worker = await window.Tesseract.createWorker([this.ocrLang], 1, {
           workerPath: `${
             isElectron() ? "." : ""

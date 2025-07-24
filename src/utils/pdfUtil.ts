@@ -346,6 +346,7 @@ export const showOCRProgress = (progress: number) => {
     bar.style.zIndex = "9999";
     document.body.appendChild(bar);
   }
+
   bar.value = progress;
   if (progress >= 1) {
     setTimeout(() => {
