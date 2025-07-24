@@ -3,7 +3,11 @@ import GeneralParser from "../utils/generalParser";
 import GeneralRender from "./GeneralRender";
 import { getCache } from "../libs/cache.js";
 import { isPDF, makePDF } from "../libs/pdf";
-import { convertPageToImage, isElectron } from "../utils/pdfUtil";
+import {
+  convertPageToImage,
+  isElectron,
+  showOCRProgress,
+} from "../utils/pdfUtil";
 declare var window: any;
 class PdfTextRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
@@ -12,12 +16,18 @@ class PdfTextRender extends GeneralRender {
   worker: any;
   cache: any;
   processingPromises: Map<number, Promise<void>>; // 跟踪正在处理的章节
-
+  ocrLang: string = "chi_sim"; // 默认OCR语言为简体中文
+  paraSpacingValue: number = 1.5; // 段落间距
+  titleSizeValue: number = 1.2; // 标题大小倍数
+  isFinishOCR: boolean = false;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ format: "PDFTEXT", ...config });
     this.pdfBuffer = pdfBuffer;
     this.password = config.password || "";
     this.isScannedPDF = config.isScannedPDF || "no";
+    this.ocrLang = config.ocrLang || "chi_sim"; // 支持配置OCR语言
+    this.paraSpacingValue = parseFloat(config.paraSpacingValue) || 1.5; // 支持配置段落间距
+    this.titleSizeValue = parseFloat(config.titleSizeValue) || 1.2; // 支持配置标题大小倍数
     this.cache = {};
     this.processingPromises = new Map();
   }
@@ -112,11 +122,10 @@ class PdfTextRender extends GeneralRender {
   }
   performOCR = async (imageUrl) => {
     try {
-      const {
-        data: { text },
-      } = await this.worker.recognize(imageUrl);
+      const result = await this.worker.recognize(imageUrl);
+      console.log(result, "asdfsdfsdf");
       // await this.worker.terminate();
-      return text;
+      return result.data.text;
     } catch (error) {
       console.error("OCR Error:", error);
       throw error;
@@ -191,7 +200,7 @@ class PdfTextRender extends GeneralRender {
         tag: "p",
       };
       let lastY = 0;
-
+      console.log(textContent);
       textContent.items.forEach((item: any) => {
         if (item.str) {
           // 检测段落分隔（基于Y坐标变化）
@@ -200,10 +209,13 @@ class PdfTextRender extends GeneralRender {
 
           // 根据字体大小确定样式，都用p标签，大字体用bold
           let tag = "p";
-          let isBold = fontSize > Number(baseFontSize) * 1.2;
+          let isBold = fontSize > Number(baseFontSize) * this.titleSizeValue;
 
           // 如果Y坐标变化较大，认为是新段落
-          if (yDiff > item.height * 1.5 && currentPara.text.trim()) {
+          if (
+            yDiff > item.height * this.paraSpacingValue &&
+            currentPara.text.trim()
+          ) {
             paraList.push(currentPara);
             currentPara = {
               text: "",
@@ -298,14 +310,24 @@ class PdfTextRender extends GeneralRender {
         this.book = await makePDF(file, this.password);
       }
       if (this.isScannedPDF === "yes") {
-        const worker = await window.Tesseract.createWorker(["chi_sim"], 1, {
+        const worker = await window.Tesseract.createWorker([this.ocrLang], 1, {
           workerPath: `${
             isElectron() ? "." : ""
           }/lib/tesseractjs/worker.min.js`,
           corePath: `https://storage.koodoreader.com/tesseractjs/tesseract-core`,
           langPath: `https://storage.koodoreader.com/tesseractjs/4.0.0-fast`,
-          logger: function (m) {
+          logger: (m) => {
             console.log(m);
+            if (
+              m.status === "recognizing text" &&
+              typeof m.progress === "number" &&
+              !this.isFinishOCR
+            ) {
+              showOCRProgress(m.progress);
+              if (m.progress === 1) {
+                this.isFinishOCR = true;
+              }
+            }
           },
         });
         console.log("worker", worker);

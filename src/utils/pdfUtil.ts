@@ -331,3 +331,25 @@ export const isElectron = () => {
 
   return false;
 };
+export const showOCRProgress = (progress: number) => {
+  let bar = document.getElementById("ocr-progress-bar") as HTMLProgressElement;
+  if (!bar) {
+    bar = document.createElement("progress");
+    bar.id = "ocr-progress-bar";
+    bar.max = 1;
+    bar.value = 0;
+    bar.style.position = "fixed";
+    bar.style.top = "10px";
+    bar.style.left = "50%";
+    bar.style.transform = "translateX(-50%)";
+    bar.style.width = "300px";
+    bar.style.zIndex = "9999";
+    document.body.appendChild(bar);
+  }
+  bar.value = progress;
+  if (progress >= 1) {
+    setTimeout(() => {
+      bar.remove();
+    }, 1000);
+  }
+};
