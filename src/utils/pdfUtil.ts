@@ -1,6 +1,7 @@
 import ChapterDoc from "../model/chapterDoc";
 import { convertStyleNum } from "./layoutUtil";
 import _ from "underscore";
+declare var window: any;
 export const getPdfScale = async (
   element: HTMLElement,
   readerMode: string,
@@ -275,4 +276,58 @@ export const handleIOSScrollPage = async (
       doc.body.scrollBy((width + gap) / 2, 0);
     }
   }
+};
+export const convertPageToImage = async (page) => {
+  const desiredWidth = 800;
+  const viewport = page.getViewport({ scale: 1 });
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  canvas.width = desiredWidth;
+  canvas.height = (desiredWidth / viewport.width) * viewport.height;
+  const renderContext = {
+    canvasContext: context,
+    viewport: page.getViewport({ scale: desiredWidth / viewport.width }),
+  };
+  await page.render(renderContext).promise;
+  const imageURL = canvas.toDataURL("image/jpeg", 0.8);
+  const size = calculateSize(imageURL);
+  return { imageURL, size };
+};
+function calculateSize(imageURL) {
+  const base64Length = imageURL.length - "data:image/jpeg;base64,".length;
+  const sizeInBytes = Math.ceil(base64Length * 0.75);
+  return sizeInBytes;
+}
+
+function formatSize(size) {
+  const sizeInKB = (size / 1024).toFixed(2);
+  return `${sizeInKB} KB`;
+}
+export const isElectron = () => {
+  // Renderer process
+  if (
+    typeof window !== "undefined" &&
+    typeof window.process === "object" &&
+    window.process.type === "renderer"
+  ) {
+    return true;
+  }
+  // Main process
+  if (
+    typeof process !== "undefined" &&
+    typeof process.versions === "object" &&
+    !!process.versions.electron
+  ) {
+    return true;
+  }
+  // Detect the user agent when the `nodeIntegration` option is set to true
+  if (
+    typeof navigator === "object" &&
+    typeof navigator.userAgent === "string" &&
+    navigator.userAgent.indexOf("Electron") >= 0
+  ) {
+    return true;
+  }
+
+  return false;
 };

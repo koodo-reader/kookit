@@ -3,14 +3,25 @@ import GeneralParser from "../utils/generalParser";
 import GeneralRender from "./GeneralRender";
 import { getCache } from "../libs/cache.js";
 import { isPDF, makePDF } from "../libs/pdf";
+import { convertPageToImage, isElectron } from "../utils/pdfUtil";
+declare var window: any;
 class PdfTextRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
   password: string = "";
+  isScannedPDF: string;
+  worker: any;
+  cache: any;
+  processingPromises: Map<number, Promise<void>>; // 跟踪正在处理的章节
+
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ format: "PDFTEXT", ...config });
     this.pdfBuffer = pdfBuffer;
     this.password = config.password || "";
+    this.isScannedPDF = config.isScannedPDF || "no";
+    this.cache = {};
+    this.processingPromises = new Map();
   }
+
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
       this.element = element;
@@ -21,104 +32,226 @@ class PdfTextRender extends GeneralRender {
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
 
-      for (let chapterDoc of this.chapterDocList) {
+      for (let index = 0; index < this.chapterDocList.length; index++) {
+        let chapterDoc = this.chapterDocList[index];
         chapterDoc.text.load = async () => {
-          let textContent = await chapterDoc.text.getTextContent();
-          console.log("textContent", textContent);
-          let paraList: any[] = [];
-
-          if (
-            textContent &&
-            textContent.items &&
-            Array.isArray(textContent.items)
-          ) {
-            // 先收集所有字体大小，确定基础大小和最大大小
-            // 先收集所有字体大小，确定基础大小和最大大小
-            const fontSizes = textContent.items
-              .filter((item: any) => item.str && item.transform)
-              .map((item: any) => item.transform[3]);
-
-            // 计算字体大小的众数（出现频率最高的值）
-            const fontSizeCount = fontSizes.reduce((acc, size) => {
-              acc[size] = (acc[size] || 0) + 1;
-              return acc;
-            }, {} as Record<number, number>);
-
-            const baseFontSize = Object.keys(fontSizeCount).reduce((a, b) =>
-              fontSizeCount[Number(a)] > fontSizeCount[Number(b)] ? a : b
-            );
-
-            const maxFontSize = Math.max(...fontSizes);
-            const fontSizeRange = maxFontSize - Number(baseFontSize);
-
-            let currentPara: any = {
-              text: "",
-              styles: new Set(),
-              y: 0,
-              tag: "p",
-            };
-            let lastY = 0;
-
-            textContent.items.forEach((item: any) => {
-              if (item.str) {
-                // 检测段落分隔（基于Y坐标变化）
-                const yDiff = Math.abs(item.transform[5] - lastY);
-                const fontSize = item.transform[3];
-
-                // 根据字体大小确定样式，都用p标签，大字体用bold
-                let tag = "p";
-                let isBold = fontSize > Number(baseFontSize) * 1.2;
-
-                // 如果Y坐标变化较大，认为是新段落
-                if (yDiff > item.height * 1.5 && currentPara.text.trim()) {
-                  paraList.push(currentPara);
-                  currentPara = {
-                    text: "",
-                    styles: new Set(),
-                    y: item.transform[5],
-                    tag: tag,
-                    isBold: isBold,
-                  };
-                } else if (!currentPara.hasOwnProperty("isBold")) {
-                  // 如果当前段落还没有确定样式，使用当前item的样式
-                  currentPara.isBold = isBold;
-                }
-
-                // 包装文本
-                const wrappedText = item.str;
-
-                // 换行时用空格连接，而不是分段
-                if (item.hasEOL) {
-                  // 如果是用了连接符（如连字符），直接拼接，不加空格
-                  if (wrappedText.endsWith("-")) {
-                    currentPara.text += wrappedText.slice(0, -1);
-                  } else {
-                    currentPara.text += wrappedText + " ";
-                  }
-                } else {
-                  currentPara.text += wrappedText;
-                }
-
-                lastY = item.transform[5];
-              }
-            });
-
-            // 添加最后一个段落
-            if (currentPara.text.trim()) {
-              paraList.push(currentPara);
+          if (this.cache[index]) {
+            // 即使缓存存在，也要检查后续章节
+            if (this.isScannedPDF === "yes") {
+              this.preProcessNextChapters(index);
             }
-
-            // 添加最后一个段落
-            if (currentPara.text.trim()) {
-              paraList.push(currentPara);
-            }
+            return this.cache[index];
           }
 
-          console.log(paraList);
-          const src = URL.createObjectURL(
-            new Blob(
-              [
-                `
+          let src = "";
+          if (this.isScannedPDF === "yes") {
+            // 优先处理当前章节
+            src = await this.processCurrentChapter(index);
+            // 异步处理后续章节
+            this.preProcessNextChapters(index);
+          } else {
+            src = await this.getTextFromDoc(chapterDoc);
+            this.cache[index] = src;
+          }
+          return src;
+        };
+      }
+      createIframe(element);
+      let doc = this.getDocument();
+      if (!doc) return;
+      handleLayout(element, this.readerMode, doc);
+      resolve();
+    });
+  }
+
+  // 优先处理当前章节
+  async processCurrentChapter(index: number): Promise<string> {
+    if (this.cache[index]) {
+      return this.cache[index];
+    }
+
+    // 如果当前章节正在处理，等待完成
+    if (this.processingPromises.has(index)) {
+      await this.processingPromises.get(index);
+      return this.cache[index];
+    }
+
+    const chapterDoc = this.chapterDocList[index];
+    const src = await this.getTextByOCR(chapterDoc);
+    this.cache[index] = src;
+    return src;
+  }
+
+  // 异步预处理后续章节
+  preProcessNextChapters(currentIndex: number) {
+    const maxIndex = Math.min(currentIndex + 3, this.chapterDocList.length - 1);
+
+    for (let i = currentIndex + 1; i <= maxIndex; i++) {
+      // 只处理未缓存且未在处理中的章节
+      if (!this.cache[i] && !this.processingPromises.has(i)) {
+        const promise = this.processChapterOCR(i);
+        this.processingPromises.set(i, promise);
+
+        // 处理完成后清理 Promise 记录
+        promise.finally(() => {
+          this.processingPromises.delete(i);
+        });
+      }
+    }
+  }
+
+  // 处理单个章节的OCR
+  async processChapterOCR(index: number): Promise<void> {
+    try {
+      const chapterDoc = this.chapterDocList[index];
+      const src = await this.getTextByOCR(chapterDoc);
+      this.cache[index] = src;
+    } catch (error) {
+      console.error(`Failed to process OCR for chapter ${index}:`, error);
+    }
+  }
+  performOCR = async (imageUrl) => {
+    try {
+      const {
+        data: { text },
+      } = await this.worker.recognize(imageUrl);
+      // await this.worker.terminate();
+      return text;
+    } catch (error) {
+      console.error("OCR Error:", error);
+      throw error;
+    }
+  };
+  async getTextByOCR(chapterDoc) {
+    let page = await chapterDoc.text.getPage();
+    let { imageURL } = await convertPageToImage(page);
+    const textContent = await this.performOCR(imageURL);
+    let paraList = textContent.split("\n").filter((para) => para.trim() !== "");
+
+    const src = URL.createObjectURL(
+      new Blob(
+        [
+          `
+            <!DOCTYPE html>
+            <html lang="en">
+            <meta charset="utf-8">
+            <style>
+            html, body {
+                margin: 0;
+                padding: 20px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            }
+            p {
+                margin: 0.8em 0;
+                text-align: justify;
+            }
+            .bold {
+                font-weight: bold;
+            }
+            .paragraph {
+                margin-bottom: 1em;
+            }
+            </style>
+            <div>${paraList.map((para) => `<p>${para}</p>`).join("")}</div>
+          `,
+        ],
+        { type: "text/html" }
+      )
+    );
+    return src;
+  }
+  async getTextFromDoc(chapterDoc) {
+    let textContent = await chapterDoc.text.getTextContent();
+    let paraList: any[] = [];
+
+    if (textContent && textContent.items && Array.isArray(textContent.items)) {
+      // 先收集所有字体大小，确定基础大小和最大大小
+      // 先收集所有字体大小，确定基础大小和最大大小
+      const fontSizes = textContent.items
+        .filter((item: any) => item.str && item.transform)
+        .map((item: any) => item.transform[3]);
+
+      // 计算字体大小的众数（出现频率最高的值）
+      const fontSizeCount = fontSizes.reduce((acc, size) => {
+        acc[size] = (acc[size] || 0) + 1;
+        return acc;
+      }, {} as Record<number, number>);
+
+      const baseFontSize = Object.keys(fontSizeCount).reduce((a, b) =>
+        fontSizeCount[Number(a)] > fontSizeCount[Number(b)] ? a : b
+      );
+
+      const maxFontSize = Math.max(...fontSizes);
+      const fontSizeRange = maxFontSize - Number(baseFontSize);
+
+      let currentPara: any = {
+        text: "",
+        styles: new Set(),
+        y: 0,
+        tag: "p",
+      };
+      let lastY = 0;
+
+      textContent.items.forEach((item: any) => {
+        if (item.str) {
+          // 检测段落分隔（基于Y坐标变化）
+          const yDiff = Math.abs(item.transform[5] - lastY);
+          const fontSize = item.transform[3];
+
+          // 根据字体大小确定样式，都用p标签，大字体用bold
+          let tag = "p";
+          let isBold = fontSize > Number(baseFontSize) * 1.2;
+
+          // 如果Y坐标变化较大，认为是新段落
+          if (yDiff > item.height * 1.5 && currentPara.text.trim()) {
+            paraList.push(currentPara);
+            currentPara = {
+              text: "",
+              styles: new Set(),
+              y: item.transform[5],
+              tag: tag,
+              isBold: isBold,
+            };
+          } else if (!currentPara.hasOwnProperty("isBold")) {
+            // 如果当前段落还没有确定样式，使用当前item的样式
+            currentPara.isBold = isBold;
+          }
+
+          // 包装文本
+          const wrappedText = item.str;
+
+          // 换行时用空格连接，而不是分段
+          if (item.hasEOL) {
+            // 如果是用了连接符（如连字符），直接拼接，不加空格
+            if (wrappedText.endsWith("-")) {
+              currentPara.text += wrappedText.slice(0, -1);
+            } else {
+              currentPara.text += wrappedText + " ";
+            }
+          } else {
+            currentPara.text += wrappedText;
+          }
+
+          lastY = item.transform[5];
+        }
+      });
+
+      // 添加最后一个段落
+      if (currentPara.text.trim()) {
+        paraList.push(currentPara);
+      }
+
+      // 添加最后一个段落
+      if (currentPara.text.trim()) {
+        paraList.push(currentPara);
+      }
+    }
+
+    console.log(paraList);
+    const src = URL.createObjectURL(
+      new Blob(
+        [
+          `
         <!DOCTYPE html>
         <html lang="en">
         <meta charset="utf-8">
@@ -148,21 +281,11 @@ class PdfTextRender extends GeneralRender {
           )
           .join("")}</div>
       `,
-              ],
-              { type: "text/html" }
-            )
-          );
-          return src;
-        };
-      }
-      console.log("chapterList", this.chapterList);
-      console.log("chapterDocList", this.chapterDocList);
-      createIframe(element);
-      let doc = this.getDocument();
-      if (!doc) return;
-      handleLayout(element, this.readerMode, doc);
-      resolve();
-    });
+        ],
+        { type: "text/html" }
+      )
+    );
+    return src;
   }
   async parse() {
     try {
@@ -173,6 +296,21 @@ class PdfTextRender extends GeneralRender {
       });
       if (await isPDF(file)) {
         this.book = await makePDF(file, this.password);
+      }
+      if (this.isScannedPDF === "yes") {
+        const worker = await window.Tesseract.createWorker(["chi_sim"], 1, {
+          workerPath: `${
+            isElectron() ? "." : ""
+          }/lib/tesseractjs/worker.min.js`,
+          corePath: `https://storage.koodoreader.com/tesseractjs/tesseract-core`,
+          langPath: `https://storage.koodoreader.com/tesseractjs/4.0.0-fast`,
+          logger: function (m) {
+            console.log(m);
+          },
+        });
+        console.log("worker", worker);
+        await worker.load();
+        this.worker = worker;
       }
     } catch (error) {
       console.error(error);
