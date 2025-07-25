@@ -7,7 +7,7 @@ import {
   progressInfo,
 } from "./layoutUtil";
 import Chapter from "../model/chapter";
-import Chinese from "chinese-s2t";
+import Chinese from "../libs/zh-convert";
 import _ from "underscore";
 import { cleanText } from "../libs/textProcessor";
 
@@ -214,10 +214,7 @@ export const handleRenderChapter = async (
   doc.body.innerHTML = chapterText;
 
   if (bodyAttrs["style"]) {
-    doc.body.setAttribute(
-      "style",
-      bodyAttrs["style"] + "; " + doc.body.getAttribute("style")
-    );
+    doc.body.setAttribute("style", doc.body.getAttribute("style") || "");
   } else if (bodyAttrs["class"]) {
     doc.body.setAttribute("class", bodyAttrs["class"]);
   } else if (bodyAttrs["id"]) {
@@ -606,9 +603,7 @@ export const getAudioText = (
   let audioNode = nodeList.filter((s) =>
     ((s as HTMLElement).textContent || "").trim()
   );
-  let audioText = audioNode
-    .filter((item) => item.textContent !== "img")
-    .map((item) => item.textContent);
+  let audioText = audioNode.map((item) => item.textContent);
   let firstSliceIndex = 0;
   let visibleText = getVisibleText(element, readerMode, doc);
   if (visibleText && visibleText.length > 0) {
@@ -632,9 +627,7 @@ export const getVisibleText = (
       ((s as HTMLElement).textContent || "").trim()
   );
 
-  return visibleNode
-    .filter((item) => item.textContent !== "img")
-    .map((item) => item.textContent);
+  return visibleNode.map((item) => item.textContent);
 };
 export const handleHighlightSearchNode = (
   text: string,

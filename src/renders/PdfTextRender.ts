@@ -126,7 +126,6 @@ class PdfTextRender extends GeneralRender {
     try {
       if (this.ocrEngine === "tesseract") {
         const result = await this.worker.recognize(imageUrl);
-        console.log(result, "asdfsdfsdf");
         // await this.worker.terminate();
         return result.data.text;
       } else if (this.ocrEngine === "system") {
@@ -205,7 +204,6 @@ class PdfTextRender extends GeneralRender {
         tag: "p",
       };
       let lastY = 0;
-      console.log(textContent);
       textContent.items.forEach((item: any) => {
         if (item.str) {
           // 检测段落分隔（基于Y坐标变化）
@@ -264,7 +262,6 @@ class PdfTextRender extends GeneralRender {
       }
     }
 
-    console.log(paraList);
     const src = URL.createObjectURL(
       new Blob(
         [
@@ -322,7 +319,6 @@ class PdfTextRender extends GeneralRender {
           corePath: `https://storage.koodoreader.com/tesseractjs/tesseract-core`,
           langPath: `https://storage.koodoreader.com/tesseractjs/4.0.0-fast`,
           logger: (m) => {
-            console.log(m);
             if (
               m.status === "recognizing text" &&
               typeof m.progress === "number" &&
@@ -335,7 +331,6 @@ class PdfTextRender extends GeneralRender {
             }
           },
         });
-        console.log("worker", worker);
         await worker.load();
         this.worker = worker;
       }

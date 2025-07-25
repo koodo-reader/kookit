@@ -119,7 +119,7 @@ export const handleImageMarker = (bookStr) => {
         continue;
       }
       var newItem = document.createElement("kookitmarker");
-      var textnode = document.createTextNode("img");
+      var textnode = document.createTextNode(" ");
       newItem.appendChild(textnode);
       newItem.setAttribute(
         "style",
@@ -256,7 +256,7 @@ export const handleImageSize = async (
         maxWidth = parentItem.clientWidth;
         maxHeight = parseInt((maxWidth * height) / width + "");
       }
-      if (maxHeight > doc.body.clientHeight) {
+      if (maxHeight > doc.body.clientHeight && readerMode !== "scroll") {
         maxWidth = parseInt(
           maxWidth * (doc.body.clientHeight / maxHeight) + ""
         );

@@ -51,7 +51,7 @@ export default [
   //     json(),
   //     typescript({ tsconfig: "./tsconfig.json" }),
   //   ],
-  //   external: ['mammoth', 'jszip', 'underscore', 'marked', 'chinese-s2t', 'mhtml2html', 'js-untar', 'fflate', 'rangy/lib/rangy-core.js', 'rangy/lib/rangy-textrange', 'chardet'],
+  //   external: ['mammoth', 'jszip', 'underscore', 'marked', 'mhtml2html', 'js-untar', 'fflate', 'rangy/lib/rangy-core.js', 'rangy/lib/rangy-textrange', 'chardet'],
   // },
   {
     input: "src/index.ts",
@@ -74,7 +74,7 @@ export default [
       }), // 压缩代码
     ],
 
-    external: ['mammoth', 'jszip', 'underscore', 'marked', 'chinese-s2t', 'mhtml2html', 'js-untar', 'fflate', 'rangy/lib/rangy-core.js', 'rangy/lib/rangy-textrange', 'chardet'],
+    external: ['mammoth', 'jszip', 'underscore', 'marked', 'mhtml2html', 'js-untar', 'fflate', 'rangy/lib/rangy-core.js', 'rangy/lib/rangy-textrange', 'chardet'],
   },
   {
     input: "src/index.ts",

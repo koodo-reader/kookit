@@ -21,12 +21,16 @@ class PdfRender extends GeneralRender {
   isStartFromEven: string = "no";
   password: string = "";
   scale: number = 1;
+  backgroundColor: string;
+  isScannedPDF: string;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ format: "PDF", ...config, convertChinese: "Default" });
     this.pdfBuffer = pdfBuffer;
     this.isStartFromEven = config.isStartFromEven || "no";
     this.password = config.password || "";
     this.scale = config.scale || 1;
+    this.backgroundColor = config.backgroundColor || "#ffffff";
+    this.isScannedPDF = config.isScannedPDF || "no";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -688,12 +692,27 @@ class PdfRender extends GeneralRender {
     await this.chapterDocList[chapterDocIndex].text.render(
       subDoc,
       scale,
-      this.isMobile,
-      this.isDarkMode
+      this.isMobile
     );
     let docLayer: any = subDoc.querySelector("#koodoPDFLayer");
     if (!docLayer) {
       return;
+    }
+    if (this.isDarkMode === "yes") {
+      docLayer.style.filter = "invert(1) hue-rotate(180deg) contrast(0.95)";
+    }
+    if (
+      this.backgroundColor === "rgba(233, 216, 188,1)" &&
+      this.isScannedPDF === "yes"
+    ) {
+      docLayer.style.filter = "sepia(100%) contrast(0.95) brightness(0.95)";
+    }
+    if (
+      this.backgroundColor === "rgba(197, 231, 207,1)" &&
+      this.isScannedPDF === "yes"
+    ) {
+      docLayer.style.filter =
+        "sepia(30%) hue-rotate(60deg) saturate(120%) brightness(95%)";
     }
     if (this.readerMode === "single" || this.readerMode === "double") {
       let additionalHeight =
