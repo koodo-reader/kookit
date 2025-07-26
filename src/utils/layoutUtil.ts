@@ -119,13 +119,31 @@ export const handleImageMarker = (bookStr) => {
         continue;
       }
       var newItem = document.createElement("kookitmarker");
-      var textnode = document.createTextNode(" ");
+      var textnode = document.createTextNode("img");
       newItem.appendChild(textnode);
       newItem.setAttribute(
         "style",
         "visibility: hidden; position: absolute;display: inline-block; width: 0; height: 0;"
       );
-      imgDomList[i]?.insertAdjacentElement("afterend", newItem);
+      // 找到图片元素在body中的位置，确保marker插入到body下
+      let imgElement = imgDomList[i];
+
+      // 找到包含当前图片的顶级body子元素
+      let topLevelParent = imgElement;
+      while (
+        topLevelParent.parentElement &&
+        topLevelParent.parentElement !== chapterDoc.body
+      ) {
+        topLevelParent = topLevelParent.parentElement;
+      }
+
+      // 在该顶级元素后插入marker
+      if (topLevelParent.parentElement === chapterDoc.body) {
+        topLevelParent.insertAdjacentElement("afterend", newItem);
+      } else {
+        // 如果找不到合适位置，插入到body末尾
+        chapterDoc.body.appendChild(newItem);
+      }
     }
     return chapterDoc.documentElement.innerHTML;
   }
@@ -262,6 +280,7 @@ export const handleImageSize = async (
         );
         maxHeight = doc.body.clientHeight;
       }
+      parentItem.style.textIndent = "0px";
     } else if (
       parentItem &&
       parentItem.clientWidth &&
@@ -269,6 +288,7 @@ export const handleImageSize = async (
     ) {
       maxWidth = parentItem.clientWidth;
       maxHeight = parentItem.clientHeight;
+      parentItem.style.textIndent = "0px";
     } else {
       maxWidth = element.clientWidth;
       maxHeight = element.clientHeight;

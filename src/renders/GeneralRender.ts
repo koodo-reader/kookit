@@ -628,6 +628,9 @@ class GeneralRender extends EventEmitter {
 
         if (shouldScroll && Math.abs(accumulatedScroll) >= 0.1) {
           const scrollAmount = Math.round(accumulatedScroll * 10) / 10; // 保留一位小数
+          console.log(
+            `Scrolling by: ${scrollAmount}px (accumulated: ${accumulatedScroll})`
+          );
           this.element.scrollBy({
             left: 0,
             top: scrollAmount,
@@ -640,6 +643,9 @@ class GeneralRender extends EventEmitter {
         // 快速滚动时保持原有逻辑
         if (Math.abs(accumulatedScroll) >= 1) {
           const scrollAmount = Math.floor(accumulatedScroll);
+          console.log(
+            `Scrolling by: ${scrollAmount}px (accumulated: ${accumulatedScroll})`
+          );
           this.element.scrollBy({
             left: 0,
             top: scrollAmount,
@@ -652,6 +658,62 @@ class GeneralRender extends EventEmitter {
       this.scrollTimer = requestAnimationFrame(scrollStep);
     };
     this.scrollTimer = requestAnimationFrame(scrollStep);
+
+    this.recordTimer = setInterval(() => {
+      if (
+        this.readerMode === "scroll" &&
+        Math.abs(
+          this.element.scrollHeight -
+            this.element.scrollTop -
+            this.element.clientHeight
+        ) < 10
+      ) {
+        this.nextChapter();
+      }
+      this.record();
+    }, 3000);
+  }
+  autoScrollIOS(rate: number, isStart: string) {
+    let doc = this.getDocument();
+    if (!doc) return;
+    if (this.scrollTimer) {
+      clearInterval(this.scrollTimer);
+      this.scrollTimer = null;
+    }
+    if (this.recordTimer) {
+      clearInterval(this.recordTimer);
+      this.recordTimer = null;
+    }
+    if (isStart === "no" || this.readerMode !== "scroll") {
+      return;
+    }
+
+    let accumulatedScroll = 0; // 累积滚动量
+    let realScrollTop = this.element.scrollTop; // 记录真实滚动位置
+    // this.scrollTimer = requestAnimationFrame(scrollStep);
+    this.scrollTimer = setInterval(() => {
+      console.log(rate, "rate");
+      accumulatedScroll += rate;
+      if (doc) {
+        doc.body.style.transform = `translateY(-${accumulatedScroll}px)`;
+        // 每隔一定距离同步真实滚动位置，避免transform累积过大
+        if (Math.abs(accumulatedScroll) >= 50) {
+          // 重置transform
+          doc.body.style.transform = "translateY(0px)";
+
+          // 更新真实滚动位置
+          realScrollTop += accumulatedScroll;
+          this.element.scrollTo({
+            left: 0,
+            top: realScrollTop,
+            behavior: "auto",
+          });
+
+          // 重置累积量
+          accumulatedScroll = 0;
+        }
+      }
+    }, 30);
 
     this.recordTimer = setInterval(() => {
       if (

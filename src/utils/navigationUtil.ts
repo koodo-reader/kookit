@@ -603,7 +603,12 @@ export const getAudioText = (
   let audioNode = nodeList.filter((s) =>
     ((s as HTMLElement).textContent || "").trim()
   );
-  let audioText = audioNode.map((item) => item.textContent);
+  let audioText = audioNode
+    .filter(
+      (item) =>
+        item.textContent !== "img" && !item.textContent?.startsWith("img")
+    )
+    .map((item) => item.textContent);
   let firstSliceIndex = 0;
   let visibleText = getVisibleText(element, readerMode, doc);
   if (visibleText && visibleText.length > 0) {
@@ -627,7 +632,12 @@ export const getVisibleText = (
       ((s as HTMLElement).textContent || "").trim()
   );
 
-  return visibleNode.map((item) => item.textContent);
+  return visibleNode
+    .filter(
+      (item) =>
+        item.textContent !== "img" && !item.textContent?.startsWith("img")
+    )
+    .map((item) => item.textContent);
 };
 export const handleHighlightSearchNode = (
   text: string,

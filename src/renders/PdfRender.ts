@@ -23,6 +23,7 @@ class PdfRender extends GeneralRender {
   scale: number = 1;
   backgroundColor: string;
   isScannedPDF: string;
+  platform: string;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ format: "PDF", ...config, convertChinese: "Default" });
     this.pdfBuffer = pdfBuffer;
@@ -31,6 +32,7 @@ class PdfRender extends GeneralRender {
     this.scale = config.scale || 1;
     this.backgroundColor = config.backgroundColor || "#ffffff";
     this.isScannedPDF = config.isScannedPDF || "no";
+    this.platform = config.platform || "web";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -751,7 +753,7 @@ class PdfRender extends GeneralRender {
   async renderPdfPage(chapterDocIndex: number, doc: Document) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
-    } else if (chapterDocIndex > 2) {
+    } else if (chapterDocIndex > 2 && this.platform !== "ios") {
       await this.handleUnloadPDFChapter(chapterDocIndex - 3, doc);
     }
     await this.handleRenderPDFChapter(chapterDocIndex, doc);
