@@ -47,7 +47,11 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
     event.stopPropagation();
 
     // Get href from the link
-    const href = linkElement.getAttribute("href");
+    let href = linkElement.getAttribute("href");
+    if (href && href.startsWith("kindle:")) {
+      let result = await render.resolveHref(href);
+      href = "#" + result;
+    }
     let footnote = "";
     if (href && href.indexOf("#") > -1) {
       let id = href.split("#").reverse()[0];
@@ -66,7 +70,10 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
           return true;
         }
       }
-      if (node.textContent.trim() === event.target.textContent.trim()) {
+      if (
+        node.textContent.trim() === event.target.textContent.trim() ||
+        !node.textContent.trim()
+      ) {
         node = node.parentElement;
       }
       //将html代码中的img标签由blob转换为base64
@@ -187,6 +194,7 @@ export const addAndroidTouchEvent = (
 
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
       let tempDoc = format === "PDF" ? outerDoc : doc;
+      let pageWidth = element.clientWidth + gap;
       // Clean up any existing animation
       if (window.scrollAnimationId) {
         cancelAnimationFrame(window.scrollAnimationId);
@@ -216,7 +224,7 @@ export const addAndroidTouchEvent = (
         return;
       }
       tempDoc.body.style.transform = "";
-      let pageWidth = element.clientWidth + gap;
+
       let scrollLeft = tempDoc.body.scrollLeft;
 
       // Improved snapping logic
@@ -532,7 +540,7 @@ export const addAndroidTouchEvent = (
               position.top + parseFloat(getComputedStyle(subContainer).top);
           }
         } catch (error) {
-          console.log("Error getting highlight coords:", error);
+          console.error("Error getting highlight coords:", error);
         }
       } else {
         charRange = await render.getHightlightCoords();

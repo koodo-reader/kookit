@@ -628,9 +628,6 @@ class GeneralRender extends EventEmitter {
 
         if (shouldScroll && Math.abs(accumulatedScroll) >= 0.1) {
           const scrollAmount = Math.round(accumulatedScroll * 10) / 10; // 保留一位小数
-          console.log(
-            `Scrolling by: ${scrollAmount}px (accumulated: ${accumulatedScroll})`
-          );
           this.element.scrollBy({
             left: 0,
             top: scrollAmount,
@@ -643,9 +640,6 @@ class GeneralRender extends EventEmitter {
         // 快速滚动时保持原有逻辑
         if (Math.abs(accumulatedScroll) >= 1) {
           const scrollAmount = Math.floor(accumulatedScroll);
-          console.log(
-            `Scrolling by: ${scrollAmount}px (accumulated: ${accumulatedScroll})`
-          );
           this.element.scrollBy({
             left: 0,
             top: scrollAmount,
@@ -692,7 +686,6 @@ class GeneralRender extends EventEmitter {
     let realScrollTop = this.element.scrollTop; // 记录真实滚动位置
     // this.scrollTimer = requestAnimationFrame(scrollStep);
     this.scrollTimer = setInterval(() => {
-      console.log(rate, "rate");
       accumulatedScroll += rate;
       if (doc) {
         doc.body.style.transform = `translateY(-${accumulatedScroll}px)`;

@@ -26,6 +26,18 @@ class MobiRender extends GeneralRender {
       resolve();
     });
   }
+  async resolveHref(href: string) {
+    let chapterDocIndex = this.tempLocation.chapterDocIndex;
+    let chapterDoc = this.chapterDocList[chapterDocIndex];
+    if (chapterDoc) {
+      let result = await chapterDoc.text.resolveHref(href);
+      let doc = this.getDocument();
+      if (!doc) return "";
+      let element = result.anchor(doc);
+      return element.getAttribute("id") || "";
+    }
+    return "";
+  }
   async parse() {
     try {
       let blob = new Blob([this.mobiBuffer]);

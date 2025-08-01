@@ -16,7 +16,6 @@ class TxtRender extends GeneralRender {
     this.parserRegex = config.parserRegex;
   }
   renderTo(element: HTMLElement, bookLocation?: any): Promise<void> {
-    console.log(Chinese.t2s("再怎麼温和也是一隻怪物啊！"));
     return new Promise<void>(async (resolve, reject) => {
       this.element = element;
       if (!this.book) {

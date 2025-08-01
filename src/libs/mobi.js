@@ -841,6 +841,7 @@ class MOBI6 {
       id: index,
       load: () => this.loadSection(section),
       createDocument: () => this.createDocument(section),
+      resolveHref: (href) => this.resolveHref(href),
       size: section.end - section.start,
     }));
 
@@ -862,7 +863,7 @@ class MOBI6 {
             const indent = getIndent(a);
             const item = {
               label: a.innerText?.trim(),
-              href: `filepos:${a.getAttribute("filepos")}`,
+              href: `#filepos${a.getAttribute("filepos")}`,
             };
             const level =
               indent > lastIndent
@@ -912,7 +913,7 @@ class MOBI6 {
     return Array.from(doc.getElementsByTagName("reference"), (ref) => ({
       label: ref.getAttribute("title"),
       type: ref.getAttribute("type")?.split(/\s/),
-      href: `filepos:${ref.getAttribute("filepos")}`,
+      href: `#filepos${ref.getAttribute("filepos")}`,
     }));
   }
   async loadResource(index) {
@@ -946,7 +947,7 @@ class MOBI6 {
     }
     for (const a of doc.querySelectorAll("[filepos]")) {
       const filepos = a.getAttribute("filepos");
-      a.href = `filepos:${filepos}`;
+      a.href = `#filepos${filepos}`;
     }
   }
   async loadText(section) {
@@ -1000,14 +1001,14 @@ class MOBI6 {
     return url;
   }
   resolveHref(href) {
-    const filepos = href.match(/filepos:(.*)/)[1];
+    const filepos = href.match(/#filepos(.*)/)[1];
     const number = Number(filepos);
     const index = this.#sections.findIndex((section) => section.end > number);
     const anchor = (doc) => doc.getElementById(`filepos${filepos}`);
     return { index, anchor };
   }
   splitTOCHref(href) {
-    const filepos = href.match(/filepos:(.*)/)[1];
+    const filepos = href.match(/#filepos(.*)/)[1];
     const number = Number(filepos);
     const index = this.#sections.findIndex((section) => section.end > number);
     return [index, `filepos${filepos}`];
@@ -1164,6 +1165,7 @@ class KF8 {
           id: index,
           load: () => this.loadSection(section),
           createDocument: () => this.createDocument(section),
+          resolveHref: (href) => this.resolveHref(href),
           size: section.length,
           pageSpread: pageSpreads.get(index),
         }
@@ -1376,7 +1378,7 @@ class KF8 {
     const frag = frags.find((frag) => frag.index === fid);
     const offset = skel.offset + skel.length + frag.offset;
     const fragRaw = await this.loadRaw(offset, offset + frag.length);
-    const str = this.mobi.decode(fragRaw).slice(off);
+    const str = this.mobi.decode(fragRaw.slice(off));
     const selector = getFragmentSelector(str);
     this.#setFragmentSelector(fid, off, selector);
     const anchor = (doc) => doc.querySelector(selector);

@@ -8,6 +8,7 @@ import {
   isElectron,
   showOCRProgress,
 } from "../utils/pdfUtil";
+const fetchText = async (url) => await (await fetch(url)).text();
 declare var window: any;
 class PdfTextRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
@@ -312,10 +313,14 @@ class PdfTextRender extends GeneralRender {
         this.book = await makePDF(file, this.password);
       }
       if (this.isScannedPDF === "yes" && this.ocrEngine === "tesseract") {
+        let workerScript = await fetchText(
+          `${isElectron() ? "." : ""}/lib/tesseractjs/worker.min.js`
+        );
+        let workerUrl = URL.createObjectURL(
+          new Blob([workerScript], { type: "application/javascript" })
+        );
         const worker = await window.Tesseract.createWorker([this.ocrLang], 1, {
-          workerPath: `${
-            isElectron() ? "." : ""
-          }/lib/tesseractjs/worker.min.js`,
+          workerPath: workerUrl,
           corePath: `https://storage.koodoreader.com/tesseractjs/tesseract-core`,
           langPath: `https://storage.koodoreader.com/tesseractjs/4.0.0-fast`,
           logger: (m) => {
