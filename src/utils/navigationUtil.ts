@@ -600,9 +600,24 @@ export const getAudioText = (
   let nodeList = getBlockElement(doc.body).filter(
     (item) => !isParentBlock(item)
   );
-  let audioNode = nodeList.filter((s) =>
-    ((s as HTMLElement).textContent || "").trim()
-  );
+  let audioNode = nodeList.filter((s) => {
+    // 检查文本内容是否存在且不为空
+    if (!((s as HTMLElement).textContent || "").trim()) {
+      return false;
+    }
+
+    // 检查是否有父级块元素（排除body）
+    let parent = s.parentElement;
+    while (parent && parent !== doc.body) {
+      // 如果父级元素也在nodeList中，说明当前元素是嵌套的
+      if (nodeList.includes(parent)) {
+        return false;
+      }
+      parent = parent.parentElement;
+    }
+
+    return true;
+  });
   let audioText = audioNode
     .filter(
       (item) =>
@@ -615,6 +630,7 @@ export const getAudioText = (
     let firstVisibleText = visibleText[0];
     firstSliceIndex = audioText.indexOf(firstVisibleText);
   }
+  console.log(audioText, firstSliceIndex);
 
   return audioText.slice(firstSliceIndex);
 };

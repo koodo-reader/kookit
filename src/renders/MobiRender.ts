@@ -34,6 +34,7 @@ class MobiRender extends GeneralRender {
       let doc = this.getDocument();
       if (!doc) return "";
       let element = result.anchor(doc);
+      if (!element) return "";
       return element.getAttribute("id") || "";
     }
     return "";

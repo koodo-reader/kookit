@@ -152,6 +152,7 @@ export const addAndroidTouchEvent = (
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
+  let pageWidth = element.clientWidth + gap;
   let onTouchEnd = function (event) {
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
@@ -194,7 +195,7 @@ export const addAndroidTouchEvent = (
 
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
       let tempDoc = format === "PDF" ? outerDoc : doc;
-      let pageWidth = element.clientWidth + gap;
+
       // Clean up any existing animation
       if (window.scrollAnimationId) {
         cancelAnimationFrame(window.scrollAnimationId);
@@ -209,6 +210,7 @@ export const addAndroidTouchEvent = (
         if (selectionTimeout) {
           clearTimeout(selectionTimeout);
         }
+
         selectionTimeout = setTimeout(() => {
           render.next();
         }, 300); // Debounce selection events

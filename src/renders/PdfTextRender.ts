@@ -184,19 +184,23 @@ class PdfTextRender extends GeneralRender {
       const fontSizes = textContent.items
         .filter((item: any) => item.str && item.transform)
         .map((item: any) => item.transform[3]);
+      if (fontSizes.length > 0) {
+      }
+      let baseFontSize = 10;
+      if (fontSizes.length > 0) {
+        // 计算字体大小的众数（出现频率最高的值）
+        const fontSizeCount = fontSizes.reduce((acc, size) => {
+          acc[size] = (acc[size] || 0) + 1;
+          return acc;
+        }, {} as Record<number, number>);
 
-      // 计算字体大小的众数（出现频率最高的值）
-      const fontSizeCount = fontSizes.reduce((acc, size) => {
-        acc[size] = (acc[size] || 0) + 1;
-        return acc;
-      }, {} as Record<number, number>);
+        baseFontSize = Object.keys(fontSizeCount)
+          .map(Number)
+          .reduce((a, b) => (fontSizeCount[a] > fontSizeCount[b] ? a : b));
+      }
 
-      const baseFontSize = Object.keys(fontSizeCount).reduce((a, b) =>
-        fontSizeCount[Number(a)] > fontSizeCount[Number(b)] ? a : b
-      );
-
-      const maxFontSize = Math.max(...fontSizes);
-      const fontSizeRange = maxFontSize - Number(baseFontSize);
+      // const maxFontSize = Math.max(...fontSizes);
+      // const fontSizeRange = maxFontSize - Number(baseFontSize);
 
       let currentPara: any = {
         text: "",

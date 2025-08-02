@@ -454,6 +454,9 @@ class PdfRender extends GeneralRender {
       throw error;
     }
   }
+  highlightAudioNode(text: string, style: string) {
+    this.highlightNode(text, style);
+  }
   highlightNode(text: string, style: string) {
     let doc = this.getDocument();
     if (!doc) return;
