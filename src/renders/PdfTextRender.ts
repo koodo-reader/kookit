@@ -184,8 +184,6 @@ class PdfTextRender extends GeneralRender {
       const fontSizes = textContent.items
         .filter((item: any) => item.str && item.transform)
         .map((item: any) => item.transform[3]);
-      if (fontSizes.length > 0) {
-      }
       let baseFontSize = 10;
       if (fontSizes.length > 0) {
         // 计算字体大小的众数（出现频率最高的值）
@@ -260,11 +258,6 @@ class PdfTextRender extends GeneralRender {
       if (currentPara.text.trim()) {
         paraList.push(currentPara);
       }
-
-      // 添加最后一个段落
-      if (currentPara.text.trim()) {
-        paraList.push(currentPara);
-      }
     }
 
     const src = URL.createObjectURL(
@@ -291,14 +284,18 @@ class PdfTextRender extends GeneralRender {
             margin-bottom: 1em;
         }
         </style>
-        <div>${paraList
-          .map(
-            (para) =>
-              `<p class="paragraph${
-                para.isBold ? " bold" : ""
-              }">${para.text.trim()}</p>`
-          )
-          .join("")}</div>
+        <div>${
+          paraList.length > 0
+            ? paraList
+                .map(
+                  (para) =>
+                    `<p class="paragraph${
+                      para.isBold ? " bold" : ""
+                    }">${para.text.trim()}</p>`
+                )
+                .join("")
+            : "Empty"
+        }</div>
       `,
         ],
         { type: "text/html" }

@@ -175,23 +175,39 @@ export const handleHighlightPDFNode = (
   style: string,
   doc: Document
 ) => {
-  let chapterDocIndex = parseInt(text.split("#").reverse()[0]);
-  let str = text.split("#").slice(0, -1).join("#");
-  let subIframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
-  if (!subIframe) {
-    subIframe = createPDFIframe(chapterDocIndex, doc);
-  }
-  let subDoc = subIframe?.contentDocument;
-  if (!subDoc) return;
-  let nodeList = subDoc.querySelectorAll("p,span");
+  // First remove any existing highlights
+  const existingHighlights = doc.querySelectorAll(
+    `span[data-highlight="true"]`
+  );
+  existingHighlights.forEach((highlight) => {
+    // Remove only background style from the element
+    const style = highlight.getAttribute("style") || "";
+    // Remove background or background-color properties using regex
+    const newStyle = style
+      .replace(/background(?:-color)?\s*:[^;]+;?/gi, "")
+      .trim();
+    if (newStyle) {
+      highlight.setAttribute("style", newStyle);
+    } else {
+      highlight.removeAttribute("style");
+    }
+    highlight.removeAttribute("data-highlight");
+  });
+
+  if (!text.trim()) return;
+  let nodeList = doc.querySelectorAll("p,span");
   let nodes: any[] = Array.from(nodeList).filter((s: any, index: number) => {
     return (
       ((s as HTMLElement).textContent || "").trim() &&
-      (s as HTMLElement).textContent === str
+      (s as HTMLElement).textContent === text
     );
   });
   if (nodes.length > 0) {
-    nodes[0].setAttribute("style", nodes[0].getAttribute("style") + style);
+    nodes[0].setAttribute(
+      "style",
+      (nodes[0].getAttribute("style") || "") + style
+    );
+    nodes[0].setAttribute("data-highlight", "true");
   }
 };
 export const getPDFSearchResult = async (

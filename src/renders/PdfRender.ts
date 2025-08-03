@@ -14,7 +14,10 @@ import {
   handleScrollPDFPosition,
   isPDFScrolledIntoView,
 } from "../utils/pdfUtil.js";
-import { handleScrollPage } from "../utils/navigationUtil.js";
+import {
+  handleHighlightSearchNode,
+  handleScrollPage,
+} from "../utils/navigationUtil.js";
 declare var window: any;
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
@@ -191,7 +194,7 @@ class PdfRender extends GeneralRender {
       this.readerMode,
       doc
     );
-    await this.record();
+    await this.recordByChapter(chapterDocIndex);
   }
   getPositionByChapter(chapterDocIndex: number) {
     return {
@@ -254,8 +257,7 @@ class PdfRender extends GeneralRender {
       this.readerMode,
       doc
     );
-    await this.record();
-    this.trigger("page-changed");
+    await this.recordByChapter(parseInt(chapterDocIndex));
     // this.addPageAnimation();
   }
   async prev(platform?: string) {
@@ -372,7 +374,6 @@ class PdfRender extends GeneralRender {
       this.chapterDocList[chapterDocIndex].href,
       this.chapterDocList[chapterDocIndex].label
     );
-    await this.record();
   }
   async visibleText() {
     let doc = this.getDocument();
@@ -396,6 +397,21 @@ class PdfRender extends GeneralRender {
     let doc = this.getDocument();
     if (!doc) return;
     await this.handlePDFRecord(doc);
+  }
+  async recordByChapter(chapterDocIndex: number): Promise<void> {
+    if (this.animation !== "") {
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
+      return;
+    }
+    this.tempLocation.chapterDocIndex = chapterDocIndex + "";
+    this.tempLocation.percentage =
+      chapterDocIndex / (this.chapterDocList.length - 1) + "";
+    this.tempLocation.chapterHref = this.chapterDocList[chapterDocIndex].href;
+    this.tempLocation.chapterTitle = this.chapterDocList[chapterDocIndex].label;
+    this.tempLocation.text = "";
+    this.trigger("page-changed");
   }
   async handlePDFRecord(doc: Document) {
     let subContainers = doc.querySelectorAll(".pdf-container");
@@ -455,12 +471,21 @@ class PdfRender extends GeneralRender {
     }
   }
   highlightAudioNode(text: string, style: string) {
-    this.highlightNode(text, style);
-  }
-  highlightNode(text: string, style: string) {
-    let doc = this.getDocument();
+    let pageIndex = parseInt(this.tempLocation.chapterDocIndex);
+    let doc = this.getSubDocument(pageIndex);
     if (!doc) return;
     handleHighlightPDFNode(text, style, doc);
+    if (this.readerMode === "double") {
+      let doc = this.getSubDocument(pageIndex + 1);
+      if (!doc) return;
+      handleHighlightPDFNode(text, style, doc);
+    }
+  }
+  highlightSearchNode(text: string, style: string) {
+    let pageIndex = parseInt(this.tempLocation.chapterDocIndex);
+    let doc = this.getSubDocument(pageIndex);
+    if (!doc) return;
+    handleHighlightSearchNode(text, style, doc);
   }
   getProgress() {
     return {
