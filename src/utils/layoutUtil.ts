@@ -209,7 +209,10 @@ export const handleTextStyle = (doc: Document) => {
   ) as any;
   for (let index = 0; index < textNodes.length; index++) {
     const element = textNodes[index];
-    if (element.className.indexOf("kookit-text") === -1) {
+    if (
+      element.className.indexOf("kookit-text") === -1 &&
+      element.parentElement?.tagName !== "RT"
+    ) {
       element.className = element.className + " kookit-text";
     }
   }

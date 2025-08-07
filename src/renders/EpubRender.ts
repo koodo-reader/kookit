@@ -69,7 +69,10 @@ class EpubRender extends GeneralRender {
       return new Blob([new ArrayBuffer(0)]);
     };
     const getSize = (name) => {
-      return 0;
+      let entry: any = zip.file(name);
+      if (entry) {
+        return entry._data.uncompressedSize || 0;
+      }
     };
     return {
       entries: Object.values(entries).map((item) => {

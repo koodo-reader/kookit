@@ -36,6 +36,7 @@ export const makeHtmlBook = (
     id: item.index,
     load: () => load(item.index),
     unload: () => unload(item.index),
+    size: chapterList[item.index].text.length,
   }));
   book.toc = chapterList
     .map((item) => ({
