@@ -50,6 +50,15 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
     let href = linkElement.getAttribute("href");
     if (href && href.startsWith("kindle:")) {
       let result = await render.resolveHref(href);
+      if (!result) {
+        let chapterInfo = render.resolveChapter(href);
+        await render.goToChapter(
+          chapterInfo.index,
+          chapterInfo.href,
+          chapterInfo.label
+        );
+        return true;
+      }
       href = "#" + result;
     }
     let footnote = "";
@@ -57,7 +66,19 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
       let id = href.split("#").reverse()[0];
       let node = doc.body.querySelector("#" + id);
       if (!node) {
+        if (href.indexOf("filepos") > -1) {
+          let chapterInfo = render.resolveChapter(href);
+          await render.goToChapter(
+            chapterInfo.index,
+            chapterInfo.href,
+            chapterInfo.label
+          );
+          return true;
+        }
         if (href.indexOf("#") !== 0) {
+          while (href.startsWith(".")) {
+            href = href.substring(1);
+          }
           let chapterInfo = render.resolveChapter(href);
           if (chapterInfo) {
             await render.goToChapter(
@@ -66,15 +87,24 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
               chapterInfo.label
             );
           }
-          await render.goToNode(doc.body.querySelector("#" + id) || doc.body);
-          return true;
         }
+        node = doc.body.querySelector("#" + CSS.escape(id));
+        if (!node) {
+          return false;
+        }
+        await render.goToNode(doc.body.querySelector("#" + CSS.escape(id)));
       }
+
       if (
-        node.textContent.trim() === event.target.textContent.trim() ||
-        !node.textContent.trim()
+        (node.textContent.trim() === event.target.textContent.trim() ||
+          !node.textContent.trim()) &&
+        node.parentElement
       ) {
-        node = node.parentElement;
+        if (node.parentElement.tagName !== "BODY") {
+          node = node.parentElement;
+        } else {
+          return false;
+        }
       }
       //将html代码中的img标签由blob转换为base64
       footnote = node.textContent;
@@ -919,6 +949,10 @@ export const addAppleTouchEvent = (
 
   let onTouchMove = function (event) {
     const selectedText = iWin.getSelection().toString().trim();
+
+    // Prevent default to stop page bouncing and unwanted scrolling
+    event.preventDefault();
+
     // Skip handling if not dragging yet and still determining direction
     if (
       (!isDragging && Math.abs(event.touches[0].screenX - touchStartX) <= 10) ||
@@ -927,12 +961,8 @@ export const addAppleTouchEvent = (
       return;
     }
     if (window.visualViewport.scale > 1 && format === "PDF") {
-      event.preventDefault();
       return;
     }
-
-    // Prevent default to stop browser scroll behavior
-    event.preventDefault();
 
     const touch = event.touches[0];
     const touchCurrentX = touch.screenX;
@@ -950,8 +980,7 @@ export const addAppleTouchEvent = (
     ) {
       isDragging = true;
       lastTouchX = touchCurrentX;
-      // Apply hardware acceleration to the body
-      // doc.body.style.transform = "translateZ(0)";
+
       if (animation === "mimical" && readerMode !== "scroll") {
         window.ReactNativeWebView.postMessage(
           JSON.stringify({ event: "swipe-start" })
@@ -986,9 +1015,11 @@ export const addAppleTouchEvent = (
       });
     }
   };
-  doc.addEventListener("touchend", onTouchEnd, false);
-  doc.addEventListener("touchstart", onTouchStart, false);
-  doc.addEventListener("touchmove", onTouchMove, false);
+
+  // Add passive: false to ensure preventDefault works
+  doc.addEventListener("touchend", onTouchEnd, { passive: false });
+  doc.addEventListener("touchstart", onTouchStart, { passive: false });
+  doc.addEventListener("touchmove", onTouchMove, { passive: false });
   // Add this with the other event listeners
   doc.addEventListener(
     "click",
@@ -998,18 +1029,11 @@ export const addAppleTouchEvent = (
     true
   ); // Use capturing phase
 
-  // doc.body.ontouchend = onTouchEnd;
-  // doc.body.ontouchstart = onTouchStart;
-  // doc.body.ontouchmove = onTouchMove;
-  // iWin.ontouchend = onTouchEnd;
-  // iWin.ontouchstart = onTouchStart;
-  // iWin.ontouchmove = onTouchMove;
   let selectionTimeout: any = null;
-  doc.addEventListener("touchmove", (event) => {}, false);
+
   doc.body.oncontextmenu = function (event) {
     event.preventDefault();
     event.stopPropagation();
-
     return false;
   };
 };

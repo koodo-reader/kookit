@@ -18,12 +18,13 @@ class PdfTextRender extends GeneralRender {
   cache: any;
   processingPromises: Map<number, Promise<void>>; // 跟踪正在处理的章节
   ocrLang: string = "chi_sim"; // 默认OCR语言为简体中文
+  serverRegion: string;
   paraSpacingValue: number = 1.5; // 段落间距
   titleSizeValue: number = 1.2; // 标题大小倍数
   isFinishOCR: boolean = false;
   ocrEngine: string;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
-    super({ format: "PDFTEXT", ...config });
+    super({ ...config, format: "PDFTEXT" });
     this.pdfBuffer = pdfBuffer;
     this.password = config.password || "";
     this.isScannedPDF = config.isScannedPDF || "no";
@@ -31,6 +32,7 @@ class PdfTextRender extends GeneralRender {
     this.paraSpacingValue = parseFloat(config.paraSpacingValue) || 1.5; // 支持配置段落间距
     this.titleSizeValue = parseFloat(config.titleSizeValue) || 1.2; // 支持配置标题大小倍数
     this.cache = {};
+    this.serverRegion = config.serverRegion || "global";
     this.processingPromises = new Map();
     this.ocrEngine = config.ocrEngine || "tesseract"; // 支持配置OCR引擎
   }
@@ -322,8 +324,16 @@ class PdfTextRender extends GeneralRender {
         );
         const worker = await window.Tesseract.createWorker([this.ocrLang], 1, {
           workerPath: workerUrl,
-          corePath: `https://storage.koodoreader.com/tesseractjs/tesseract-core`,
-          langPath: `https://storage.koodoreader.com/tesseractjs/4.0.0-fast`,
+          corePath: `https://${
+            this.serverRegion === "global"
+              ? "storage.koodoreader.com"
+              : "storage.koodoreader.cn"
+          }/tesseractjs/tesseract-core`,
+          langPath: `https://${
+            this.serverRegion === "global"
+              ? "storage.koodoreader.com"
+              : "storage.koodoreader.cn"
+          }/tesseractjs/4.0.0-fast`,
           logger: (m) => {
             if (
               m.status === "recognizing text" &&

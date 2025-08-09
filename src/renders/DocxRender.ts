@@ -7,7 +7,7 @@ import { getCache } from "../libs/cache.js";
 class DocxRender extends GeneralRender {
   docxBuffer: ArrayBuffer;
   constructor(docxBuffer: ArrayBuffer, config: any) {
-    super({ format: "DOCX", ...config });
+    super({ ...config, format: "DOCX" });
     this.docxBuffer = docxBuffer;
   }
   renderTo(element: HTMLElement) {

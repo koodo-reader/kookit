@@ -320,6 +320,7 @@ class GeneralRender extends EventEmitter {
     };
     let { text, chapterTitle, chapterDocIndex, chapterHref, count, page, cfi } =
       bookLocation;
+    console.log(1);
     await handleRenderChapter(
       parseInt(chapterDocIndex),
       chapterTitle,
@@ -332,6 +333,7 @@ class GeneralRender extends EventEmitter {
       doc,
       iframe
     );
+    console.log(2);
     if (cfi) {
       const cfiInfo = new CFI(cfi, {});
       let doc = this.getDocument();
@@ -372,8 +374,10 @@ class GeneralRender extends EventEmitter {
       page,
       doc
     );
+    console.log(3);
     await this.record();
     this.trigger("rendered");
+    console.log(4);
     // this.addPageAnimation();
   }
   getDocument(): Document | null {
@@ -733,6 +737,7 @@ class GeneralRender extends EventEmitter {
     handleHighlightAudioNode(text, style, doc, this.element, this.readerMode);
   }
   async doSearch(keyword: string) {
+    console.log(this.format, "format");
     if (this.format === "PDF") {
       return await getPDFSearchResult(keyword, this.chapterDocList);
     } else {

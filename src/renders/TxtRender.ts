@@ -10,7 +10,7 @@ class TxtRender extends GeneralRender {
   charset: string;
   parserRegex: string;
   constructor(txtBuffer: ArrayBuffer, config: any) {
-    super({ format: "TXT", ...config });
+    super({ ...config, format: "TXT" });
     this.txtBuffer = txtBuffer;
     this.charset = config.charset;
     this.parserRegex = config.parserRegex;

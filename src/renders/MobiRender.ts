@@ -7,7 +7,7 @@ import { getCache } from "../libs/cache.js";
 class MobiRender extends GeneralRender {
   mobiBuffer: ArrayBuffer;
   constructor(mobiBuffer: ArrayBuffer, config: any) {
-    super({ format: "MOBI", ...config });
+    super({ ...config, format: "MOBI" });
     this.mobiBuffer = mobiBuffer;
   }
   renderTo(element: HTMLElement) {

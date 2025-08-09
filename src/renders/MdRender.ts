@@ -7,7 +7,7 @@ import { getCache } from "../libs/cache.js";
 class MdRender extends GeneralRender {
   mdBuffer: ArrayBuffer;
   constructor(mdBuffer: ArrayBuffer, config: any) {
-    super({ format: "MD", ...config });
+    super({ ...config, format: "MD" });
     this.mdBuffer = mdBuffer;
   }
   renderTo(element: HTMLElement) {

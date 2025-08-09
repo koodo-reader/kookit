@@ -203,11 +203,12 @@ export const handleRenderChapter = async (
   if (chapterDocIndex === -1 || chapterDocIndex > chapterDocList.length - 1) {
     chapterDocIndex = 0;
   }
+  console.log(1.1);
   let chapterText = await handleOneChapterDoc(
     chapterDocList[chapterDocIndex].text,
     false
   );
-
+  console.log(1.2);
   let bodyAttrs = getBodyAttributes(chapterText);
   //get viewport width from chapterText
 
@@ -224,8 +225,9 @@ export const handleRenderChapter = async (
   } else if (!bodyAttrs["id"]) {
     doc.body.removeAttribute("id");
   }
-
+  console.log(1.3);
   await handleCssLink(doc);
+  console.log(1.4);
   tempLocation.chapterTitle = chapterTitle;
   tempLocation.chapterHref = chapterHref;
   tempLocation.chapterDocIndex = chapterDocIndex + "";
@@ -237,7 +239,9 @@ export const handleRenderChapter = async (
       chapterDocList.map((item) => item.text.size).reduce((a, b) => a + b, 0) +
     "";
   tempLocation.text = "";
+  console.log(1.5);
   await handleIframeHeight(element, readerMode, format, iframe, doc);
+  console.log(1.6);
   await handleScrollPosition(element, readerMode, "", "", "", "", doc);
 };
 
@@ -272,6 +276,7 @@ export const handleCssLink = async (doc) => {
     if (!link.href.endsWith("null")) {
       styleSheetPromises.push(
         new Promise((resolve, reject) => {
+          console.log(link.href);
           link.addEventListener("load", resolve);
         })
       );
@@ -284,7 +289,7 @@ export const handleCssLink = async (doc) => {
         setTimeout(() => {
           // reject(new Error("Timeout"));
           resolve("css load timeout");
-        }, 1000);
+        }, 400);
       }),
     ]);
   } catch (err) {

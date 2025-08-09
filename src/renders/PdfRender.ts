@@ -28,7 +28,7 @@ class PdfRender extends GeneralRender {
   isScannedPDF: string;
   platform: string;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
-    super({ format: "PDF", ...config, convertChinese: "Default" });
+    super({ ...config, convertChinese: "Default", format: "PDF" });
     this.pdfBuffer = pdfBuffer;
     this.isStartFromEven = config.isStartFromEven || "no";
     this.password = config.password || "";
@@ -75,7 +75,9 @@ class PdfRender extends GeneralRender {
         createIframe(element);
       }
 
-      const viewport = await this.chapterDocList[0].text.getDimension();
+      const viewport = await this.chapterDocList[
+        Math.floor(this.chapterDocList.length / 2)
+      ].text.getDimension();
       let doc: any = this.getDocument();
       if (!doc) return;
       createPDFContainer(
@@ -485,6 +487,7 @@ class PdfRender extends GeneralRender {
     let pageIndex = parseInt(this.tempLocation.chapterDocIndex);
     let doc = this.getSubDocument(pageIndex);
     if (!doc) return;
+    console.log(text, style);
     handleHighlightSearchNode(text, style, doc);
   }
   getProgress() {

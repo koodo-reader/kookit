@@ -7,7 +7,7 @@ import JSZip from "jszip";
 class EpubRender extends GeneralRender {
   epubBuffer: ArrayBuffer;
   constructor(epubBuffer: ArrayBuffer, config: any) {
-    super({ format: "EPUB", ...config });
+    super({ ...config, format: "EPUB" });
     this.epubBuffer = epubBuffer;
   }
   renderTo(element: HTMLElement) {
