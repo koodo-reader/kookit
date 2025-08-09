@@ -231,9 +231,17 @@ export const handleRenderChapter = async (
   tempLocation.chapterTitle = chapterTitle;
   tempLocation.chapterHref = chapterHref;
   tempLocation.chapterDocIndex = chapterDocIndex + "";
+  console.log(
+    "chapterDocIndex",
+    chapterDocList
+      .slice(0, chapterDocIndex)
+      .map((item) => item.text.size)
+      .reduce((a, b) => a + b, 0),
+    chapterDocIndex
+  );
   tempLocation.percentage =
     chapterDocList
-      .slice(0, chapterDocIndex - 1)
+      .slice(0, chapterDocIndex)
       .map((item) => item.text.size)
       .reduce((a, b) => a + b, 0) /
       chapterDocList.map((item) => item.text.size).reduce((a, b) => a + b, 0) +
@@ -289,7 +297,7 @@ export const handleCssLink = async (doc) => {
         setTimeout(() => {
           // reject(new Error("Timeout"));
           resolve("css load timeout");
-        }, 400);
+        }, 10);
       }),
     ]);
   } catch (err) {
@@ -448,7 +456,7 @@ export const handleRecord = async (
       .reduce((a, b) => a + b, 0);
     tempLocation.percentage =
       chapterDocList
-        .slice(0, parseInt(tempLocation.chapterDocIndex) - 1)
+        .slice(0, parseInt(tempLocation.chapterDocIndex))
         .map((item) => item.text.size)
         .reduce((a, b) => a + b, 0) /
         totalSize +

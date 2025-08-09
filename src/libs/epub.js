@@ -594,12 +594,12 @@ class Loader {
 
     // parse and replace in HTML
     if ([MIME.XHTML, MIME.HTML, MIME.SVG].includes(mediaType)) {
-      let doc = new DOMParser().parseFromString(str, mediaType);
+      let doc = new DOMParser().parseFromString(str.trim(), mediaType);
       // change to HTML if it's not valid XHTML
       if (mediaType === MIME.XHTML && doc.querySelector("parsererror")) {
         console.warn(doc.querySelector("parsererror").innerText);
         item.mediaType = MIME.HTML;
-        doc = new DOMParser().parseFromString(str, item.mediaType);
+        doc = new DOMParser().parseFromString(str.trim(), item.mediaType);
       }
       // replace hrefs in XML processing instructions
       // this is mainly for SVGs that use xml-stylesheet
@@ -757,7 +757,7 @@ export class EPUB {
     if (str && str.includes("opf:scheme")) {
       str = str.replaceAll("opf:scheme", "scheme")
     }
-    return str ? this.parser.parseFromString(str, MIME.XML) : null;
+    return str ? this.parser.parseFromString(str.trim(), MIME.XML) : null;
   }
   async #loadXML(uri) {
     return this.#parseXML(await this.loadText(uri));
@@ -896,7 +896,7 @@ export class EPUB {
   }
   async loadDocument(item) {
     const str = await this.loadText(item.href);
-    return this.parser.parseFromString(str, item.mediaType);
+    return this.parser.parseFromString(str.trim(), item.mediaType);
   }
   async loadMediaOverlay(item) {
     const id = item.mediaOverlay;
