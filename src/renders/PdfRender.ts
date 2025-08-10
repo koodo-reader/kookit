@@ -487,7 +487,6 @@ class PdfRender extends GeneralRender {
     let pageIndex = parseInt(this.tempLocation.chapterDocIndex);
     let doc = this.getSubDocument(pageIndex);
     if (!doc) return;
-    console.log(text, style);
     handleHighlightSearchNode(text, style, doc);
   }
   getProgress() {

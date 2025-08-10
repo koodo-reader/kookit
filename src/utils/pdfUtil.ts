@@ -155,7 +155,6 @@ export const getPDFVisibleText = async (
   readerMode: string
 ) => {
   let textContent = await chapterDocList[chapterDocIndex].text.getTextContent();
-  console.log("textContent", textContent);
   let textList = textContent.items.map((item: any) => {
     return item.str;
   });
