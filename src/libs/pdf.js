@@ -273,7 +273,7 @@ export const makePDF = async (file, password) => {
         (sum, item) => sum + item.str.trim().length, 0
       );
       // 阈值策略：字符少于50或文本覆盖率过低
-      isScannedPdf = totalChars.length < 40;
+      isScannedPdf = totalChars < 40;
     }
     testedPage.cleanup()
   }

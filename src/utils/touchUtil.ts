@@ -951,7 +951,9 @@ export const addAppleTouchEvent = (
     const selectedText = iWin.getSelection().toString().trim();
 
     // Prevent default to stop page bouncing and unwanted scrolling
-    event.preventDefault();
+    if (readerMode !== "scroll") {
+      event.preventDefault();
+    }
 
     // Skip handling if not dragging yet and still determining direction
     if (
