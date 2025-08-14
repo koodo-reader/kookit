@@ -31,13 +31,15 @@ class MobiRender extends GeneralRender {
     let chapterDoc = this.chapterDocList[chapterDocIndex];
     if (chapterDoc) {
       let result = await chapterDoc.text.resolveHref(href);
+      if (!result) return {};
       let doc = this.getDocument();
       if (!doc) return "";
       let element = result.anchor(doc);
       if (!element) return "";
-      return element.getAttribute("id") || "";
+      let id = element.getAttribute("id") || "";
+      return { ...result, id };
     }
-    return "";
+    return {};
   }
   async parse() {
     try {

@@ -274,6 +274,15 @@ class GeneralRender extends EventEmitter {
       );
     }
   }
+  async goToChapterDocIndex(chapterDocIndex: number) {
+    if (this.chapterDocList.length > 0) {
+      await this.goToChapter(
+        chapterDocIndex,
+        this.chapterDocList[chapterDocIndex].href,
+        this.chapterDocList[chapterDocIndex].label
+      );
+    }
+  }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
     let doc = this.getDocument();
     let iframe = this.getIframe();

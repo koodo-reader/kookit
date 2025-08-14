@@ -49,9 +49,8 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
     // Get href from the link
     let href = linkElement.getAttribute("href");
     if (href && href.startsWith("kindle:")) {
-      let result = await render.resolveHref(href);
-      if (!result) {
-        let chapterInfo = render.resolveChapter(href);
+      let chapterInfo = render.resolveChapter(href);
+      if (chapterInfo) {
         await render.goToChapter(
           chapterInfo.index,
           chapterInfo.href,
@@ -59,7 +58,9 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
         );
         return true;
       }
-      href = "#" + result;
+
+      let result = await render.resolveHref(href);
+      href = "#" + result.id;
     }
     let footnote = "";
     if (href && href.indexOf("#") > -1) {
