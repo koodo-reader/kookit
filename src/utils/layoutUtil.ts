@@ -67,7 +67,7 @@ export const handleIframeHeight = async (
 
 export const handleOneChapterDoc = async (item, isSearch: boolean) => {
   let chapterText = "";
-  if (item.load) {
+  if (item && item.load) {
     let blob = await fetch(await item.load()).then((r) => r.blob());
     chapterText = await blob.text();
   }
@@ -75,7 +75,7 @@ export const handleOneChapterDoc = async (item, isSearch: boolean) => {
   if (isSearch) {
     return chapterText;
   }
-  if (item.loadAsset) {
+  if (item && item.loadAsset) {
     chapterText = await handlePrecacheAssets(chapterText, item.loadAsset);
   }
   chapterText = handleImageMarker(chapterText);

@@ -70,7 +70,7 @@ export const getCache = (book: any) => {
     let chapterTexts = await Promise.all(
       chapterDocList.map(async (item) => {
         let chapterText = "";
-        if (item.text.load) {
+        if (item.text && item.text.load) {
           let blob = await fetch(await item.text.load()).then((r) => r.blob());
           chapterText = await blob.text();
         }
