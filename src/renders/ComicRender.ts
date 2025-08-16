@@ -44,6 +44,8 @@ class ComicRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
+      console.log("ComicRender chapterList", this.chapterList);
+      console.log("ComicRender chapterDocList", this.chapterDocList);
       let doc = this.getDocument();
       if (!doc) return;
       handleLayout(element, this.readerMode, doc);
@@ -111,7 +113,7 @@ class ComicRender extends GeneralRender {
     const getSize = (name) => {
       let entry: any = zip.file(name);
       if (entry) {
-        return entry._data.uncompressedSize || 0;
+        return entry._data.uncompressedSize || 1;
       }
     };
     return {
@@ -125,6 +127,7 @@ class ComicRender extends GeneralRender {
   }
   async makeTarLoader() {
     const entries = await untar(this.comicBuffer);
+    console.log("TAR entries", entries);
     const map = new Map(entries.map((entry) => [entry.name, entry]));
     const load =
       (f) =>
@@ -132,7 +135,7 @@ class ComicRender extends GeneralRender {
         map.has(name) ? f(map.get(name), ...args) : null;
     const loadText = load((entry) => entry.readAsString());
     const loadBlob = load((entry, type) => entry.blob);
-    const getSize = (name) => (map.get(name) as any)?.size ?? 0;
+    const getSize = (name) => (map.get(name) as any)?.size ?? 1;
     return {
       entries: entries.map((item) => {
         return { filename: item.name };
@@ -153,6 +156,7 @@ class ComicRender extends GeneralRender {
         .unrar(dataToPass, password, 0)
         .then((ret) => {
           let entries = this.getRarEntries(ret.ls);
+          console.log("RAR entries", entries);
           const map = new Map(
             Object.values(entries).map((entry: any) => [
               entry.fullFileName,
@@ -165,7 +169,7 @@ class ComicRender extends GeneralRender {
               map.has(name) ? f(map.get(name), ...args) : null;
           const loadText = load((entry) => entry.fullFileName);
           const loadBlob = load((entry, type) => new Blob([entry.fileContent]));
-          const getSize = (name) => (map.get(name) as any)?.fileSize ?? 0;
+          const getSize = (name) => (map.get(name) as any)?.fileSize ?? 1;
           resolve({
             entries: Object.values(entries).map((item: any) => {
               return { filename: item.fullFileName };
@@ -205,6 +209,7 @@ class ComicRender extends GeneralRender {
     sevenZip.callMain(["x", archiveName]);
     const loader = sevenZip.FS;
     const entries = this.get7zEntries(loader.lookupPath("/").node);
+    console.log("7z entries", entries);
     const map = new Map(entries.map((entry) => [entry.name, entry]));
     const load =
       (f) =>
@@ -212,7 +217,7 @@ class ComicRender extends GeneralRender {
         map.has(name) ? f(map.get(name), ...args) : null;
     const loadText = load((entry) => entry.name);
     const loadBlob = load((entry, type) => new Blob([entry.buffer]));
-    const getSize = (name) => (map.get(name) as any)?.packSize ?? 0;
+    const getSize = (name) => (map.get(name) as any)?.size ?? 1;
     return {
       entries: entries.map((item) => {
         return { filename: item.name };

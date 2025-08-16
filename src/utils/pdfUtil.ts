@@ -217,23 +217,22 @@ export const getPDFSearchResult = async (
   for (let i = 0; i < chapterDocList.length; i++) {
     let textContent = await chapterDocList[i].text.getTextContent();
 
-    let keyWordIndex = textContent.items.findIndex((item: any) => {
-      return item.str.indexOf(keyword) > -1;
+    textContent.items.forEach((item: any, itemIndex: number) => {
+      if (item.str.indexOf(keyword) > -1) {
+        searchResult.push({
+          excerpt: item.str,
+          cfi: JSON.stringify({
+            text: item.str + "#" + i + "#" + itemIndex,
+            chapterTitle: chapterDocList[i].label,
+            chapterDocIndex: i,
+            chapterHref: chapterDocList[i].href,
+            count: "search",
+            percentage: i / chapterDocList.length,
+            keyword: keyword,
+          }),
+        });
+      }
     });
-    if (keyWordIndex > -1) {
-      searchResult.push({
-        excerpt: textContent.items[keyWordIndex].str,
-        cfi: JSON.stringify({
-          text: textContent.items[keyWordIndex].str + "#" + i,
-          chapterTitle: chapterDocList[i].label,
-          chapterDocIndex: i,
-          chapterHref: chapterDocList[i].href,
-          count: "search",
-          percentage: i / chapterDocList.length,
-          keyword: keyword,
-        }),
-      });
-    }
   }
   return _.uniq(searchResult, "excerpt");
 };

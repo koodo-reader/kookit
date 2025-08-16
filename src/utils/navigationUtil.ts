@@ -230,9 +230,11 @@ export const handleRenderChapter = async (
   tempLocation.percentage =
     chapterDocList
       .slice(0, chapterDocIndex)
-      .map((item) => item.text.size)
+      .map((item) => (item.text ? item.text.size || 1 : 1))
       .reduce((a, b) => a + b, 0) /
-      chapterDocList.map((item) => item.text.size).reduce((a, b) => a + b, 0) +
+      chapterDocList
+        .map((item) => (item.text ? item.text.size || 1 : 1))
+        .reduce((a, b) => a + b, 0) +
     "";
   tempLocation.text = "";
   await handleIframeHeight(element, readerMode, format, iframe, doc);
@@ -437,12 +439,12 @@ export const handleRecord = async (
     tempLocation.count = count + "";
     tempLocation.page = "";
     let totalSize = chapterDocList
-      .map((item) => item.text.size)
+      .map((item) => (item.text ? item.text.size || 1 : 1))
       .reduce((a, b) => a + b, 0);
     tempLocation.percentage =
       chapterDocList
         .slice(0, parseInt(tempLocation.chapterDocIndex))
-        .map((item) => item.text.size)
+        .map((item) => (item.text ? item.text.size || 1 : 1))
         .reduce((a, b) => a + b, 0) /
         totalSize +
       ((chapterDocList.find(
@@ -696,11 +698,15 @@ export const handleHighlightSearchNode = (
   if (!text.trim()) return;
 
   // Get block elements and find those containing the target text
-  let nodeList = getBlockElement(doc.body);
+  let nodeList = Array.from(
+    doc.body.querySelectorAll("span, p, div, h1, h2, h3, h4, h5, h6 ")
+  );
+  console.log("handleHighlightSearchNode nodeList", nodeList);
   let nodes = nodeList.filter((node) => {
     const content = (node as HTMLElement).textContent || "";
     return content.trim() && content.indexOf(text) > -1;
   });
+  console.log("handleHighlightSearchNode nodes", nodes);
 
   // For the first matching node, highlight the text
   if (nodes.length > 0) {

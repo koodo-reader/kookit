@@ -18,6 +18,8 @@ class Fb2Render extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
+      console.log("Fb2Render chapterList", this.chapterList);
+      console.log("Fb2Render chapterDocList", this.chapterDocList);
       createIframe(element);
 
       let doc = this.getDocument();

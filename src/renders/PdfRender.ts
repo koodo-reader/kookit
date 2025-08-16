@@ -783,7 +783,7 @@ class PdfRender extends GeneralRender {
   async renderPdfPage(chapterDocIndex: number, doc: Document) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
-    } else if (chapterDocIndex > 2 && this.platform !== "ios") {
+    } else if (chapterDocIndex > 2) {
       await this.handleUnloadPDFChapter(chapterDocIndex - 3, doc);
     }
     await this.handleRenderPDFChapter(chapterDocIndex, doc);

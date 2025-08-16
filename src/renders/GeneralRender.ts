@@ -275,6 +275,7 @@ class GeneralRender extends EventEmitter {
     }
   }
   async goToChapterDocIndex(chapterDocIndex: number) {
+    console.log("goToChapterDocIndex", chapterDocIndex, this.chapterDocList);
     if (this.chapterDocList.length > 0) {
       await this.goToChapter(
         chapterDocIndex,
