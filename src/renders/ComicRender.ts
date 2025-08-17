@@ -44,8 +44,6 @@ class ComicRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
-      console.log("ComicRender chapterList", this.chapterList);
-      console.log("ComicRender chapterDocList", this.chapterDocList);
       let doc = this.getDocument();
       if (!doc) return;
       handleLayout(element, this.readerMode, doc);
@@ -127,7 +125,6 @@ class ComicRender extends GeneralRender {
   }
   async makeTarLoader() {
     const entries = await untar(this.comicBuffer);
-    console.log("TAR entries", entries);
     const map = new Map(entries.map((entry) => [entry.name, entry]));
     const load =
       (f) =>
@@ -156,7 +153,6 @@ class ComicRender extends GeneralRender {
         .unrar(dataToPass, password, 0)
         .then((ret) => {
           let entries = this.getRarEntries(ret.ls);
-          console.log("RAR entries", entries);
           const map = new Map(
             Object.values(entries).map((entry: any) => [
               entry.fullFileName,
@@ -209,7 +205,6 @@ class ComicRender extends GeneralRender {
     sevenZip.callMain(["x", archiveName]);
     const loader = sevenZip.FS;
     const entries = this.get7zEntries(loader.lookupPath("/").node);
-    console.log("7z entries", entries);
     const map = new Map(entries.map((entry) => [entry.name, entry]));
     const load =
       (f) =>

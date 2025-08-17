@@ -29,10 +29,8 @@ class MobiRender extends GeneralRender {
   async resolveHref(href: string) {
     let chapterDocIndex = this.tempLocation.chapterDocIndex;
     let chapterDoc = this.chapterDocList[chapterDocIndex];
-    console.log(chapterDoc);
     if (chapterDoc) {
       let result = await chapterDoc.text.resolveHref(href);
-      console.log("resolveHref result", result, href);
       if (!result) return {};
       if (result.index === parseInt(chapterDocIndex)) {
         let doc = this.getDocument();

@@ -701,12 +701,10 @@ export const handleHighlightSearchNode = (
   let nodeList = Array.from(
     doc.body.querySelectorAll("span, p, div, h1, h2, h3, h4, h5, h6 ")
   );
-  console.log("handleHighlightSearchNode nodeList", nodeList);
   let nodes = nodeList.filter((node) => {
     const content = (node as HTMLElement).textContent || "";
     return content.trim() && content.indexOf(text) > -1;
   });
-  console.log("handleHighlightSearchNode nodes", nodes);
 
   // For the first matching node, highlight the text
   if (nodes.length > 0) {
