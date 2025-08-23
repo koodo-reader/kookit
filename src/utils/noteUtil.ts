@@ -1,5 +1,6 @@
 import rangy from "rangy/lib/rangy-core.js";
 import "rangy/lib/rangy-textrange";
+declare var window: any;
 export const classes = [
   "color-0",
   "color-1",
@@ -103,6 +104,10 @@ export const showPDFHighlight = (
       }
     });
     newNode.ontouchend = (event) => {
+      console.log("touchend", window.isSwiping);
+      if (window.isSwiping) {
+        return;
+      }
       if (event && event.target) {
         if (
           (event.target as any).dataset &&
@@ -192,6 +197,10 @@ export const highlightRange = (
       }
     });
     clickNode.ontouchend = (event) => {
+      console.log("touchend", window.isSwiping);
+      if (window.isSwiping) {
+        return;
+      }
       if (event && event.target) {
         if (
           (event.target as any).dataset &&

@@ -185,6 +185,11 @@ export const addAndroidTouchEvent = (
   let gap = section % 2 === 0 ? section : section - 1;
   let pageWidth = element.clientWidth + gap;
   let onTouchEnd = function (event) {
+    window.isSwiping = false;
+    window.isTouchNavigation = true;
+    setTimeout(() => {
+      window.isTouchNavigation = false;
+    }, 4000);
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
       event.preventDefault();
@@ -447,9 +452,7 @@ export const addAndroidTouchEvent = (
       // Apply hardware acceleration to the body
       doc.body.style.transform = "translateZ(0)";
       if (animation === "mimical" && readerMode !== "scroll") {
-        window.ReactNativeWebView.postMessage(
-          JSON.stringify({ event: "swipe-start" })
-        );
+        window.isSwiping = true;
         let bookDiv = document.getElementById("book");
         if (bookDiv) {
           bookDiv.style.display = "block";
@@ -463,6 +466,7 @@ export const addAndroidTouchEvent = (
     }
     // If we're in dragging mode, apply direct transform for better performance
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
+      window.isSwiping = true;
       let tempDoc = format === "PDF" ? outerDoc : doc;
       // Calculate the delta since last move event
       const deltaX = touchCurrentX - lastTouchX;
@@ -491,12 +495,6 @@ export const addAndroidTouchEvent = (
     true
   ); // Use capturing phase
 
-  // doc.body.ontouchend = onTouchEnd;
-  // doc.body.ontouchstart = onTouchStart;
-  // doc.body.ontouchmove = onTouchMove;
-  // iWin.ontouchend = onTouchEnd;
-  // iWin.ontouchstart = onTouchStart;
-  // iWin.ontouchmove = onTouchMove;
   let selectionTimeout: any = null;
   let startSelectionTime = 0;
   let selectionCount = 0;
@@ -670,6 +668,11 @@ export const addAppleTouchEvent = (
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   let onTouchEnd = async function (event) {
+    window.isSwiping = false;
+    window.isTouchNavigation = true;
+    setTimeout(() => {
+      window.isTouchNavigation = false;
+    }, 4000);
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
       event.preventDefault();
@@ -985,9 +988,7 @@ export const addAppleTouchEvent = (
       lastTouchX = touchCurrentX;
 
       if (animation === "mimical" && readerMode !== "scroll") {
-        window.ReactNativeWebView.postMessage(
-          JSON.stringify({ event: "swipe-start" })
-        );
+        window.isSwiping = true;
         let bookDiv = document.getElementById("book");
         if (bookDiv) {
           bookDiv.style.display = "block";
@@ -1001,6 +1002,7 @@ export const addAppleTouchEvent = (
     }
     // If we're in dragging mode, apply direct transform for better performance
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
+      window.isSwiping = true;
       let tempDoc = format === "PDF" ? outerDoc : doc;
       // Calculate the delta since last move event
       const deltaX = touchCurrentX - lastTouchX;
