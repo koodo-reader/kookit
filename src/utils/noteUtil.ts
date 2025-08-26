@@ -104,7 +104,6 @@ export const showPDFHighlight = (
       }
     });
     newNode.ontouchend = (event) => {
-      console.log("touchend", window.isSwiping);
       if (window.isSwiping) {
         return;
       }
@@ -197,7 +196,6 @@ export const highlightRange = (
       }
     });
     clickNode.ontouchend = (event) => {
-      console.log("touchend", window.isSwiping);
       if (window.isSwiping) {
         return;
       }

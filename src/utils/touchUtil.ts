@@ -1,6 +1,26 @@
 import rangy from "rangy/lib/rangy-core.js";
 
 declare var window: any;
+function throttle(fn: (...args: any[]) => void, wait: number) {
+  let lastTime = 0;
+  let timeout: any = null;
+  let lastArgs: any[] | null = null;
+
+  return function (this: any, ...args: any[]) {
+    const now = Date.now();
+    if (now - lastTime >= wait) {
+      lastTime = now;
+      fn.apply(this, args);
+    } else {
+      clearTimeout(timeout);
+      lastArgs = args;
+      timeout = setTimeout(() => {
+        lastTime = Date.now();
+        fn.apply(this, lastArgs ?? []);
+      }, wait - (now - lastTime));
+    }
+  };
+}
 async function blobUrlToBase64(blobUrl) {
   try {
     // 1. 获取Blob数据
@@ -184,12 +204,18 @@ export const addAndroidTouchEvent = (
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   let pageWidth = element.clientWidth + gap;
+  let pageChangeDebounceTimer: any = null;
   let onTouchEnd = function (event) {
     window.isSwiping = false;
     window.isTouchNavigation = true;
-    setTimeout(() => {
+    if (pageChangeDebounceTimer) {
+      clearTimeout(pageChangeDebounceTimer);
+    }
+    pageChangeDebounceTimer = setTimeout(() => {
       window.isTouchNavigation = false;
+      pageChangeDebounceTimer = null;
     }, 4000);
+
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
       event.preventDefault();
@@ -440,6 +466,9 @@ export const addAndroidTouchEvent = (
     // Calculate distance moved
     const distX = touchCurrentX - touchStartX;
     const distY = touchCurrentY - touchStartY;
+    if (Math.abs(distX) > 10 || Math.abs(distY) > 10) {
+      window.isSwiping = true;
+    }
 
     // Only start dragging if horizontal movement is greater than vertical
     if (
@@ -452,7 +481,6 @@ export const addAndroidTouchEvent = (
       // Apply hardware acceleration to the body
       doc.body.style.transform = "translateZ(0)";
       if (animation === "mimical" && readerMode !== "scroll") {
-        window.isSwiping = true;
         let bookDiv = document.getElementById("book");
         if (bookDiv) {
           bookDiv.style.display = "block";
@@ -466,7 +494,6 @@ export const addAndroidTouchEvent = (
     }
     // If we're in dragging mode, apply direct transform for better performance
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
-      window.isSwiping = true;
       let tempDoc = format === "PDF" ? outerDoc : doc;
       // Calculate the delta since last move event
       const deltaX = touchCurrentX - lastTouchX;
@@ -633,14 +660,33 @@ export const addAndroidTouchEvent = (
     },
     false
   );
-
+  let lastSelectionChangeTime = 0;
+  const SELECTION_THROTTLE_DELAY = 3000; // 3秒
   doc.addEventListener(
     "selectionchange",
     (event) => {
+      //检查选择文字是否为空
+      const selectedText = iWin.getSelection().toString().trim();
+      if (!selectedText) {
+        return;
+      }
       if (scrollLeft > 0) {
         doc.body.scrollLeft = scrollLeft;
       }
       selectionCount++;
+
+      const now = Date.now();
+
+      // 检查是否超过3秒间隔
+      if (now - lastSelectionChangeTime >= SELECTION_THROTTLE_DELAY) {
+        // 更新最后触发时间
+        lastSelectionChangeTime = now;
+
+        // 执行原有逻辑
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({ event: "selection-change" })
+        );
+      }
     },
     false
   );
@@ -667,11 +713,16 @@ export const addAppleTouchEvent = (
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
+  let pageChangeDebounceTimer: any = null;
   let onTouchEnd = async function (event) {
     window.isSwiping = false;
     window.isTouchNavigation = true;
-    setTimeout(() => {
+    if (pageChangeDebounceTimer) {
+      clearTimeout(pageChangeDebounceTimer);
+    }
+    pageChangeDebounceTimer = setTimeout(() => {
       window.isTouchNavigation = false;
+      pageChangeDebounceTimer = null;
     }, 4000);
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
@@ -940,9 +991,10 @@ export const addAppleTouchEvent = (
     if (linkElement) {
       return;
     }
-    if (event.touches.length > 1) {
-      event.preventDefault();
-    }
+    //// 注释掉解决无法双指缩放pdf的问题
+    // if (event.touches.length > 1) {
+    //   event.preventDefault();
+    // }
     const touch = event.touches[0];
     touchStartTime = Date.now();
     touchStartX = touch.screenX;
@@ -953,11 +1005,6 @@ export const addAppleTouchEvent = (
 
   let onTouchMove = function (event) {
     const selectedText = iWin.getSelection().toString().trim();
-
-    // Prevent default to stop page bouncing and unwanted scrolling
-    if (readerMode !== "scroll") {
-      event.preventDefault();
-    }
 
     // Skip handling if not dragging yet and still determining direction
     if (
@@ -1041,4 +1088,29 @@ export const addAppleTouchEvent = (
     event.stopPropagation();
     return false;
   };
+  let lastSelectionChangeTime = 0;
+  const SELECTION_THROTTLE_DELAY = 3000; // 3秒
+  doc.addEventListener(
+    "selectionchange",
+    (event) => {
+      //检查选择文字是否为空
+      const selectedText = iWin.getSelection().toString().trim();
+      if (!selectedText) {
+        return;
+      }
+      const now = Date.now();
+
+      // 检查是否超过3秒间隔
+      if (now - lastSelectionChangeTime >= SELECTION_THROTTLE_DELAY) {
+        // 更新最后触发时间
+        lastSelectionChangeTime = now;
+
+        // 执行原有逻辑
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({ event: "selection-change" })
+        );
+      }
+    },
+    { passive: false }
+  );
 };
