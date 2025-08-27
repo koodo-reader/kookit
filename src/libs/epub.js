@@ -63,8 +63,9 @@ const childGetter = (doc, ns) => {
 };
 
 const resolveURL = (url, relativeTo) => {
+  console.log(url, relativeTo);
   try {
-    if (relativeTo.includes(":")) return new URL(url, relativeTo);
+    // if (relativeTo.includes(":")) return new URL(url, relativeTo);
     // the base needs to be a valid URL, so set a base URL and then remove it
     const root = "whatever://whatever/";
     return decodeURI(new URL(url, root + relativeTo).href.replace(root, ""));

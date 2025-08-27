@@ -23,12 +23,7 @@ import {
 } from "../utils/navigationUtil";
 import EventEmitter from "../utils/EventEmitter";
 import { CFI } from "../libs/cfi";
-import {
-  clearHighlight,
-  filterRects,
-  getSafeRanges,
-  showNoteHighlight,
-} from "../utils/noteUtil";
+import { clearHighlight, showNoteHighlight } from "../utils/noteUtil";
 import { addPageAnimation } from "../utils/animationUtil";
 import rangy from "rangy/lib/rangy-core.js";
 import "rangy/lib/rangy-textrange";
@@ -811,17 +806,12 @@ class GeneralRender extends EventEmitter {
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
     clearHighlight(doc);
+    // if more than 20 notes, render one by one to avoid blocking the UI thread
     for (let index = 0; index < notes.length; index++) {
       const item = notes[index];
       try {
-        showNoteHighlight(
-          JSON.parse(item.range),
-          item.color,
-          item.key,
-          handleNoteClick,
-          doc,
-          iframe
-        );
+        await new Promise((r) => setTimeout(r, 5));
+        await this.createOneNote(item, handleNoteClick);
         // highlighter.highlightSelection(classes[item.color]);
       } catch (e) {
         console.error(
@@ -1038,45 +1028,6 @@ class GeneralRender extends EventEmitter {
       if (!iWin || !iWin.getSelection()) return;
       iWin.getSelection()?.empty();
     }
-  }
-  clearSelectionKeepHighlight() {
-    if (this.format === "PDF") {
-      return;
-    }
-    let doc = this.getDocument();
-    let iframe = this.getIframe();
-    if (!doc || !iframe) return;
-    let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
-    if (!iWin || !iWin.getSelection()) return;
-    let sel = doc!.getSelection();
-    if (!sel) return;
-    let newRange = sel.getRangeAt(0);
-    var safeRanges: Range[] = getSafeRanges(newRange);
-    for (var i = 0; i < safeRanges.length; i++) {
-      const rects = filterRects(safeRanges[i].getClientRects());
-      for (let index = 0; index < rects.length; index++) {
-        const rect = rects[index];
-        let newNode = document.createElement("span");
-        newNode?.setAttribute(
-          "style",
-          "position: absolute; background-color: #f3a6a68c;left:" +
-            (Math.min(rect.left, rect.x) + doc.body.scrollLeft) +
-            "px; top:" +
-            (Math.min(rect.top, rect.y) + doc.body.scrollTop) +
-            "px;" +
-            "width:" +
-            rect.width +
-            "px; height:" +
-            rect.height +
-            "px; z-index:-1;"
-        );
-        newNode.setAttribute("id", "temp-highlight");
-        doc.body.appendChild(newNode);
-      }
-    }
-    let charRange = rangy.getSelection(iframe).saveCharacterRanges(doc.body)[0];
-    window.charRange = charRange;
-    iWin.getSelection()?.removeAllRanges();
   }
   restoreSelectionClearHighlight() {
     if (this.format === "PDF") {
