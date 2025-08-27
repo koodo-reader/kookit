@@ -381,6 +381,7 @@ class GeneralRender extends EventEmitter {
       page,
       doc
     );
+    rangy.init();
     await this.record();
     this.trigger("rendered");
     // this.addPageAnimation();
@@ -798,7 +799,6 @@ class GeneralRender extends EventEmitter {
     doc.head.appendChild(defaultStyle);
   }
   async getHightlightCoords() {
-    rangy.init();
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -806,6 +806,7 @@ class GeneralRender extends EventEmitter {
     return charRange;
   }
   async renderHighlighters(notes: any[], handleNoteClick: any) {
+    console.log("renderHighlighters", notes);
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -1089,7 +1090,6 @@ class GeneralRender extends EventEmitter {
     });
     let iframe = this.getIframe();
     if (!iframe) return;
-    rangy.init();
     let charRange = window.charRange;
     if (!charRange) return;
     rangy.getSelection(iframe).restoreCharacterRanges(doc, [charRange]);

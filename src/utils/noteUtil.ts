@@ -23,7 +23,6 @@ export const showNoteHighlight = (
   doc: Document,
   iframe: any
 ) => {
-  rangy.init();
   let colorCode = classes[colorIndex];
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
   let temp = range;
@@ -35,6 +34,7 @@ export const showNoteHighlight = (
   if (!sel) return;
   let newRange = sel.getRangeAt(0);
   var safeRanges: Range[] = getSafeRanges(newRange);
+  console.log(temp, newRange, safeRanges, "safeRanges");
   for (var i = 0; i < safeRanges.length; i++) {
     highlightRange(safeRanges[i], colorCode, noteKey, handleNoteClick, doc);
   }

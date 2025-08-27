@@ -18,6 +18,8 @@ import {
   handleHighlightSearchNode,
   handleScrollPage,
 } from "../utils/navigationUtil.js";
+import rangy from "rangy/lib/rangy-core.js";
+import "rangy/lib/rangy-textrange";
 declare var window: any;
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
@@ -259,6 +261,7 @@ class PdfRender extends GeneralRender {
       this.readerMode,
       doc
     );
+    rangy.init();
     await this.recordByChapter(parseInt(chapterDocIndex));
     // this.addPageAnimation();
   }
