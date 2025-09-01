@@ -132,9 +132,38 @@ export const highlightRange = (
   handleNoteClick: any,
   doc: any
 ) => {
-  const rects = range.nativeRange.getClientRects();
-  for (let index = 0; index < rects.length; index++) {
-    const rect = rects[index];
+  const rects: any[] = range.nativeRange.getClientRects();
+  const validRects: DOMRect[] = [];
+
+  // 将rects转换为数组并按宽度从小到大排序
+  const sortedRects = Array.from(rects).sort((a, b) => a.width - b.width);
+  // 获取所有rects中的最大宽度
+  const maxWidth = sortedRects.length
+    ? Math.max(...Array.from(rects).map((rect) => rect.width))
+    : 0;
+
+  // 过滤重复和无效的矩形
+  for (let index = 0; index < sortedRects.length; index++) {
+    const rect = sortedRects[index];
+
+    // 过滤掉宽度或高度为0的矩形
+    if (rect.width <= 0 || rect.height <= 0) {
+      continue;
+    }
+
+    // 检查是否与已有矩形重叠
+    const isOverlapping = validRects.some((validRect) => {
+      return (
+        Math.abs(rect.bottom - validRect.bottom) < 5 && rect.width === maxWidth
+      );
+    });
+
+    if (!isOverlapping) {
+      validRects.push(rect);
+    }
+  }
+  for (let index = 0; index < validRects.length; index++) {
+    const rect = validRects[index];
     var newNode = document.createElement("span");
     newNode?.setAttribute(
       "style",

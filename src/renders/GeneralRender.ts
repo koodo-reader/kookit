@@ -36,6 +36,7 @@ class GeneralRender extends EventEmitter {
   format: string;
   animation: string;
   convertChinese: string | undefined;
+  isIndent: string | undefined;
   isDarkMode: string | undefined;
   book: any;
   tempLocation: any;
@@ -57,6 +58,7 @@ class GeneralRender extends EventEmitter {
     format: string;
     animation: string;
     convertChinese?: string;
+    isIndent?: string;
     isDarkMode?: string;
     isMobile?: string;
   }) {
@@ -65,6 +67,7 @@ class GeneralRender extends EventEmitter {
     this.animation = config.animation;
     this.format = config.format;
     this.convertChinese = config.convertChinese;
+    this.isIndent = config.isIndent;
     this.isDarkMode = config.isDarkMode;
     this.isMobile = config.isMobile;
     this.chapterList = [];
@@ -801,17 +804,48 @@ class GeneralRender extends EventEmitter {
     return charRange;
   }
   async renderHighlighters(notes: any[], handleNoteClick: any) {
-    console.log("renderHighlighters", notes);
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
     clearHighlight(doc);
+    if (this.isIndent === "yes") {
+      doc
+        .querySelectorAll(
+          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,li,dt,dd,blockquote,address"
+        )
+        .forEach((item) => {
+          for (let node of item.childNodes) {
+            if (node.nodeType === Node.TEXT_NODE) {
+              // 将前导空格替换为零宽度字符，保留原始内容但不显示
+              const text = node.nodeValue || "";
+              const leadingSpaces = text.match(/^(\s+)/);
+              if (leadingSpaces) {
+                //覆盖父元素的text-indent css
+                (item as HTMLElement).setAttribute(
+                  "style",
+                  ((item as HTMLElement).getAttribute("style") || "") +
+                    "text-indent: 0em !important;"
+                );
+              }
+              // 只处理第一个，退出循环
+              break;
+            }
+          }
+        });
+    }
     // if more than 20 notes, render one by one to avoid blocking the UI thread
     for (let index = 0; index < notes.length; index++) {
       const item = notes[index];
       try {
         await new Promise((r) => setTimeout(r, 5));
-        await this.createOneNote(item, handleNoteClick);
+        showNoteHighlight(
+          JSON.parse(item.range),
+          item.color,
+          item.key,
+          handleNoteClick,
+          doc,
+          iframe
+        );
         // highlighter.highlightSelection(classes[item.color]);
       } catch (e) {
         console.error(
