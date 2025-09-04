@@ -160,6 +160,7 @@ const METADATA = [
 // no support for `opf:` attributes of 2.0 and 3.1
 const getMetadata = (opf) => {
   const { $, $$ } = childGetter(opf, NS.OPF);
+
   const $metadata = $(opf.documentElement, "metadata");
   const els = Array.from($metadata.children);
   const getValue = (obj, el) => {
@@ -417,7 +418,6 @@ class Resources {
   constructor({ opf, resolveHref }) {
     this.opf = opf;
     const { $, $$, $$$ } = childGetter(opf, NS.OPF);
-
     const $manifest = $(opf.documentElement, "manifest");
     const $spine = $(opf.documentElement, "spine");
     const $$itemref = $$($spine, "itemref");
@@ -757,6 +757,24 @@ export class EPUB {
     if (str && str.includes("opf:scheme")) {
       str = str.replaceAll("opf:scheme", "scheme")
     }
+    //error on line 41 at column 46: Comment must not contain '--' (double-hyphen)
+    if (str) {
+      // 修复常见的 XML 问题
+      str = str
+        // 移除 BOM
+        .replace(/^\uFEFF/, '')
+        // 修复注释中的双连字符
+        .replace(/<!--([\s\S]*?)-->/g, (match, content) => {
+          const fixedContent = content.replace(/--/g, '- -');
+          return `<!--${fixedContent}-->`;
+        })
+        // 修复未正确转义的 & 符号（除了实体引用）
+        .replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, '&amp;')
+        // 移除控制字符（保留换行符、回车符、制表符）
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+    }
+
+
     return str ? this.parser.parseFromString(str.trim(), MIME.XML) : null;
   }
   async #loadXML(uri) {
@@ -776,6 +794,10 @@ export class EPUB {
     const opfPath = opfs[0].fullPath;
     const opf = await this.#loadXML(opfPath);
     if (!opf) throw new Error("Failed to load package document");
+    //当opf中包含parsererror时，说明不是标准的xml格式
+    if (opf.querySelector("parsererror")) {
+      throw new Error("Package document is not a valid XML");
+    }
 
     const $encryption = await this.#loadXML("META-INF/encryption.xml");
     await this.#encryption.init($encryption, opf);
