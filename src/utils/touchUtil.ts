@@ -238,11 +238,13 @@ export const addAndroidTouchEvent = (
         touchEndX - touchStartX < 0
       ) {
         render.next();
+        isDragging = false;
       } else if (
         touch.screenX > (window.screen.width / 4) * 1 &&
         touchEndX - touchStartX > 0
       ) {
         render.prev();
+        isDragging = false;
       }
       setTimeout(() => {
         let bookDiv = document.getElementById("book");
@@ -275,6 +277,7 @@ export const addAndroidTouchEvent = (
 
         selectionTimeout = setTimeout(() => {
           render.next();
+          isDragging = false;
         }, 300); // Debounce selection events
         return;
       }
@@ -284,6 +287,7 @@ export const addAndroidTouchEvent = (
         }
         selectionTimeout = setTimeout(() => {
           render.prev();
+          isDragging = false;
         }, 300); // Debounce selection events
         return;
       }
@@ -745,11 +749,13 @@ export const addAppleTouchEvent = (
         touchEndX - touchStartX < 0
       ) {
         render.next();
+        isDragging = false;
       } else if (
         touchEndX > (window.screen.width / 4) * 1 &&
         touchEndX - touchStartX > 0
       ) {
         render.prev();
+        isDragging = false;
       }
       setTimeout(() => {
         let bookDiv = document.getElementById("book");
@@ -779,6 +785,7 @@ export const addAppleTouchEvent = (
         }
         selectionTimeout = setTimeout(() => {
           render.next();
+          isDragging = false;
         }, 300); // Debounce selection events
         return;
       }
@@ -788,6 +795,7 @@ export const addAppleTouchEvent = (
         }
         selectionTimeout = setTimeout(() => {
           render.prev();
+          isDragging = false;
         }, 300); // Debounce selection events
         return;
       }

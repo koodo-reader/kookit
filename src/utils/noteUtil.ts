@@ -49,16 +49,70 @@ export const showPDFHighlight = (
   let pageElement: any = doc.querySelector(".noteLayer");
   let docLayer = doc.querySelector("#koodoPDFLayer");
   var viewport = page.getViewport({ scale: scale });
+  let rects: any[] = [];
+  //convertToViewportRectangle
   for (let i = 0; i < selected.coords.length; i++) {
     const rect = selected.coords[i];
     var bounds = viewport.convertToViewportRectangle(rect);
-    //过滤出把整页都给高亮的rect，剔除掉
+    let width = Math.abs(bounds[0] - bounds[2]);
+    let height = Math.abs(bounds[1] - bounds[3]);
+    let top = Math.min(bounds[1], bounds[3]);
+    let left = Math.min(bounds[0], bounds[2]);
+    let bottom = top + height;
+    let right = left + width;
     if (
-      Math.abs(Math.abs(bounds[1] - bounds[3]) - viewport.height) < 10 ||
-      Math.abs(Math.abs(bounds[0] - bounds[2]) - viewport.width) < 10
+      Math.abs(height - viewport.height) < 10 ||
+      Math.abs(width - viewport.width) < 10 ||
+      width === 0 ||
+      height === 0
     ) {
       continue;
     }
+    rects.push({ width, height, top, left, bottom, right });
+  }
+  console.log("rects", rects);
+  //获取最小的高度
+  let minHeight = 10000;
+  rects.forEach((rect) => {
+    if (rect.height < minHeight) {
+      minHeight = rect.height;
+    }
+  });
+  console.log("minHeight", minHeight);
+  // 按宽度从小到大排序
+  const sortedRects = rects.sort((a, b) => a.width - b.width);
+  // 去除bottom相差小于5且宽度更小的rect，保留宽度最大的rect
+  // 去除bottom相差小于5且宽度更小的rect，保留宽度最大的rect
+  const filteredRects: any[] = [];
+
+  for (let i = 0; i < sortedRects.length; i++) {
+    const currentRect = sortedRects[i];
+    const currentBottom = currentRect.bottom;
+
+    // 检查是否有bottom相差小于5且宽度更大的rect
+    const hasSimilarBottomWithLargerWidth = sortedRects.some(
+      (otherRect, otherIndex) => {
+        if (otherIndex === i) return false;
+        const otherBottom = otherRect.bottom;
+        return (
+          Math.abs(currentBottom - otherBottom) < minHeight &&
+          ((otherRect.left <= currentRect.left &&
+            otherRect.right >= currentRect.right) ||
+            (otherRect.left <= currentRect.left &&
+              Math.abs(otherRect.right - currentRect.right) < 5) ||
+            (Math.abs(otherRect.left - currentRect.left) < 5 &&
+              otherRect.right >= currentRect.right))
+        );
+      }
+    );
+
+    // 如果没有找到bottom相差小于5且宽度更大的rect，则保留当前rect
+    if (!hasSimilarBottomWithLargerWidth) {
+      filteredRects.push(currentRect);
+    }
+  }
+  for (let i = 0; i < filteredRects.length; i++) {
+    const rect = filteredRects[i];
     var newNode = document.createElement("div");
     if (!docLayer) {
       continue;
@@ -73,15 +127,14 @@ export const showPDFHighlight = (
           ? pdfColors[colorCode.split("-")[1]]
           : `2px solid ${lines[colorCode.split("-")[1]]}`) +
         "; left:" +
-        (Math.min(bounds[0], bounds[2]) +
-          parseFloat(getComputedStyle(docLayer).marginLeft)) +
+        (rect.left + parseFloat(getComputedStyle(docLayer).marginLeft)) +
         "px; top:" +
-        Math.min(bounds[1], bounds[3]) +
+        rect.top +
         "px;" +
         "width:" +
-        Math.abs(bounds[0] - bounds[2]) +
+        rect.width +
         "px; height:" +
-        Math.abs(bounds[1] - bounds[3]) +
+        rect.height +
         "px; z-index: 1; cursor: pointer; opacity: " +
         (colorCode.indexOf("color") > -1 ? 0.3 : 1) +
         ";"

@@ -142,6 +142,7 @@ export const handlePrevChapter = async (
 
   tempLocation.text = "prevChapter";
   tempLocation.page = "";
+  console.log("prevChapter", prevChapter);
   await handleRenderChapter(
     prevChapter.index,
     prevChapter.label,
@@ -154,6 +155,7 @@ export const handlePrevChapter = async (
     doc,
     iframe
   );
+  console.log("after prevChapter");
 };
 
 export const handleRenderChapter = async (
@@ -203,10 +205,12 @@ export const handleRenderChapter = async (
   if (chapterDocIndex === -1 || chapterDocIndex > chapterDocList.length - 1) {
     chapterDocIndex = 0;
   }
+  console.log(1);
   let chapterText = await handleOneChapterDoc(
     chapterDocList[chapterDocIndex].text,
     false
   );
+  console.log(2);
   let bodyAttrs = getBodyAttributes(chapterText);
   //get viewport width from chapterText
 
@@ -224,6 +228,7 @@ export const handleRenderChapter = async (
     doc.body.removeAttribute("id");
   }
   await handleCssLink(doc);
+  console.log(3);
   tempLocation.chapterTitle = chapterTitle;
   tempLocation.chapterHref = chapterHref;
   tempLocation.chapterDocIndex = chapterDocIndex + "";
@@ -237,8 +242,11 @@ export const handleRenderChapter = async (
         .reduce((a, b) => a + b, 0) +
     "";
   tempLocation.text = "";
+  console.log(4);
   await handleIframeHeight(element, readerMode, format, iframe, doc);
+  console.log(5);
   await handleScrollPosition(element, readerMode, "", "", "", "", doc);
+  console.log(6);
 };
 
 export function getBodyAttributes(htmlStr: string) {

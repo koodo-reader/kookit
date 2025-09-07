@@ -467,10 +467,12 @@ class GeneralRender extends EventEmitter {
         iframe
       );
       let chapterDocIndex = parseInt(this.tempLocation.chapterDocIndex || "-1");
+      console.log("chapterDocIndex", chapterDocIndex);
       if (chapterDocIndex > -1) {
         if (this.readerMode === "scroll") {
           this.element.scrollTo(0, doc.body.scrollHeight);
         } else {
+          console.log("scrollWidth", doc.body.scrollWidth);
           doc.body.scrollTo(doc.body.scrollWidth, 0);
         }
       }
@@ -537,11 +539,32 @@ class GeneralRender extends EventEmitter {
       this.trigger("rendered");
     } else if (this.readerMode === "scroll") {
       // scroll readerMode under normal condition
-      this.element.scrollBy({
-        left: 0,
-        top: this.element.clientHeight - 50,
-        behavior: "smooth",
-      });
+      if (
+        Math.abs(
+          this.element.scrollHeight -
+            convertStyleNum(this.element.scrollTop) -
+            this.element.clientHeight
+        ) -
+          (this.element.clientHeight - 50) <
+          20 &&
+        Math.abs(
+          this.element.scrollHeight -
+            convertStyleNum(this.element.scrollTop) -
+            this.element.clientHeight
+        ) > 20
+      ) {
+        this.element.scrollTo({
+          left: 0,
+          top: this.element.scrollHeight - 20,
+          behavior: "smooth",
+        });
+      } else {
+        this.element.scrollBy({
+          left: 0,
+          top: this.element.clientHeight - 50,
+          behavior: "smooth",
+        });
+      }
     } else {
       // single and double readerMode under normal condition
       await handleScrollPage(

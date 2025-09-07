@@ -30,7 +30,7 @@ export const handleIframeHeight = async (
       setTimeout(() => {
         // reject(new Error("Timeout"));
         resolve("image load timeout");
-      }, 3000);
+      }, 10);
     }),
   ]);
   await handleImageSize(element, readerMode, format, doc);
