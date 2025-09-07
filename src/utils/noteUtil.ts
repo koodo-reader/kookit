@@ -70,7 +70,6 @@ export const showPDFHighlight = (
     }
     rects.push({ width, height, top, left, bottom, right });
   }
-  console.log("rects", rects);
   //获取最小的高度
   let minHeight = 10000;
   rects.forEach((rect) => {
@@ -78,10 +77,8 @@ export const showPDFHighlight = (
       minHeight = rect.height;
     }
   });
-  console.log("minHeight", minHeight);
   // 按宽度从小到大排序
   const sortedRects = rects.sort((a, b) => a.width - b.width);
-  // 去除bottom相差小于5且宽度更小的rect，保留宽度最大的rect
   // 去除bottom相差小于5且宽度更小的rect，保留宽度最大的rect
   const filteredRects: any[] = [];
 

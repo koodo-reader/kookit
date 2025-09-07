@@ -467,12 +467,10 @@ class GeneralRender extends EventEmitter {
         iframe
       );
       let chapterDocIndex = parseInt(this.tempLocation.chapterDocIndex || "-1");
-      console.log("chapterDocIndex", chapterDocIndex);
       if (chapterDocIndex > -1) {
         if (this.readerMode === "scroll") {
           this.element.scrollTo(0, doc.body.scrollHeight);
         } else {
-          console.log("scrollWidth", doc.body.scrollWidth);
           doc.body.scrollTo(doc.body.scrollWidth, 0);
         }
       }
