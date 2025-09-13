@@ -36,7 +36,7 @@ const textLayerBuilderCSS = async () => await fetchText(pdfjsPath('text_layer_bu
 // https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/annotation_layer_builder.css
 const annotationLayerBuilderCSS = async () => await fetchText(pdfjsPath('annotation_layer_builder.css'))
 
-const render = async (page, doc, zoom, isMobile) => {
+const render = async (page, pdf, doc, zoom, isMobile, viewer) => {
   let devicePixelRatio = window.devicePixelRatio * (isMobile === "yes" ? (1 / zoom) * 1.5 : 1)
   const scale = zoom * devicePixelRatio
   let docLayer = doc.querySelector('#koodoPDFLayer')
@@ -151,14 +151,38 @@ const render = async (page, doc, zoom, isMobile) => {
 
 
   const div = doc.querySelector('#annotationLayer')
-  await new pdfjsLib.AnnotationLayer({ page, viewport, div }).render({
-    annotations: await page.getAnnotations(),
-    linkService: {
-      goToDestination: () => { },
-      getDestinationHash: dest => JSON.stringify(dest),
-      addLinkAttributes: (link, url) => link.href = url,
-    },
-  })
+  try {
+    await new pdfjsLib.AnnotationLayer({ page, viewport, div }).render({
+      annotations: await page.getAnnotations(),
+      linkService: {
+        goToDestination: async (dest) => {
+          try {
+            // 解析目标位置
+            const parsed = typeof dest === 'string'
+              ? await pdf.getDestination(dest)
+              : dest;
+
+            if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
+              console.warn('Invalid destination:', dest);
+              return;
+            }
+
+            // 获取目标页面索引
+            const pageIndex = await pdf.getPageIndex(parsed[0]);
+            viewer.goToChapterDocIndex(pageIndex);
+
+          } catch (error) {
+            console.error('Error navigating to destination:', error);
+          }
+        },
+        getDestinationHash: dest => JSON.stringify(dest),
+        addLinkAttributes: (link, url) => link.href = url,
+      },
+    })
+  } catch (error) {
+    console.error(error);
+  }
+
 
 
 
@@ -315,8 +339,8 @@ export const makePDF = async (file, password) => {
       let page = await pdf.getPage(i + 1)
       page.cleanup()
     },
-    render: async (doc, scale, isMobile, isDarkMode) => {
-      await render(await pdf.getPage(i + 1), doc, scale, isMobile, isDarkMode);
+    render: async (doc, scale, isMobile, viewer) => {
+      await render(await pdf.getPage(i + 1), pdf, doc, scale, isMobile, viewer);
     },
     getTextContent: async () => {
       const page = await pdf.getPage(i + 1)

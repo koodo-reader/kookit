@@ -829,31 +829,7 @@ class GeneralRender extends EventEmitter {
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
     clearHighlight(doc);
-    if (this.isIndent === "yes") {
-      doc
-        .querySelectorAll(
-          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,li,dt,dd,blockquote,address"
-        )
-        .forEach((item) => {
-          for (let node of item.childNodes) {
-            if (node.nodeType === Node.TEXT_NODE) {
-              // 将前导空格替换为零宽度字符，保留原始内容但不显示
-              const text = node.nodeValue || "";
-              const leadingSpaces = text.match(/^(\s+)/);
-              if (leadingSpaces) {
-                //覆盖父元素的text-indent css
-                (item as HTMLElement).setAttribute(
-                  "style",
-                  ((item as HTMLElement).getAttribute("style") || "") +
-                    "text-indent: 0em !important;"
-                );
-              }
-              // 只处理第一个，退出循环
-              break;
-            }
-          }
-        });
-    }
+
     // if more than 20 notes, render one by one to avoid blocking the UI thread
     for (let index = 0; index < notes.length; index++) {
       const item = notes[index];
@@ -926,6 +902,44 @@ class GeneralRender extends EventEmitter {
             .split("")
             .map((item) => Chinese.t2s(item))
             .join("");
+        });
+    }
+    //确保页面完全加载完毕之后，在修改缩进
+    if (this.isIndent === "yes") {
+      doc
+        .querySelectorAll(
+          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,li,dt,dd,blockquote,address"
+        )
+        .forEach((item) => {
+          for (let node of item.childNodes) {
+            if (node.nodeType === Node.TEXT_NODE) {
+              // 将前导空格替换为零宽度字符，保留原始内容但不显示
+              const text = node.nodeValue || "";
+              const leadingSpaces = text.match(/^(\s+)/);
+              if (leadingSpaces) {
+                //覆盖父元素的text-indent css
+                (item as HTMLElement).setAttribute(
+                  "style",
+                  ((item as HTMLElement).getAttribute("style") || "") +
+                    "text-indent: 0em !important;"
+                );
+              }
+              // 只处理第一个，退出循环
+              break;
+            }
+            //如果子元素为img则也缩进设为0
+            if (
+              node.nodeType === Node.ELEMENT_NODE &&
+              (node as HTMLElement).tagName.toLowerCase() === "img"
+            ) {
+              (item as HTMLElement).setAttribute(
+                "style",
+                ((item as HTMLElement).getAttribute("style") || "") +
+                  "text-indent: 0em !important;"
+              );
+              break;
+            }
+          }
         });
     }
   };

@@ -334,6 +334,7 @@ class PdfTextRender extends GeneralRender {
               ? "storage.koodoreader.com"
               : "storage.koodoreader.cn"
           }/tesseractjs/4.0.0-fast`,
+          // langPath: "https://tessdata.projectnaptha.com/4.0.0_best",
           logger: (m) => {
             if (
               m.status === "recognizing text" &&

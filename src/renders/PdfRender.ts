@@ -48,6 +48,7 @@ class PdfRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
+      console.log(this.chapterDocList, this.chapterList);
       if (this.isStartFromEven === "yes") {
         this.chapterDocList = [
           {
@@ -727,7 +728,8 @@ class PdfRender extends GeneralRender {
     await this.chapterDocList[chapterDocIndex].text.render(
       subDoc,
       scale,
-      this.isMobile
+      this.isMobile,
+      this
     );
     let docLayer: any = subDoc.querySelector("#koodoPDFLayer");
     if (!docLayer) {

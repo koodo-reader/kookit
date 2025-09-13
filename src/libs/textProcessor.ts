@@ -166,8 +166,7 @@ export const isTitle = (line: any, parserRegex: string = "") => {
       (line.startsWith("卷") && startWithJUAN(line)) ||
       (line.indexOf("第") > -1 &&
         line.lastIndexOf("第") < 7 &&
-        startWithDI(line.substr(line.indexOf("第")))) ||
-      isStartWithNumAndChars(line))
+        startWithDI(line.substr(line.indexOf("第")))))
   );
 };
 
@@ -177,6 +176,7 @@ const isContain = (line: string) => {
 const isStartWithChars = (line: string) => {
   return startWithChars.filter((item) => line.startsWith(item)).length > 0;
 };
+//过于敏感已弃用
 const isStartWithNumAndChars = (line: string) => {
   return (
     startWithNumAndChars.filter(

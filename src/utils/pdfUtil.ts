@@ -292,7 +292,7 @@ export const handleIOSScrollPage = async (
   }
 };
 export const convertPageToImage = async (page) => {
-  const desiredWidth = 800;
+  const desiredWidth = 1600;
   const viewport = page.getViewport({ scale: 1 });
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
@@ -303,7 +303,7 @@ export const convertPageToImage = async (page) => {
     viewport: page.getViewport({ scale: desiredWidth / viewport.width }),
   };
   await page.render(renderContext).promise;
-  const imageURL = canvas.toDataURL("image/jpeg", 0.8);
+  const imageURL = canvas.toDataURL("image/jpeg", 1);
   const size = calculateSize(imageURL);
   return { imageURL, size };
 };

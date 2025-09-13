@@ -431,6 +431,15 @@ class Resources {
         item.properties = item.properties?.split(/\s/);
         return item;
       });
+    //适配部分不标准的epub
+    if (this.manifest.length === 0) {
+      this.manifest = Array.from($manifest.children).map(item => {
+        const attrs = getAttributes("href", "id", "media-type", "properties", "media-overlay")(item)
+        attrs.href = resolveHref(attrs.href);
+        attrs.properties = attrs.properties?.split(/\s/);
+        return attrs;
+      })
+    }
     this.spine = $$itemref
       .map(getAttributes("idref", "id", "linear", "properties"))
       .map((item) => ((item.properties = item.properties?.split(/\s/)), item));
