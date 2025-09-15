@@ -48,7 +48,6 @@ class PdfRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
-      console.log(this.chapterDocList, this.chapterList);
       if (this.isStartFromEven === "yes") {
         this.chapterDocList = [
           {
@@ -77,10 +76,25 @@ class PdfRender extends GeneralRender {
       } else {
         createIframe(element);
       }
+      const viewportFirst = await this.chapterDocList[0].text.getDimension();
+      const viewportLast = await this.chapterDocList[
+        this.chapterDocList.length - 1
+      ].text.getDimension();
 
-      const viewport = await this.chapterDocList[
+      const viewportMid = await this.chapterDocList[
         Math.floor(this.chapterDocList.length / 2)
       ].text.getDimension();
+      //使用长宽比最大的作为viewport，避免横屏时页面过宽
+      let viewport =
+        viewportFirst.height / viewportFirst.width >
+        viewportLast.height / viewportLast.width
+          ? viewportFirst
+          : viewportLast;
+      viewport =
+        viewport.height / viewport.width >
+        viewportMid.height / viewportMid.width
+          ? viewport
+          : viewportMid;
       let doc: any = this.getDocument();
       if (!doc) return;
       createPDFContainer(
