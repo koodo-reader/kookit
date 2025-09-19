@@ -247,6 +247,7 @@ export const handleImageSize = async (
   let imgs = doc.querySelectorAll("img, image") as any;
   for (let item of imgs) {
     let parentItem = item.parentElement;
+    let grandItem = parentItem?.parentElement;
     let maxHeight = 0;
     let maxWidth = 0;
     let width = item.naturalWidth;
@@ -292,6 +293,15 @@ export const handleImageSize = async (
       maxWidth = parentItem.clientWidth;
       maxHeight = parentItem.clientHeight;
       parentItem.style.textIndent = "0px";
+    } else if (
+      grandItem &&
+      grandItem.tagName !== "BODY" &&
+      grandItem.clientWidth &&
+      grandItem.clientWidth > 0
+    ) {
+      maxWidth = grandItem.clientWidth;
+      maxHeight = grandItem.clientHeight;
+      grandItem.style.textIndent = "0px";
     } else {
       maxWidth = element.clientWidth;
       maxHeight = element.clientHeight;

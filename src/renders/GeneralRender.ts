@@ -916,6 +916,7 @@ class GeneralRender extends EventEmitter {
               // 将前导空格替换为零宽度字符，保留原始内容但不显示
               const text = node.nodeValue || "";
               const leadingSpaces = text.match(/^(\s+)/);
+              console.log(leadingSpaces, "----", text);
               if (leadingSpaces) {
                 //覆盖父元素的text-indent css
                 (item as HTMLElement).setAttribute(
