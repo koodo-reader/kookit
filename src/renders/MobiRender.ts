@@ -53,6 +53,8 @@ class MobiRender extends GeneralRender {
       });
       if (await isMOBI(file)) {
         this.book = await new MOBI({ unzlib: unzlibSync }).open(file);
+      } else {
+        throw new Error("Not a valid MOBI file");
       }
     } catch (error) {
       console.error(error);

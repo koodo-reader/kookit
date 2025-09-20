@@ -216,7 +216,6 @@ export const getPDFSearchResult = async (
   let searchResult: { cfi: string; excerpt: string }[] = [];
   for (let i = 0; i < chapterDocList.length; i++) {
     let textContent = await chapterDocList[i].text.getTextContent();
-
     textContent.items.forEach((item: any, itemIndex: number) => {
       if (item.str.indexOf(keyword) > -1) {
         searchResult.push({
@@ -234,7 +233,7 @@ export const getPDFSearchResult = async (
       }
     });
   }
-  return _.uniq(searchResult, "excerpt");
+  return searchResult;
 };
 export const handleIOSScrollPage = async (
   element: HTMLElement,

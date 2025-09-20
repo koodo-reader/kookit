@@ -189,6 +189,10 @@ class GeneralRender extends EventEmitter {
   resolveChapter(href: string) {
     let path = href;
     let chapterIndex = -1;
+    if (this.flattenChapters.length === 0) {
+      this.flatChapter(this.chapterList);
+    }
+    console.log(JSON.stringify(this.flattenChapters), "flattenChapters");
     for (let index = 0; index < this.flattenChapters.length; index++) {
       if (this.flattenChapters[index].href.includes(path)) {
         chapterIndex = index;
@@ -251,6 +255,9 @@ class GeneralRender extends EventEmitter {
     return this.chapterDocList;
   }
   async goToPercentage(percentage: number) {
+    if (this.flattenChapters.length === 0) {
+      this.flatChapter(this.chapterList);
+    }
     if (this.flattenChapters.length > 0) {
       let chapterIndex =
         percentage === 1
@@ -264,6 +271,9 @@ class GeneralRender extends EventEmitter {
     }
   }
   async goToChapterIndex(targetChapterIndex: number) {
+    if (this.flattenChapters.length === 0) {
+      this.flatChapter(this.chapterList);
+    }
     if (this.flattenChapters.length > 0) {
       await this.goToChapter(
         this.flattenChapters[targetChapterIndex].index,

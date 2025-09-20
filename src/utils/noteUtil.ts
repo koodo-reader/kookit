@@ -92,7 +92,7 @@ export const showPDFHighlight = (
         if (otherIndex === i) return false;
         const otherBottom = otherRect.bottom;
         return (
-          Math.abs(currentBottom - otherBottom) < minHeight &&
+          Math.abs(currentBottom - otherBottom) < minHeight / 2 &&
           ((otherRect.left <= currentRect.left &&
             otherRect.right >= currentRect.right) ||
             (otherRect.left <= currentRect.left &&
@@ -191,7 +191,7 @@ export const highlightRange = (
   const maxWidth = sortedRects.length
     ? Math.max(...Array.from(rects).map((rect) => rect.width))
     : 0;
-
+  console.log(maxWidth, "maxWidth");
   // 过滤重复和无效的矩形
   for (let index = 0; index < sortedRects.length; index++) {
     const rect = sortedRects[index];
@@ -204,7 +204,10 @@ export const highlightRange = (
     // 检查是否与已有矩形重叠
     const isOverlapping = validRects.some((validRect) => {
       return (
-        Math.abs(rect.bottom - validRect.bottom) < 5 && rect.width === maxWidth
+        Math.abs(rect.bottom - validRect.bottom) < 5 &&
+        rect.width === maxWidth &&
+        Math.abs(rect.left - validRect.left) < maxWidth &&
+        Math.abs(rect.right - validRect.right) < maxWidth
       );
     });
 

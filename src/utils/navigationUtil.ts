@@ -873,7 +873,7 @@ export const getSearchResult = async (
       }
     }
   }
-  return _.uniq(searchResult, "excerpt");
+  return searchResult;
 };
 
 export const isParentBlock = (myDiv: Element) => {

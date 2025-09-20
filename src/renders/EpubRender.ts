@@ -48,6 +48,7 @@ class EpubRender extends GeneralRender {
         console.error(error);
         try {
           const loader: any = await this.makeZipLoaderV2(file);
+          console.log(loader, "fflate loader v2");
           this.book = await new EPUB(loader).init();
         } catch (error) {
           console.error(error);

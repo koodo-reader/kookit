@@ -56,15 +56,24 @@ const render = async (page, pdf, doc, zoom, isMobile, viewer) => {
     canvas.height = viewport.height
     canvas.width = viewport.width
     const canvasContext = canvas.getContext('2d')
-    await page.render({ canvasContext, viewport, background: 'rgba(0,0,0,0)', }).promise
+    try {
+      await page.render({ canvasContext, viewport, background: 'rgba(0,0,0,0)', }).promise
+    } catch (error) {
+      console.error(error);
+    }
     doc.querySelector('#canvas').replaceChildren(doc.adoptNode(canvas))
     docLayer.style.overflow = 'hidden'
     const container = doc.querySelector('#textLayer')
-    const textLayer = new pdfjsLib.TextLayer({
-      textContentSource: await page.streamTextContent(),
-      container, viewport,
-    })
-    await textLayer.render()
+    try {
+      const textLayer = new pdfjsLib.TextLayer({
+        textContentSource: await page.streamTextContent(),
+        container, viewport,
+      })
+      await textLayer.render()
+    } catch (error) {
+      console.error(error);
+    }
+
 
     // hide "offscreen" canvases appended to docuemnt when rendering text layer
     // https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/pdf_viewer.css#L51-L58

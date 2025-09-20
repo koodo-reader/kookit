@@ -131,12 +131,21 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
       footnote = node.textContent;
     } else if (href) {
       let chapterInfo = render.resolveChapter(href);
+      console.log(chapterInfo, "chapterInfo");
       if (chapterInfo) {
         await render.goToChapter(
           chapterInfo.index,
           chapterInfo.href,
           chapterInfo.label
         );
+      } else {
+        if (href.indexOf("num") > -1 && render.format === "PDF") {
+          render.book.resolveHref(href).then(async (result) => {
+            if (result && result.index !== undefined) {
+              await render.goToChapterIndex(result.index);
+            }
+          });
+        }
       }
     }
 

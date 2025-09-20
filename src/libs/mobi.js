@@ -667,6 +667,7 @@ export class MOBI extends PDB {
         }
     }
     await this.#setup();
+    console.log(isKF8 ? "Opened KF8" : "Opened MOBI");
     return isKF8 ? new KF8(this).init() : new MOBI6(this).init();
   }
   #getHeaders(buf) {
@@ -795,7 +796,14 @@ const getIndent = (el) => {
   }
   return x;
 };
-
+function rawBytesToString(uint8Array) {
+  const chunkSize = 0x8000
+  let result = ''
+  for (let i = 0; i < uint8Array.length; i += chunkSize) {
+    result += String.fromCharCode.apply(null, uint8Array.subarray(i, i + chunkSize))
+  }
+  return result
+}
 class MOBI6 {
   parser = new DOMParser();
   serializer = new XMLSerializer();
@@ -809,104 +817,102 @@ class MOBI6 {
     this.mobi = mobi;
   }
   async init() {
+    const recordBuffers = []
+    for (let i = 0; i < this.mobi.headers.palmdoc.numTextRecords; i++) {
+      const buf = await this.mobi.loadText(i)
+      recordBuffers.push(buf)
+    }
+    const totalLength = recordBuffers.reduce((sum, buf) => sum + buf.byteLength, 0)
     // load all text records in an array
-    let array = new Uint8Array();
-    for (let i = 0; i < this.mobi.headers.palmdoc.numTextRecords; i++)
-      array = concatTypedArray(array, await this.mobi.loadText(i));
-
+    const array = new Uint8Array(totalLength)
+    recordBuffers.reduce((offset, buf) => {
+      array.set(new Uint8Array(buf), offset)
+      return offset + buf.byteLength
+    }, 0)
     // convert to string so we can use regex
     // note that `filepos` are byte offsets
     // so it needs to preserve each byte as a separate character
     // (see https://stackoverflow.com/q/50198017)
-    const str = Array.from(new Uint8Array(array), (c) =>
-      String.fromCharCode(c)
-    ).join("");
+    const str = rawBytesToString(array)
 
     // split content into sections at each `<mbp:pagebreak>`
     this.#sections = [0]
-      .concat(Array.from(str.matchAll(mbpPagebreakRegex), (m) => m.index))
-      .map((x, i, a) => str.slice(x, a[i + 1]))
-      // recover the original raw bytes
-      .map((str) => Uint8Array.from(str, (x) => x.charCodeAt(0)))
-      .map((raw) => ({ book: this, raw }))
+      .concat(Array.from(str.matchAll(mbpPagebreakRegex), m => m.index))
+      .map((start, i, a) => {
+        const end = a[i + 1] ?? array.length
+        return { book: this, raw: array.subarray(start, end) }
+      })
       // get start and end filepos for each section
-      .reduce((arr, x) => {
-        const last = arr[arr.length - 1];
-        x.start = last?.end ?? 0;
-        x.end = x.start + x.raw.byteLength;
-        return arr.concat(x);
-      }, []);
+      .map((section, i, arr) => {
+        section.start = arr[i - 1]?.end ?? 0
+        section.end = section.start + section.raw.byteLength
+        return section
+      })
 
     this.sections = this.#sections.map((section, index) => ({
       id: index,
       load: () => this.loadSection(section),
       createDocument: () => this.createDocument(section),
-      resolveHref: (href) => this.resolveHref(href),
       size: section.end - section.start,
-    }));
+    }))
 
     try {
-      this.landmarks = await this.getGuide();
-      const tocHref = this.landmarks.find(({ type }) =>
-        type?.includes("toc")
-      )?.href;
+      this.landmarks = await this.getGuide()
+      const tocHref = this.landmarks
+        .find(({ type }) => type?.includes('toc'))?.href
       if (tocHref) {
-        const { index } = this.resolveHref(tocHref);
-        const doc = await this.sections[index].createDocument();
-        let lastItem;
-        let lastLevel = 0;
-        let lastIndent = 0;
-        const lastLevelOfIndent = new Map();
-        const lastParentOfLevel = new Map();
-        this.toc = Array.from(doc.querySelectorAll("a[filepos]")).reduce(
-          (arr, a) => {
-            const indent = getIndent(a);
+        const { index } = this.resolveHref(tocHref)
+        const doc = await this.sections[index].createDocument()
+        let lastItem
+        let lastLevel = 0
+        let lastIndent = 0
+        const lastLevelOfIndent = new Map()
+        const lastParentOfLevel = new Map()
+        this.toc = Array.from(doc.querySelectorAll('a[filepos]'))
+          .reduce((arr, a) => {
+            const indent = getIndent(a)
             const item = {
-              label: a.innerText?.trim(),
-              href: `#filepos${a.getAttribute("filepos")}`,
-            };
-            const level =
-              indent > lastIndent
-                ? lastLevel + 1
-                : indent === lastIndent
-                  ? lastLevel
-                  : lastLevelOfIndent.get(indent) ?? Math.max(0, lastLevel - 1);
+              label: a.innerText?.trim() ?? '',
+              href: `filepos:${a.getAttribute('filepos')}`,
+            }
+            const level = indent > lastIndent ? lastLevel + 1
+              : indent === lastIndent ? lastLevel
+                : lastLevelOfIndent.get(indent) ?? Math.max(0, lastLevel - 1)
             if (level > lastLevel) {
               if (lastItem) {
-                lastItem.subitems ??= [];
-                lastItem.subitems.push(item);
-                lastParentOfLevel.set(level, lastItem);
-              } else arr.push(item);
-            } else {
-              const parent = lastParentOfLevel.get(level);
-              if (parent) parent.subitems.push(item);
-              else arr.push(item);
+                lastItem.subitems ??= []
+                lastItem.subitems.push(item)
+                lastParentOfLevel.set(level, lastItem)
+              }
+              else arr.push(item)
             }
-            lastItem = item;
-            lastLevel = level;
-            lastIndent = indent;
-            lastLevelOfIndent.set(indent, level);
-            return arr;
-          },
-          []
-        );
+            else {
+              const parent = lastParentOfLevel.get(level)
+              if (parent) parent.subitems.push(item)
+              else arr.push(item)
+            }
+            lastItem = item
+            lastLevel = level
+            lastIndent = indent
+            lastLevelOfIndent.set(indent, level)
+            return arr
+          }, [])
       }
     } catch (e) {
-      console.warn(e);
+      console.warn(e)
     }
 
     // get list of all `filepos` references in the book,
     // which will be used to insert anchor elements
     // because only then can they be referenced in the DOM
-    this.#fileposList = [
-      ...new Set(Array.from(str.matchAll(fileposRegex), (m) => m[1])),
-    ]
-      .map((filepos) => ({ filepos, number: Number(filepos) }))
-      .sort((a, b) => a.number - b.number);
+    this.#fileposList = [...new Set(
+      Array.from(str.matchAll(fileposRegex), m => m[1]))]
+      .map(filepos => ({ filepos, number: Number(filepos) }))
+      .sort((a, b) => a.number - b.number)
 
-    this.metadata = this.mobi.getMetadata();
-    this.getCover = this.mobi.getCover.bind(this.mobi);
-    return this;
+    this.metadata = this.mobi.getMetadata()
+    this.getCover = this.mobi.getCover.bind(this.mobi)
+    return this
   }
   async getGuide() {
     const doc = await this.createDocument(this.#sections[0]);
