@@ -121,7 +121,6 @@ export const handleScrollPDFPosition = async (
   } else {
     targetNode.scrollIntoView();
   }
-  targetNode.scrollIntoView();
 };
 
 export const isPDFScrolledIntoView = (

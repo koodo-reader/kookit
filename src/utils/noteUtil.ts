@@ -191,7 +191,6 @@ export const highlightRange = (
   const maxWidth = sortedRects.length
     ? Math.max(...Array.from(rects).map((rect) => rect.width))
     : 0;
-  console.log(maxWidth, "maxWidth");
   // 过滤重复和无效的矩形
   for (let index = 0; index < sortedRects.length; index++) {
     const rect = sortedRects[index];

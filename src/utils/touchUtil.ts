@@ -131,7 +131,6 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
       footnote = node.textContent;
     } else if (href) {
       let chapterInfo = render.resolveChapter(href);
-      console.log(chapterInfo, "chapterInfo");
       if (chapterInfo) {
         await render.goToChapter(
           chapterInfo.index,
@@ -140,11 +139,10 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
         );
       } else {
         if (href.indexOf("num") > -1 && render.format === "PDF") {
-          render.book.resolveHref(href).then(async (result) => {
-            if (result && result.index !== undefined) {
-              await render.goToChapterIndex(result.index);
-            }
-          });
+          let result = await render.book.resolveHref(href);
+          if (result && result.index !== undefined) {
+            await render.goToChapterIndex(result.index);
+          }
         }
       }
     }

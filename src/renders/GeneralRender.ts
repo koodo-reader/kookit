@@ -192,7 +192,6 @@ class GeneralRender extends EventEmitter {
     if (this.flattenChapters.length === 0) {
       this.flatChapter(this.chapterList);
     }
-    console.log(JSON.stringify(this.flattenChapters), "flattenChapters");
     for (let index = 0; index < this.flattenChapters.length; index++) {
       if (this.flattenChapters[index].href.includes(path)) {
         chapterIndex = index;
@@ -926,7 +925,6 @@ class GeneralRender extends EventEmitter {
               // 将前导空格替换为零宽度字符，保留原始内容但不显示
               const text = node.nodeValue || "";
               const leadingSpaces = text.match(/^(\s+)/);
-              console.log(leadingSpaces, "----", text);
               if (leadingSpaces) {
                 //覆盖父元素的text-indent css
                 (item as HTMLElement).setAttribute(

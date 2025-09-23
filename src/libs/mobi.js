@@ -667,7 +667,6 @@ export class MOBI extends PDB {
         }
     }
     await this.#setup();
-    console.log(isKF8 ? "Opened KF8" : "Opened MOBI");
     return isKF8 ? new KF8(this).init() : new MOBI6(this).init();
   }
   #getHeaders(buf) {
@@ -853,6 +852,7 @@ class MOBI6 {
       id: index,
       load: () => this.loadSection(section),
       createDocument: () => this.createDocument(section),
+      resolveHref: (href) => this.resolveHref(href),
       size: section.end - section.start,
     }))
 

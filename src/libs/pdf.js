@@ -213,25 +213,71 @@ const renderPage = async (page, getImageBlob) => {
       return new Promise(resolve => canvas.toBlob(resolve))
     }
     const src = URL.createObjectURL(new Blob([`
-        <!DOCTYPE html>
-        <html lang="en">
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=${viewport.width}, height=${viewport.height}">
-        <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-        }
-        ${await textLayerBuilderCSS()}
-        ${await annotationLayerBuilderCSS()}
-        </style>
-        <div class="noteLayer"></div>
-        <div class="koodoPDFLayer" id="koodoPDFLayer">
-            <div class="textLayer" id="textLayer"></div>
-            <div class="annotationLayer" id="annotationLayer"></div>
-            <div id="canvas"></div>
-        </div>
-    `], { type: 'text/html' }))
+    <!DOCTYPE html>
+    <html lang="en">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=${viewport.width}, height=${viewport.height}">
+    <style>
+    html, body {
+        margin: 0;
+        padding: 0;
+    }
+    ${await textLayerBuilderCSS()}
+    ${await annotationLayerBuilderCSS()}
+    .koodoPDFLayer {
+        position: relative;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+        will-change: transform;
+    }
+
+    .textLayer {
+        position: absolute;
+        z-index: 1;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+        contain: layout style paint;
+        pointer-events: auto;
+    }
+
+    .annotationLayer {
+        position: absolute;
+        z-index: 2;
+        transform: translateZ(1px);
+        -webkit-transform: translateZ(1px);
+        will-change: transform;
+        contain: layout style paint;
+        pointer-events: none;
+    }
+
+    #canvas {
+        position: relative;
+        z-index: 0;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+    }
+
+    /* 只有注释元素本身可点击 */
+    .annotationLayer > * {
+        pointer-events: auto !important;
+    }
+
+    /* 链接和按钮等交互元素 */
+    .annotationLayer a,
+    .annotationLayer button,
+    .annotationLayer input,
+    .annotationLayer [data-annotation-id] {
+        pointer-events: auto !important;
+        z-index: inherit;
+    }
+    </style>
+    <div class="noteLayer"></div>
+    <div class="koodoPDFLayer" id="koodoPDFLayer">
+        <div id="canvas"></div>
+        <div class="textLayer" id="textLayer"></div>
+        <div class="annotationLayer" id="annotationLayer"></div>
+    </div>
+`], { type: 'text/html' }))
     return src
   } catch (error) {
     console.error(error);

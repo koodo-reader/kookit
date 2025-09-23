@@ -36,9 +36,7 @@ class EpubRender extends GeneralRender {
     });
     try {
       const loader: any = await this.makeZipLoader(file);
-      console.log(loader, "fflate loader");
       this.book = await new EPUB(loader).init();
-      console.log(this.book, "book");
     } catch (error) {
       console.error(error);
       try {
@@ -48,7 +46,6 @@ class EpubRender extends GeneralRender {
         console.error(error);
         try {
           const loader: any = await this.makeZipLoaderV2(file);
-          console.log(loader, "fflate loader v2");
           this.book = await new EPUB(loader).init();
         } catch (error) {
           console.error(error);
@@ -109,10 +106,8 @@ class EpubRender extends GeneralRender {
         if (file.name.endsWith("/") || file.originalSize === 0) {
           return; // 跳过目录或空文件
         }
-        console.log(file.name, "file name");
         const chunks: any = [];
         file.ondata = (err, data, final) => {
-          console.log(file.name, err, data, final, "ondata");
           if (err) {
             console.warn(`Error in file "${file.name}": ${err.message}`); // 捕获错误，继续其他文件
             return;
@@ -158,9 +153,7 @@ class EpubRender extends GeneralRender {
     //   filter: (file) => true,
     // });
     let zip = partialUnzipWithFflate(await file.arrayBuffer());
-    console.log(zip, "fflate unzip");
     const entries = Object.keys(zip);
-    console.log(entries, "entries");
     const loadText = async (name) => {
       let entry = zip[name];
       if (entry) {
