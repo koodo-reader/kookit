@@ -188,10 +188,21 @@ class GeneralRender extends EventEmitter {
   }
   resolveChapter(href: string) {
     let path = href;
+    //移除path前# . /
+    path = path.replace(/^#/, "").replace(/^\.\//, "").replace(/^\//, "");
+
+    // 处理相对路径 ../
+    if (path.startsWith("../")) {
+      // 移除 ../ 前缀，保留后面的路径部分
+      path = path.replace(/^\.\.\//, "");
+    }
+
+    console.log("resolveChapter", path);
     let chapterIndex = -1;
     if (this.flattenChapters.length === 0) {
       this.flatChapter(this.chapterList);
     }
+    // 先从chapterList中查找
     for (let index = 0; index < this.flattenChapters.length; index++) {
       if (this.flattenChapters[index].href.includes(path)) {
         chapterIndex = index;
@@ -201,37 +212,43 @@ class GeneralRender extends EventEmitter {
 
     if (chapterIndex > -1) {
       return this.flattenChapters[chapterIndex];
+    }
+    console.log(path, this.chapterDocList);
+    // 再从chapterDocList中查找
+    for (let index = 0; index < this.chapterDocList.length; index++) {
+      if (this.chapterDocList[index].href.includes(path)) {
+        chapterIndex = index;
+        break;
+      }
+    }
+
+    if (chapterIndex > -1) {
+      let chapterDoc = this.chapterDocList[chapterIndex];
+      return {
+        label: chapterDoc.label || "",
+        href: chapterDoc.href,
+        index: chapterIndex,
+      };
+    }
+
+    for (let index = 0; index < this.chapterDocList.length; index++) {
+      if (
+        this.chapterDocList[index].text &&
+        this.chapterDocList[index].text.id &&
+        (this.chapterDocList[index].text.id + "").includes(path)
+      ) {
+        chapterIndex = index;
+        break;
+      }
+    }
+    if (chapterIndex > -1) {
+      return {
+        label: this.chapterDocList[chapterIndex].label || "",
+        href: this.chapterDocList[chapterIndex].href,
+        index: chapterIndex,
+      };
     } else {
-      let pathWithoutHash = href.split("#")[0];
-      for (let index = 0; index < this.flattenChapters.length; index++) {
-        if (
-          this.flattenChapters[index].href.includes(
-            pathWithoutHash.substring(1)
-          )
-        ) {
-          chapterIndex = index;
-          break;
-        }
-      }
-      if (chapterIndex > -1) {
-        return this.flattenChapters[chapterIndex];
-      } else {
-        for (let index = 0; index < this.chapterDocList.length; index++) {
-          if (
-            this.chapterDocList[index].text &&
-            this.chapterDocList[index].text.id &&
-            (this.chapterDocList[index].text.id + "").includes(path)
-          ) {
-            chapterIndex = index;
-            break;
-          }
-        }
-        if (chapterIndex > -1) {
-          return { label: "", href: "", index: chapterIndex };
-        } else {
-          return null;
-        }
-      }
+      return null;
     }
   }
   flatChapter(chapters: any) {
@@ -499,7 +516,7 @@ class GeneralRender extends EventEmitter {
         doc,
         this.flipToNextPage,
         this.flipToPrevPage,
-        this.isMobile
+        this.isMobile,
       );
     }
     await this.record();
@@ -544,6 +561,7 @@ class GeneralRender extends EventEmitter {
         iframe
       );
       this.trigger("rendered");
+      return;
     } else if (this.readerMode === "scroll") {
       // scroll readerMode under normal condition
       if (
@@ -581,7 +599,7 @@ class GeneralRender extends EventEmitter {
         doc,
         this.flipToNextPage,
         this.flipToPrevPage,
-        this.isMobile
+        this.isMobile,
       );
     }
     await this.record();

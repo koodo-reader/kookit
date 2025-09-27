@@ -339,11 +339,11 @@ export const handleScrollPosition = async (
       : 0;
   } else if (href && href.indexOf("#") > -1) {
     let id = CSS.escape(href.split("#").reverse()[0]);
-    if (!doc.body.querySelector("#" + id)) {
+    if (!doc.body.querySelector("#" + CSS.escape(id))) {
       return;
     }
     targetNode = getCloestBlock(
-      doc.body.querySelector("#" + id) || doc.body,
+      doc.body.querySelector("#" + CSS.escape(id)) || doc.body,
       element,
       readerMode
     );

@@ -431,6 +431,7 @@ class Resources {
         item.properties = item.properties?.split(/\s/);
         return item;
       });
+    console.log(this, opf.documentElement)
     //适配部分不标准的epub
     if (this.manifest.length === 0) {
       this.manifest = Array.from($manifest.children).map(item => {
@@ -462,6 +463,14 @@ class Resources {
           type: type.split(/\s/),
           href: resolveHref(href),
         }));
+    console.log(this.getItemByID(
+      $$$(opf, "meta")
+        .find(filterAttribute("name", "cover"))
+        ?.getAttribute("content")
+    ), $$$(opf, "meta")
+      .find(filterAttribute("name", "cover"))
+      ?.getAttribute("content"), $$$(opf, "meta"), $$$(opf, "meta")
+        .find(filterAttribute("name", "cover")))
     this.cover =
       this.getItemByProperty("cover-image") ??
       this.getItemByID("cover-image") ??
@@ -471,13 +480,18 @@ class Resources {
           .find(filterAttribute("name", "cover"))
           ?.getAttribute("content")
       ) ??
-      this.getItemByID("cover") ??
+      this.getItemByHref(
+        $$$(opf, "meta")
+          .find(filterAttribute("name", "cover"))
+          ?.getAttribute("content")
+      ) ??
       this.getItemByID("cover.jpg") ??
       this.getItemByID("cover.png") ??
       this.getItemByID("cover.jpeg") ??
       this.getItemByHref(
-        this.guide?.find((ref) => ref.type.includes("cover") && !ref.href.includes("html") && !ref.href.includes("xml"))?.href
-      );
+        this.guide?.find((ref) => ref.type.includes("cover") && !ref.href.includes("html") && !ref.href.includes("xhtml") && !ref.href.includes("xml"))?.href
+      ) ??
+      this.getItemByID("cover");
 
     this.cfis = CFI.fromElements($$itemref);
   }
@@ -962,6 +976,7 @@ export class EPUB {
     return isExternal(uri);
   }
   async getCover() {
+    console.log(this)
     const cover = this.resources?.cover;
     return cover?.href
       ? new Blob([await this.loadBlob(cover.href)], { type: cover.mediaType })
