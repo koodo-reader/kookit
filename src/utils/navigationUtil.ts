@@ -224,6 +224,7 @@ export const handleRenderChapter = async (
     doc.body.removeAttribute("id");
   }
   await handleCssLink(doc);
+  await handlePlainText(doc);
   tempLocation.chapterTitle = chapterTitle;
   tempLocation.chapterHref = chapterHref;
   tempLocation.chapterDocIndex = chapterDocIndex + "";
@@ -289,6 +290,18 @@ export const handleCssLink = async (doc) => {
     ]);
   } catch (err) {
     console.error(err);
+  }
+};
+export const handlePlainText = async (doc) => {
+  //给body中不被任何标签包裹的文本加上p标签
+  let childNodes = Array.from(doc.body.childNodes);
+  for (let i = 0; i < childNodes.length; i++) {
+    let node: any = childNodes[i];
+    if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+      let p = doc.createElement("p");
+      p.textContent = node.textContent;
+      doc.body.replaceChild(p, node);
+    }
   }
 };
 export const handleScrollPosition = async (

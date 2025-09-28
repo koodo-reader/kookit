@@ -65,7 +65,6 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
   if (linkElement) {
     event.preventDefault();
     event.stopPropagation();
-    console.log(11);
     // Get href from the link
     let href = linkElement.getAttribute("href");
     if (href && href.startsWith("kindle:")) {
@@ -82,11 +81,9 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
       let result = await render.resolveHref(href);
       href = "#" + result.id;
     }
-    console.log(22);
     let footnote = "";
     if (href && href.indexOf("#") > -1) {
       let id = href.split("#").reverse()[0];
-      console.log(id, "sfd");
       let node = doc.body.querySelector("#" + CSS.escape(id));
       if (!node) {
         if (href.indexOf("filepos") > -1) {
@@ -117,7 +114,6 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
         }
         await render.goToNode(doc.body.querySelector("#" + CSS.escape(id)));
       }
-      console.log(node.textContent.trim(), "asfsdfd");
       let targetElement = event.target as HTMLElement;
       if (!targetElement || !targetElement.textContent) {
         return false;
@@ -149,7 +145,6 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
             node = document.createElement("div");
             node.innerHTML = content;
           }
-          console.log(node, content);
         } else {
           return false;
         }
@@ -565,7 +560,6 @@ export const addAndroidTouchEvent = (
   let selectionCount = 0;
   let triggerSelectionMenu = async (event: any) => {
     const selectedText = iWin.getSelection().toString().trim();
-    console.log("Selected text:", selectedText);
     if (selectedText) {
       var range = iWin.getSelection().getRangeAt(0);
       let pageSize = render.getPageSize();
@@ -653,9 +647,7 @@ export const addAndroidTouchEvent = (
     }
   };
   doc.body.oncontextmenu = function (event) {
-    console.log("Context menu triggered");
     const target: any = event.target;
-    console.log("Context menu target:", target);
     if (!target) return;
     if (target.tagName === "IMG" || target.tagName === "image") {
       const imgSrc = target.src || target.getAttribute("xlink:href");
@@ -669,10 +661,8 @@ export const addAndroidTouchEvent = (
       }
       return;
     }
-    console.log("Context menu event:", event, startSelectionTime);
     if (Date.now() - startSelectionTime < 100) {
       setTimeout(() => {
-        console.log("Delayed selection menu trigger", selectionCount);
         if (selectionCount === 1) {
           triggerSelectionMenu(event);
         }
@@ -692,7 +682,6 @@ export const addAndroidTouchEvent = (
   doc.addEventListener(
     "selectstart",
     (event) => {
-      console.log("Select start event triggered");
       selectionCount = 0;
       startSelectionTime = Date.now();
       offsetLeft = getScreenLeftOffset();
@@ -709,7 +698,6 @@ export const addAndroidTouchEvent = (
   doc.addEventListener(
     "selectionchange",
     (event) => {
-      console.log("Selection change event triggered");
       //检查选择文字是否为空
       const selectedText = iWin.getSelection().toString().trim();
       if (!selectedText) {

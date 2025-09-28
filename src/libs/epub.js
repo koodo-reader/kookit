@@ -431,7 +431,6 @@ class Resources {
         item.properties = item.properties?.split(/\s/);
         return item;
       });
-    console.log(this, opf.documentElement)
     //适配部分不标准的epub
     if (this.manifest.length === 0) {
       this.manifest = Array.from($manifest.children).map(item => {
@@ -463,14 +462,6 @@ class Resources {
           type: type.split(/\s/),
           href: resolveHref(href),
         }));
-    console.log(this.getItemByID(
-      $$$(opf, "meta")
-        .find(filterAttribute("name", "cover"))
-        ?.getAttribute("content")
-    ), $$$(opf, "meta")
-      .find(filterAttribute("name", "cover"))
-      ?.getAttribute("content"), $$$(opf, "meta"), $$$(opf, "meta")
-        .find(filterAttribute("name", "cover")))
     this.cover =
       this.getItemByProperty("cover-image") ??
       this.getItemByID("cover-image") ??
@@ -976,7 +967,6 @@ export class EPUB {
     return isExternal(uri);
   }
   async getCover() {
-    console.log(this)
     const cover = this.resources?.cover;
     return cover?.href
       ? new Blob([await this.loadBlob(cover.href)], { type: cover.mediaType })

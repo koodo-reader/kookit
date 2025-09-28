@@ -197,7 +197,6 @@ class GeneralRender extends EventEmitter {
       path = path.replace(/^\.\.\//, "");
     }
 
-    console.log("resolveChapter", path);
     let chapterIndex = -1;
     if (this.flattenChapters.length === 0) {
       this.flatChapter(this.chapterList);
@@ -213,7 +212,6 @@ class GeneralRender extends EventEmitter {
     if (chapterIndex > -1) {
       return this.flattenChapters[chapterIndex];
     }
-    console.log(path, this.chapterDocList);
     // 再从chapterDocList中查找
     for (let index = 0; index < this.chapterDocList.length; index++) {
       if (this.chapterDocList[index].href.includes(path)) {
@@ -516,7 +514,7 @@ class GeneralRender extends EventEmitter {
         doc,
         this.flipToNextPage,
         this.flipToPrevPage,
-        this.isMobile,
+        this.isMobile
       );
     }
     await this.record();
@@ -599,7 +597,7 @@ class GeneralRender extends EventEmitter {
         doc,
         this.flipToNextPage,
         this.flipToPrevPage,
-        this.isMobile,
+        this.isMobile
       );
     }
     await this.record();
@@ -1124,22 +1122,6 @@ class GeneralRender extends EventEmitter {
       if (!iWin || !iWin.getSelection()) return;
       iWin.getSelection()?.empty();
     }
-  }
-  restoreSelectionClearHighlight() {
-    if (this.format === "PDF") {
-      return;
-    }
-    let doc = this.getDocument();
-    if (!doc) return;
-    let tempHighlights = doc.querySelectorAll("#temp-highlight");
-    tempHighlights.forEach((element) => {
-      element.parentNode?.removeChild(element);
-    });
-    let iframe = this.getIframe();
-    if (!iframe) return;
-    let charRange = window.charRange;
-    if (!charRange) return;
-    rangy.getSelection(iframe).restoreCharacterRanges(doc, [charRange]);
   }
 }
 export default GeneralRender;
