@@ -300,6 +300,7 @@ export const handlePlainText = async (doc) => {
     if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
       let p = doc.createElement("p");
       p.textContent = node.textContent;
+      p.style.display = "inline";
       doc.body.replaceChild(p, node);
     }
   }

@@ -210,7 +210,16 @@ class GeneralRender extends EventEmitter {
     }
 
     if (chapterIndex > -1) {
-      return this.flattenChapters[chapterIndex];
+      let chapter = this.flattenChapters[chapterIndex];
+      if (href.startsWith("kindle")) {
+        if (this.chapterDocList[chapter.index].href === href) {
+          return chapter;
+        } else {
+          return null;
+        }
+      } else {
+        return chapter;
+      }
     }
     // 再从chapterDocList中查找
     for (let index = 0; index < this.chapterDocList.length; index++) {
@@ -321,6 +330,15 @@ class GeneralRender extends EventEmitter {
       doc,
       iframe
     );
+    if (chapterHref && chapterHref.startsWith("kindle")) {
+      let result = await this.book.resolveHref(chapterHref);
+      if (result.anchor) {
+        let node = result.anchor(doc);
+        if (node) {
+          await this.goToNode(node);
+        }
+      }
+    }
     if (chapterHref && chapterHref.indexOf("#") > -1) {
       await handleScrollPosition(
         this.element,

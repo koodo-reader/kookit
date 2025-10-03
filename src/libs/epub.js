@@ -374,6 +374,7 @@ const deobfuscators = (sha1 = WebCryptoSHA1) => ({
     },
     decode: (key, blob) => deobfuscate(key, 1024, blob),
   },
+  "http://www.w3.org/2001/04/xmlenc#aes128-ctr": {}
 });
 
 class Encryption {
@@ -396,6 +397,7 @@ class Encryption {
           ?.getAttribute("URI"),
       })
     );
+    console.log(data, this.#algorithms, this.#decoders)
     for (const { algorithm, uri } of data) {
       if (!this.#decoders.has(algorithm)) {
         const algo = this.#algorithms[algorithm];
@@ -462,6 +464,7 @@ class Resources {
           type: type.split(/\s/),
           href: resolveHref(href),
         }));
+    console.log(this)
     this.cover =
       this.getItemByProperty("cover-image") ??
       this.getItemByID("cover-image") ??
@@ -483,6 +486,11 @@ class Resources {
         this.guide?.find((ref) => ref.type.includes("cover") && !ref.href.includes("html") && !ref.href.includes("xhtml") && !ref.href.includes("xml"))?.href
       ) ??
       this.getItemByID("cover");
+    if (this.cover && this.cover.href) {
+      if (this.cover.href.includes("xml") || this.cover.href.includes("xhtml") || this.cover.href.includes("html")) {
+        this.cover = this.manifest.find((item) => item.href.toLowerCase().includes("cover") && (item.href.includes("png") || item.href.includes("jpg") || item.href.includes("jpeg")));
+      }
+    }
 
     this.cfis = CFI.fromElements($$itemref);
   }
