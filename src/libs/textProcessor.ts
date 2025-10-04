@@ -193,7 +193,7 @@ const startWithDI = (line) => {
   let flag = false;
   for (let i = 0; i < keywords.length; i++) {
     if (
-      /^[\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u842c\u96f6]+$/.test(
+      /^[\u96f6\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u4ebf\u5146\u5eff\u5345\u62fe\u4f70\u4edf\u58f9\u8d30\u53c1\u8086\u4f0d\u9646\u67d2\u634c\u7396\u4e24\u842c\u5169]+$/.test(
         line.substring(1, line.indexOf(keywords[i])).trim()
       ) ||
       /^\d+$/.test(line.substring(1, line.indexOf(keywords[i])).trim())

@@ -374,7 +374,6 @@ const deobfuscators = (sha1 = WebCryptoSHA1) => ({
     },
     decode: (key, blob) => deobfuscate(key, 1024, blob),
   },
-  "http://www.w3.org/2001/04/xmlenc#aes128-ctr": {}
 });
 
 class Encryption {

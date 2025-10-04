@@ -21,6 +21,31 @@ function throttle(fn: (...args: any[]) => void, wait: number) {
     }
   };
 }
+const isElementFootnote = (element: HTMLElement) => {
+  if (!element) return false;
+  console.log(element.tagName);
+  if (element.tagName === "IMG") {
+    return true;
+  }
+  if (element.textContent) {
+    let textContent = element.textContent.trim();
+    // Check for patterns like [1], [a], (1), (a)
+    const footnotePattern = /^(\[|\()([a-zA-Z0-9]+)(\]|\))$|^\d+$/;
+    if (footnotePattern.test(textContent)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+const isLinkElement = (href: string) => {
+  let url = href;
+  return (
+    url.startsWith("http") ||
+    url.startsWith("mailto") ||
+    url.startsWith("https")
+  );
+};
 async function blobUrlToBase64(blobUrl) {
   try {
     // 1. 获取Blob数据
@@ -58,14 +83,17 @@ function getScreenTopOffset() {
   }
 }
 const preventLinkNavigation = async (event: any, doc: any, render: any) => {
+  console.log(0);
   const target = event.target;
   if (!target) return;
 
   const linkElement = findLinkElement(target);
+  console.log(1);
   if (linkElement) {
     event.preventDefault();
     event.stopPropagation();
     // Get href from the link
+    console.log(2);
     let href = linkElement.getAttribute("href");
     if (href && href.startsWith("kindle:")) {
       let chapterInfo = render.resolveChapter(href);
@@ -79,9 +107,24 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
       }
 
       let result = await render.resolveHref(href);
-      href = "#" + result.id;
+      if (!result.anchor) {
+        return false;
+      }
+      let currentPosition = render.getPosition();
+      if (result.index === parseInt(currentPosition.chapterDocIndex)) {
+        let node = result.anchor(doc);
+        if (node) {
+          href = "#" + node.getAttribute("id");
+        }
+      } else {
+        await render.goToChapterDocIndex(result.index);
+        let node = result.anchor(doc);
+        await render.goToNode(node);
+        return true;
+      }
     }
     let footnote = "";
+    console.log(3);
     if (href && href.indexOf("#") > -1) {
       let id = href.split("#").reverse()[0];
       let node = doc.body.querySelector("#" + CSS.escape(id));
@@ -115,38 +158,22 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
         await render.goToNode(doc.body.querySelector("#" + CSS.escape(id)));
       }
       let targetElement = event.target as HTMLElement;
-      if (!targetElement || !targetElement.textContent) {
+      if (!targetElement) {
         return false;
       }
+      console.log(node, targetElement);
 
-      if (
-        (node.textContent.trim() === targetElement.textContent.trim() ||
-          !node.textContent.trim() ||
-          "[" + node.textContent.trim() + "]" ===
-            targetElement.textContent.trim() ||
-          node.textContent.trim() ===
-            "[" + targetElement.textContent.trim() + "]") &&
-        node.parentElement
-      ) {
-        if (
-          node.parentElement.tagName !== "BODY" &&
-          node.parentElement.textContent.trim().length <= 3000
-        ) {
-          node = node.parentElement;
-        } else if (node.tagName === "A") {
-          //获取当前a标签和下一个a标签之间的内容
-          let next = node.nextSibling;
-          let content = node.textContent;
-          while (next && next.tagName !== "A") {
-            content += next.textContent;
-            next = next.nextSibling;
-          }
-          if (content.trim() && content.trim().length <= 3000) {
-            node = document.createElement("div");
-            node.innerHTML = content;
-          }
-        } else {
-          return false;
+      if (isElementFootnote(node)) {
+        //获取当前a标签和下一个a标签之间的内容
+        let next = node.nextSibling;
+        let content = node.textContent;
+        while (next && next.tagName !== node.tagName) {
+          content += next.textContent;
+          next = next.nextSibling;
+        }
+        if (content.trim() && content.trim().length <= 3000) {
+          node = document.createElement("div");
+          node.innerHTML = content;
         }
       }
       //将html代码中的img标签由blob转换为base64
@@ -167,6 +194,10 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
           }
         }
       }
+    }
+    console.log(href, "href", isLinkElement(href));
+    if (!isElementFootnote(target as HTMLElement) && !isLinkElement(href)) {
+      return false;
     }
 
     // Send message to React Native with link details
@@ -262,14 +293,20 @@ export const addAndroidTouchEvent = (
     if (isDragging && animation === "mimical" && readerMode !== "scroll") {
       isDragging = false;
       render.mouseUpHandler(event);
+      console.log(
+        "mimical drag end",
+        touch.screenX < (window.innerWidth / 4) * 3,
+        touchEndX - touchStartX < 0
+      );
       if (
-        touch.screenX < (window.screen.width / 4) * 3 &&
+        touch.screenX < (window.innerWidth / 4) * 3 &&
         touchEndX - touchStartX < 0
       ) {
+        console.log("next page");
         render.next();
         isDragging = false;
       } else if (
-        touch.screenX > (window.screen.width / 4) * 1 &&
+        touch.screenX > (window.innerWidth / 4) * 1 &&
         touchEndX - touchStartX > 0
       ) {
         render.prev();
@@ -327,7 +364,7 @@ export const addAndroidTouchEvent = (
       // Improved snapping logic
       let snapX;
       const currentPage = Math.round(scrollLeft / pageWidth);
-      const dragPercentage = Math.abs(distX) / window.screen.width;
+      const dragPercentage = Math.abs(distX) / window.innerWidth;
       const dragThreshold = 0.1; // Only 10% drag needed to change page
 
       if (distX > 0 && dragPercentage > dragThreshold) {
@@ -410,6 +447,10 @@ export const addAndroidTouchEvent = (
     if (timeDiff > timeThreshold) {
       const target: any = event.target;
       if (!target) return;
+      let linkElement = findLinkElement(target);
+      if (linkElement) {
+        return;
+      }
       if (target.tagName === "IMG" || target.tagName === "image") {
         const imgSrc = target.src || target.getAttribute("xlink:href");
         //blob to base64
@@ -428,8 +469,8 @@ export const addAndroidTouchEvent = (
       Math.abs(distX) < swipeThreshold &&
       Math.abs(distY) < swipeThreshold
     ) {
-      var width = window.screen.width;
-      var height = window.screen.height;
+      var width = window.innerWidth;
+      var height = window.innerHeight;
 
       var cellWidth = width / 3;
       var cellHeight = height / 3;
@@ -649,6 +690,10 @@ export const addAndroidTouchEvent = (
   doc.body.oncontextmenu = function (event) {
     const target: any = event.target;
     if (!target) return;
+    let linkElement = findLinkElement(target);
+    if (linkElement) {
+      return;
+    }
     if (target.tagName === "IMG" || target.tagName === "image") {
       const imgSrc = target.src || target.getAttribute("xlink:href");
       //blob to base64
@@ -770,17 +815,18 @@ export const addAppleTouchEvent = (
     const timeDiff = touchEndTime - touchStartTime;
     const distX = touchEndX - touchStartX;
     const distY = touchEndY - touchStartY;
+    console.log("websadfsdjf");
     if (isDragging && animation === "mimical" && readerMode !== "scroll") {
       isDragging = false;
       render.mouseUpHandler(event);
       if (
-        touchEndX < (window.screen.width / 4) * 3 &&
+        touchEndX < (window.innerWidth / 4) * 3 &&
         touchEndX - touchStartX < 0
       ) {
         render.next();
         isDragging = false;
       } else if (
-        touchEndX > (window.screen.width / 4) * 1 &&
+        touchEndX > (window.innerWidth / 4) * 1 &&
         touchEndX - touchStartX > 0
       ) {
         render.prev();
@@ -836,7 +882,7 @@ export const addAppleTouchEvent = (
       // Improved snapping logic
       let snapX;
       const currentPage = Math.round(scrollLeft / pageWidth);
-      const dragPercentage = Math.abs(distX) / window.screen.width;
+      const dragPercentage = Math.abs(distX) / window.innerWidth;
       const dragThreshold = 0.1; // Only 10% drag needed to change page
 
       if (distX > 0 && dragPercentage > dragThreshold) {
@@ -952,6 +998,10 @@ export const addAppleTouchEvent = (
     if (timeDiff > timeThreshold) {
       const target: any = event.target;
       if (!target) return;
+      let linkElement = findLinkElement(target);
+      if (linkElement) {
+        return;
+      }
       if (target.tagName === "IMG" || target.tagName === "image") {
         const imgSrc = target.src || target.getAttribute("xlink:href");
         //blob to base64
@@ -1052,6 +1102,9 @@ export const addAppleTouchEvent = (
     }
     if (window.visualViewport.scale > 1 && format === "PDF") {
       return;
+    }
+    if (readerMode !== "scroll") {
+      event.preventDefault();
     }
 
     const touch = event.touches[0];
