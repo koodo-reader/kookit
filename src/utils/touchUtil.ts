@@ -23,7 +23,6 @@ function throttle(fn: (...args: any[]) => void, wait: number) {
 }
 const isElementFootnote = (element: HTMLElement) => {
   if (!element) return false;
-  console.log(element.tagName);
   if (element.tagName === "IMG") {
     return true;
   }
@@ -83,17 +82,14 @@ function getScreenTopOffset() {
   }
 }
 const preventLinkNavigation = async (event: any, doc: any, render: any) => {
-  console.log(0);
   const target = event.target;
   if (!target) return;
 
   const linkElement = findLinkElement(target);
-  console.log(1);
   if (linkElement) {
     event.preventDefault();
     event.stopPropagation();
     // Get href from the link
-    console.log(2);
     let href = linkElement.getAttribute("href");
     if (href && href.startsWith("kindle:")) {
       let chapterInfo = render.resolveChapter(href);
@@ -124,7 +120,6 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
       }
     }
     let footnote = "";
-    console.log(3);
     if (href && href.indexOf("#") > -1) {
       let id = href.split("#").reverse()[0];
       let node = doc.body.querySelector("#" + CSS.escape(id));
@@ -161,7 +156,6 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
       if (!targetElement) {
         return false;
       }
-      console.log(node, targetElement);
 
       if (isElementFootnote(node)) {
         //获取当前a标签和下一个a标签之间的内容
@@ -195,7 +189,6 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
         }
       }
     }
-    console.log(href, "href", isLinkElement(href));
     if (!isElementFootnote(target as HTMLElement) && !isLinkElement(href)) {
       return false;
     }
@@ -293,16 +286,10 @@ export const addAndroidTouchEvent = (
     if (isDragging && animation === "mimical" && readerMode !== "scroll") {
       isDragging = false;
       render.mouseUpHandler(event);
-      console.log(
-        "mimical drag end",
-        touch.screenX < (window.innerWidth / 4) * 3,
-        touchEndX - touchStartX < 0
-      );
       if (
         touch.screenX < (window.innerWidth / 4) * 3 &&
         touchEndX - touchStartX < 0
       ) {
-        console.log("next page");
         render.next();
         isDragging = false;
       } else if (
@@ -815,7 +802,6 @@ export const addAppleTouchEvent = (
     const timeDiff = touchEndTime - touchStartTime;
     const distX = touchEndX - touchStartX;
     const distY = touchEndY - touchStartY;
-    console.log("websadfsdjf");
     if (isDragging && animation === "mimical" && readerMode !== "scroll") {
       isDragging = false;
       render.mouseUpHandler(event);

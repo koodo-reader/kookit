@@ -225,6 +225,17 @@ export const handleRenderChapter = async (
   }
   await handleCssLink(doc);
   await handlePlainText(doc);
+  if (!chapterTitle) {
+    //取前面最近的章节，且存在的标题
+    let tempChapterDocIndex = chapterDocIndex;
+    while (tempChapterDocIndex >= 0) {
+      if (chapterDocList[tempChapterDocIndex].label) {
+        chapterTitle = chapterDocList[tempChapterDocIndex].label;
+        break;
+      }
+      tempChapterDocIndex--;
+    }
+  }
   tempLocation.chapterTitle = chapterTitle;
   tempLocation.chapterHref = chapterHref;
   tempLocation.chapterDocIndex = chapterDocIndex + "";

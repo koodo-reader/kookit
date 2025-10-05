@@ -19,8 +19,6 @@ class MobiRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
-      console.log(this.chapterDocList);
-      console.log(this.chapterList);
       createIframe(element);
       let doc = this.getDocument();
       if (!doc) return;
@@ -33,7 +31,6 @@ class MobiRender extends GeneralRender {
     let chapterDoc = this.chapterDocList[chapterDocIndex];
     if (chapterDoc) {
       let result = await chapterDoc.text.resolveHref(href);
-      console.log(result, "result");
       if (!result) return {};
       if (result.index === parseInt(chapterDocIndex)) {
         let doc = this.getDocument();

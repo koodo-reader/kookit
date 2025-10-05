@@ -396,7 +396,6 @@ class Encryption {
           ?.getAttribute("URI"),
       })
     );
-    console.log(data, this.#algorithms, this.#decoders)
     for (const { algorithm, uri } of data) {
       if (!this.#decoders.has(algorithm)) {
         const algo = this.#algorithms[algorithm];
@@ -463,7 +462,6 @@ class Resources {
           type: type.split(/\s/),
           href: resolveHref(href),
         }));
-    console.log(this)
     this.cover =
       this.getItemByProperty("cover-image") ??
       this.getItemByID("cover-image") ??
