@@ -155,7 +155,22 @@ export const handlePrevChapter = async (
     iframe
   );
 };
+export const isElementFootnote = (element: HTMLElement) => {
+  if (!element) return false;
+  if (element.tagName === "IMG") {
+    return true;
+  }
+  if (element.textContent) {
+    let textContent = element.textContent.trim();
+    // Check for patterns like [1], [a], (1), (a)
+    const footnotePattern = /^(\[|\()([a-zA-Z0-9]+)(\]|\))$|^\d+$/;
+    if (footnotePattern.test(textContent)) {
+      return true;
+    }
+  }
 
+  return false;
+};
 export const handleRenderChapter = async (
   chapterDocIndex: number,
   chapterTitle: string,

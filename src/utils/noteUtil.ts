@@ -48,11 +48,13 @@ export const showPDFHighlight = (
   let colorCode = classes[colorIndex];
   let pageElement: any = doc.querySelector(".noteLayer");
   let docLayer = doc.querySelector("#koodoPDFLayer");
+  console.log(scale, "scale");
   var viewport = page.getViewport({ scale: scale });
   let rects: any[] = [];
   //convertToViewportRectangle
   for (let i = 0; i < selected.coords.length; i++) {
     const rect = selected.coords[i];
+    console.log(rect, "rect");
     var bounds = viewport.convertToViewportRectangle(rect);
     let width = Math.abs(bounds[0] - bounds[2]);
     let height = Math.abs(bounds[1] - bounds[3]);
@@ -108,6 +110,7 @@ export const showPDFHighlight = (
       filteredRects.push(currentRect);
     }
   }
+  console.log(filteredRects, "sortedRects");
   for (let i = 0; i < filteredRects.length; i++) {
     const rect = filteredRects[i];
     var newNode = document.createElement("div");

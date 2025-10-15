@@ -20,6 +20,7 @@ import {
   handleHighlightAudioNode,
   getBlockElement,
   isParentBlock,
+  isElementFootnote,
 } from "../utils/navigationUtil";
 import EventEmitter from "../utils/EventEmitter";
 import { CFI } from "../libs/cfi";
@@ -962,12 +963,12 @@ class GeneralRender extends EventEmitter {
               // 将前导空格替换为零宽度字符，保留原始内容但不显示
               const text = node.nodeValue || "";
               const leadingSpaces = text.match(/^(\s+)/);
+              console.log(leadingSpaces, "leadingSpaces");
               if (leadingSpaces) {
-                //覆盖父元素的text-indent css
-                (item as HTMLElement).setAttribute(
-                  "style",
-                  ((item as HTMLElement).getAttribute("style") || "") +
-                    "text-indent: 0em !important;"
+                //replace leading spaces with nbsp;
+                node.nodeValue = text.replace(
+                  /^\s+/,
+                  "".repeat(leadingSpaces[0].length)
                 );
               }
               // 只处理第一个，退出循环
@@ -1143,6 +1144,181 @@ class GeneralRender extends EventEmitter {
       if (!iWin || !iWin.getSelection()) return;
       iWin.getSelection()?.empty();
     }
+  }
+  getTargetHref(event: any) {
+    let href = "";
+    if (!event || !event.target) return href;
+    if (event.target.innerText && event.target.innerText.startsWith("http")) {
+      href = event.target.innerText;
+    }
+    // if (event.target.tagName === "IMG") {
+    //   return href;
+    // }
+    let currentElement = event.target;
+    while (currentElement && currentElement.tagName !== "BODY") {
+      if (currentElement.getAttribute) {
+        const elementHref = currentElement.getAttribute("href");
+
+        if (elementHref) {
+          href = elementHref || "";
+          break;
+        }
+      }
+      currentElement = currentElement.parentNode;
+    }
+
+    return href;
+  }
+  async handleLinkJump(
+    href: string,
+    event: any
+  ): Promise<{
+    handled: boolean;
+    href?: string;
+    external?: boolean;
+    isShowMenu?: boolean;
+    isJump?: boolean;
+    node?: any;
+  }> {
+    let doc = this.getDocument();
+    if (!doc) return { handled: false };
+    if (href && href.startsWith("kindle:")) {
+      let chapterInfo = this.resolveChapter(href);
+      if (chapterInfo) {
+        await this.goToChapter(
+          chapterInfo.index,
+          chapterInfo.href,
+          chapterInfo.label
+        );
+        return { handled: true };
+      }
+      let result = await this.book.resolveHref(href);
+      let chapterDocIndex = this.tempLocation.chapterDocIndex;
+      if (result.index === parseInt(chapterDocIndex)) {
+        let element = result.anchor(doc);
+        if (!element) return { handled: false };
+        let id = element.getAttribute("id") || "";
+        result = { ...result, id };
+      }
+      if (!result.anchor) {
+        return { handled: false };
+      }
+      let currentPosition = this.getPosition();
+      if (result.index === parseInt(currentPosition.chapterDocIndex)) {
+        let node = result.anchor(doc);
+        if (node) {
+          href = "#" + node.getAttribute("id");
+        }
+      } else {
+        // this.setState({
+        //   isJump: true,
+        //   returnPosition: ConfigService.getObjectConfig(
+        //     this.props.currentBook.key,
+        //     "recordLocation",
+        //     {}
+        //   ),
+        // });
+        // let rect = event.target.getBoundingClientRect();
+        await this.goToChapterDocIndex(result.index);
+        let node = result.anchor(doc);
+        await this.goToNode(node);
+        if (isElementFootnote(event.target)) {
+          // await this.handleShowMenu(node, event.target, rect);
+          return {
+            handled: true,
+            isShowMenu: true,
+            isJump: true,
+            href: href,
+            node: node,
+          };
+        }
+
+        return { handled: true };
+      }
+    }
+
+    if (href && href.indexOf("#") > -1) {
+      // this.setState({ href: href });
+      let id = href.split("#").reverse()[0];
+      let node = doc.body.querySelector("#" + CSS.escape(id));
+      let rect = event.target.getBoundingClientRect();
+      console.log("find node by id", node, id);
+      let isJump = false;
+      if (!node) {
+        if (href.indexOf("filepos") > -1 && this.resolveChapter(href)) {
+          let chapterInfo = this.resolveChapter(href);
+          if (!chapterInfo) return { handled: false };
+          await this.goToChapter(
+            chapterInfo.index,
+            chapterInfo.href,
+            chapterInfo.label
+          );
+          return { handled: true };
+        }
+        //can't find the node, go to href
+
+        if (href.indexOf("#") !== 0) {
+          while (href.startsWith(".")) {
+            href = href.substring(1);
+          }
+          let chapterInfo = this.resolveChapter(href.split("#")[0]);
+          if (!chapterInfo) return { handled: false };
+          await this.goToChapter(
+            chapterInfo.index,
+            chapterInfo.href,
+            chapterInfo.label
+          );
+        }
+        node = doc.body.querySelector("#" + CSS.escape(id));
+        if (!node) {
+          return { handled: false };
+        }
+        isJump = true;
+        // this.setState({
+        //   isJump: true,
+        //   returnPosition: ConfigService.getObjectConfig(
+        //     this.props.currentBook.key,
+        //     "recordLocation",
+        //     {}
+        //   ),
+        // });
+        await this.goToNode(node);
+      }
+      console.log("go to node", isElementFootnote(event.target));
+      if (isElementFootnote(event.target)) {
+        return {
+          handled: true,
+          isShowMenu: true,
+          isJump: isJump,
+          href: href,
+          node: node,
+        };
+        // await this.handleShowMenu(node, event.target, rect);
+      }
+      return { handled: true };
+    } else if (href && this.resolveChapter && this.resolveChapter(href)) {
+      let chapterInfo = this.resolveChapter(href);
+      if (!chapterInfo) return { handled: false };
+      await this.goToChapter(
+        chapterInfo.index,
+        chapterInfo.href,
+        chapterInfo.label
+      );
+      return { handled: true };
+    } else if (
+      href &&
+      href.indexOf("../") === -1 &&
+      (href.indexOf("http") === 0 || href.indexOf("mailto") === 0) &&
+      href.indexOf("OEBPF") === -1 &&
+      href.indexOf("OEBPS") === -1 &&
+      href.indexOf("footnote") === -1 &&
+      href.indexOf("blob") === -1 &&
+      href.indexOf("data:application") === -1
+    ) {
+      // openExternalUrl(href);
+      return { handled: true, href: href, external: true };
+    }
+    return { handled: false };
   }
 }
 export default GeneralRender;

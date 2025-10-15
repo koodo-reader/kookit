@@ -157,7 +157,7 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
         return false;
       }
 
-      if (isElementFootnote(node)) {
+      if (isElementFootnote(node) || !node.textContent.trim()) {
         //获取当前a标签和下一个a标签之间的内容
         let next = node.nextSibling;
         let content = node.textContent;

@@ -6,7 +6,6 @@ import { clearHighlight, showPDFHighlight } from "../utils/noteUtil.js";
 import {
   createPDFContainer,
   createPDFIframe,
-  getPdfScale,
   getPDFVisibleText,
   handleHighlightPDFNode,
   handleIOSScrollPage,
@@ -25,9 +24,11 @@ class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
   isStartFromEven: string = "no";
   password: string = "";
+  pdfScale: number = 0;
   scale: number = 1;
   backgroundColor: string;
   isScannedPDF: string;
+  templateChapterDocIndex: number = 0;
   platform: string;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, convertChinese: "Default", format: "PDF" });
@@ -90,11 +91,19 @@ class PdfRender extends GeneralRender {
         viewportLast.height / viewportLast.width
           ? viewportFirst
           : viewportLast;
+      this.templateChapterDocIndex =
+        viewport === viewportFirst ? 0 : this.chapterDocList.length - 1;
       viewport =
         viewport.height / viewport.width >
         viewportMid.height / viewportMid.width
           ? viewport
           : viewportMid;
+      this.templateChapterDocIndex =
+        viewport === viewportMid
+          ? Math.floor(this.chapterDocList.length / 2)
+          : this.templateChapterDocIndex;
+      console.log(this.templateChapterDocIndex, "templateChapterDocIndex");
+      //根据viewport的判断结果设置模板chapterDocIndex
       let doc: any = this.getDocument();
       if (!doc) return;
       createPDFContainer(
@@ -569,13 +578,7 @@ class PdfRender extends GeneralRender {
     var selectionRects = subDoc.getSelection()!.getRangeAt(0).getClientRects();
 
     let page = await this.chapterDocList[pageIndex].text.getPage();
-    let scale = await getPdfScale(
-      this.element,
-      this.readerMode,
-      this.chapterDocList,
-      pageIndex,
-      subDoc
-    );
+    let scale = await this.getPdfScale();
     var viewport = page.getViewport({ scale: scale });
     let canvas = subDoc.querySelector("canvas");
     var pageRect: any = canvas?.getClientRects()[0];
@@ -643,13 +646,8 @@ class PdfRender extends GeneralRender {
         continue;
       }
       let page = await this.chapterDocList[pageIndex].text.getPage();
-      let scale = await getPdfScale(
-        this.element,
-        this.readerMode,
-        this.chapterDocList,
-        pageIndex,
-        subDoc
-      );
+      let scale = await this.getPdfScale();
+      console.log(scale, "sca324lesf234sdf");
       try {
         showPDFHighlight(
           selected,
@@ -694,13 +692,8 @@ class PdfRender extends GeneralRender {
     let selected = JSON.parse(item.range);
     var pageIndex = parseInt(selected.page + "");
     let page = await this.chapterDocList[pageIndex].text.getPage();
-    let scale = await getPdfScale(
-      this.element,
-      this.readerMode,
-      this.chapterDocList,
-      pageIndex,
-      subDoc
-    );
+    let scale = await this.getPdfScale();
+    console.log(scale, "scalesf234sdf");
     showPDFHighlight(
       selected,
       item.color,
@@ -732,13 +725,8 @@ class PdfRender extends GeneralRender {
     ).then((r) => r.blob());
     let chapterText = await blob.text();
     subDoc.body.innerHTML = chapterText;
-    let scale = await getPdfScale(
-      this.element,
-      this.readerMode,
-      this.chapterDocList,
-      chapterDocIndex,
-      subDoc
-    );
+    let scale = await this.getPdfScale();
+    console.log(scale, "scalesfsdf");
     await this.chapterDocList[chapterDocIndex].text.render(
       subDoc,
       scale,
@@ -809,5 +797,26 @@ class PdfRender extends GeneralRender {
 
     await this.handleRenderPDFChapter(chapterDocIndex + 1, doc);
   }
+  getPdfScale = async () => {
+    console.log(this.pdfScale, "this.pdfScale");
+    if (this.pdfScale && this.pdfScale > 0) {
+      return this.pdfScale;
+    }
+    let doc = this.getDocument();
+    if (!doc) return 1;
+    let { width, height } = await this.chapterDocList[
+      this.templateChapterDocIndex
+    ].text.getDimension();
+
+    let viewWidth = doc.body.clientWidth;
+    let viewHeight = this.element.clientHeight;
+    let scale = Math.min(viewWidth / width, viewHeight / height);
+    if (this.readerMode === "scroll") {
+      scale = viewWidth / width;
+    }
+    this.pdfScale = scale;
+    console.log(scale, "scale11111111");
+    return scale;
+  };
 }
 export default PdfRender;
