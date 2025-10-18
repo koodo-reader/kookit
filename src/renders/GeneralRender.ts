@@ -21,6 +21,7 @@ import {
   getBlockElement,
   isParentBlock,
   isElementFootnote,
+  processHtml,
 } from "../utils/navigationUtil";
 import EventEmitter from "../utils/EventEmitter";
 import { CFI } from "../libs/cfi";
@@ -114,6 +115,7 @@ class GeneralRender extends EventEmitter {
       left: this.element.offsetLeft,
       top: this.element.offsetTop,
       scrollTop: this.element.scrollTop,
+      scrollLeft: this.element.scrollWidth / 2 - this.element.clientWidth / 2,
       sectionWidth: (this.element.clientWidth - gap) / scale,
       sectionHeight: iframeHeight,
       gap: gap,
@@ -1319,6 +1321,35 @@ class GeneralRender extends EventEmitter {
       return { handled: true, href: href, external: true };
     }
     return { handled: false };
+  }
+  async getFootnoteContent(node: any) {
+    if (isElementFootnote(node) || !node.textContent.trim()) {
+      //获取当前a标签和下一个a标签之间的内容
+      let next = node.nextSibling;
+      let content = node.textContent;
+      console.log(next);
+      while (next && (next.tagName !== node.tagName || !content.trim())) {
+        content += next.textContent;
+        next = next.nextSibling;
+      }
+      console.log("footnote content", content);
+      if (content.trim() && content.trim().length <= 3000) {
+        node = document.createElement("div");
+        node.innerHTML = content;
+      }
+    }
+    console.log("handleShowMenu", node, node.textContent);
+    let htmlContent = node.innerHTML;
+    if (!node.textContent.trim()) {
+      return { handled: false };
+    }
+    console.log(1);
+    if (node.textContent.trim() && node.textContent.trim().length > 3000) {
+      return { handled: false };
+    }
+    console.log(2);
+    htmlContent = await processHtml(htmlContent);
+    return { handled: true, content: htmlContent };
   }
 }
 export default GeneralRender;

@@ -84,126 +84,177 @@ function getScreenTopOffset() {
 const preventLinkNavigation = async (event: any, doc: any, render: any) => {
   const target = event.target;
   if (!target) return;
-
-  const linkElement = findLinkElement(target);
-  if (linkElement) {
-    event.preventDefault();
-    event.stopPropagation();
-    // Get href from the link
-    let href = linkElement.getAttribute("href");
-    if (href && href.startsWith("kindle:")) {
-      let chapterInfo = render.resolveChapter(href);
-      if (chapterInfo) {
-        await render.goToChapter(
-          chapterInfo.index,
-          chapterInfo.href,
-          chapterInfo.label
-        );
-        return true;
-      }
-
-      let result = await render.resolveHref(href);
-      if (!result.anchor) {
-        return false;
-      }
-      let currentPosition = render.getPosition();
-      if (result.index === parseInt(currentPosition.chapterDocIndex)) {
-        let node = result.anchor(doc);
-        if (node) {
-          href = "#" + node.getAttribute("id");
-        }
-      } else {
-        await render.goToChapterDocIndex(result.index);
-        let node = result.anchor(doc);
-        await render.goToNode(node);
-        return true;
-      }
-    }
-    let footnote = "";
-    if (href && href.indexOf("#") > -1) {
-      let id = href.split("#").reverse()[0];
-      let node = doc.body.querySelector("#" + CSS.escape(id));
-      if (!node) {
-        if (href.indexOf("filepos") > -1) {
-          let chapterInfo = render.resolveChapter(href);
-          await render.goToChapter(
-            chapterInfo.index,
-            chapterInfo.href,
-            chapterInfo.label
-          );
-          return true;
-        }
-        if (href.indexOf("#") !== 0) {
-          while (href.startsWith(".")) {
-            href = href.substring(1);
-          }
-          let chapterInfo = render.resolveChapter(href);
-          if (chapterInfo) {
-            await render.goToChapter(
-              chapterInfo.index,
-              chapterInfo.href,
-              chapterInfo.label
-            );
-          }
-        }
-        node = doc.body.querySelector("#" + CSS.escape(id));
-        if (!node) {
-          return false;
-        }
-        await render.goToNode(doc.body.querySelector("#" + CSS.escape(id)));
-      }
-      let targetElement = event.target as HTMLElement;
-      if (!targetElement) {
-        return false;
-      }
-
-      if (isElementFootnote(node) || !node.textContent.trim()) {
-        //获取当前a标签和下一个a标签之间的内容
-        let next = node.nextSibling;
-        let content = node.textContent;
-        while (next && next.tagName !== node.tagName) {
-          content += next.textContent;
-          next = next.nextSibling;
-        }
-        if (content.trim() && content.trim().length <= 3000) {
-          node = document.createElement("div");
-          node.innerHTML = content;
-        }
-      }
-      //将html代码中的img标签由blob转换为base64
-      footnote = node.textContent;
-    } else if (href) {
-      let chapterInfo = render.resolveChapter(href);
-      if (chapterInfo) {
-        await render.goToChapter(
-          chapterInfo.index,
-          chapterInfo.href,
-          chapterInfo.label
-        );
-      } else {
-        if (href.indexOf("num") > -1 && render.format === "PDF") {
-          let result = await render.book.resolveHref(href);
-          if (result && result.index !== undefined) {
-            await render.goToChapterIndex(result.index);
-          }
-        }
-      }
-    }
-    if (!isElementFootnote(target as HTMLElement) && !isLinkElement(href)) {
-      return false;
-    }
-
-    // Send message to React Native with link details
+  event.preventDefault();
+  event.stopPropagation();
+  let href = render.getTargetHref(event);
+  console.log("handleLinkJump", href, event);
+  let result = await render.handleLinkJump(href, event);
+  console.log("handleLinkJump result", result);
+  if (!result.handled) {
+    return false;
+  }
+  if (result.external) {
     window.ReactNativeWebView.postMessage(
       JSON.stringify({
         event: "link-clicked",
         href: href,
-        footnote: footnote,
+        footnote: "",
+        ...result,
       })
     );
-
-    return false;
+    return true;
   }
+  let footnoteResult = await render.getFootnoteContent(result.node);
+  window.ReactNativeWebView.postMessage(
+    JSON.stringify({
+      event: "link-clicked",
+      href: href,
+      footnote: !footnoteResult.handled ? "" : footnoteResult.content,
+      rect: event.target.getBoundingClientRect(),
+      ...result,
+    })
+  );
+  // if (result.isJump) {
+  //   this.setState({
+  //     isJump: true,
+  //     returnPosition: ConfigService.getObjectConfig(
+  //       this.props.currentBook.key,
+  //       "recordLocation",
+  //       {}
+  //     ),
+  //   });
+  // }
+  // if (result.href) {
+  //   this.setState({ href: result.href });
+  // }
+  // if (result.isShowMenu) {
+  //   let targetElement = event.target;
+  //   let rect = targetElement.getBoundingClientRect();
+  //   await this.handleShowMenu(result.node, rect);
+  //   return true;
+  // }
+  // return true;
+  return true;
+
+  // const linkElement = findLinkElement(target);
+  // if (linkElement) {
+  //   event.preventDefault();
+  //   event.stopPropagation();
+  //   // Get href from the link
+  //   let href = linkElement.getAttribute("href");
+  //   if (href && href.startsWith("kindle:")) {
+  //     let chapterInfo = render.resolveChapter(href);
+  //     if (chapterInfo) {
+  //       await render.goToChapter(
+  //         chapterInfo.index,
+  //         chapterInfo.href,
+  //         chapterInfo.label
+  //       );
+  //       return true;
+  //     }
+
+  //     let result = await render.resolveHref(href);
+  //     if (!result.anchor) {
+  //       return false;
+  //     }
+  //     let currentPosition = render.getPosition();
+  //     if (result.index === parseInt(currentPosition.chapterDocIndex)) {
+  //       let node = result.anchor(doc);
+  //       if (node) {
+  //         href = "#" + node.getAttribute("id");
+  //       }
+  //     } else {
+  //       await render.goToChapterDocIndex(result.index);
+  //       let node = result.anchor(doc);
+  //       await render.goToNode(node);
+  //       return true;
+  //     }
+  //   }
+  //   let footnote = "";
+  //   if (href && href.indexOf("#") > -1) {
+  //     let id = href.split("#").reverse()[0];
+  //     let node = doc.body.querySelector("#" + CSS.escape(id));
+  //     if (!node) {
+  //       if (href.indexOf("filepos") > -1) {
+  //         let chapterInfo = render.resolveChapter(href);
+  //         await render.goToChapter(
+  //           chapterInfo.index,
+  //           chapterInfo.href,
+  //           chapterInfo.label
+  //         );
+  //         return true;
+  //       }
+  //       if (href.indexOf("#") !== 0) {
+  //         while (href.startsWith(".")) {
+  //           href = href.substring(1);
+  //         }
+  //         let chapterInfo = render.resolveChapter(href);
+  //         if (chapterInfo) {
+  //           await render.goToChapter(
+  //             chapterInfo.index,
+  //             chapterInfo.href,
+  //             chapterInfo.label
+  //           );
+  //         }
+  //       }
+  //       node = doc.body.querySelector("#" + CSS.escape(id));
+  //       if (!node) {
+  //         return false;
+  //       }
+  //       await render.goToNode(doc.body.querySelector("#" + CSS.escape(id)));
+  //     }
+  //     let targetElement = event.target as HTMLElement;
+  //     if (!targetElement) {
+  //       return false;
+  //     }
+
+  //     if (isElementFootnote(node) || !node.textContent.trim()) {
+  //       //获取当前a标签和下一个a标签之间的内容
+  //       let next = node.nextSibling;
+  //       let content = node.textContent;
+  //       while (next && next.tagName !== node.tagName) {
+  //         content += next.textContent;
+  //         next = next.nextSibling;
+  //       }
+  //       if (content.trim() && content.trim().length <= 3000) {
+  //         node = document.createElement("div");
+  //         node.innerHTML = content;
+  //       }
+  //     }
+  //     //将html代码中的img标签由blob转换为base64
+  //     footnote = node.textContent;
+  //   } else if (href) {
+  //     let chapterInfo = render.resolveChapter(href);
+  //     if (chapterInfo) {
+  //       await render.goToChapter(
+  //         chapterInfo.index,
+  //         chapterInfo.href,
+  //         chapterInfo.label
+  //       );
+  //     } else {
+  //       if (href.indexOf("num") > -1 && render.format === "PDF") {
+  //         let result = await render.book.resolveHref(href);
+  //         if (result && result.index !== undefined) {
+  //           await render.goToChapterIndex(result.index);
+  //         }
+  //       }
+  //     }
+  //   }
+  //   if (!isElementFootnote(target as HTMLElement) && !isLinkElement(href)) {
+  //     return false;
+  //   }
+
+  //   // Send message to React Native with link details
+  //   window.ReactNativeWebView.postMessage(
+  //     JSON.stringify({
+  //       event: "link-clicked",
+  //       href: href,
+  //       footnote: footnote,
+  //     })
+  //   );
+
+  //   return false;
+  // }
 };
 function findLinkElement(element) {
   // Check if the element itself is a link

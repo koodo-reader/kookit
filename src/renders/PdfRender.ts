@@ -28,6 +28,7 @@ class PdfRender extends GeneralRender {
   scale: number = 1;
   backgroundColor: string;
   isScannedPDF: string;
+  scrollPDFInterval: any = null;
   templateChapterDocIndex: number = 0;
   platform: string;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
@@ -139,6 +140,23 @@ class PdfRender extends GeneralRender {
       resolve();
     });
   }
+  async autoScrollPDF(isStart: string) {
+    console.log("autoScrollPDF called", Date.now());
+    let doc = this.getDocument();
+
+    if (this.scrollPDFInterval) {
+      clearInterval(this.scrollPDFInterval);
+      this.scrollPDFInterval = null;
+    }
+    if (isStart === "no" || this.readerMode !== "scroll") {
+      return;
+    }
+    this.scrollPDFInterval = setInterval(async () => {
+      console.log("auto scrolling...", Date.now());
+      if (!doc) return;
+      await this.handlePDFScrollEvent(doc);
+    }, 1000); // Debounce selection events
+  }
   async handlePDFScrollEvent(doc: Document) {
     let subContainers = doc.querySelectorAll(".pdf-container");
     for (let index = 0; index < subContainers.length; index++) {
@@ -204,6 +222,7 @@ class PdfRender extends GeneralRender {
       left: this.element.offsetLeft,
       top: this.element.offsetTop,
       scrollTop: this.element.scrollTop,
+      scrollLeft: this.element.scrollWidth / 2 - this.element.clientWidth / 2,
       sectionWidth: (doc.body.clientWidth - gap) / scale,
       sectionHeight: iframeHeight,
       gap: gap,

@@ -167,9 +167,44 @@ export const isElementFootnote = (element: HTMLElement) => {
     if (footnotePattern.test(textContent)) {
       return true;
     }
+    if (
+      textContent.toLowerCase().indexOf("footnote") > -1 ||
+      textContent.toLowerCase().indexOf("脚注") > -1 ||
+      textContent.toLowerCase().indexOf("注释") > -1 ||
+      textContent.toLowerCase().indexOf("fn") > -1
+    ) {
+      return true;
+    }
   }
 
   return false;
+};
+export const processHtml = async (html) => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  const images: any[] = Array.from(doc.getElementsByTagName("img"));
+  for (const img of images) {
+    if (img.src && img.src.startsWith("blob:")) {
+      try {
+        const dataUrl = await convertBlobToDataURL(img.src);
+        img.src = dataUrl;
+        img.style.maxWidth = "100%"; // 确保图片不会超出容器宽度
+      } catch (error) {
+        console.error("Error converting blob to data URL:", error);
+      }
+    }
+  }
+  return doc.body.innerHTML;
+};
+const convertBlobToDataURL = async (blobUrl) => {
+  const response = await fetch(blobUrl);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 };
 export const handleRenderChapter = async (
   chapterDocIndex: number,

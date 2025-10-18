@@ -46,13 +46,16 @@ class GeneralParser {
     } else {
       this.chapterList = await Promise.all<Chapter>(
         this.book.sections.map(async (item, index) => {
+          console.log(item, "item");
           return {
-            label: this.unescapeHtml(item.label)
-              ? this.unescapeHtml(item.label)
-              : index + "",
-            href: item.href ? item.href : "title" + index,
+            label:
+              item && item.label && this.unescapeHtml(item.label)
+                ? this.unescapeHtml(item.label)
+                : index + "",
+            href: item && item.href ? item.href : "title" + index,
             index: index,
-            subitems: item.subitems ? await this.getChapter(item.subitems) : [],
+            subitems:
+              item && item.subitems ? await this.getChapter(item.subitems) : [],
           } as Chapter;
         })
       );
