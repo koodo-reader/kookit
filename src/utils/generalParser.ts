@@ -46,7 +46,6 @@ class GeneralParser {
     } else {
       this.chapterList = await Promise.all<Chapter>(
         this.book.sections.map(async (item, index) => {
-          console.log(item, "item");
           return {
             label:
               item && item.label && this.unescapeHtml(item.label)

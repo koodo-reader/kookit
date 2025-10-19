@@ -965,7 +965,6 @@ class GeneralRender extends EventEmitter {
               // 将前导空格替换为零宽度字符，保留原始内容但不显示
               const text = node.nodeValue || "";
               const leadingSpaces = text.match(/^(\s+)/);
-              console.log(leadingSpaces, "leadingSpaces");
               if (leadingSpaces) {
                 //replace leading spaces with nbsp;
                 node.nodeValue = text.replace(
@@ -1212,20 +1211,10 @@ class GeneralRender extends EventEmitter {
           href = "#" + node.getAttribute("id");
         }
       } else {
-        // this.setState({
-        //   isJump: true,
-        //   returnPosition: ConfigService.getObjectConfig(
-        //     this.props.currentBook.key,
-        //     "recordLocation",
-        //     {}
-        //   ),
-        // });
-        // let rect = event.target.getBoundingClientRect();
         await this.goToChapterDocIndex(result.index);
         let node = result.anchor(doc);
         await this.goToNode(node);
         if (isElementFootnote(event.target)) {
-          // await this.handleShowMenu(node, event.target, rect);
           return {
             handled: true,
             isShowMenu: true,
@@ -1240,11 +1229,9 @@ class GeneralRender extends EventEmitter {
     }
 
     if (href && href.indexOf("#") > -1) {
-      // this.setState({ href: href });
       let id = href.split("#").reverse()[0];
       let node = doc.body.querySelector("#" + CSS.escape(id));
       let rect = event.target.getBoundingClientRect();
-      console.log("find node by id", node, id);
       let isJump = false;
       if (!node) {
         if (href.indexOf("filepos") > -1 && this.resolveChapter(href)) {
@@ -1257,7 +1244,6 @@ class GeneralRender extends EventEmitter {
           );
           return { handled: true };
         }
-        //can't find the node, go to href
 
         if (href.indexOf("#") !== 0) {
           while (href.startsWith(".")) {
@@ -1276,17 +1262,8 @@ class GeneralRender extends EventEmitter {
           return { handled: false };
         }
         isJump = true;
-        // this.setState({
-        //   isJump: true,
-        //   returnPosition: ConfigService.getObjectConfig(
-        //     this.props.currentBook.key,
-        //     "recordLocation",
-        //     {}
-        //   ),
-        // });
         await this.goToNode(node);
       }
-      console.log("go to node", isElementFootnote(event.target));
       if (isElementFootnote(event.target)) {
         return {
           handled: true,
@@ -1295,7 +1272,6 @@ class GeneralRender extends EventEmitter {
           href: href,
           node: node,
         };
-        // await this.handleShowMenu(node, event.target, rect);
       }
       return { handled: true };
     } else if (href && this.resolveChapter && this.resolveChapter(href)) {
@@ -1327,27 +1303,22 @@ class GeneralRender extends EventEmitter {
       //获取当前a标签和下一个a标签之间的内容
       let next = node.nextSibling;
       let content = node.textContent;
-      console.log(next);
       while (next && (next.tagName !== node.tagName || !content.trim())) {
         content += next.textContent;
         next = next.nextSibling;
       }
-      console.log("footnote content", content);
       if (content.trim() && content.trim().length <= 3000) {
         node = document.createElement("div");
         node.innerHTML = content;
       }
     }
-    console.log("handleShowMenu", node, node.textContent);
     let htmlContent = node.innerHTML;
     if (!node.textContent.trim()) {
       return { handled: false };
     }
-    console.log(1);
     if (node.textContent.trim() && node.textContent.trim().length > 3000) {
       return { handled: false };
     }
-    console.log(2);
     htmlContent = await processHtml(htmlContent);
     return { handled: true, content: htmlContent };
   }

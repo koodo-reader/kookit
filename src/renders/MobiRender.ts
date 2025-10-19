@@ -26,24 +26,6 @@ class MobiRender extends GeneralRender {
       resolve();
     });
   }
-  // async resolveHref(href: string) {
-  //   let chapterDocIndex = this.tempLocation.chapterDocIndex;
-  //   let chapterDoc = this.chapterDocList[chapterDocIndex];
-  //   if (chapterDoc) {
-  //     let result = await chapterDoc.text.resolveHref(href);
-  //     if (!result) return {};
-  //     if (result.index === parseInt(chapterDocIndex)) {
-  //       let doc = this.getDocument();
-  //       if (!doc) return result;
-  //       let element = result.anchor(doc);
-  //       if (!element) return result;
-  //       let id = element.getAttribute("id") || "";
-  //       return { ...result, id };
-  //     }
-  //     return result;
-  //   }
-  //   return {};
-  // }
   async parse() {
     try {
       let blob = new Blob([this.mobiBuffer]);

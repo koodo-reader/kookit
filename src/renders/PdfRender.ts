@@ -103,7 +103,6 @@ class PdfRender extends GeneralRender {
         viewport === viewportMid
           ? Math.floor(this.chapterDocList.length / 2)
           : this.templateChapterDocIndex;
-      console.log(this.templateChapterDocIndex, "templateChapterDocIndex");
       //根据viewport的判断结果设置模板chapterDocIndex
       let doc: any = this.getDocument();
       if (!doc) return;
@@ -141,7 +140,6 @@ class PdfRender extends GeneralRender {
     });
   }
   async autoScrollPDF(isStart: string) {
-    console.log("autoScrollPDF called", Date.now());
     let doc = this.getDocument();
 
     if (this.scrollPDFInterval) {
@@ -152,7 +150,6 @@ class PdfRender extends GeneralRender {
       return;
     }
     this.scrollPDFInterval = setInterval(async () => {
-      console.log("auto scrolling...", Date.now());
       if (!doc) return;
       await this.handlePDFScrollEvent(doc);
     }, 1000); // Debounce selection events
@@ -666,7 +663,6 @@ class PdfRender extends GeneralRender {
       }
       let page = await this.chapterDocList[pageIndex].text.getPage();
       let scale = await this.getPdfScale();
-      console.log(scale, "sca324lesf234sdf");
       try {
         showPDFHighlight(
           selected,
@@ -712,7 +708,6 @@ class PdfRender extends GeneralRender {
     var pageIndex = parseInt(selected.page + "");
     let page = await this.chapterDocList[pageIndex].text.getPage();
     let scale = await this.getPdfScale();
-    console.log(scale, "scalesf234sdf");
     showPDFHighlight(
       selected,
       item.color,
@@ -745,7 +740,6 @@ class PdfRender extends GeneralRender {
     let chapterText = await blob.text();
     subDoc.body.innerHTML = chapterText;
     let scale = await this.getPdfScale();
-    console.log(scale, "scalesfsdf");
     await this.chapterDocList[chapterDocIndex].text.render(
       subDoc,
       scale,
@@ -817,7 +811,6 @@ class PdfRender extends GeneralRender {
     await this.handleRenderPDFChapter(chapterDocIndex + 1, doc);
   }
   getPdfScale = async () => {
-    console.log(this.pdfScale, "this.pdfScale");
     if (this.pdfScale && this.pdfScale > 0) {
       return this.pdfScale;
     }
@@ -834,7 +827,6 @@ class PdfRender extends GeneralRender {
       scale = viewWidth / width;
     }
     this.pdfScale = scale;
-    console.log(scale, "scale11111111");
     return scale;
   };
 }
