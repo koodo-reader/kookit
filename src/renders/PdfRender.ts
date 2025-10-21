@@ -161,14 +161,13 @@ class PdfRender extends GeneralRender {
       let id = subContainer.getAttribute("id");
       if (!id) continue;
       let chapterDocIndex = parseInt(id.split("-").reverse()[0]);
-      if (
-        isPDFScrolledIntoView(
-          this.element,
-          subContainer as HTMLElement,
-          this.readerMode,
-          doc
-        )
-      ) {
+      let isScrollIntoView = isPDFScrolledIntoView(
+        this.element,
+        subContainer as HTMLElement,
+        this.readerMode,
+        doc
+      );
+      if (isScrollIntoView) {
         await this.renderPdfPage(chapterDocIndex, doc);
       }
     }

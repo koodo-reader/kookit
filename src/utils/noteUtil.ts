@@ -81,13 +81,12 @@ export const showPDFHighlight = (
   const sortedRects = rects.sort((a, b) => a.width - b.width);
   // 去除bottom相差小于5且宽度更小的rect，保留宽度最大的rect
   const filteredRects: any[] = [];
-
   for (let i = 0; i < sortedRects.length; i++) {
     const currentRect = sortedRects[i];
     const currentBottom = currentRect.bottom;
 
     // 检查是否有bottom相差小于5且宽度更大的rect
-    const hasSimilarBottomWithLargerWidth = sortedRects.some(
+    const hasSimilarBottomWithLargerWidth = filteredRects.some(
       (otherRect, otherIndex) => {
         if (otherIndex === i) return false;
         const otherBottom = otherRect.bottom;
