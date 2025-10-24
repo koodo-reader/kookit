@@ -451,7 +451,9 @@ class PdfRender extends GeneralRender {
     }
     this.tempLocation.chapterDocIndex = chapterDocIndex + "";
     this.tempLocation.percentage =
-      chapterDocIndex / (this.chapterDocList.length - 1) + "";
+      this.chapterDocList.length === 1
+        ? "1"
+        : chapterDocIndex / (this.chapterDocList.length - 1) + "";
     this.tempLocation.chapterHref = this.chapterDocList[chapterDocIndex].href;
     this.tempLocation.chapterTitle = this.chapterDocList[chapterDocIndex].label;
     this.tempLocation.text = "";
@@ -493,7 +495,9 @@ class PdfRender extends GeneralRender {
     if (chapterDocIndex !== parseInt(this.tempLocation.chapterDocIndex)) {
       this.tempLocation.chapterDocIndex = chapterDocIndex + "";
       this.tempLocation.percentage =
-        chapterDocIndex / (this.chapterDocList.length - 1) + "";
+        this.chapterDocList.length === 1
+          ? "1"
+          : chapterDocIndex / (this.chapterDocList.length - 1) + "";
       this.tempLocation.chapterHref = this.chapterDocList[chapterDocIndex].href;
       this.tempLocation.chapterTitle =
         this.chapterDocList[chapterDocIndex].label;
