@@ -538,56 +538,6 @@ export const handleRecord = async (
     lock = false;
   }, 100);
 };
-export const handleRecordByNode = async (
-  element: HTMLElement,
-  readerMode: string,
-  flattenChapters: Chapter[],
-  tempLocation: any,
-  doc: Document,
-  node: HTMLElement
-) => {
-  if (lock) return;
-  let nodeList = getBlockElement(doc.body);
-  let visibleNode = nodeList.filter(
-    (s) =>
-      isScrolledIntoView(element, s as HTMLElement, readerMode) &&
-      ((s as HTMLElement).textContent || "").trim()
-  );
-  let firstVisibleNode: any = node;
-  let count = 0;
-
-  for (let i = 0; i < nodeList.length; i++) {
-    if (
-      isScrolledIntoView(element, nodeList[i], readerMode) &&
-      firstVisibleNode &&
-      nodeList[i].innerHTML === firstVisibleNode.innerHTML
-    ) {
-      count = i;
-      break;
-    }
-  }
-  handleHashChapter(visibleNode, flattenChapters, tempLocation);
-  if (
-    firstVisibleNode &&
-    !isCurrentNodeFarFromParrent(firstVisibleNode, element, readerMode)
-  ) {
-    tempLocation.text = firstVisibleNode
-      ? firstVisibleNode.textContent
-        ? firstVisibleNode.textContent
-        : ""
-      : "";
-    tempLocation.count = count + "";
-    tempLocation.page = "";
-  } else {
-    tempLocation.page =
-      (await progressInfo(readerMode, doc, element))?.currentPage + "";
-  }
-
-  lock = true;
-  setTimeout(() => {
-    lock = false;
-  }, 100);
-};
 export const isCurrentNodeFarFromParrent = (
   targetNode: HTMLElement,
   element: HTMLElement,
