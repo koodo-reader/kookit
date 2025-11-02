@@ -1183,7 +1183,7 @@ class GeneralRender extends EventEmitter {
   }> {
     let doc = this.getDocument();
     if (!doc) return { handled: false };
-    if (href && href.startsWith("kindle:")) {
+    if (href && (href.startsWith("kindle:") || href.indexOf("filepos") > -1)) {
       let chapterInfo = this.resolveChapter(href);
       if (chapterInfo) {
         await this.goToChapter(
@@ -1234,17 +1234,6 @@ class GeneralRender extends EventEmitter {
       let rect = event.target.getBoundingClientRect();
       let isJump = false;
       if (!node) {
-        if (href.indexOf("filepos") > -1 && this.resolveChapter(href)) {
-          let chapterInfo = this.resolveChapter(href);
-          if (!chapterInfo) return { handled: false };
-          await this.goToChapter(
-            chapterInfo.index,
-            chapterInfo.href,
-            chapterInfo.label
-          );
-          return { handled: true };
-        }
-
         if (href.indexOf("#") !== 0) {
           while (href.startsWith(".")) {
             href = href.substring(1);

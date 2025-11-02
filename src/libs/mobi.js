@@ -873,7 +873,7 @@ class MOBI6 {
             const indent = getIndent(a)
             const item = {
               label: a.innerText?.trim() ?? '',
-              href: `filepos:${a.getAttribute('filepos')}`,
+              href: `#filepos${a.getAttribute('filepos')}`,
             }
             const level = indent > lastIndent ? lastLevel + 1
               : indent === lastIndent ? lastLevel

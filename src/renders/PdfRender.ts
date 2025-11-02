@@ -68,6 +68,9 @@ class PdfRender extends GeneralRender {
           ...this.chapterDocList,
         ];
       }
+      if (this.readerMode === "single" && Math.abs(this.scale) > 1.4) {
+        this.scale = 1.4;
+      }
       if (
         document.body.clientWidth * Math.abs(this.scale) -
           document.body.clientWidth * 0.4 >
@@ -455,7 +458,19 @@ class PdfRender extends GeneralRender {
         ? "1"
         : chapterDocIndex / (this.chapterDocList.length - 1) + "";
     this.tempLocation.chapterHref = this.chapterDocList[chapterDocIndex].href;
-    this.tempLocation.chapterTitle = this.chapterDocList[chapterDocIndex].label;
+    let chapterTitle = this.chapterDocList[chapterDocIndex].label;
+    if (!chapterTitle) {
+      //取前面最近的章节，且存在的标题
+      let tempChapterDocIndex = chapterDocIndex;
+      while (tempChapterDocIndex >= 0) {
+        if (this.chapterDocList[tempChapterDocIndex].label) {
+          chapterTitle = this.chapterDocList[tempChapterDocIndex].label;
+          break;
+        }
+        tempChapterDocIndex--;
+      }
+    }
+    this.tempLocation.chapterTitle = chapterTitle;
     this.tempLocation.text = "";
     this.trigger("page-changed");
   }
@@ -499,8 +514,19 @@ class PdfRender extends GeneralRender {
           ? "1"
           : chapterDocIndex / (this.chapterDocList.length - 1) + "";
       this.tempLocation.chapterHref = this.chapterDocList[chapterDocIndex].href;
-      this.tempLocation.chapterTitle =
-        this.chapterDocList[chapterDocIndex].label;
+      let chapterTitle = this.chapterDocList[chapterDocIndex].label;
+      if (!chapterTitle) {
+        //取前面最近的章节，且存在的标题
+        let tempChapterDocIndex = chapterDocIndex;
+        while (tempChapterDocIndex >= 0) {
+          if (this.chapterDocList[tempChapterDocIndex].label) {
+            chapterTitle = this.chapterDocList[tempChapterDocIndex].label;
+            break;
+          }
+          tempChapterDocIndex--;
+        }
+      }
+      this.tempLocation.chapterTitle = chapterTitle;
       this.tempLocation.text = "";
       this.trigger("page-changed");
     }
