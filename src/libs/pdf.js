@@ -350,7 +350,6 @@ export const makePDF = async (file, password) => {
     }
   }
   let isScannedPdf = false
-
   let testedPage = pdf.numPages > 0 ? await pdf.getPage(Math.floor(pdf.numPages / 2) + 1) : null
   if (testedPage) {
     const textContent = await testedPage.getTextContent()

@@ -182,9 +182,7 @@ class PdfRender extends GeneralRender {
         lastModified: new Date().getTime(),
         type: blob.type,
       });
-      if (await isPDF(file)) {
-        this.book = await makePDF(file, this.password);
-      }
+      this.book = await makePDF(file, this.password);
     } catch (error) {
       console.error(error);
       throw error;
@@ -559,6 +557,7 @@ class PdfRender extends GeneralRender {
     let pageIndex = parseInt(this.tempLocation.chapterDocIndex);
     let doc = this.getSubDocument(pageIndex);
     if (!doc) return;
+    console.log("assdfasdf", text, "agsfsdf", style, "text");
     handleHighlightSearchNode(text, style, doc);
   }
   getProgress() {

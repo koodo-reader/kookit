@@ -215,12 +215,45 @@ export const getPDFSearchResult = async (
   let searchResult: { cfi: string; excerpt: string }[] = [];
   for (let i = 0; i < chapterDocList.length; i++) {
     let textContent = await chapterDocList[i].text.getTextContent();
-    textContent.items.forEach((item: any, itemIndex: number) => {
-      if (item.str.indexOf(keyword) > -1) {
+
+    // Group items by line based on y-coordinate with tolerance
+    const lineMap = new Map<number, any[]>();
+    const tolerance = 5; // Y-coordinate tolerance for grouping items in same line
+
+    textContent.items.forEach((item: any, index: number) => {
+      const y = item.transform[5]; // y-coordinate
+      let foundLineKey: number | null = null;
+
+      // Check if this item belongs to an existing line
+      for (const [firstItemIndex, items] of lineMap.entries()) {
+        const firstItemY = items[0].transform[5];
+        if (Math.abs(y - firstItemY) < tolerance) {
+          items.push(item);
+          foundLineKey = firstItemIndex;
+          break;
+        }
+      }
+
+      // If no matching line found, create a new line with current item's index as key
+      if (foundLineKey === null) {
+        lineMap.set(index, [item]);
+      }
+    });
+
+    // Merge items in the same line and search
+    let lineIndex = 0;
+    console.log(lineMap, i);
+    lineMap.forEach((items, itemKey) => {
+      // Sort items by x-coordinate
+      items.sort((a, b) => a.transform[4] - b.transform[4]);
+      // Merge text from same line
+      const lineText = items.map((item) => item.str).join("");
+
+      if (lineText.indexOf(keyword) > -1) {
         searchResult.push({
-          excerpt: item.str,
+          excerpt: lineText,
           cfi: JSON.stringify({
-            text: item.str + "#" + i + "#" + itemIndex,
+            text: lineText + "#" + i + "#" + itemKey,
             chapterTitle: chapterDocList[i].label,
             chapterDocIndex: i,
             chapterHref: chapterDocList[i].href,
@@ -230,8 +263,10 @@ export const getPDFSearchResult = async (
           }),
         });
       }
+      lineIndex++;
     });
   }
+  console.log(searchResult, "searchResult");
   return searchResult;
 };
 export const handleIOSScrollPage = async (

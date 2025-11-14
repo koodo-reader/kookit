@@ -1272,6 +1272,16 @@ class GeneralRender extends EventEmitter {
         chapterInfo.label
       );
       return { handled: true };
+    } else if (href && this.book.resolveHref && this.book.resolveHref(href)) {
+      let chapterInfo = await this.book.resolveHref(href);
+      console.log(chapterInfo, "chapterInfo");
+      if (!chapterInfo) return { handled: false };
+      await this.goToChapter(
+        chapterInfo.index,
+        chapterInfo.href,
+        chapterInfo.label
+      );
+      return { handled: true };
     } else if (
       href &&
       href.indexOf("../") === -1 &&
