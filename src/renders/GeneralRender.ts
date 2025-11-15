@@ -1227,8 +1227,27 @@ class GeneralRender extends EventEmitter {
         return { handled: true };
       }
     }
-
-    if (href && href.indexOf("#") > -1) {
+    if (href && this.resolveChapter(href)) {
+      let chapterInfo = this.resolveChapter(href);
+      console.log(chapterInfo, "chapterInfo");
+      if (!chapterInfo) return { handled: false };
+      await this.goToChapter(
+        chapterInfo.index,
+        chapterInfo.href,
+        chapterInfo.label
+      );
+      return { handled: true };
+    } else if (href && this.book.resolveHref && this.book.resolveHref(href)) {
+      let chapterInfo = await this.book.resolveHref(href);
+      console.log(chapterInfo, "chapterInfo");
+      if (!chapterInfo) return { handled: false };
+      await this.goToChapter(
+        chapterInfo.index,
+        chapterInfo.href,
+        chapterInfo.label
+      );
+      return { handled: true };
+    } else if (href && href.indexOf("#") > -1) {
       let id = href.split("#").reverse()[0];
       let node = doc.body.querySelector("#" + CSS.escape(id));
       let rect = event.target.getBoundingClientRect();
@@ -1262,25 +1281,6 @@ class GeneralRender extends EventEmitter {
           node: node,
         };
       }
-      return { handled: true };
-    } else if (href && this.resolveChapter && this.resolveChapter(href)) {
-      let chapterInfo = this.resolveChapter(href);
-      if (!chapterInfo) return { handled: false };
-      await this.goToChapter(
-        chapterInfo.index,
-        chapterInfo.href,
-        chapterInfo.label
-      );
-      return { handled: true };
-    } else if (href && this.book.resolveHref && this.book.resolveHref(href)) {
-      let chapterInfo = await this.book.resolveHref(href);
-      console.log(chapterInfo, "chapterInfo");
-      if (!chapterInfo) return { handled: false };
-      await this.goToChapter(
-        chapterInfo.index,
-        chapterInfo.href,
-        chapterInfo.label
-      );
       return { handled: true };
     } else if (
       href &&
