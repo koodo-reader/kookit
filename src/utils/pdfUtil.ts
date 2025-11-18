@@ -242,7 +242,6 @@ export const getPDFSearchResult = async (
 
     // Merge items in the same line and search
     let lineIndex = 0;
-    console.log(lineMap, i);
     lineMap.forEach((items, itemKey) => {
       // Sort items by x-coordinate
       items.sort((a, b) => a.transform[4] - b.transform[4]);
@@ -266,7 +265,6 @@ export const getPDFSearchResult = async (
       lineIndex++;
     });
   }
-  console.log(searchResult, "searchResult");
   return searchResult;
 };
 export const handleIOSScrollPage = async (

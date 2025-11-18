@@ -557,7 +557,6 @@ class PdfRender extends GeneralRender {
     let pageIndex = parseInt(this.tempLocation.chapterDocIndex);
     let doc = this.getSubDocument(pageIndex);
     if (!doc) return;
-    console.log("assdfasdf", text, "agsfsdf", style, "text");
     handleHighlightSearchNode(text, style, doc);
   }
   getProgress() {
@@ -675,6 +674,7 @@ class PdfRender extends GeneralRender {
   }
   async renderHighlighters(notes: any[], handleNoteClick: any) {
     if (notes.length === 0) return;
+    notes = notes.reverse();
     let chapterIndex = notes[0].chapterIndex;
     let subIframe = this.getSubIframe(chapterIndex);
     let subDoc = this.getSubDocument(chapterIndex);

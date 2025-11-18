@@ -874,6 +874,7 @@ class GeneralRender extends EventEmitter {
     return charRange;
   }
   async renderHighlighters(notes: any[], handleNoteClick: any) {
+    notes = notes.reverse();
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -1229,7 +1230,6 @@ class GeneralRender extends EventEmitter {
     }
     if (href && this.resolveChapter(href)) {
       let chapterInfo = this.resolveChapter(href);
-      console.log(chapterInfo, "chapterInfo");
       if (!chapterInfo) return { handled: false };
       await this.goToChapter(
         chapterInfo.index,
@@ -1239,7 +1239,6 @@ class GeneralRender extends EventEmitter {
       return { handled: true };
     } else if (href && this.book.resolveHref && this.book.resolveHref(href)) {
       let chapterInfo = await this.book.resolveHref(href);
-      console.log(chapterInfo, "chapterInfo");
       if (!chapterInfo) return { handled: false };
       await this.goToChapter(
         chapterInfo.index,

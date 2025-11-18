@@ -603,14 +603,12 @@ export const addAndroidTouchEvent = (
       return;
     }
     if (Date.now() - startSelectionTime < 100) {
-      console.log("sadfsadf", selectionCount);
       setTimeout(() => {
         if (selectionCount === 1) {
           triggerSelectionMenu(event);
         }
       }, 600);
     } else {
-      console.log("fgdfgdf");
       triggerSelectionMenu(event);
     }
 
@@ -643,17 +641,18 @@ export const addAndroidTouchEvent = (
   doc.addEventListener(
     "selectionchange",
     (event) => {
-      console.log("selectionchange");
       // 新增: 清除之前的定时器
-      if (selectionMenuTimer) {
-        clearTimeout(selectionMenuTimer);
-      }
+      if (format !== "PDF") {
+        if (selectionMenuTimer) {
+          clearTimeout(selectionMenuTimer);
+        }
 
-      // 新增: 设置3秒后触发选择菜单
-      selectionMenuTimer = setTimeout(() => {
-        triggerSelectionMenu(event);
-        selectionMenuTimer = null;
-      }, 1000);
+        // 新增: 设置3秒后触发选择菜单
+        selectionMenuTimer = setTimeout(() => {
+          triggerSelectionMenu(event);
+          selectionMenuTimer = null;
+        }, 1000);
+      }
       //检查选择文字是否为空
       const selectedText = iWin.getSelection().toString().trim();
       if (!selectedText) {
