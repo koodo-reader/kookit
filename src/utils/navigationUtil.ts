@@ -162,8 +162,9 @@ export const isElementFootnote = (element: HTMLElement) => {
   }
   if (element.textContent) {
     let textContent = element.textContent.trim();
-    // Check for patterns like [1], [a], (1), (a)
-    const footnotePattern = /^(\[|\()([a-zA-Z0-9]+)(\]|\))$|^\d+$/;
+    // Check for patterns like [1], [a], (1), (a), roman numerals
+    const footnotePattern =
+      /^(\[|\()([a-zA-Z0-9]+)(\]|\))$|^\d+$|^[ivxlcdm]+$/i;
     if (footnotePattern.test(textContent)) {
       return true;
     }

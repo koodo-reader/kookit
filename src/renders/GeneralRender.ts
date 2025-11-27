@@ -1237,20 +1237,12 @@ class GeneralRender extends EventEmitter {
         chapterInfo.label
       );
       return { handled: true };
-    } else if (href && this.book.resolveHref && this.book.resolveHref(href)) {
-      let chapterInfo = await this.book.resolveHref(href);
-      if (!chapterInfo) return { handled: false };
-      await this.goToChapter(
-        chapterInfo.index,
-        chapterInfo.href,
-        chapterInfo.label
-      );
-      return { handled: true };
     } else if (href && href.indexOf("#") > -1) {
       let id = href.split("#").reverse()[0];
       let node = doc.body.querySelector("#" + CSS.escape(id));
       let rect = event.target.getBoundingClientRect();
       let isJump = false;
+      console.log(node, "node");
       if (!node) {
         if (href.indexOf("#") !== 0) {
           while (href.startsWith(".")) {
@@ -1265,6 +1257,7 @@ class GeneralRender extends EventEmitter {
           );
         }
         node = doc.body.querySelector("#" + CSS.escape(id));
+        console.log(node, "sadfsdfsd");
         if (!node) {
           return { handled: false };
         }
@@ -1280,6 +1273,15 @@ class GeneralRender extends EventEmitter {
           node: node,
         };
       }
+      return { handled: true };
+    } else if (href && this.book.resolveHref && this.book.resolveHref(href)) {
+      let chapterInfo = await this.book.resolveHref(href);
+      if (!chapterInfo) return { handled: false };
+      await this.goToChapter(
+        chapterInfo.index,
+        chapterInfo.href,
+        chapterInfo.label
+      );
       return { handled: true };
     } else if (
       href &&
@@ -1297,7 +1299,9 @@ class GeneralRender extends EventEmitter {
     return { handled: false };
   }
   async getFootnoteContent(node: any) {
+    console.log("sjadlkfjsld");
     if (isElementFootnote(node) || !node.textContent.trim()) {
+      console.log(node, "ghfhghgf");
       //获取当前a标签和下一个a标签之间的内容
       let next = node.nextSibling;
       let content = node.textContent;
@@ -1310,6 +1314,7 @@ class GeneralRender extends EventEmitter {
         node.innerHTML = content;
       }
     }
+    console.log(node, "asdfsryw3");
     let htmlContent = node.innerHTML;
     if (!node.textContent.trim()) {
       return { handled: false };
@@ -1318,6 +1323,7 @@ class GeneralRender extends EventEmitter {
       return { handled: false };
     }
     htmlContent = await processHtml(htmlContent);
+    console.log(htmlContent, "shtml");
     return { handled: true, content: htmlContent };
   }
 }
