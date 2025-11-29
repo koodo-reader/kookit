@@ -1040,7 +1040,6 @@ const parseResourceURI = (str) => {
   return { resourceType, id: parseInt(id, 32), type };
 };
 const parsePosURI = (str) => {
-  console.log(str, str.match(kindlePosRegex))
   const [fid, off] = str.match(kindlePosRegex).slice(1);
   return { fid: parseInt(fid, 32), off: parseInt(off, 32) };
 };

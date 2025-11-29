@@ -94,7 +94,6 @@ class PdfRender extends GeneralRender {
       ].filter((idx) => idx >= 0 && idx < totalPages);
       //去重
       keyIndices = Array.from(new Set(keyIndices));
-      console.log(keyIndices, "key");
 
       const keyViewports = await Promise.all(
         keyIndices.map(async (index) => ({
@@ -109,7 +108,6 @@ class PdfRender extends GeneralRender {
         ratio: v.dimension.height / v.dimension.width,
         dimension: v.dimension,
       }));
-      console.log(aspectRatios, "aspectRatios");
 
       let viewport: any;
       let templateIndex: number;

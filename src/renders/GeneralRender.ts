@@ -357,7 +357,6 @@ class GeneralRender extends EventEmitter {
     this.trigger("rendered");
   }
   async goToPosition(bookLocationStr: string) {
-    console.log(bookLocationStr, "go to position");
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -373,7 +372,6 @@ class GeneralRender extends EventEmitter {
     };
     let { text, chapterTitle, chapterDocIndex, chapterHref, count, page, cfi } =
       bookLocation;
-    console.log(this.chapterDocList.length, "length");
     await handleRenderChapter(
       parseInt(chapterDocIndex),
       chapterTitle,
@@ -1244,7 +1242,6 @@ class GeneralRender extends EventEmitter {
       let node = doc.body.querySelector("#" + CSS.escape(id));
       let rect = event.target.getBoundingClientRect();
       let isJump = false;
-      console.log(node, "node");
       if (!node) {
         if (href.indexOf("#") !== 0) {
           while (href.startsWith(".")) {
@@ -1259,7 +1256,6 @@ class GeneralRender extends EventEmitter {
           );
         }
         node = doc.body.querySelector("#" + CSS.escape(id));
-        console.log(node, "sadfsdfsd");
         if (!node) {
           return { handled: false };
         }
@@ -1301,9 +1297,7 @@ class GeneralRender extends EventEmitter {
     return { handled: false };
   }
   async getFootnoteContent(node: any) {
-    console.log("sjadlkfjsld");
     if (isElementFootnote(node) || !node.textContent.trim()) {
-      console.log(node, "ghfhghgf");
       //获取当前a标签和下一个a标签之间的内容
       let next = node.nextSibling;
       let content = node.textContent;
@@ -1316,7 +1310,6 @@ class GeneralRender extends EventEmitter {
         node.innerHTML = content;
       }
     }
-    console.log(node, "asdfsryw3");
     let htmlContent = node.innerHTML;
     if (!node.textContent.trim()) {
       return { handled: false };
@@ -1325,7 +1318,6 @@ class GeneralRender extends EventEmitter {
       return { handled: false };
     }
     htmlContent = await processHtml(htmlContent);
-    console.log(htmlContent, "shtml");
     return { handled: true, content: htmlContent };
   }
 }
