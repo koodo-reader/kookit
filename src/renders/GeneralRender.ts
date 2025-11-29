@@ -357,6 +357,7 @@ class GeneralRender extends EventEmitter {
     this.trigger("rendered");
   }
   async goToPosition(bookLocationStr: string) {
+    console.log(bookLocationStr, "go to position");
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -372,6 +373,7 @@ class GeneralRender extends EventEmitter {
     };
     let { text, chapterTitle, chapterDocIndex, chapterHref, count, page, cfi } =
       bookLocation;
+    console.log(this.chapterDocList.length, "length");
     await handleRenderChapter(
       parseInt(chapterDocIndex),
       chapterTitle,

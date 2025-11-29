@@ -4,7 +4,7 @@ import { makeHtmlBook } from "../libs/html";
 import GeneralParser from "../utils/generalParser";
 import chardet from "chardet";
 import { getCache } from "../libs/cache.js";
-import Chinese from "../libs/zh-convert";
+
 class TxtRender extends GeneralRender {
   txtBuffer: ArrayBuffer;
   charset: string;
