@@ -84,7 +84,7 @@ class PdfRender extends GeneralRender {
       // 分层采样策略：最小化getDimension调用
       const totalPages = this.chapterDocList.length;
 
-      // 第一层：仅采样3个关键位置
+      // 第一层：采样5个关键位置（首页、1/4、1/2、3/4、末页）
       let keyIndices = [
         0,
         Math.floor(totalPages / 4),
