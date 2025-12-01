@@ -967,10 +967,10 @@ class GeneralRender extends EventEmitter {
               const text = node.nodeValue || "";
               const leadingSpaces = text.match(/^(\s+)/);
               if (leadingSpaces) {
-                //replace leading spaces with nbsp;
-                node.nodeValue = text.replace(
-                  /^\s+/,
-                  "".repeat(leadingSpaces[0].length)
+                (item as HTMLElement).setAttribute(
+                  "style",
+                  ((item as HTMLElement).getAttribute("style") || "") +
+                    "text-indent: 0em !important;"
                 );
               }
               // 只处理第一个，退出循环

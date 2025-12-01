@@ -54,7 +54,7 @@ export const txtToHtml = (
   }
 
   if (lines.length > 10000 && !isRefresh) {
-    if (!bookLocation) {
+    if (!bookLocation || !bookLocation.chapterTitle) {
       bookLocation = {
         text: lines[0],
         chapterTitle: "",
@@ -62,7 +62,7 @@ export const txtToHtml = (
       };
     }
     if (!bookLocation.text) {
-      bookLocation.text = bookLocation.chapterTitle;
+      bookLocation.text = bookLocation.chapterTitle || "";
     }
     // --- Slicing and Title Identification Logic ---
     let targetLineIndex = lines.findIndex((item) => {

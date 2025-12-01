@@ -325,14 +325,14 @@ class PdfTextRender extends GeneralRender {
         const worker = await window.Tesseract.createWorker([this.ocrLang], 1, {
           workerPath: workerUrl,
           corePath: `https://${
-            this.serverRegion === "global"
-              ? "storage.koodoreader.com"
-              : "storage.koodoreader.cn"
+            this.serverRegion === "china"
+              ? "storage.koodoreader.cn"
+              : "storage.koodoreader.com"
           }/tesseractjs/tesseract-core`,
           langPath: `https://${
-            this.serverRegion === "global"
-              ? "storage.koodoreader.com"
-              : "storage.koodoreader.cn"
+            this.serverRegion === "china"
+              ? "storage.koodoreader.cn"
+              : "storage.koodoreader.com"
           }/tesseractjs/4.0.0-fast`,
           // langPath: "https://tessdata.projectnaptha.com/4.0.0_best",
           logger: (m) => {
