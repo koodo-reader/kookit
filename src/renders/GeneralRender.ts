@@ -965,8 +965,8 @@ class GeneralRender extends EventEmitter {
             if (node.nodeType === Node.TEXT_NODE) {
               // 将前导空格替换为零宽度字符，保留原始内容但不显示
               const text = node.nodeValue || "";
-              const leadingSpaces = text.match(/^(\s+)/);
-              if (leadingSpaces) {
+              const leadingSpaces = text.match(/^([ \t]+)/);
+              if (!leadingSpaces) {
                 (item as HTMLElement).setAttribute(
                   "style",
                   ((item as HTMLElement).getAttribute("style") || "") +
