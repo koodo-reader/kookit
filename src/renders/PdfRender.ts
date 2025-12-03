@@ -81,31 +81,73 @@ class PdfRender extends GeneralRender {
       } else {
         createIframe(element);
       }
-      const viewportFirst = await this.chapterDocList[0].text.getDimension();
-      const viewportLast = await this.chapterDocList[
-        this.chapterDocList.length - 1
-      ].text.getDimension();
+      // 分层采样策略：最小化getDimension调用
+      const totalPages = this.chapterDocList.length;
 
-      const viewportMid = await this.chapterDocList[
-        Math.floor(this.chapterDocList.length / 2)
-      ].text.getDimension();
-      //使用长宽比最大的作为viewport，避免横屏时页面过宽
-      let viewport =
-        viewportFirst.height / viewportFirst.width >
-        viewportLast.height / viewportLast.width
-          ? viewportFirst
-          : viewportLast;
-      this.templateChapterDocIndex =
-        viewport === viewportFirst ? 0 : this.chapterDocList.length - 1;
-      viewport =
-        viewport.height / viewport.width >
-        viewportMid.height / viewportMid.width
-          ? viewport
-          : viewportMid;
-      this.templateChapterDocIndex =
-        viewport === viewportMid
-          ? Math.floor(this.chapterDocList.length / 2)
-          : this.templateChapterDocIndex;
+      // 第一层：采样5个关键位置（首页、1/4、1/2、3/4、末页）
+      let keyIndices = [
+        0,
+        Math.floor(totalPages / 4),
+        Math.floor(totalPages / 2),
+        Math.floor((totalPages * 3) / 4),
+        totalPages - 1,
+      ].filter((idx) => idx >= 0 && idx < totalPages);
+      //去重
+      keyIndices = Array.from(new Set(keyIndices));
+
+      const keyViewports = await Promise.all(
+        keyIndices.map(async (index) => ({
+          index,
+          dimension: await this.chapterDocList[index].text.getDimension(),
+        }))
+      );
+
+      // 计算长宽比
+      const aspectRatios = keyViewports.map((v) => ({
+        index: v.index,
+        ratio: v.dimension.height / v.dimension.width,
+        dimension: v.dimension,
+      }));
+
+      let viewport: any;
+      let templateIndex: number;
+
+      // 找出出现频率最多的长宽比，如果频率相同则选择最大的
+      const ratioFrequency = new Map<
+        number,
+        { count: number; dimension: any; index: number }
+      >();
+
+      aspectRatios.forEach((item) => {
+        const roundedRatio = Math.round(item.ratio * 1000) / 1000; // 保留3位小数进行分组
+        const existing = ratioFrequency.get(roundedRatio);
+        if (existing) {
+          existing.count++;
+        } else {
+          ratioFrequency.set(roundedRatio, {
+            count: 1,
+            dimension: item.dimension,
+            index: item.index,
+          });
+        }
+      });
+
+      // 获取出现频率最高的长宽比，如果频率相同则选择最大的
+      let maxFrequencyItem = { count: 0, dimension: null, index: 0, ratio: 0 };
+      ratioFrequency.forEach((value, ratio) => {
+        if (
+          value.count > maxFrequencyItem.count ||
+          (value.count === maxFrequencyItem.count &&
+            ratio > maxFrequencyItem.ratio)
+        ) {
+          maxFrequencyItem = { ...value, ratio };
+        }
+      });
+
+      viewport = maxFrequencyItem.dimension;
+      templateIndex = maxFrequencyItem.index;
+
+      this.templateChapterDocIndex = templateIndex;
       //根据viewport的判断结果设置模板chapterDocIndex
       let doc: any = this.getDocument();
       if (!doc) return;

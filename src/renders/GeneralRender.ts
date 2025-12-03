@@ -965,12 +965,18 @@ class GeneralRender extends EventEmitter {
             if (node.nodeType === Node.TEXT_NODE) {
               // 将前导空格替换为零宽度字符，保留原始内容但不显示
               const text = node.nodeValue || "";
-              const leadingSpaces = text.match(/^(\s+)/);
-              if (leadingSpaces) {
-                //replace leading spaces with nbsp;
-                node.nodeValue = text.replace(
-                  /^\s+/,
-                  "".repeat(leadingSpaces[0].length)
+              const firstChar = text.charAt(0);
+              // 检查首字符是否为空白字符但不是普通空格或制表符
+              if (
+                firstChar &&
+                firstChar.trim() === "" &&
+                firstChar !== " " &&
+                firstChar !== "\t"
+              ) {
+                (item as HTMLElement).setAttribute(
+                  "style",
+                  ((item as HTMLElement).getAttribute("style") || "") +
+                    "text-indent: 0em !important;"
                 );
               }
               // 只处理第一个，退出循环
@@ -1237,15 +1243,6 @@ class GeneralRender extends EventEmitter {
         chapterInfo.label
       );
       return { handled: true };
-    } else if (href && this.book.resolveHref && this.book.resolveHref(href)) {
-      let chapterInfo = await this.book.resolveHref(href);
-      if (!chapterInfo) return { handled: false };
-      await this.goToChapter(
-        chapterInfo.index,
-        chapterInfo.href,
-        chapterInfo.label
-      );
-      return { handled: true };
     } else if (href && href.indexOf("#") > -1) {
       let id = href.split("#").reverse()[0];
       let node = doc.body.querySelector("#" + CSS.escape(id));
@@ -1280,6 +1277,15 @@ class GeneralRender extends EventEmitter {
           node: node,
         };
       }
+      return { handled: true };
+    } else if (href && this.book.resolveHref && this.book.resolveHref(href)) {
+      let chapterInfo = await this.book.resolveHref(href);
+      if (!chapterInfo) return { handled: false };
+      await this.goToChapter(
+        chapterInfo.index,
+        chapterInfo.href,
+        chapterInfo.label
+      );
       return { handled: true };
     } else if (
       href &&
