@@ -365,6 +365,15 @@ export const addAndroidTouchEvent = (
       var col = Math.floor(touchEndX / cellWidth);
       var row = Math.floor(touchEndY / cellHeight);
       var result = getTouchAction(col, row, touchControlRule);
+      if (animation === "sliding" && readerMode !== "scroll") {
+        if (result === "right") {
+          slideAnimateTo("right", format, doc, outerDoc, element, render, gap);
+          return;
+        } else if (result === "left") {
+          slideAnimateTo("left", format, doc, outerDoc, element, render, gap);
+          return;
+        }
+      }
       window.ReactNativeWebView.postMessage(JSON.stringify({ event: result }));
     } else if (
       Math.abs(distX) >= swipeThreshold ||
