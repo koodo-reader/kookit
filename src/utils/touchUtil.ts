@@ -3,6 +3,37 @@ import rangy from "rangy/lib/rangy-core.js";
 declare var window: any;
 let selectionTimeout: any = null;
 let isDragging = false;
+// Animation utilities
+const lerp = (min: number, max: number, x: number) => x * (max - min) + min;
+const easeOutQuad = (x: number) => 1 - (1 - x) * (1 - x);
+
+const animate = (
+  a: number,
+  b: number,
+  duration: number,
+  ease: (x: number) => number,
+  render: (value: number) => void
+): Promise<void> =>
+  new Promise((resolve) => {
+    let start: number | undefined;
+    const step = (now: number) => {
+      if (document.hidden) {
+        render(lerp(a, b, 1));
+        return resolve();
+      }
+      if (start === undefined) start = now;
+      const fraction = Math.min(1, (now - start) / duration);
+      render(lerp(a, b, ease(fraction)));
+      if (fraction < 1) requestAnimationFrame(step);
+      else resolve();
+    };
+    if (document.hidden) {
+      render(lerp(a, b, 1));
+      return resolve();
+    }
+    requestAnimationFrame(step);
+  });
+
 async function slideAnimateTo(
   direction: string,
   format: string,
@@ -18,7 +49,9 @@ async function slideAnimateTo(
   // Clean up any existing animation
   if (window.scrollAnimationId) {
     cancelAnimationFrame(window.scrollAnimationId);
+    window.scrollAnimationId = null;
   }
+
   if (
     Math.abs(
       tempDoc.body.scrollWidth - tempDoc.body.scrollLeft - element.clientWidth
@@ -32,7 +65,7 @@ async function slideAnimateTo(
     selectionTimeout = setTimeout(() => {
       render.next();
       isDragging = false;
-    }, 300); // Debounce selection events
+    }, 300);
     return;
   }
   if (
@@ -52,14 +85,13 @@ async function slideAnimateTo(
     selectionTimeout = setTimeout(() => {
       render.prev();
       isDragging = false;
-    }, 300); // Debounce selection events
+    }, 300);
     return;
   }
   if (tempDoc.body.scrollLeft === 0 && !isDragging && direction === "left") {
     render.prev();
     return;
   }
-  tempDoc.body.style.transform = "";
 
   let scrollLeft = tempDoc.body.scrollLeft;
 
@@ -68,63 +100,28 @@ async function slideAnimateTo(
   const currentPage = Math.round(scrollLeft / pageWidth);
 
   if (direction === "left") {
-    // Dragged right (go to previous page)
     snapX = (currentPage - 1) * pageWidth;
   } else if (direction === "right") {
-    // Dragged left (go to next page)
     snapX = (currentPage + 1) * pageWidth;
   } else {
-    // Stay on current page
     snapX = currentPage * pageWidth;
   }
 
-  // Ensure we don't go out of bounds
   snapX = Math.max(0, Math.min(snapX, tempDoc.body.scrollWidth - pageWidth));
   if (tempDoc.body.scrollWidth - snapX < pageWidth + gap) {
     snapX = tempDoc.body.scrollWidth;
   }
 
-  // Use custom smooth scrolling with requestAnimationFrame instead of browser's scrollTo
-  const startTime = performance.now();
   const startLeft = tempDoc.body.scrollLeft;
-  const distance = snapX - startLeft;
-  const duration = 300; // milliseconds
+  const duration = 300;
 
-  // Apply hardware acceleration before animation starts
-  tempDoc.body.style.willChange = "scroll-position";
+  // Use the new animate helper
+  await animate(startLeft, snapX, duration, easeOutQuad, (value) => {
+    tempDoc.body.scrollLeft = value;
+  });
 
-  // Custom easing function for natural movement
-  const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
-
-  function animateScroll(currentTime) {
-    const elapsedTime = currentTime - startTime;
-
-    if (elapsedTime >= duration) {
-      // Animation complete - set final position
-      tempDoc.body.scrollLeft = snapX;
-
-      // Clean up acceleration hints
-      tempDoc.body.style.willChange = "auto";
-
-      render.record();
-      isDragging = false;
-      return;
-    }
-
-    // Calculate new position using easing
-    const progress = easeOutCubic(elapsedTime / duration);
-    const newLeft = startLeft + distance * progress;
-    // Update scroll position
-    tempDoc.body.scrollLeft = newLeft;
-
-    // Continue animation
-    window.scrollAnimationId = requestAnimationFrame(animateScroll);
-  }
-
-  // Start animation
-  window.scrollAnimationId = requestAnimationFrame(animateScroll);
-
-  return;
+  render.record();
+  isDragging = false;
 }
 async function blobUrlToBase64(blobUrl) {
   try {
