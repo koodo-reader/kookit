@@ -3,37 +3,6 @@ import rangy from "rangy/lib/rangy-core.js";
 declare var window: any;
 let selectionTimeout: any = null;
 let isDragging = false;
-// Animation utilities
-const lerp = (min: number, max: number, x: number) => x * (max - min) + min;
-const easeOutQuad = (x: number) => 1 - (1 - x) * (1 - x);
-
-const animate = (
-  a: number,
-  b: number,
-  duration: number,
-  ease: (x: number) => number,
-  render: (value: number) => void
-): Promise<void> =>
-  new Promise((resolve) => {
-    let start: number | undefined;
-    const step = (now: number) => {
-      if (document.hidden) {
-        render(lerp(a, b, 1));
-        return resolve();
-      }
-      if (start === undefined) start = now;
-      const fraction = Math.min(1, (now - start) / duration);
-      render(lerp(a, b, ease(fraction)));
-      if (fraction < 1) requestAnimationFrame(step);
-      else resolve();
-    };
-    if (document.hidden) {
-      render(lerp(a, b, 1));
-      return resolve();
-    }
-    requestAnimationFrame(step);
-  });
-
 async function slideAnimateTo(
   direction: string,
   format: string,
@@ -49,9 +18,7 @@ async function slideAnimateTo(
   // Clean up any existing animation
   if (window.scrollAnimationId) {
     cancelAnimationFrame(window.scrollAnimationId);
-    window.scrollAnimationId = null;
   }
-
   if (
     Math.abs(
       tempDoc.body.scrollWidth - tempDoc.body.scrollLeft - element.clientWidth
@@ -113,15 +80,62 @@ async function slideAnimateTo(
   }
 
   const startLeft = tempDoc.body.scrollLeft;
+  const distance = snapX - startLeft;
   const duration = 300;
 
-  // Use the new animate helper
-  await animate(startLeft, snapX, duration, easeOutQuad, (value) => {
-    tempDoc.body.scrollLeft = value;
-  });
+  // 优化1: 提前设置硬件加速属性
+  const body = tempDoc.body;
+  body.style.willChange = "transform";
+  body.style.backfaceVisibility = "hidden";
+  body.style.perspective = "1000px";
+  body.style.transformStyle = "preserve-3d";
 
-  render.record();
-  isDragging = false;
+  // 优化2: 使用更高效的缓动函数（避免Math.pow）
+  const easeOutCubic = (t: number): number => {
+    const t1 = t - 1;
+    return t1 * t1 * t1 + 1;
+  };
+
+  // 优化3: 缓存变量，避免闭包中重复访问
+  let lastTime = performance.now();
+  let animationProgress = 0;
+
+  function animateScroll(currentTime: number) {
+    // 优化4: 计算实际帧间隔，处理帧率波动
+    const deltaTime = currentTime - lastTime;
+    lastTime = currentTime;
+
+    // 基于实际时间流逝计算进度增量
+    animationProgress += deltaTime / duration;
+
+    if (animationProgress >= 1) {
+      // Animation complete
+      body.scrollLeft = snapX;
+
+      // 延迟清理，避免立即触发重排
+      requestAnimationFrame(() => {
+        body.style.willChange = "auto";
+        body.style.backfaceVisibility = "";
+        body.style.perspective = "";
+        body.style.transformStyle = "";
+      });
+
+      render.record();
+      isDragging = false;
+      return;
+    }
+
+    // 使用缓动函数计算位置
+    const easedProgress = easeOutCubic(animationProgress);
+    const newLeft = startLeft + distance * easedProgress;
+
+    // 优化5: 使用整数像素值避免亚像素渲染
+    body.scrollLeft = Math.round(newLeft);
+
+    window.scrollAnimationId = requestAnimationFrame(animateScroll);
+  }
+
+  window.scrollAnimationId = requestAnimationFrame(animateScroll);
 }
 async function blobUrlToBase64(blobUrl) {
   try {
