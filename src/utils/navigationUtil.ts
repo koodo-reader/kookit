@@ -162,9 +162,9 @@ export const isElementFootnote = (element: HTMLElement) => {
   }
   if (element.textContent) {
     let textContent = element.textContent.trim();
-    // Check for patterns like [1], [a], (1), (a), roman numerals, and circled numbers (①-㊿)
+    // Check for patterns like [1], [a], (1), (a), 〔2〕, 【3】, 〈4〉, 《5》, roman numerals, and circled numbers (①-㊿)
     const footnotePattern =
-      /^(\[|\()([a-zA-Z0-9]+)(\]|\))$|^\d+$|^(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3}))$|^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚㉛㉜㉝㉞㉟㊱㊲㊳㊴㊵㊶㊷㊸㊹㊺㊻㊼㊽㊾㊿]$/i;
+      /^(\[|\(|〔|【|〈|《)([a-zA-Z0-9]+)(\]|\)|〕|】|〉|》)$|^\d+$|^(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3}))$|^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚㉛㉜㉝㉞㉟㊱㊲㊳㊴㊵㊶㊷㊸㊹㊺㊻㊼㊽㊾㊿]$/i;
     if (footnotePattern.test(textContent)) {
       return true;
     }
@@ -389,11 +389,13 @@ export const handleScrollPosition = async (
     let targetNodeList = nodeList.filter((s, index) => {
       return (
         cleanText((s as HTMLElement).textContent) &&
-        (cleanText((s as HTMLElement).textContent) === cleanText(text) ||
-          cleanText((s as HTMLElement).textContent) ===
-            Chinese.t2s(cleanText(text)) ||
-          cleanText((s as HTMLElement).textContent) ===
-            Chinese.s2t(cleanText(text))) &&
+        (cleanText((s as HTMLElement).textContent).includes(cleanText(text)) ||
+          cleanText((s as HTMLElement).textContent).includes(
+            Chinese.t2s(cleanText(text))
+          ) ||
+          cleanText((s as HTMLElement).textContent).includes(
+            Chinese.s2t(cleanText(text))
+          )) &&
         (Math.abs(index - parseInt(count)) < 2 ||
           count === "search" ||
           count === "ignore" ||
@@ -511,7 +513,7 @@ export const handleRecord = async (
     firstVisibleNode &&
     !isCurrentNodeFarFromParrent(firstVisibleNode, element, readerMode)
   ) {
-    tempLocation.text = firstVisibleNode.textContent || "";
+    tempLocation.text = firstVisibleNode.textContent.substring(0, 200) || "";
     tempLocation.count = count + "";
     tempLocation.page = "";
     let totalSize = chapterDocList
