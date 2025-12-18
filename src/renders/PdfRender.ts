@@ -90,7 +90,7 @@ class PdfRender extends GeneralRender {
         templateIndex = maxFrequencyItem.index;
       }
       this.templateChapterDocIndex = templateIndex;
-      //根据viewport的判断结果设置模板chapterDocIndex
+      // Set templateChapterDocIndex based on the viewport evaluation result
       let doc: any = this.getDocument();
       if (!doc) return;
       await createPDFContainer(
