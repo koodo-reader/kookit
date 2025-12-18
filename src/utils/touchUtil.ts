@@ -174,7 +174,6 @@ function getScreenTopOffset() {
   }
 }
 const preventLinkNavigation = async (event: any, doc: any, render: any) => {
-  console.log("preventLinkNavigation");
   const target = event.target;
   if (!target) return;
   event.preventDefault();
