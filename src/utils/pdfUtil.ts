@@ -58,8 +58,8 @@ export const createPDFContainer = async (
       const aspectRatio = viewport?.width / viewport?.height || 0.75; // Default to 3:4 if viewport unknown
       iframeContainer.style.paddingTop = `${(1 / aspectRatio) * 100}%`;
     } else if (readerMode === "scroll") {
-      let viewport = await chapterDocList[index].text.getDimension();
-      const aspectRatio = viewport?.width / viewport?.height || 0.75; // Default to 3:4 if viewport unknown
+      let scrollViewport = await chapterDocList[index].text.getDimension();
+      const aspectRatio = scrollViewport?.width / scrollViewport?.height || 0.75; // Default to 3:4 if viewport unknown
       iframeContainer.style.paddingTop = `${(1 / aspectRatio) * 100 + 5}%`;
     }
 
