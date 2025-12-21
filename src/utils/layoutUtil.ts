@@ -1,5 +1,6 @@
 import ChapterDoc from "../model/chapterDoc";
-
+import Chinese from "../libs/zh-convert";
+declare var window: any;
 export const convertStyleNum = (value: number) => {
   if (!value) return 0;
   return parseFloat(value + "");
@@ -203,7 +204,76 @@ export const progressInfo = (
           ) + 1,
   };
 };
+export const tranformText = (doc: Document) => {
+  if (window.convertChinese === "Simplified To Traditional") {
+    doc
+      .querySelectorAll(
+        "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,li,dt,dd,blockquote,address,kookitmarker"
+      )
+      .forEach((item) => {
+        item.innerHTML = item.innerHTML
+          .split("")
+          .map((item) => Chinese.s2t(item))
+          .join("");
+      });
+  } else if (window.convertChinese === "Traditional To Simplified") {
+    doc
+      .querySelectorAll(
+        "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,li,dt,dd,blockquote,address,kookitmarker"
+      )
+      .forEach((item) => {
+        item.innerHTML = item.innerHTML
+          .split("")
+          .map((item) => Chinese.t2s(item))
+          .join("");
+      });
+  }
+  //确保页面完全加载完毕之后，在修改缩进
+  if (window.isIndent === "yes") {
+    doc
+      .querySelectorAll(
+        "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,li,dt,dd,blockquote,address"
+      )
+      .forEach((item) => {
+        for (let node of item.childNodes) {
+          if (node.nodeType === Node.TEXT_NODE) {
+            // 将前导空格替换为零宽度字符，保留原始内容但不显示
+            const text = node.nodeValue || "";
+            const firstChar = text.charAt(0);
+            // 检查首字符是否为空白字符但不是普通空格或制表符
+            if (
+              firstChar &&
+              firstChar.trim() === "" &&
+              firstChar !== " " &&
+              firstChar !== "\t"
+            ) {
+              (item as HTMLElement).setAttribute(
+                "style",
+                ((item as HTMLElement).getAttribute("style") || "") +
+                  "text-indent: 0em !important;"
+              );
+            }
+            // 只处理第一个，退出循环
+            break;
+          }
+          //如果子元素为img则也缩进设为0
+          if (
+            node.nodeType === Node.ELEMENT_NODE &&
+            (node as HTMLElement).tagName.toLowerCase() === "img"
+          ) {
+            (item as HTMLElement).setAttribute(
+              "style",
+              ((item as HTMLElement).getAttribute("style") || "") +
+                "text-indent: 0em !important;"
+            );
+            break;
+          }
+        }
+      });
+  }
+};
 export const handleTextStyle = (doc: Document) => {
+  tranformText(doc);
   let textNodes = doc.querySelectorAll(
     "a, article, cite, div, li, p, span, pre, dt, dd, table, bold, font, blockquote"
   ) as any;

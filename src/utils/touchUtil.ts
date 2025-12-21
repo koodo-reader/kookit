@@ -1,50 +1,142 @@
 import rangy from "rangy/lib/rangy-core.js";
 
 declare var window: any;
-function throttle(fn: (...args: any[]) => void, wait: number) {
-  let lastTime = 0;
-  let timeout: any = null;
-  let lastArgs: any[] | null = null;
+let selectionTimeout: any = null;
+let isDragging = false;
+async function slideAnimateTo(
+  direction: string,
+  format: string,
+  doc: any,
+  outerDoc: any,
+  element: any,
+  render: any,
+  gap: number
+) {
+  let pageWidth = element.clientWidth + gap;
+  let tempDoc = format === "PDF" ? outerDoc : doc;
 
-  return function (this: any, ...args: any[]) {
-    const now = Date.now();
-    if (now - lastTime >= wait) {
-      lastTime = now;
-      fn.apply(this, args);
-    } else {
-      clearTimeout(timeout);
-      lastArgs = args;
-      timeout = setTimeout(() => {
-        lastTime = Date.now();
-        fn.apply(this, lastArgs ?? []);
-      }, wait - (now - lastTime));
+  // Clean up any existing animation
+  if (window.scrollAnimationId) {
+    cancelAnimationFrame(window.scrollAnimationId);
+  }
+  if (
+    Math.abs(
+      tempDoc.body.scrollWidth - tempDoc.body.scrollLeft - element.clientWidth
+    ) < 10 &&
+    isDragging
+  ) {
+    if (selectionTimeout) {
+      clearTimeout(selectionTimeout);
     }
+
+    selectionTimeout = setTimeout(() => {
+      render.next();
+      isDragging = false;
+    }, 300);
+    return;
+  }
+  if (
+    Math.abs(
+      tempDoc.body.scrollWidth - tempDoc.body.scrollLeft - element.clientWidth
+    ) < 10 &&
+    !isDragging &&
+    direction === "right"
+  ) {
+    render.next();
+    return;
+  }
+  if (tempDoc.body.scrollLeft === 0 && isDragging) {
+    if (selectionTimeout) {
+      clearTimeout(selectionTimeout);
+    }
+    selectionTimeout = setTimeout(() => {
+      render.prev();
+      isDragging = false;
+    }, 300);
+    return;
+  }
+  if (tempDoc.body.scrollLeft === 0 && !isDragging && direction === "left") {
+    render.prev();
+    return;
+  }
+
+  let scrollLeft = tempDoc.body.scrollLeft;
+
+  // Improved snapping logic
+  let snapX;
+  const currentPage = Math.round(scrollLeft / pageWidth);
+
+  if (direction === "left") {
+    snapX = (currentPage - 1) * pageWidth;
+  } else if (direction === "right") {
+    snapX = (currentPage + 1) * pageWidth;
+  } else {
+    snapX = currentPage * pageWidth;
+  }
+
+  snapX = Math.max(0, Math.min(snapX, tempDoc.body.scrollWidth - pageWidth));
+  if (tempDoc.body.scrollWidth - snapX < pageWidth + gap) {
+    snapX = tempDoc.body.scrollWidth;
+  }
+
+  const startLeft = tempDoc.body.scrollLeft;
+  const distance = snapX - startLeft;
+  const duration = 300;
+
+  // 优化1: 提前设置硬件加速属性
+  const body = tempDoc.body;
+  body.style.willChange = "transform";
+  body.style.backfaceVisibility = "hidden";
+  body.style.perspective = "1000px";
+  body.style.transformStyle = "preserve-3d";
+
+  // 优化2: 使用更高效的缓动函数（避免Math.pow）
+  const easeOutCubic = (t: number): number => {
+    const t1 = t - 1;
+    return t1 * t1 * t1 + 1;
   };
-}
-const isElementFootnote = (element: HTMLElement) => {
-  if (!element) return false;
-  if (element.tagName === "IMG") {
-    return true;
-  }
-  if (element.textContent) {
-    let textContent = element.textContent.trim();
-    // Check for patterns like [1], [a], (1), (a)
-    const footnotePattern = /^(\[|\()([a-zA-Z0-9]+)(\]|\))$|^\d+$/;
-    if (footnotePattern.test(textContent)) {
-      return true;
+
+  // 优化3: 缓存变量，避免闭包中重复访问
+  let lastTime = performance.now();
+  let animationProgress = 0;
+
+  function animateScroll(currentTime: number) {
+    // 优化4: 计算实际帧间隔，处理帧率波动
+    const deltaTime = currentTime - lastTime;
+    lastTime = currentTime;
+
+    // 基于实际时间流逝计算进度增量
+    animationProgress += deltaTime / duration;
+
+    if (animationProgress >= 1) {
+      // Animation complete
+      body.scrollLeft = snapX;
+
+      // 延迟清理，避免立即触发重排
+      requestAnimationFrame(() => {
+        body.style.willChange = "auto";
+        body.style.backfaceVisibility = "";
+        body.style.perspective = "";
+        body.style.transformStyle = "";
+      });
+
+      render.record();
+      isDragging = false;
+      return;
     }
+
+    // 使用缓动函数计算位置
+    const easedProgress = easeOutCubic(animationProgress);
+    const newLeft = startLeft + distance * easedProgress;
+
+    // 优化5: 使用整数像素值避免亚像素渲染
+    body.scrollLeft = Math.round(newLeft);
+
+    window.scrollAnimationId = requestAnimationFrame(animateScroll);
   }
 
-  return false;
-};
-const isLinkElement = (href: string) => {
-  let url = href;
-  return (
-    url.startsWith("http") ||
-    url.startsWith("mailto") ||
-    url.startsWith("https")
-  );
-};
+  window.scrollAnimationId = requestAnimationFrame(animateScroll);
+}
 async function blobUrlToBase64(blobUrl) {
   try {
     // 1. 获取Blob数据
@@ -220,108 +312,19 @@ export const addAndroidTouchEvent = (
     // Replace the scrollTo implementation with this optimized version
 
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
-      let tempDoc = format === "PDF" ? outerDoc : doc;
-
-      // Clean up any existing animation
-      if (window.scrollAnimationId) {
-        cancelAnimationFrame(window.scrollAnimationId);
-      }
-      if (
-        Math.abs(
-          tempDoc.body.scrollWidth -
-            tempDoc.body.scrollLeft -
-            element.clientWidth
-        ) < 10
-      ) {
-        if (selectionTimeout) {
-          clearTimeout(selectionTimeout);
-        }
-
-        selectionTimeout = setTimeout(() => {
-          render.next();
-          isDragging = false;
-        }, 300); // Debounce selection events
-        return;
-      }
-      if (tempDoc.body.scrollLeft === 0) {
-        if (selectionTimeout) {
-          clearTimeout(selectionTimeout);
-        }
-        selectionTimeout = setTimeout(() => {
-          render.prev();
-          isDragging = false;
-        }, 300); // Debounce selection events
-        return;
-      }
-      tempDoc.body.style.transform = "";
-
-      let scrollLeft = tempDoc.body.scrollLeft;
-
-      // Improved snapping logic
-      let snapX;
-      const currentPage = Math.round(scrollLeft / pageWidth);
       const dragPercentage = Math.abs(distX) / window.innerWidth;
       const dragThreshold = 0.1; // Only 10% drag needed to change page
 
       if (distX > 0 && dragPercentage > dragThreshold) {
         // Dragged right (go to previous page)
-        snapX = (currentPage - 1) * pageWidth;
+        slideAnimateTo("left", format, doc, outerDoc, element, render, gap);
       } else if (distX < 0 && dragPercentage > dragThreshold) {
         // Dragged left (go to next page)
-        snapX = (currentPage + 1) * pageWidth;
+        slideAnimateTo("right", format, doc, outerDoc, element, render, gap);
       } else {
         // Stay on current page
-        snapX = currentPage * pageWidth;
+        slideAnimateTo("stay", format, doc, outerDoc, element, render, gap);
       }
-
-      // Ensure we don't go out of bounds
-      snapX = Math.max(
-        0,
-        Math.min(snapX, tempDoc.body.scrollWidth - pageWidth)
-      );
-      if (tempDoc.body.scrollWidth - snapX < pageWidth + gap) {
-        snapX = tempDoc.body.scrollWidth;
-      }
-
-      // Use custom smooth scrolling with requestAnimationFrame instead of browser's scrollTo
-      const startTime = performance.now();
-      const startLeft = tempDoc.body.scrollLeft;
-      const distance = snapX - startLeft;
-      const duration = 300; // milliseconds
-
-      // Apply hardware acceleration before animation starts
-      tempDoc.body.style.willChange = "scroll-position";
-
-      // Custom easing function for natural movement
-      const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
-
-      function animateScroll(currentTime) {
-        const elapsedTime = currentTime - startTime;
-
-        if (elapsedTime >= duration) {
-          // Animation complete - set final position
-          tempDoc.body.scrollLeft = snapX;
-
-          // Clean up acceleration hints
-          tempDoc.body.style.willChange = "auto";
-
-          render.record();
-          isDragging = false;
-          return;
-        }
-
-        // Calculate new position using easing
-        const progress = easeOutCubic(elapsedTime / duration);
-        const newLeft = startLeft + distance * progress;
-        // Update scroll position
-        tempDoc.body.scrollLeft = newLeft;
-
-        // Continue animation
-        window.scrollAnimationId = requestAnimationFrame(animateScroll);
-      }
-
-      // Start animation
-      window.scrollAnimationId = requestAnimationFrame(animateScroll);
 
       return;
     }
@@ -373,6 +376,15 @@ export const addAndroidTouchEvent = (
       var col = Math.floor(touchEndX / cellWidth);
       var row = Math.floor(touchEndY / cellHeight);
       var result = getTouchAction(col, row, touchControlRule);
+      if (animation === "sliding" && readerMode !== "scroll") {
+        if (result === "right") {
+          slideAnimateTo("right", format, doc, outerDoc, element, render, gap);
+          return;
+        } else if (result === "left") {
+          slideAnimateTo("left", format, doc, outerDoc, element, render, gap);
+          return;
+        }
+      }
       window.ReactNativeWebView.postMessage(JSON.stringify({ event: result }));
     } else if (
       Math.abs(distX) >= swipeThreshold ||
@@ -414,7 +426,7 @@ export const addAndroidTouchEvent = (
     touchStartX = touch.screenX;
     touchStartY = touch.screenY;
   };
-  let isDragging = false;
+
   let lastTouchX = 0;
 
   let onTouchMove = function (event) {
@@ -492,7 +504,6 @@ export const addAndroidTouchEvent = (
     true
   ); // Use capturing phase
 
-  let selectionTimeout: any = null;
   let startSelectionTime = 0;
   let selectionCount = 0;
   let triggerSelectionMenu = async (event: any) => {
@@ -752,107 +763,19 @@ export const addAppleTouchEvent = (
     }
     // Replace the scrollTo implementation with this optimized version
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
-      let tempDoc = format === "PDF" ? outerDoc : doc;
-      // Clean up any existing animation
-      if (window.scrollAnimationId) {
-        cancelAnimationFrame(window.scrollAnimationId);
-      }
-      if (
-        Math.abs(
-          tempDoc.body.scrollWidth -
-            tempDoc.body.scrollLeft -
-            element.clientWidth
-        ) < 10
-      ) {
-        if (selectionTimeout) {
-          clearTimeout(selectionTimeout);
-        }
-        selectionTimeout = setTimeout(() => {
-          render.next();
-          isDragging = false;
-        }, 300); // Debounce selection events
-        return;
-      }
-      if (tempDoc.body.scrollLeft === 0) {
-        if (selectionTimeout) {
-          clearTimeout(selectionTimeout);
-        }
-        selectionTimeout = setTimeout(() => {
-          render.prev();
-          isDragging = false;
-        }, 300); // Debounce selection events
-        return;
-      }
-
-      tempDoc.body.style.transform = "";
-      let pageWidth = element.clientWidth + gap;
-      let scrollLeft = tempDoc.body.scrollLeft;
-
-      // Improved snapping logic
-      let snapX;
-      const currentPage = Math.round(scrollLeft / pageWidth);
       const dragPercentage = Math.abs(distX) / window.innerWidth;
       const dragThreshold = 0.1; // Only 10% drag needed to change page
 
       if (distX > 0 && dragPercentage > dragThreshold) {
         // Dragged right (go to previous page)
-        snapX = (currentPage - 1) * pageWidth;
+        slideAnimateTo("left", format, doc, outerDoc, element, render, gap);
       } else if (distX < 0 && dragPercentage > dragThreshold) {
         // Dragged left (go to next page)
-        snapX = (currentPage + 1) * pageWidth;
+        slideAnimateTo("right", format, doc, outerDoc, element, render, gap);
       } else {
         // Stay on current page
-        snapX = currentPage * pageWidth;
+        slideAnimateTo("stay", format, doc, outerDoc, element, render, gap);
       }
-
-      // Ensure we don't go out of bounds
-      snapX = Math.max(
-        0,
-        Math.min(snapX, tempDoc.body.scrollWidth - pageWidth)
-      );
-      if (tempDoc.body.scrollWidth - snapX < pageWidth + gap) {
-        snapX = tempDoc.body.scrollWidth;
-      }
-
-      // Use custom smooth scrolling with requestAnimationFrame instead of browser's scrollTo
-      const startTime = performance.now();
-      const startLeft = tempDoc.body.scrollLeft;
-      const distance = snapX - startLeft;
-      const duration = 300; // milliseconds
-
-      // Apply hardware acceleration before animation starts
-      tempDoc.body.style.willChange = "scroll-position";
-
-      // Custom easing function for natural movement
-      const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
-
-      function animateScroll(currentTime) {
-        const elapsedTime = currentTime - startTime;
-
-        if (elapsedTime >= duration) {
-          // Animation complete - set final position
-          tempDoc.body.scrollLeft = snapX;
-
-          // Clean up acceleration hints
-          tempDoc.body.style.willChange = "auto";
-
-          render.record();
-          isDragging = false;
-          return;
-        }
-
-        // Calculate new position using easing
-        const progress = easeOutCubic(elapsedTime / duration);
-        const newLeft = startLeft + distance * progress;
-        // Update scroll position
-        tempDoc.body.scrollLeft = newLeft;
-
-        // Continue animation
-        window.scrollAnimationId = requestAnimationFrame(animateScroll);
-      }
-
-      // Start animation
-      window.scrollAnimationId = requestAnimationFrame(animateScroll);
 
       return;
     }
@@ -951,7 +874,15 @@ export const addAppleTouchEvent = (
       const col = Math.min(Math.floor(normalizedX / cellWidth), 2);
       const row = Math.min(Math.floor(normalizedY / cellHeight), 2);
       let result = getTouchAction(col, row, touchControlRules);
-
+      if (animation === "sliding" && readerMode !== "scroll") {
+        if (result === "right") {
+          slideAnimateTo("right", format, doc, outerDoc, element, render, gap);
+          return;
+        } else if (result === "left") {
+          slideAnimateTo("left", format, doc, outerDoc, element, render, gap);
+          return;
+        }
+      }
       window.ReactNativeWebView.postMessage(JSON.stringify({ event: result }));
     } else if (
       Math.abs(distX) >= swipeThreshold ||
@@ -996,7 +927,6 @@ export const addAppleTouchEvent = (
     touchStartX = touch.screenX;
     touchStartY = touch.screenY;
   };
-  let isDragging = false;
   let lastTouchX = 0;
 
   let onTouchMove = function (event) {
@@ -1079,8 +1009,6 @@ export const addAppleTouchEvent = (
     },
     true
   ); // Use capturing phase
-
-  let selectionTimeout: any = null;
 
   doc.body.oncontextmenu = function (event) {
     event.preventDefault();

@@ -38,7 +38,7 @@ export const handlePDFLayout = (
       }px;`
   );
 };
-export const createPDFContainer = (
+export const createPDFContainer = async (
   element: HTMLElement,
   chapterDocList: ChapterDoc[],
   viewport: any,
@@ -53,10 +53,14 @@ export const createPDFContainer = (
     iframeContainer.className = "pdf-container";
     if (readerMode === "single") {
       iframeContainer.style.paddingTop = element.clientHeight + "px";
-    } else {
+    } else if (readerMode === "double") {
       // Set aspect ratio based on PDF page dimensions
       const aspectRatio = viewport?.width / viewport?.height || 0.75; // Default to 3:4 if viewport unknown
       iframeContainer.style.paddingTop = `${(1 / aspectRatio) * 100}%`;
+    } else if (readerMode === "scroll") {
+      let scrollViewport = await chapterDocList[index].text.getDimension();
+      const aspectRatio = scrollViewport?.width / scrollViewport?.height || 0.75; // Default to 3:4 if viewport unknown
+      iframeContainer.style.paddingTop = `${(1 / aspectRatio) * 100 + 5}%`;
     }
 
     if (readerMode === "double") {

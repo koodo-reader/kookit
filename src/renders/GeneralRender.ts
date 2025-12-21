@@ -29,7 +29,7 @@ import { clearHighlight, showNoteHighlight } from "../utils/noteUtil";
 import { addPageAnimation } from "../utils/animationUtil";
 import rangy from "rangy/lib/rangy-core.js";
 import "rangy/lib/rangy-textrange";
-import Chinese from "../libs/zh-convert";
+
 import { getPDFSearchResult } from "../utils/pdfUtil";
 import { addAndroidTouchEvent, addAppleTouchEvent } from "../utils/touchUtil";
 declare var window: any;
@@ -69,7 +69,9 @@ class GeneralRender extends EventEmitter {
     this.animation = config.animation;
     this.format = config.format;
     this.convertChinese = config.convertChinese;
+    window.convertChinese = config.convertChinese;
     this.isIndent = config.isIndent;
+    window.isIndent = config.isIndent;
     this.isDarkMode = config.isDarkMode;
     this.isMobile = config.isMobile;
     this.chapterList = [];
@@ -928,76 +930,7 @@ class GeneralRender extends EventEmitter {
       iframe
     );
   }
-  tranformText = () => {
-    let doc = this.getDocument();
-    if (!doc) return;
-    if (this.convertChinese === "Simplified To Traditional") {
-      doc
-        .querySelectorAll(
-          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,li,dt,dd,blockquote,address,kookitmarker"
-        )
-        .forEach((item) => {
-          item.innerHTML = item.innerHTML
-            .split("")
-            .map((item) => Chinese.s2t(item))
-            .join("");
-        });
-    } else if (this.convertChinese === "Traditional To Simplified") {
-      doc
-        .querySelectorAll(
-          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,li,dt,dd,blockquote,address,kookitmarker"
-        )
-        .forEach((item) => {
-          item.innerHTML = item.innerHTML
-            .split("")
-            .map((item) => Chinese.t2s(item))
-            .join("");
-        });
-    }
-    //确保页面完全加载完毕之后，在修改缩进
-    if (this.isIndent === "yes") {
-      doc
-        .querySelectorAll(
-          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,li,dt,dd,blockquote,address"
-        )
-        .forEach((item) => {
-          for (let node of item.childNodes) {
-            if (node.nodeType === Node.TEXT_NODE) {
-              // 将前导空格替换为零宽度字符，保留原始内容但不显示
-              const text = node.nodeValue || "";
-              const firstChar = text.charAt(0);
-              // 检查首字符是否为空白字符但不是普通空格或制表符
-              if (
-                firstChar &&
-                firstChar.trim() === "" &&
-                firstChar !== " " &&
-                firstChar !== "\t"
-              ) {
-                (item as HTMLElement).setAttribute(
-                  "style",
-                  ((item as HTMLElement).getAttribute("style") || "") +
-                    "text-indent: 0em !important;"
-                );
-              }
-              // 只处理第一个，退出循环
-              break;
-            }
-            //如果子元素为img则也缩进设为0
-            if (
-              node.nodeType === Node.ELEMENT_NODE &&
-              (node as HTMLElement).tagName.toLowerCase() === "img"
-            ) {
-              (item as HTMLElement).setAttribute(
-                "style",
-                ((item as HTMLElement).getAttribute("style") || "") +
-                  "text-indent: 0em !important;"
-              );
-              break;
-            }
-          }
-        });
-    }
-  };
+
   addPageAnimation = (backgroundColor: string) => {
     if (this.animation === "mimical") {
       let progressInfo = this.getProgress();
