@@ -190,6 +190,14 @@ export const highlightRange = (
   const maxWidth = sortedRects.length
     ? Math.max(...Array.from(rects).map((rect) => rect.width))
     : 0;
+  // 计算文字行高（取所有有效矩形的平均高度）
+  const lineHeight = sortedRects.length
+    ? sortedRects.reduce((sum, rect) => sum + rect.height, 0) /
+      sortedRects.length
+    : 5;
+  const overlapThreshold = lineHeight * 0.5;
+  console.log(overlapThreshold, "voersfasd");
+
   // 过滤重复和无效的矩形
   for (let index = 0; index < sortedRects.length; index++) {
     const rect = sortedRects[index];
@@ -202,7 +210,7 @@ export const highlightRange = (
     // 检查是否与已有矩形重叠
     const isOverlapping = validRects.some((validRect) => {
       return (
-        Math.abs(rect.bottom - validRect.bottom) < 5 &&
+        Math.abs(rect.bottom - validRect.bottom) < overlapThreshold &&
         rect.width === maxWidth &&
         Math.abs(rect.left - validRect.left) < maxWidth &&
         Math.abs(rect.right - validRect.right) < maxWidth

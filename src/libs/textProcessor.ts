@@ -146,7 +146,7 @@ export const txtToHtml = (
       htmlParts.push(`<p>${item}</p>`); // Push to array
     }
     // Fallback if no HTML was generated
-    return `<h1>Title</h1>${htmlParts.join("")}`;
+    return `<h1 style="display: none;">Title</h1>${htmlParts.join("")}`;
   }
 };
 export const cleanText = (str) => {
