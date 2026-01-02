@@ -196,7 +196,6 @@ export const highlightRange = (
       sortedRects.length
     : 5;
   const overlapThreshold = lineHeight * 0.5;
-  console.log(overlapThreshold, "voersfasd");
 
   // 过滤重复和无效的矩形
   for (let index = 0; index < sortedRects.length; index++) {

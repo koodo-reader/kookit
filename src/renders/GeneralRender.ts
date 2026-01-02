@@ -283,19 +283,38 @@ class GeneralRender extends EventEmitter {
     return this.chapterDocList;
   }
   async goToPercentage(percentage: number) {
-    if (this.flattenChapters.length === 0) {
-      this.flatChapter(this.chapterList);
-    }
-    if (this.flattenChapters.length > 0) {
-      let chapterIndex =
-        percentage === 1
-          ? this.flattenChapters.length - 1
-          : Math.floor(this.flattenChapters.length * percentage);
-      await this.goToChapter(
-        this.flattenChapters[chapterIndex].index.toString(),
-        this.flattenChapters[chapterIndex].href,
-        this.flattenChapters[chapterIndex].label
-      );
+    // if (this.flattenChapters.length === 0) {
+    //   this.flatChapter(this.chapterList);
+    // }
+    // if (this.flattenChapters.length > 0) {
+    //   let chapterIndex =
+    //     percentage === 1
+    //       ? this.flattenChapters.length - 1
+    //       : Math.floor(this.flattenChapters.length * percentage);
+    //   await this.goToChapter(
+    //     this.flattenChapters[chapterIndex].index.toString(),
+    //     this.flattenChapters[chapterIndex].href,
+    //     this.flattenChapters[chapterIndex].label
+    //   );
+    // }
+    let totalSize = this.chapterDocList
+      .map((item) => (item.text ? item.text.size || 1 : 1))
+      .reduce((a, b) => a + b, 0);
+    let targetSize = totalSize * percentage;
+    let accumulatedSize = 0;
+    for (let i = 0; i < this.chapterDocList.length; i++) {
+      let itemSize = this.chapterDocList[i].text
+        ? this.chapterDocList[i].text.size || 1
+        : 1;
+      accumulatedSize += itemSize;
+      if (accumulatedSize >= targetSize) {
+        await this.goToChapter(
+          i,
+          this.chapterDocList[i].href,
+          this.chapterDocList[i].label
+        );
+        break;
+      }
     }
   }
   async goToChapterIndex(targetChapterIndex: number) {
