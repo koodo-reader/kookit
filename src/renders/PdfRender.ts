@@ -84,11 +84,11 @@ class PdfRender extends GeneralRender {
       let viewport: any;
       let templateIndex: number = 0;
       // 分层采样策略：最小化getDimension调用
-
-      let maxFrequencyItem = await this.getTemplateChapterDoc();
-      viewport = maxFrequencyItem.dimension;
-      templateIndex = maxFrequencyItem.index;
-
+      if (this.readerMode === "double") {
+        let maxFrequencyItem = await this.getTemplateChapterDoc();
+        viewport = maxFrequencyItem.dimension;
+        templateIndex = maxFrequencyItem.index;
+      }
       this.templateChapterDocIndex = templateIndex;
       // Set templateChapterDocIndex based on the viewport evaluation result
       let doc: any = this.getDocument();
