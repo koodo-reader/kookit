@@ -283,20 +283,6 @@ class GeneralRender extends EventEmitter {
     return this.chapterDocList;
   }
   async goToPercentage(percentage: number) {
-    // if (this.flattenChapters.length === 0) {
-    //   this.flatChapter(this.chapterList);
-    // }
-    // if (this.flattenChapters.length > 0) {
-    //   let chapterIndex =
-    //     percentage === 1
-    //       ? this.flattenChapters.length - 1
-    //       : Math.floor(this.flattenChapters.length * percentage);
-    //   await this.goToChapter(
-    //     this.flattenChapters[chapterIndex].index.toString(),
-    //     this.flattenChapters[chapterIndex].href,
-    //     this.flattenChapters[chapterIndex].label
-    //   );
-    // }
     let totalSize = this.chapterDocList
       .map((item) => (item.text ? item.text.size || 1 : 1))
       .reduce((a, b) => a + b, 0);
