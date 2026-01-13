@@ -663,7 +663,7 @@ export const getAudioText = (
     firstSliceIndex = audioText.indexOf(firstVisibleText);
   }
 
-  return audioText.slice(firstSliceIndex);
+  return audioText.slice(firstSliceIndex).filter((s) => s);
 };
 export const getVisibleText = (
   element: HTMLElement,

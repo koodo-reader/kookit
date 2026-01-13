@@ -675,7 +675,8 @@ class GeneralRender extends EventEmitter {
   async audioText() {
     let doc = this.getDocument();
     if (!doc) return "";
-    return getAudioText(this.element, this.readerMode, doc);
+    let audioTexts = await getAudioText(this.element, this.readerMode, doc);
+    return audioTexts;
   }
   async chapterText() {
     let doc = this.getDocument();
@@ -1128,7 +1129,11 @@ class GeneralRender extends EventEmitter {
   }> {
     let doc = this.getDocument();
     if (!doc) return { handled: false };
-    if (href && (href.startsWith("kindle:") || href.indexOf("filepos") > -1)) {
+    if (
+      href &&
+      this.format === "MOBI" &&
+      (href.startsWith("kindle:") || href.indexOf("filepos") > -1)
+    ) {
       let chapterInfo = this.resolveChapter(href);
       if (chapterInfo) {
         await this.goToChapter(

@@ -240,11 +240,12 @@ export const tranformText = (doc: Document) => {
             // 将前导空格替换为零宽度字符，保留原始内容但不显示
             const text = node.nodeValue || "";
             const firstChar = text.charAt(0);
-            // 检查首字符是否为空白字符但不是普通空格或制表符
+            // 检查首字符是否为空白字符但不是普通空格或制表符或换行符
             if (
               firstChar &&
               firstChar.trim() === "" &&
               firstChar !== " " &&
+              firstChar !== "\n" &&
               firstChar !== "\t"
             ) {
               (item as HTMLElement).setAttribute(
