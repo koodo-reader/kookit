@@ -295,9 +295,9 @@ export const handleRenderChapter = async (
       .slice(0, chapterDocIndex)
       .map((item) => (item.text ? item.text.size || 1 : 1))
       .reduce((a, b) => a + b, 0) /
-      chapterDocList
-        .map((item) => (item.text ? item.text.size || 1 : 1))
-        .reduce((a, b) => a + b, 0) +
+    chapterDocList
+      .map((item) => (item.text ? item.text.size || 1 : 1))
+      .reduce((a, b) => a + b, 0) +
     "";
   tempLocation.text = "";
   await handleIframeHeight(element, readerMode, format, iframe, doc);
@@ -408,13 +408,13 @@ export const handleScrollPosition = async (
     targetNode = getCloestBlock(targetNodeList[0], element, readerMode);
     left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
-        convertStyleNum(
-          targetNode.marginLeft ||
-            parseFloat(getComputedStyle(targetNode).marginLeft)
-        )
+      convertStyleNum(
+        targetNode.marginLeft ||
+        parseFloat(getComputedStyle(targetNode).marginLeft)
+      )
       : text === "prevChapter"
-      ? doc.body.scrollWidth
-      : 0;
+        ? doc.body.scrollWidth
+        : 0;
   } else if (href && href.indexOf("#") > -1) {
     let id = CSS.escape(href.split("#").reverse()[0]);
     if (!doc.body.querySelector("#" + CSS.escape(id))) {
@@ -427,10 +427,10 @@ export const handleScrollPosition = async (
     );
     left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
-        convertStyleNum(
-          targetNode.marginLeft ||
-            parseFloat(getComputedStyle(targetNode).marginLeft)
-        )
+      convertStyleNum(
+        targetNode.marginLeft ||
+        parseFloat(getComputedStyle(targetNode).marginLeft)
+      )
       : 0;
   }
   if (readerMode !== "scroll") {
@@ -451,7 +451,7 @@ export const getCloestBlock = (
     convertStyleNum(targetNode.offsetLeft) -
     convertStyleNum(
       (targetNode as any).marginLeft ||
-        parseFloat(getComputedStyle(targetNode).marginLeft)
+      parseFloat(getComputedStyle(targetNode).marginLeft)
     );
   if (readerMode === "scroll") {
     return targetNode;
@@ -524,12 +524,12 @@ export const handleRecord = async (
         .slice(0, parseInt(tempLocation.chapterDocIndex))
         .map((item) => (item.text ? item.text.size || 1 : 1))
         .reduce((a, b) => a + b, 0) /
-        totalSize +
+      totalSize +
       ((chapterDocList.find(
         (_item, index) => index === parseInt(tempLocation.chapterDocIndex)
       )?.text.size || 0) /
         totalSize) *
-        (count / nodeList.length) +
+      (count / nodeList.length) +
       "";
   } else {
     tempLocation.page =
@@ -551,7 +551,7 @@ export const isCurrentNodeFarFromParrent = (
   if (
     Math.abs(
       targetNode.offsetLeft -
-        getCloestBlock(targetNode, element, readerMode).offsetLeft
+      getCloestBlock(targetNode, element, readerMode).offsetLeft
     ) >
     (element.clientWidth + gap) / 2
   ) {
@@ -663,7 +663,10 @@ export const getAudioText = (
     firstSliceIndex = audioText.indexOf(firstVisibleText);
   }
 
-  return audioText.slice(firstSliceIndex).filter((s) => s);
+  return audioText
+    .slice(firstSliceIndex)
+    .map((s) => s.replace(/[\n\t\s]+/g, " ").trim())
+    .filter((s) => s);
 };
 export const getVisibleText = (
   element: HTMLElement,
@@ -879,8 +882,8 @@ export const getSearchResult = async (
     );
     for (let j = 0; j < nodeList.length; j++) {
       let keyWordIndex = (
-        (nodeList[j] as HTMLElement).textContent || ""
-      ).indexOf(keyword);
+        (nodeList[j] as HTMLElement).textContent.toLowerCase() || ""
+      ).indexOf(keyword.toLowerCase());
       if (keyWordIndex > -1) {
         searchResult.push({
           excerpt:
@@ -909,13 +912,13 @@ export const isParentBlock = (myDiv: Element) => {
   let flag = false;
   var blockRegex =
     /^(address|kookitmarker|section|blockquote|body|center|dir|div|dl|fieldset|form|h[1-6]|hr|isindex|menu|noframes|noscript|ol|p|pre|table|ul|dd|dt|frameset|li|tbody|td|tfoot|th|thead|tr|html)$/i;
-  let blockElementList = Array.from(children).filter((item) =>
-    blockRegex.test(item.nodeName)
-  );
-  // some elements might contain image and image subtitle
-  if (blockElementList.length < 3) {
-    return false;
-  }
+  // let blockElementList = Array.from(children).filter((item) =>
+  //   blockRegex.test(item.nodeName)
+  // );
+  // // some elements might contain image and image subtitle
+  // if (blockElementList.length < 3) {
+  //   return false;
+  // }
   for (var i = 0; i < children.length; i++) {
     if (blockRegex.test(children[i].nodeName)) {
       flag = true;
