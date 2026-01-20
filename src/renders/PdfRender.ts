@@ -56,8 +56,8 @@ class PdfRender extends GeneralRender {
             label: "",
             text: {
               load: async () => "",
-              render: async () => {},
-              unload: async () => {},
+              render: async () => { },
+              unload: async () => { },
               getPage: async () => null,
               getDimension: async () => ({ width: 0, height: 0 }),
               getScale: async () => 1,
@@ -73,8 +73,8 @@ class PdfRender extends GeneralRender {
       }
       if (
         document.body.clientWidth * Math.abs(this.scale) -
-          document.body.clientWidth * 0.4 >
-          document.body.clientWidth &&
+        document.body.clientWidth * 0.4 >
+        document.body.clientWidth &&
         this.readerMode !== "double"
       ) {
         createIframe(element, this.scale);
@@ -390,7 +390,7 @@ class PdfRender extends GeneralRender {
 
       await this.renderPdfPage(
         parseInt(this.tempLocation.chapterDocIndex) -
-          (this.readerMode === "double" ? 2 : 1),
+        (this.readerMode === "double" ? 2 : 1),
         doc
       );
     }
@@ -438,7 +438,7 @@ class PdfRender extends GeneralRender {
 
       await this.renderPdfPage(
         parseInt(this.tempLocation.chapterDocIndex) +
-          (this.readerMode === "double" ? 2 : 1),
+        (this.readerMode === "double" ? 2 : 1),
         doc
       );
     }
@@ -853,9 +853,8 @@ class PdfRender extends GeneralRender {
       }
     }
     if (this.readerMode !== "scroll") {
-      docLayer.style.marginLeft = `calc(50% - ${
-        docLayer.getBoundingClientRect().width / 2
-      }px)`;
+      docLayer.style.marginLeft = `calc(50% - ${docLayer.getBoundingClientRect().width / 2
+        }px)`;
     }
     docLayer.style.visibility = "visible";
     window.chapterDocIndex = chapterDocIndex;
@@ -876,12 +875,13 @@ class PdfRender extends GeneralRender {
   async renderPdfPage(chapterDocIndex: number, doc: Document) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
-    } else if (chapterDocIndex > 2) {
-      await this.handleUnloadPDFChapter(chapterDocIndex - 3, doc);
+    } else if (chapterDocIndex > 3) {
+      await this.handleUnloadPDFChapter(chapterDocIndex - 4, doc);
     }
     await this.handleRenderPDFChapter(chapterDocIndex, doc);
 
     await this.handleRenderPDFChapter(chapterDocIndex + 1, doc);
+    await this.handleRenderPDFChapter(chapterDocIndex + 2, doc);
   }
   getPdfScale = async () => {
     if (this.pdfScale && this.pdfScale > 0) {

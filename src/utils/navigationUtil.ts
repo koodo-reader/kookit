@@ -665,7 +665,6 @@ export const getAudioText = (
 
   return audioText
     .slice(firstSliceIndex)
-    .map((s) => s.replace(/[\n\t\s]+/g, " ").trim())
     .filter((s) => s);
 };
 export const getVisibleText = (
@@ -705,7 +704,7 @@ export const getVisibleText = (
       (item) =>
         item.textContent !== "img" && !item.textContent?.startsWith("img")
     )
-    .map((item) => item.textContent);
+    .map((item) => item.textContent).filter((s) => s);;
 };
 export const handleHighlightSearchNode = (
   text: string,
@@ -882,7 +881,7 @@ export const getSearchResult = async (
     );
     for (let j = 0; j < nodeList.length; j++) {
       let keyWordIndex = (
-        (nodeList[j] as HTMLElement).textContent.toLowerCase() || ""
+        (nodeList[j] as HTMLElement).textContent?.toLowerCase() || ""
       ).indexOf(keyword.toLowerCase());
       if (keyWordIndex > -1) {
         searchResult.push({

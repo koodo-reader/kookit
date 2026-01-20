@@ -576,7 +576,7 @@ export const addAndroidTouchEvent = (
           let subContainer = targetIframe.parentElement;
           if (subContainer) {
             position.top =
-              position.top + parseFloat(getComputedStyle(subContainer).top);
+              position.top + parseFloat(subContainer.getBoundingClientRect().top);
           }
         } catch (error) {
           console.error("Error getting highlight coords:", error);
@@ -812,7 +812,7 @@ export const addAppleTouchEvent = (
         let subContainer = targetIframe.parentElement;
         if (subContainer) {
           position.top =
-            position.top + parseFloat(getComputedStyle(subContainer).top);
+            position.top + parseFloat(subContainer.getBoundingClientRect().top);
         }
       } else {
         charRange = await render.getHightlightCoords();
