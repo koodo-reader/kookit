@@ -290,7 +290,6 @@ class GeneralRender extends EventEmitter {
       if (this.flattenChapters.length === 1) {
         let progressInfo = this.getProgress();
         if (!progressInfo) return;
-        console.log(progressInfo, percentage)
         let pageNumber = Math.floor(
           progressInfo.totalPage * percentage
         );
