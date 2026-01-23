@@ -727,63 +727,86 @@ export const handleHighlightSearchNode = (
 
   if (!text.trim()) return;
 
-  // Get block elements and find those containing the target text
+  // Get block elements and find those containing the target text (case insensitive)
   let nodeList = Array.from(
     doc.body.querySelectorAll("span, p, div, h1, h2, h3, h4, h5, h6 ")
   );
   let nodes = nodeList.filter((node) => {
     const content = (node as HTMLElement).textContent || "";
-    return content.trim() && content.indexOf(text) > -1;
+    return content.trim() && content.toLowerCase().indexOf(text.toLowerCase()) > -1;
   });
 
-  // For the first matching node, highlight the text
-  if (nodes.length > 0) {
-    // Function to process text nodes
+  // Process all matching nodes for global replacement
+  nodes.forEach(node => {
+    // Function to process text nodes with global case-insensitive replacement
     const processNode = (node) => {
       if (node.nodeType === Node.TEXT_NODE) {
         const content = node.textContent || "";
-        const index = content.indexOf(text);
+        let lowerContent = content.toLowerCase();
+        let lowerText = text.toLowerCase();
+        let processedContent = content;
+        let offset = 0;
+        let matches: Array<{ start: number; end: number; originalText: string }> = [];
 
-        if (index > -1) {
-          // Split the text node and insert the highlight
-          const before = content.substring(0, index);
-          const after = content.substring(index + text.length);
+        // Find all matches in the content
+        let index = lowerContent.indexOf(lowerText);
+        while (index > -1) {
+          matches.push({
+            start: index,
+            end: index + text.length,
+            originalText: content.substring(index, index + text.length)
+          });
+          index = lowerContent.indexOf(lowerText, index + 1);
+        }
 
-          // Create span with the specified style
-          const highlightSpan = doc.createElement("span");
-          highlightSpan.setAttribute("style", style);
-          highlightSpan.setAttribute("data-highlight", "true");
-          highlightSpan.textContent = text;
-
-          // Replace the original text node with three new nodes
+        if (matches.length > 0) {
           const fragment = doc.createDocumentFragment();
-          if (before) fragment.appendChild(doc.createTextNode(before));
-          fragment.appendChild(highlightSpan);
-          if (after) fragment.appendChild(doc.createTextNode(after));
+          let lastEnd = 0;
+
+          // Process each match
+          matches.forEach((match) => {
+            // Add text before the match
+            if (match.start > lastEnd) {
+              fragment.appendChild(doc.createTextNode(content.substring(lastEnd, match.start)));
+            }
+
+            // Create highlight span for the match
+            const highlightSpan = doc.createElement("span");
+            highlightSpan.setAttribute("style", style);
+            highlightSpan.setAttribute("data-highlight", "true");
+            highlightSpan.textContent = match.originalText;
+            fragment.appendChild(highlightSpan);
+
+            lastEnd = match.end;
+          });
+
+          // Add remaining text after the last match
+          if (lastEnd < content.length) {
+            fragment.appendChild(doc.createTextNode(content.substring(lastEnd)));
+          }
 
           node.parentNode?.replaceChild(fragment, node);
-          return true; // Text was found and highlighted
+          return true;
         }
-      }
-      return false; // No match in this node
-    };
-
-    // Process all child nodes recursively until we find a match
-    const walkAndProcess = (node) => {
-      if (processNode(node)) return true;
-
-      // Process children if this node didn't contain the text
-      const childNodes = Array.from(node.childNodes);
-      for (const child of childNodes) {
-        if (walkAndProcess(child)) return true;
       }
       return false;
     };
 
-    for (let i = 0; i < nodes.length; i++) {
-      walkAndProcess(nodes[i]);
-    }
-  }
+    // Process all child nodes recursively
+    const walkAndProcess = (node) => {
+      let hasReplaced = processNode(node);
+
+      if (!hasReplaced) {
+        // Process children if this node didn't contain the text
+        const childNodes = Array.from(node.childNodes);
+        for (const child of childNodes) {
+          walkAndProcess(child);
+        }
+      }
+    };
+
+    walkAndProcess(node);
+  });
 };
 export const handleHighlightAudioNode = (
   text: string,
