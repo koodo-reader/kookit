@@ -33,9 +33,8 @@ export const handlePDFLayout = (
   doc.body.setAttribute(
     "style",
     element.getAttribute("style") +
-      `height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action: manipulation; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
-        (doc.body.clientWidth - gap) / scale
-      }px;`
+    `height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action: manipulation; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${(doc.body.clientWidth - gap) / scale
+    }px;`
   );
 };
 export const createPDFContainer = async (
@@ -116,10 +115,10 @@ export const handleScrollPDFPosition = async (
   if (readerMode !== "scroll") {
     let left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
-        convertStyleNum(
-          targetNode.marginLeft ||
-            parseFloat(getComputedStyle(targetNode).marginLeft)
-        )
+      convertStyleNum(
+        targetNode.marginLeft ||
+        parseFloat(getComputedStyle(targetNode).marginLeft)
+      )
       : 0;
     doc.body.scrollTo(left, 0);
   } else {
@@ -250,9 +249,9 @@ export const getPDFSearchResult = async (
       // Sort items by x-coordinate
       items.sort((a, b) => a.transform[4] - b.transform[4]);
       // Merge text from same line
-      const lineText = items.map((item) => item.str).join("");
+      const lineText = items.map((item) => item.str).join("").toLowerCase();
 
-      if (lineText.indexOf(keyword) > -1) {
+      if (lineText.indexOf(keyword.toLowerCase()) > -1) {
         searchResult.push({
           excerpt: lineText,
           cfi: JSON.stringify({

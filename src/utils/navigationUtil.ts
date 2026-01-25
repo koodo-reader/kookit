@@ -295,9 +295,9 @@ export const handleRenderChapter = async (
       .slice(0, chapterDocIndex)
       .map((item) => (item.text ? item.text.size || 1 : 1))
       .reduce((a, b) => a + b, 0) /
-      chapterDocList
-        .map((item) => (item.text ? item.text.size || 1 : 1))
-        .reduce((a, b) => a + b, 0) +
+    chapterDocList
+      .map((item) => (item.text ? item.text.size || 1 : 1))
+      .reduce((a, b) => a + b, 0) +
     "";
   tempLocation.text = "";
   await handleIframeHeight(element, readerMode, format, iframe, doc);
@@ -408,13 +408,13 @@ export const handleScrollPosition = async (
     targetNode = getCloestBlock(targetNodeList[0], element, readerMode);
     left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
-        convertStyleNum(
-          targetNode.marginLeft ||
-            parseFloat(getComputedStyle(targetNode).marginLeft)
-        )
+      convertStyleNum(
+        targetNode.marginLeft ||
+        parseFloat(getComputedStyle(targetNode).marginLeft)
+      )
       : text === "prevChapter"
-      ? doc.body.scrollWidth
-      : 0;
+        ? doc.body.scrollWidth
+        : 0;
   } else if (href && href.indexOf("#") > -1) {
     let id = CSS.escape(href.split("#").reverse()[0]);
     if (!doc.body.querySelector("#" + CSS.escape(id))) {
@@ -427,10 +427,10 @@ export const handleScrollPosition = async (
     );
     left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
-        convertStyleNum(
-          targetNode.marginLeft ||
-            parseFloat(getComputedStyle(targetNode).marginLeft)
-        )
+      convertStyleNum(
+        targetNode.marginLeft ||
+        parseFloat(getComputedStyle(targetNode).marginLeft)
+      )
       : 0;
   }
   if (readerMode !== "scroll") {
@@ -451,7 +451,7 @@ export const getCloestBlock = (
     convertStyleNum(targetNode.offsetLeft) -
     convertStyleNum(
       (targetNode as any).marginLeft ||
-        parseFloat(getComputedStyle(targetNode).marginLeft)
+      parseFloat(getComputedStyle(targetNode).marginLeft)
     );
   if (readerMode === "scroll") {
     return targetNode;
@@ -524,12 +524,12 @@ export const handleRecord = async (
         .slice(0, parseInt(tempLocation.chapterDocIndex))
         .map((item) => (item.text ? item.text.size || 1 : 1))
         .reduce((a, b) => a + b, 0) /
-        totalSize +
+      totalSize +
       ((chapterDocList.find(
         (_item, index) => index === parseInt(tempLocation.chapterDocIndex)
       )?.text.size || 0) /
         totalSize) *
-        (count / nodeList.length) +
+      (count / nodeList.length) +
       "";
   } else {
     tempLocation.page =
@@ -551,7 +551,7 @@ export const isCurrentNodeFarFromParrent = (
   if (
     Math.abs(
       targetNode.offsetLeft -
-        getCloestBlock(targetNode, element, readerMode).offsetLeft
+      getCloestBlock(targetNode, element, readerMode).offsetLeft
     ) >
     (element.clientWidth + gap) / 2
   ) {
@@ -663,7 +663,9 @@ export const getAudioText = (
     firstSliceIndex = audioText.indexOf(firstVisibleText);
   }
 
-  return audioText.slice(firstSliceIndex);
+  return audioText
+    .slice(firstSliceIndex)
+    .filter((s) => s);
 };
 export const getVisibleText = (
   element: HTMLElement,
@@ -702,7 +704,7 @@ export const getVisibleText = (
       (item) =>
         item.textContent !== "img" && !item.textContent?.startsWith("img")
     )
-    .map((item) => item.textContent);
+    .map((item) => item.textContent).filter((s) => s);;
 };
 export const handleHighlightSearchNode = (
   text: string,
@@ -725,63 +727,86 @@ export const handleHighlightSearchNode = (
 
   if (!text.trim()) return;
 
-  // Get block elements and find those containing the target text
+  // Get block elements and find those containing the target text (case insensitive)
   let nodeList = Array.from(
     doc.body.querySelectorAll("span, p, div, h1, h2, h3, h4, h5, h6 ")
   );
   let nodes = nodeList.filter((node) => {
     const content = (node as HTMLElement).textContent || "";
-    return content.trim() && content.indexOf(text) > -1;
+    return content.trim() && content.toLowerCase().indexOf(text.toLowerCase()) > -1;
   });
 
-  // For the first matching node, highlight the text
-  if (nodes.length > 0) {
-    // Function to process text nodes
+  // Process all matching nodes for global replacement
+  nodes.forEach(node => {
+    // Function to process text nodes with global case-insensitive replacement
     const processNode = (node) => {
       if (node.nodeType === Node.TEXT_NODE) {
         const content = node.textContent || "";
-        const index = content.indexOf(text);
+        let lowerContent = content.toLowerCase();
+        let lowerText = text.toLowerCase();
+        let processedContent = content;
+        let offset = 0;
+        let matches: Array<{ start: number; end: number; originalText: string }> = [];
 
-        if (index > -1) {
-          // Split the text node and insert the highlight
-          const before = content.substring(0, index);
-          const after = content.substring(index + text.length);
+        // Find all matches in the content
+        let index = lowerContent.indexOf(lowerText);
+        while (index > -1) {
+          matches.push({
+            start: index,
+            end: index + text.length,
+            originalText: content.substring(index, index + text.length)
+          });
+          index = lowerContent.indexOf(lowerText, index + 1);
+        }
 
-          // Create span with the specified style
-          const highlightSpan = doc.createElement("span");
-          highlightSpan.setAttribute("style", style);
-          highlightSpan.setAttribute("data-highlight", "true");
-          highlightSpan.textContent = text;
-
-          // Replace the original text node with three new nodes
+        if (matches.length > 0) {
           const fragment = doc.createDocumentFragment();
-          if (before) fragment.appendChild(doc.createTextNode(before));
-          fragment.appendChild(highlightSpan);
-          if (after) fragment.appendChild(doc.createTextNode(after));
+          let lastEnd = 0;
+
+          // Process each match
+          matches.forEach((match) => {
+            // Add text before the match
+            if (match.start > lastEnd) {
+              fragment.appendChild(doc.createTextNode(content.substring(lastEnd, match.start)));
+            }
+
+            // Create highlight span for the match
+            const highlightSpan = doc.createElement("span");
+            highlightSpan.setAttribute("style", style);
+            highlightSpan.setAttribute("data-highlight", "true");
+            highlightSpan.textContent = match.originalText;
+            fragment.appendChild(highlightSpan);
+
+            lastEnd = match.end;
+          });
+
+          // Add remaining text after the last match
+          if (lastEnd < content.length) {
+            fragment.appendChild(doc.createTextNode(content.substring(lastEnd)));
+          }
 
           node.parentNode?.replaceChild(fragment, node);
-          return true; // Text was found and highlighted
+          return true;
         }
-      }
-      return false; // No match in this node
-    };
-
-    // Process all child nodes recursively until we find a match
-    const walkAndProcess = (node) => {
-      if (processNode(node)) return true;
-
-      // Process children if this node didn't contain the text
-      const childNodes = Array.from(node.childNodes);
-      for (const child of childNodes) {
-        if (walkAndProcess(child)) return true;
       }
       return false;
     };
 
-    for (let i = 0; i < nodes.length; i++) {
-      walkAndProcess(nodes[i]);
-    }
-  }
+    // Process all child nodes recursively
+    const walkAndProcess = (node) => {
+      let hasReplaced = processNode(node);
+
+      if (!hasReplaced) {
+        // Process children if this node didn't contain the text
+        const childNodes = Array.from(node.childNodes);
+        for (const child of childNodes) {
+          walkAndProcess(child);
+        }
+      }
+    };
+
+    walkAndProcess(node);
+  });
 };
 export const handleHighlightAudioNode = (
   text: string,
@@ -879,8 +904,8 @@ export const getSearchResult = async (
     );
     for (let j = 0; j < nodeList.length; j++) {
       let keyWordIndex = (
-        (nodeList[j] as HTMLElement).textContent || ""
-      ).indexOf(keyword);
+        (nodeList[j] as HTMLElement).textContent?.toLowerCase() || ""
+      ).indexOf(keyword.toLowerCase());
       if (keyWordIndex > -1) {
         searchResult.push({
           excerpt:
@@ -909,13 +934,13 @@ export const isParentBlock = (myDiv: Element) => {
   let flag = false;
   var blockRegex =
     /^(address|kookitmarker|section|blockquote|body|center|dir|div|dl|fieldset|form|h[1-6]|hr|isindex|menu|noframes|noscript|ol|p|pre|table|ul|dd|dt|frameset|li|tbody|td|tfoot|th|thead|tr|html)$/i;
-  let blockElementList = Array.from(children).filter((item) =>
-    blockRegex.test(item.nodeName)
-  );
-  // some elements might contain image and image subtitle
-  if (blockElementList.length < 3) {
-    return false;
-  }
+  // let blockElementList = Array.from(children).filter((item) =>
+  //   blockRegex.test(item.nodeName)
+  // );
+  // // some elements might contain image and image subtitle
+  // if (blockElementList.length < 3) {
+  //   return false;
+  // }
   for (var i = 0; i < children.length; i++) {
     if (blockRegex.test(children[i].nodeName)) {
       flag = true;

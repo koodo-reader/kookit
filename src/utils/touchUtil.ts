@@ -19,6 +19,7 @@ async function slideAnimateTo(
   if (window.scrollAnimationId) {
     cancelAnimationFrame(window.scrollAnimationId);
   }
+
   if (
     Math.abs(
       tempDoc.body.scrollWidth - tempDoc.body.scrollLeft - element.clientWidth
@@ -81,56 +82,46 @@ async function slideAnimateTo(
 
   const startLeft = tempDoc.body.scrollLeft;
   const distance = snapX - startLeft;
-  const duration = 300;
+  const duration = 250; // 缩短动画时间，减少卡顿感
 
-  // 优化1: 提前设置硬件加速属性
   const body = tempDoc.body;
+  const startTime = performance.now();
+
+  // 更激进的硬件加速设置
   body.style.willChange = "transform";
+  body.style.transform = "translateZ(0)";
   body.style.backfaceVisibility = "hidden";
-  body.style.perspective = "1000px";
-  body.style.transformStyle = "preserve-3d";
 
-  // 优化2: 使用更高效的缓动函数（避免Math.pow）
-  const easeOutCubic = (t: number): number => {
-    const t1 = t - 1;
-    return t1 * t1 * t1 + 1;
-  };
+  // 使用线性缓动，计算最简单，性能最好
+  const easeOutQuad = (t: number): number => t * (2 - t);
 
-  // 优化3: 缓存变量，避免闭包中重复访问
-  let lastTime = performance.now();
-  let animationProgress = 0;
+  // 预先缓存 transform 字符串的前缀，减少字符串拼接
+  const transformPrefix = "translate3d(";
+  const transformSuffix = "px, 0, 0)";
 
   function animateScroll(currentTime: number) {
-    // 优化4: 计算实际帧间隔，处理帧率波动
-    const deltaTime = currentTime - lastTime;
-    lastTime = currentTime;
+    const elapsed = currentTime - startTime;
+    const progress = elapsed / duration;
 
-    // 基于实际时间流逝计算进度增量
-    animationProgress += deltaTime / duration;
-
-    if (animationProgress >= 1) {
-      // Animation complete
+    if (progress >= 1) {
+      // 动画完成，清理并设置最终位置
+      body.style.transform = "";
+      body.style.willChange = "";
+      body.style.backfaceVisibility = "";
       body.scrollLeft = snapX;
-
-      // 延迟清理，避免立即触发重排
-      requestAnimationFrame(() => {
-        body.style.willChange = "auto";
-        body.style.backfaceVisibility = "";
-        body.style.perspective = "";
-        body.style.transformStyle = "";
-      });
 
       render.record();
       isDragging = false;
       return;
     }
 
-    // 使用缓动函数计算位置
-    const easedProgress = easeOutCubic(animationProgress);
-    const newLeft = startLeft + distance * easedProgress;
+    // 使用更轻量的缓动函数
+    const easedProgress = easeOutQuad(progress);
+    const currentOffset = startLeft + distance * easedProgress;
+    const translateX = startLeft - currentOffset;
 
-    // 优化5: 使用整数像素值避免亚像素渲染
-    body.scrollLeft = Math.round(newLeft);
+    // 使用 | 0 进行快速取整，比 Math.round 更快
+    body.style.transform = transformPrefix + (translateX | 0) + transformSuffix;
 
     window.scrollAnimationId = requestAnimationFrame(animateScroll);
   }
@@ -576,7 +567,7 @@ export const addAndroidTouchEvent = (
           let subContainer = targetIframe.parentElement;
           if (subContainer) {
             position.top =
-              position.top + parseFloat(getComputedStyle(subContainer).top);
+              position.top + parseFloat(subContainer.getBoundingClientRect().top);
           }
         } catch (error) {
           console.error("Error getting highlight coords:", error);
@@ -812,7 +803,7 @@ export const addAppleTouchEvent = (
         let subContainer = targetIframe.parentElement;
         if (subContainer) {
           position.top =
-            position.top + parseFloat(getComputedStyle(subContainer).top);
+            position.top + parseFloat(subContainer.getBoundingClientRect().top);
         }
       } else {
         charRange = await render.getHightlightCoords();
