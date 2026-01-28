@@ -189,10 +189,13 @@ class PdfTextRender extends GeneralRender {
       let baseFontSize = 10;
       if (fontSizes.length > 0) {
         // 计算字体大小的众数（出现频率最高的值）
-        const fontSizeCount = fontSizes.reduce((acc, size) => {
-          acc[size] = (acc[size] || 0) + 1;
-          return acc;
-        }, {} as Record<number, number>);
+        const fontSizeCount = fontSizes.reduce(
+          (acc, size) => {
+            acc[size] = (acc[size] || 0) + 1;
+            return acc;
+          },
+          {} as Record<number, number>
+        );
 
         baseFontSize = Object.keys(fontSizeCount)
           .map(Number)

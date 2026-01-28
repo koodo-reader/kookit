@@ -106,12 +106,12 @@ class GeneralParser {
         isString(metadata.author[0].name)
           ? metadata.author[0].name
           : metadata.author &&
-            metadata.author[0] &&
-            isString(metadata.author[0])
-          ? metadata.author[0]
-          : metadata.author && isString(metadata.author)
-          ? metadata.author
-          : "";
+              metadata.author[0] &&
+              isString(metadata.author[0])
+            ? metadata.author[0]
+            : metadata.author && isString(metadata.author)
+              ? metadata.author
+              : "";
       try {
         const blob = await this.book.getCover();
         var reader = new FileReader();

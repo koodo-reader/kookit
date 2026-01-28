@@ -80,11 +80,11 @@ class GeneralRender extends EventEmitter {
     this.book = "";
     this.element = "";
     this.tempLocation = {};
-    this.flipToNextPage = () => { };
-    this.flipToPrevPage = () => { };
-    this.mouseDownHandler = () => { };
-    this.mouseUpHandler = () => { };
-    this.mouseMoveHandler = (event: TouchEvent) => { };
+    this.flipToNextPage = () => {};
+    this.flipToPrevPage = () => {};
+    this.mouseDownHandler = () => {};
+    this.mouseUpHandler = () => {};
+    this.mouseMoveHandler = (event: TouchEvent) => {};
     this.touchEventSet = {};
     if (this.isMobile === "yes") {
       console.log = function (...args) {
@@ -136,17 +136,17 @@ class GeneralRender extends EventEmitter {
       let targetNode: any = audioNodes[0];
       let left = targetNode
         ? convertStyleNum(targetNode.offsetLeft) -
-        convertStyleNum(
-          targetNode.marginLeft ||
-          parseFloat(getComputedStyle(targetNode).marginLeft)
-        )
+          convertStyleNum(
+            targetNode.marginLeft ||
+              parseFloat(getComputedStyle(targetNode).marginLeft)
+          )
         : 0;
       let top = targetNode
         ? convertStyleNum(targetNode.offsetTop) -
-        convertStyleNum(
-          targetNode.marginTop ||
-          parseFloat(getComputedStyle(targetNode).marginTop)
-        )
+          convertStyleNum(
+            targetNode.marginTop ||
+              parseFloat(getComputedStyle(targetNode).marginTop)
+          )
         : 0;
       if (this.readerMode !== "scroll") {
         doc.body.scrollTo(left, 0);
@@ -290,9 +290,7 @@ class GeneralRender extends EventEmitter {
       if (this.flattenChapters.length === 1) {
         let progressInfo = this.getProgress();
         if (!progressInfo) return;
-        let pageNumber = Math.floor(
-          progressInfo.totalPage * percentage
-        );
+        let pageNumber = Math.floor(progressInfo.totalPage * percentage);
         await this.goToPage(pageNumber);
         return;
       }
@@ -469,17 +467,17 @@ class GeneralRender extends EventEmitter {
     let targetNode = getCloestBlock(node, this.element, this.readerMode);
     let left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
-      convertStyleNum(
-        targetNode.marginLeft ||
-        parseFloat(getComputedStyle(targetNode).marginLeft)
-      )
+        convertStyleNum(
+          targetNode.marginLeft ||
+            parseFloat(getComputedStyle(targetNode).marginLeft)
+        )
       : 0;
     let top = targetNode
       ? convertStyleNum(targetNode.offsetTop) -
-      convertStyleNum(
-        targetNode.marginTop ||
-        parseFloat(getComputedStyle(targetNode).marginTop)
-      )
+        convertStyleNum(
+          targetNode.marginTop ||
+            parseFloat(getComputedStyle(targetNode).marginTop)
+        )
       : 0;
     if (this.readerMode !== "scroll") {
       doc.body.scrollTo(left, 0);
@@ -563,14 +561,14 @@ class GeneralRender extends EventEmitter {
     if (
       (Math.abs(
         doc.body.scrollWidth -
-        convertStyleNum(doc.body.scrollLeft) -
-        doc.body.clientWidth
+          convertStyleNum(doc.body.scrollLeft) -
+          doc.body.clientWidth
       ) < 50 &&
         this.readerMode !== "scroll") ||
       (Math.abs(
         this.element.scrollHeight -
-        convertStyleNum(this.element.scrollTop) -
-        this.element.clientHeight
+          convertStyleNum(this.element.scrollTop) -
+          this.element.clientHeight
       ) < 20 &&
         this.readerMode === "scroll")
     ) {
@@ -600,15 +598,15 @@ class GeneralRender extends EventEmitter {
       if (
         Math.abs(
           this.element.scrollHeight -
-          convertStyleNum(this.element.scrollTop) -
-          this.element.clientHeight
+            convertStyleNum(this.element.scrollTop) -
+            this.element.clientHeight
         ) -
-        (this.element.clientHeight - 50) <
-        20 &&
+          (this.element.clientHeight - 50) <
+          20 &&
         Math.abs(
           this.element.scrollHeight -
-          convertStyleNum(this.element.scrollTop) -
-          this.element.clientHeight
+            convertStyleNum(this.element.scrollTop) -
+            this.element.clientHeight
         ) > 20
       ) {
         this.element.scrollTo({
@@ -748,8 +746,8 @@ class GeneralRender extends EventEmitter {
         this.readerMode === "scroll" &&
         Math.abs(
           this.element.scrollHeight -
-          this.element.scrollTop -
-          this.element.clientHeight
+            this.element.scrollTop -
+            this.element.clientHeight
         ) < 10
       ) {
         this.nextChapter();
@@ -803,8 +801,8 @@ class GeneralRender extends EventEmitter {
         this.readerMode === "scroll" &&
         Math.abs(
           this.element.scrollHeight -
-          this.element.scrollTop -
-          this.element.clientHeight
+            this.element.scrollTop -
+            this.element.clientHeight
         ) < 10
       ) {
         this.nextChapter();

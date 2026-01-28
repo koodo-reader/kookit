@@ -567,7 +567,8 @@ export const addAndroidTouchEvent = (
           let subContainer = targetIframe.parentElement;
           if (subContainer) {
             position.top =
-              position.top + parseFloat(subContainer.getBoundingClientRect().top);
+              position.top +
+              parseFloat(subContainer.getBoundingClientRect().top);
           }
         } catch (error) {
           console.error("Error getting highlight coords:", error);

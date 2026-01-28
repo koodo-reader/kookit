@@ -295,9 +295,9 @@ export const handleRenderChapter = async (
       .slice(0, chapterDocIndex)
       .map((item) => (item.text ? item.text.size || 1 : 1))
       .reduce((a, b) => a + b, 0) /
-    chapterDocList
-      .map((item) => (item.text ? item.text.size || 1 : 1))
-      .reduce((a, b) => a + b, 0) +
+      chapterDocList
+        .map((item) => (item.text ? item.text.size || 1 : 1))
+        .reduce((a, b) => a + b, 0) +
     "";
   tempLocation.text = "";
   await handleIframeHeight(element, readerMode, format, iframe, doc);
@@ -408,10 +408,10 @@ export const handleScrollPosition = async (
     targetNode = getCloestBlock(targetNodeList[0], element, readerMode);
     left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
-      convertStyleNum(
-        targetNode.marginLeft ||
-        parseFloat(getComputedStyle(targetNode).marginLeft)
-      )
+        convertStyleNum(
+          targetNode.marginLeft ||
+            parseFloat(getComputedStyle(targetNode).marginLeft)
+        )
       : text === "prevChapter"
         ? doc.body.scrollWidth
         : 0;
@@ -427,10 +427,10 @@ export const handleScrollPosition = async (
     );
     left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
-      convertStyleNum(
-        targetNode.marginLeft ||
-        parseFloat(getComputedStyle(targetNode).marginLeft)
-      )
+        convertStyleNum(
+          targetNode.marginLeft ||
+            parseFloat(getComputedStyle(targetNode).marginLeft)
+        )
       : 0;
   }
   if (readerMode !== "scroll") {
@@ -451,7 +451,7 @@ export const getCloestBlock = (
     convertStyleNum(targetNode.offsetLeft) -
     convertStyleNum(
       (targetNode as any).marginLeft ||
-      parseFloat(getComputedStyle(targetNode).marginLeft)
+        parseFloat(getComputedStyle(targetNode).marginLeft)
     );
   if (readerMode === "scroll") {
     return targetNode;
@@ -524,12 +524,12 @@ export const handleRecord = async (
         .slice(0, parseInt(tempLocation.chapterDocIndex))
         .map((item) => (item.text ? item.text.size || 1 : 1))
         .reduce((a, b) => a + b, 0) /
-      totalSize +
+        totalSize +
       ((chapterDocList.find(
         (_item, index) => index === parseInt(tempLocation.chapterDocIndex)
       )?.text.size || 0) /
         totalSize) *
-      (count / nodeList.length) +
+        (count / nodeList.length) +
       "";
   } else {
     tempLocation.page =
@@ -551,7 +551,7 @@ export const isCurrentNodeFarFromParrent = (
   if (
     Math.abs(
       targetNode.offsetLeft -
-      getCloestBlock(targetNode, element, readerMode).offsetLeft
+        getCloestBlock(targetNode, element, readerMode).offsetLeft
     ) >
     (element.clientWidth + gap) / 2
   ) {
@@ -663,9 +663,7 @@ export const getAudioText = (
     firstSliceIndex = audioText.indexOf(firstVisibleText);
   }
 
-  return audioText
-    .slice(firstSliceIndex)
-    .filter((s) => s);
+  return audioText.slice(firstSliceIndex).filter((s) => s);
 };
 export const getVisibleText = (
   element: HTMLElement,
@@ -704,7 +702,8 @@ export const getVisibleText = (
       (item) =>
         item.textContent !== "img" && !item.textContent?.startsWith("img")
     )
-    .map((item) => item.textContent).filter((s) => s);;
+    .map((item) => item.textContent)
+    .filter((s) => s);
 };
 export const handleHighlightSearchNode = (
   text: string,
@@ -733,11 +732,13 @@ export const handleHighlightSearchNode = (
   );
   let nodes = nodeList.filter((node) => {
     const content = (node as HTMLElement).textContent || "";
-    return content.trim() && content.toLowerCase().indexOf(text.toLowerCase()) > -1;
+    return (
+      content.trim() && content.toLowerCase().indexOf(text.toLowerCase()) > -1
+    );
   });
 
   // Process all matching nodes for global replacement
-  nodes.forEach(node => {
+  nodes.forEach((node) => {
     // Function to process text nodes with global case-insensitive replacement
     const processNode = (node) => {
       if (node.nodeType === Node.TEXT_NODE) {
@@ -746,7 +747,11 @@ export const handleHighlightSearchNode = (
         let lowerText = text.toLowerCase();
         let processedContent = content;
         let offset = 0;
-        let matches: Array<{ start: number; end: number; originalText: string }> = [];
+        let matches: Array<{
+          start: number;
+          end: number;
+          originalText: string;
+        }> = [];
 
         // Find all matches in the content
         let index = lowerContent.indexOf(lowerText);
@@ -754,7 +759,7 @@ export const handleHighlightSearchNode = (
           matches.push({
             start: index,
             end: index + text.length,
-            originalText: content.substring(index, index + text.length)
+            originalText: content.substring(index, index + text.length),
           });
           index = lowerContent.indexOf(lowerText, index + 1);
         }
@@ -767,7 +772,9 @@ export const handleHighlightSearchNode = (
           matches.forEach((match) => {
             // Add text before the match
             if (match.start > lastEnd) {
-              fragment.appendChild(doc.createTextNode(content.substring(lastEnd, match.start)));
+              fragment.appendChild(
+                doc.createTextNode(content.substring(lastEnd, match.start))
+              );
             }
 
             // Create highlight span for the match
@@ -782,7 +789,9 @@ export const handleHighlightSearchNode = (
 
           // Add remaining text after the last match
           if (lastEnd < content.length) {
-            fragment.appendChild(doc.createTextNode(content.substring(lastEnd)));
+            fragment.appendChild(
+              doc.createTextNode(content.substring(lastEnd))
+            );
           }
 
           node.parentNode?.replaceChild(fragment, node);
