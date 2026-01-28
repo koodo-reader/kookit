@@ -9,9 +9,8 @@ export const getPdfScale = async (
   chapterDocIndex: number,
   doc: any
 ) => {
-  let { width, height } = await chapterDocList[
-    chapterDocIndex
-  ].text.getDimension();
+  let { width, height } =
+    await chapterDocList[chapterDocIndex].text.getDimension();
 
   let viewWidth = doc.body.clientWidth;
   let viewHeight = element.clientHeight;
@@ -33,8 +32,9 @@ export const handlePDFLayout = (
   doc.body.setAttribute(
     "style",
     element.getAttribute("style") +
-    `height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action: manipulation; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${(doc.body.clientWidth - gap) / scale
-    }px;`
+      `height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action: manipulation; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
+        (doc.body.clientWidth - gap) / scale
+      }px;`
   );
 };
 export const createPDFContainer = async (
@@ -58,7 +58,8 @@ export const createPDFContainer = async (
       iframeContainer.style.paddingTop = `${(1 / aspectRatio) * 100}%`;
     } else if (readerMode === "scroll") {
       let scrollViewport = await chapterDocList[index].text.getDimension();
-      const aspectRatio = scrollViewport?.width / scrollViewport?.height || 0.75; // Default to 3:4 if viewport unknown
+      const aspectRatio =
+        scrollViewport?.width / scrollViewport?.height || 0.75; // Default to 3:4 if viewport unknown
       iframeContainer.style.paddingTop = `${(1 / aspectRatio) * 100 + 5}%`;
     }
 
@@ -115,10 +116,10 @@ export const handleScrollPDFPosition = async (
   if (readerMode !== "scroll") {
     let left = targetNode
       ? convertStyleNum(targetNode.offsetLeft) -
-      convertStyleNum(
-        targetNode.marginLeft ||
-        parseFloat(getComputedStyle(targetNode).marginLeft)
-      )
+        convertStyleNum(
+          targetNode.marginLeft ||
+            parseFloat(getComputedStyle(targetNode).marginLeft)
+        )
       : 0;
     doc.body.scrollTo(left, 0);
   } else {
@@ -161,9 +162,8 @@ export const getPDFVisibleText = async (
     return item.str;
   });
   if (readerMode === "double") {
-    let nextTextContent = await chapterDocList[
-      chapterDocIndex + 1
-    ].text.getTextContent();
+    let nextTextContent =
+      await chapterDocList[chapterDocIndex + 1].text.getTextContent();
     let nextTextList = nextTextContent.items.map((item: any) => {
       return item.str;
     });
@@ -249,7 +249,10 @@ export const getPDFSearchResult = async (
       // Sort items by x-coordinate
       items.sort((a, b) => a.transform[4] - b.transform[4]);
       // Merge text from same line
-      const lineText = items.map((item) => item.str).join("").toLowerCase();
+      const lineText = items
+        .map((item) => item.str)
+        .join("")
+        .toLowerCase();
 
       if (lineText.indexOf(keyword.toLowerCase()) > -1) {
         searchResult.push({

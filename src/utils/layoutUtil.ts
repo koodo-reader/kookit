@@ -50,10 +50,10 @@ export const handleIframeHeight = async (
         tailElem.setAttribute(
           "style",
           "height: " +
-          doc.body.clientHeight +
-          "px; display: inline-block; width: " +
-          (pageWidth - gap) +
-          "px"
+            doc.body.clientHeight +
+            "px; display: inline-block; width: " +
+            (pageWidth - gap) +
+            "px"
         );
         doc.body.appendChild(tailElem);
       }
@@ -187,21 +187,25 @@ export const progressInfo = (
         ? Math.floor(element.scrollHeight / (element.clientHeight - 50))
         : readerMode === "single"
           ? Math.round(
-            parseFloat(doc.body.scrollWidth / (doc.body.clientWidth + gap) + "")
-          )
+              parseFloat(
+                doc.body.scrollWidth / (doc.body.clientWidth + gap) + ""
+              )
+            )
           : Math.round(
-            parseFloat(doc.body.scrollWidth / (doc.body.clientWidth + gap) + "")
-          ) * 2,
+              parseFloat(
+                doc.body.scrollWidth / (doc.body.clientWidth + gap) + ""
+              )
+            ) * 2,
     currentPage:
       readerMode === "scroll"
         ? Math.floor(element.scrollTop / (element.clientHeight - 50)) + 1
         : Math.round(
-          parseFloat(
-            convertStyleNum(doc.body.scrollLeft) /
-            (doc.body.clientWidth + gap) +
-            ""
-          )
-        ) + 1,
+            parseFloat(
+              convertStyleNum(doc.body.scrollLeft) /
+                (doc.body.clientWidth + gap) +
+                ""
+            )
+          ) + 1,
   };
 };
 export const tranformText = (doc: Document) => {
@@ -251,7 +255,7 @@ export const tranformText = (doc: Document) => {
               (item as HTMLElement).setAttribute(
                 "style",
                 ((item as HTMLElement).getAttribute("style") || "") +
-                "text-indent: 0em !important;"
+                  "text-indent: 0em !important;"
               );
             }
             // 只处理第一个，退出循环
@@ -265,7 +269,7 @@ export const tranformText = (doc: Document) => {
             (item as HTMLElement).setAttribute(
               "style",
               ((item as HTMLElement).getAttribute("style") || "") +
-              "text-indent: 0em !important;"
+                "text-indent: 0em !important;"
             );
             break;
           }
@@ -387,12 +391,14 @@ export const handleImageSize = async (
       item.setAttribute(
         "style",
         (item.getAttribute("style") ? item.getAttribute("style") : "") +
-        ";" +
-        `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${maxHeight > 0 ? maxHeight + "px" : ""
-        }; margin: 0 auto; min-width: 0px; min-height: 0px; ${format.startsWith("CB")
-          ? `margin-left: calc(100% - ${item.clientWidth}px);`
-          : ""
-        }`
+          ";" +
+          `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${
+            maxHeight > 0 ? maxHeight + "px" : ""
+          }; margin: 0 auto; min-width: 0px; min-height: 0px; ${
+            format.startsWith("CB")
+              ? `margin-left: calc(100% - ${item.clientWidth}px);`
+              : ""
+          }`
       );
     }
     if (item.tagName === "image") {
@@ -403,15 +409,16 @@ export const handleImageSize = async (
       item.setAttribute(
         "style",
         (item.getAttribute("style") ? item.getAttribute("style") : "") +
-        ";margin-left: 0px; width: 100%;"
+          ";margin-left: 0px; width: 100%;"
       );
     }
     if (format.startsWith("CB") && readerMode !== "scroll") {
       item.setAttribute(
         "style",
         (item.getAttribute("style") ? item.getAttribute("style") : "") +
-        `;margin-left: calc(50% - ${item.getBoundingClientRect().width / 2
-        }px);`
+          `;margin-left: calc(50% - ${
+            item.getBoundingClientRect().width / 2
+          }px);`
       );
     }
   }
@@ -435,8 +442,10 @@ export const handleLayout = (
   let gap = section % 2 === 0 ? section : section - 1;
   doc.body.setAttribute(
     "style",
-    `width: ${element.clientWidth + "px"
-    };height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action:none; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${(element.clientWidth - gap) / scale
+    `width: ${
+      element.clientWidth + "px"
+    };height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action:none; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
+      (element.clientWidth - gap) / scale
     }px;`
   );
 };

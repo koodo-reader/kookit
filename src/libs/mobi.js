@@ -339,7 +339,7 @@ const countBitsSet = (x) => {
 
 const countUnsetEnd = (x) => {
   let count = 0;
-  while ((x & 1) === 0) (x = x >> 1), count++;
+  while ((x & 1) === 0) ((x = x >> 1), count++);
   return count;
 };
 
@@ -347,11 +347,13 @@ const decompressPalmDOC = (array) => {
   let output = [];
   for (let i = 0; i < array.length; i++) {
     const byte = array[i];
-    if (byte === 0) output.push(0); // uncompressed literal, just copy it
+    if (byte === 0)
+      output.push(0); // uncompressed literal, just copy it
     else if (byte <= 8)
       // copy next 1-8 bytes
       for (const x of array.subarray(i + 1, (i += byte) + 1)) output.push(x);
-    else if (byte <= 0b0111_1111) output.push(byte); // uncompressed literal
+    else if (byte <= 0b0111_1111)
+      output.push(byte); // uncompressed literal
     else if (byte <= 0b1011_1111) {
       // 1st and 2nd bits are 10, meaning this is a length-distance pair
       // read next byte and combine it with current byte
@@ -424,7 +426,7 @@ const huffcdic = async (mobi, loadRecord) => {
   const decompress = (byteArray) => {
     let output = new Uint8Array();
     const bitLength = byteArray.byteLength * 8;
-    for (let i = 0; i < bitLength;) {
+    for (let i = 0; i < bitLength; ) {
       const bits = Number(read32Bits(byteArray, i));
       let [found, codeLength, value] = table1[bits >>> 24];
       if (!found) {
@@ -469,7 +471,7 @@ const getIndexData = async (indxIndex, loadRecord) => {
   for (let i = 0; i < indx.numCncx; i++) {
     const record = await loadRecord(indxIndex + indx.numRecords + i + 1);
     const array = new Uint8Array(record);
-    for (let pos = 0; pos < array.byteLength;) {
+    for (let pos = 0; pos < array.byteLength; ) {
       const index = pos;
       const { value, length } = getVarLen(array, pos);
       pos += length;
@@ -796,12 +798,15 @@ const getIndent = (el) => {
   return x;
 };
 function rawBytesToString(uint8Array) {
-  const chunkSize = 0x8000
-  let result = ''
+  const chunkSize = 0x8000;
+  let result = "";
   for (let i = 0; i < uint8Array.length; i += chunkSize) {
-    result += String.fromCharCode.apply(null, uint8Array.subarray(i, i + chunkSize))
+    result += String.fromCharCode.apply(
+      null,
+      uint8Array.subarray(i, i + chunkSize)
+    );
   }
-  return result
+  return result;
 }
 class MOBI6 {
   parser = new DOMParser();
@@ -816,37 +821,40 @@ class MOBI6 {
     this.mobi = mobi;
   }
   async init() {
-    const recordBuffers = []
+    const recordBuffers = [];
     for (let i = 0; i < this.mobi.headers.palmdoc.numTextRecords; i++) {
-      const buf = await this.mobi.loadText(i)
-      recordBuffers.push(buf)
+      const buf = await this.mobi.loadText(i);
+      recordBuffers.push(buf);
     }
-    const totalLength = recordBuffers.reduce((sum, buf) => sum + buf.byteLength, 0)
+    const totalLength = recordBuffers.reduce(
+      (sum, buf) => sum + buf.byteLength,
+      0
+    );
     // load all text records in an array
-    const array = new Uint8Array(totalLength)
+    const array = new Uint8Array(totalLength);
     recordBuffers.reduce((offset, buf) => {
-      array.set(new Uint8Array(buf), offset)
-      return offset + buf.byteLength
-    }, 0)
+      array.set(new Uint8Array(buf), offset);
+      return offset + buf.byteLength;
+    }, 0);
     // convert to string so we can use regex
     // note that `filepos` are byte offsets
     // so it needs to preserve each byte as a separate character
     // (see https://stackoverflow.com/q/50198017)
-    const str = rawBytesToString(array)
+    const str = rawBytesToString(array);
 
     // split content into sections at each `<mbp:pagebreak>`
     this.#sections = [0]
-      .concat(Array.from(str.matchAll(mbpPagebreakRegex), m => m.index))
+      .concat(Array.from(str.matchAll(mbpPagebreakRegex), (m) => m.index))
       .map((start, i, a) => {
-        const end = a[i + 1] ?? array.length
-        return { book: this, raw: array.subarray(start, end) }
+        const end = a[i + 1] ?? array.length;
+        return { book: this, raw: array.subarray(start, end) };
       })
       // get start and end filepos for each section
       .map((section, i, arr) => {
-        section.start = arr[i - 1]?.end ?? 0
-        section.end = section.start + section.raw.byteLength
-        return section
-      })
+        section.start = arr[i - 1]?.end ?? 0;
+        section.end = section.start + section.raw.byteLength;
+        return section;
+      });
 
     this.sections = this.#sections.map((section, index) => ({
       id: index,
@@ -854,65 +862,71 @@ class MOBI6 {
       createDocument: () => this.createDocument(section),
       resolveHref: (href) => this.resolveHref(href),
       size: section.end - section.start,
-    }))
+    }));
 
     try {
-      this.landmarks = await this.getGuide()
-      const tocHref = this.landmarks
-        .find(({ type }) => type?.includes('toc'))?.href
+      this.landmarks = await this.getGuide();
+      const tocHref = this.landmarks.find(({ type }) =>
+        type?.includes("toc")
+      )?.href;
       if (tocHref) {
-        const { index } = this.resolveHref(tocHref)
-        const doc = await this.sections[index].createDocument()
-        let lastItem
-        let lastLevel = 0
-        let lastIndent = 0
-        const lastLevelOfIndent = new Map()
-        const lastParentOfLevel = new Map()
-        this.toc = Array.from(doc.querySelectorAll('a[filepos]'))
-          .reduce((arr, a) => {
-            const indent = getIndent(a)
+        const { index } = this.resolveHref(tocHref);
+        const doc = await this.sections[index].createDocument();
+        let lastItem;
+        let lastLevel = 0;
+        let lastIndent = 0;
+        const lastLevelOfIndent = new Map();
+        const lastParentOfLevel = new Map();
+        this.toc = Array.from(doc.querySelectorAll("a[filepos]")).reduce(
+          (arr, a) => {
+            const indent = getIndent(a);
             const item = {
-              label: a.innerText?.trim() ?? '',
-              href: `#filepos${a.getAttribute('filepos')}`,
-            }
-            const level = indent > lastIndent ? lastLevel + 1
-              : indent === lastIndent ? lastLevel
-                : lastLevelOfIndent.get(indent) ?? Math.max(0, lastLevel - 1)
+              label: a.innerText?.trim() ?? "",
+              href: `#filepos${a.getAttribute("filepos")}`,
+            };
+            const level =
+              indent > lastIndent
+                ? lastLevel + 1
+                : indent === lastIndent
+                  ? lastLevel
+                  : (lastLevelOfIndent.get(indent) ??
+                    Math.max(0, lastLevel - 1));
             if (level > lastLevel) {
               if (lastItem) {
-                lastItem.subitems ??= []
-                lastItem.subitems.push(item)
-                lastParentOfLevel.set(level, lastItem)
-              }
-              else arr.push(item)
+                lastItem.subitems ??= [];
+                lastItem.subitems.push(item);
+                lastParentOfLevel.set(level, lastItem);
+              } else arr.push(item);
+            } else {
+              const parent = lastParentOfLevel.get(level);
+              if (parent) parent.subitems.push(item);
+              else arr.push(item);
             }
-            else {
-              const parent = lastParentOfLevel.get(level)
-              if (parent) parent.subitems.push(item)
-              else arr.push(item)
-            }
-            lastItem = item
-            lastLevel = level
-            lastIndent = indent
-            lastLevelOfIndent.set(indent, level)
-            return arr
-          }, [])
+            lastItem = item;
+            lastLevel = level;
+            lastIndent = indent;
+            lastLevelOfIndent.set(indent, level);
+            return arr;
+          },
+          []
+        );
       }
     } catch (e) {
-      console.warn(e)
+      console.warn(e);
     }
 
     // get list of all `filepos` references in the book,
     // which will be used to insert anchor elements
     // because only then can they be referenced in the DOM
-    this.#fileposList = [...new Set(
-      Array.from(str.matchAll(fileposRegex), m => m[1]))]
-      .map(filepos => ({ filepos, number: Number(filepos) }))
-      .sort((a, b) => a.number - b.number)
+    this.#fileposList = [
+      ...new Set(Array.from(str.matchAll(fileposRegex), (m) => m[1])),
+    ]
+      .map((filepos) => ({ filepos, number: Number(filepos) }))
+      .sort((a, b) => a.number - b.number);
 
-    this.metadata = this.mobi.getMetadata()
-    this.getCover = this.mobi.getCover.bind(this.mobi)
-    return this
+    this.metadata = this.mobi.getMetadata();
+    this.getCover = this.mobi.getCover.bind(this.mobi);
+    return this;
   }
   async getGuide() {
     const doc = await this.createDocument(this.#sections[0]);
@@ -1113,7 +1127,7 @@ class KF8 {
       ]);
       this.#tables.fdstTable = fdstTable;
       this.#fullRawLength = fdstTable[fdstTable.length - 1][1];
-    } catch { }
+    } catch {}
 
     const skelTable = (await getIndexData(kf8.skel, loadRecord)).table.map(
       ({ name, tagMap }, index) => ({
@@ -1168,13 +1182,13 @@ class KF8 {
     this.sections = this.#sections.map((section, index) =>
       section.frags.length
         ? {
-          id: index,
-          load: () => this.loadSection(section),
-          createDocument: () => this.createDocument(section),
-          resolveHref: (href) => this.resolveHref(href),
-          size: section.length,
-          pageSpread: pageSpreads.get(index),
-        }
+            id: index,
+            load: () => this.loadSection(section),
+            createDocument: () => this.createDocument(section),
+            resolveHref: (href) => this.resolveHref(href),
+            size: section.length,
+            pageSpread: pageSpreads.get(index),
+          }
         : { linear: "no" }
     );
 
@@ -1224,7 +1238,7 @@ class KF8 {
         const magic = await this.mobi.loadMagic(i);
         const match = keys.find((key) => key === magic);
         if (match) results[match] = i;
-      } catch { }
+      } catch {}
     }
     return results;
   }
@@ -1243,7 +1257,7 @@ class KF8 {
   async loadResourceBlob(str) {
     let { resourceType, id, type } = parseResourceURI(str);
     if (type === "image/jpg") {
-      type = "image/jpeg"
+      type = "image/jpeg";
     }
     const raw =
       resourceType === "flow"

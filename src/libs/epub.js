@@ -40,10 +40,10 @@ const filterAttribute = (attr, value, isList) =>
 
 const getAttributes =
   (...xs) =>
-    (el) =>
-      el
-        ? Object.fromEntries(xs.map((x) => [camel(x), el.getAttribute(x)]))
-        : null;
+  (el) =>
+    el
+      ? Object.fromEntries(xs.map((x) => [camel(x), el.getAttribute(x)]))
+      : null;
 
 const getElementText = (el) => whitespacePreLine(el?.textContent);
 
@@ -87,9 +87,9 @@ const pathRelative = (from, to) => {
   return i < 0
     ? ""
     : Array(as.length - i)
-      .fill("..")
-      .concat(bs.slice(i))
-      .join("/");
+        .fill("..")
+        .concat(bs.slice(i))
+        .join("/");
 };
 
 const pathDirname = (str) => str.slice(0, str.lastIndexOf("/") + 1);
@@ -196,7 +196,7 @@ const getMetadata = (opf) => {
       const filter =
         type === "meta"
           ? (el) =>
-            el.namespaceURI === NS.OPF && el.getAttribute("property") === name
+              el.namespaceURI === NS.OPF && el.getAttribute("property") === name
           : (el) => el.namespaceURI === NS.DC && el.localName === name;
       return [
         camel(name),
@@ -313,13 +313,13 @@ const parseSMIL = (doc, resolve = (f) => f) => {
     const $audio = $($par, "audio");
     return $audio
       ? {
-        id,
-        audio: {
-          src: resolveHref($audio.getAttribute("src")),
-          clipBegin: parseClock($audio.getAttribute("clipBegin")),
-          clipEnd: parseClock($audio.getAttribute("clipEnd")),
-        },
-      }
+          id,
+          audio: {
+            src: resolveHref($audio.getAttribute("src")),
+            clipBegin: parseClock($audio.getAttribute("clipBegin")),
+            clipEnd: parseClock($audio.getAttribute("clipEnd")),
+          },
+        }
       : { id };
   });
 };
@@ -338,7 +338,7 @@ const getUUID = (opf) => {
 const getIdentifier = (opf) =>
   getElementText(
     opf.getElementById(opf.documentElement.getAttribute("unique-identifier")) ??
-    opf.getElementsByTagNameNS(NS.DC, "identifier")[0]
+      opf.getElementsByTagNameNS(NS.DC, "identifier")[0]
   );
 
 // https://www.w3.org/publishing/epub32/epub-ocf.html#sec-resource-obfuscation
@@ -433,12 +433,18 @@ class Resources {
       });
     //适配部分不标准的epub
     if (this.manifest.length === 0) {
-      this.manifest = Array.from($manifest.children).map(item => {
-        const attrs = getAttributes("href", "id", "media-type", "properties", "media-overlay")(item)
+      this.manifest = Array.from($manifest.children).map((item) => {
+        const attrs = getAttributes(
+          "href",
+          "id",
+          "media-type",
+          "properties",
+          "media-overlay"
+        )(item);
         attrs.href = resolveHref(attrs.href);
         attrs.properties = attrs.properties?.split(/\s/);
         return attrs;
-      })
+      });
     }
     this.spine = $$itemref
       .map(getAttributes("idref", "id", "linear", "properties"))
@@ -480,12 +486,28 @@ class Resources {
       this.getItemByID("cover.png") ??
       this.getItemByID("cover.jpeg") ??
       this.getItemByHref(
-        this.guide?.find((ref) => ref.type.includes("cover") && !ref.href.includes("html") && !ref.href.includes("xhtml") && !ref.href.includes("xml"))?.href
+        this.guide?.find(
+          (ref) =>
+            ref.type.includes("cover") &&
+            !ref.href.includes("html") &&
+            !ref.href.includes("xhtml") &&
+            !ref.href.includes("xml")
+        )?.href
       ) ??
       this.getItemByID("cover");
     if (this.cover && this.cover.href) {
-      if (this.cover.href.includes("xml") || this.cover.href.includes("xhtml") || this.cover.href.includes("html")) {
-        this.cover = this.manifest.find((item) => item.href.toLowerCase().includes("cover") && (item.href.includes("png") || item.href.includes("jpg") || item.href.includes("jpeg")));
+      if (
+        this.cover.href.includes("xml") ||
+        this.cover.href.includes("xhtml") ||
+        this.cover.href.includes("html")
+      ) {
+        this.cover = this.manifest.find(
+          (item) =>
+            item.href.toLowerCase().includes("cover") &&
+            (item.href.includes("png") ||
+              item.href.includes("jpg") ||
+              item.href.includes("jpeg"))
+        );
       }
     }
 
@@ -774,25 +796,24 @@ export class EPUB {
   }
   #parseXML(str) {
     if (str && str.includes("opf:scheme")) {
-      str = str.replaceAll("opf:scheme", "scheme")
+      str = str.replaceAll("opf:scheme", "scheme");
     }
     //error on line 41 at column 46: Comment must not contain '--' (double-hyphen)
     if (str) {
       // 修复常见的 XML 问题
       str = str
         // 移除 BOM
-        .replace(/^\uFEFF/, '')
+        .replace(/^\uFEFF/, "")
         // 修复注释中的双连字符
         .replace(/<!--([\s\S]*?)-->/g, (match, content) => {
-          const fixedContent = content.replace(/--/g, '- -');
+          const fixedContent = content.replace(/--/g, "- -");
           return `<!--${fixedContent}-->`;
         })
         // 修复未正确转义的 & 符号（除了实体引用）
-        .replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, '&amp;')
+        .replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, "&amp;")
         // 移除控制字符（保留换行符、回车符、制表符）
-        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
     }
-
 
     return str ? this.parser.parseFromString(str.trim(), MIME.XML) : null;
   }
@@ -833,27 +854,26 @@ export class EPUB {
         ),
       resources: this.resources,
     });
-    this.sections = this.resources.spine
-      .map((spineItem, index) => {
-        const { idref, linear, properties = [] } = spineItem;
-        const item = this.resources.getItemByID(idref);
-        if (!item) {
-          console.warn(`Could not find item with ID "${idref}" in manifest`);
-          return null;
-        }
-        return {
-          id: this.resources.getItemByID(idref)?.href,
-          load: () => loader.loadItem(item),
-          unload: () => loader.unloadItem(item),
-          createDocument: () => this.loadDocument(item),
-          size: this.getSize(item.href),
-          cfi: this.resources.cfis[index],
-          linear,
-          pageSpread: getPageSpread(properties),
-          resolveHref: (href) => resolveURL(href, item.href),
-          loadMediaOverlay: () => this.loadMediaOverlay(item),
-        };
-      });
+    this.sections = this.resources.spine.map((spineItem, index) => {
+      const { idref, linear, properties = [] } = spineItem;
+      const item = this.resources.getItemByID(idref);
+      if (!item) {
+        console.warn(`Could not find item with ID "${idref}" in manifest`);
+        return null;
+      }
+      return {
+        id: this.resources.getItemByID(idref)?.href,
+        load: () => loader.loadItem(item),
+        unload: () => loader.unloadItem(item),
+        createDocument: () => this.loadDocument(item),
+        size: this.getSize(item.href),
+        cfi: this.resources.cfis[index],
+        linear,
+        pageSpread: getPageSpread(properties),
+        resolveHref: (href) => resolveURL(href, item.href),
+        loadMediaOverlay: () => this.loadMediaOverlay(item),
+      };
+    });
 
     const { navPath, ncxPath } = this.resources;
     if (navPath)

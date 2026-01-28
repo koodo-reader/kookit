@@ -154,13 +154,13 @@ export default class {
               console.warn("wrong name");
               return this;
             }
-            that.callbacks[name.namespace][name.value].forEach(function (
-              callback
-            ) {
-              result = callback.apply(that, args);
+            that.callbacks[name.namespace][name.value].forEach(
+              function (callback) {
+                result = callback.apply(that, args);
 
-              if (typeof finalResult === "undefined") finalResult = result;
-            });
+                if (typeof finalResult === "undefined") finalResult = result;
+              }
+            );
           }
           return finalResult;
         }
