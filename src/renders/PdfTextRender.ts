@@ -98,20 +98,20 @@ class PdfTextRender extends GeneralRender {
     return src;
   }
 
-  // 异步预处理后续章节
-  preProcessNextChapters(currentIndex: number) {
+  // 同步预处理后续章节
+  async preProcessNextChapters(currentIndex: number) {
     const maxIndex = Math.min(currentIndex + 3, this.chapterDocList.length - 1);
 
     for (let i = currentIndex + 1; i <= maxIndex; i++) {
       // 只处理未缓存且未在处理中的章节
       if (!this.cache[i] && !this.processingPromises.has(i)) {
+        console.log("cacheing", i);
         const promise = this.processChapterOCR(i);
         this.processingPromises.set(i, promise);
 
-        // 处理完成后清理 Promise 记录
-        promise.finally(() => {
-          this.processingPromises.delete(i);
-        });
+        // 等待当前章节处理完成后再处理下一个
+        await promise;
+        this.processingPromises.delete(i);
       }
     }
   }
@@ -120,7 +120,9 @@ class PdfTextRender extends GeneralRender {
   async processChapterOCR(index: number): Promise<void> {
     try {
       const chapterDoc = this.chapterDocList[index];
+      console.log("index", index);
       const src = await this.getTextByOCR(chapterDoc);
+      console.log("cached", index);
       this.cache[index] = src;
     } catch (error) {
       console.error(`Failed to process OCR for chapter ${index}:`, error);
@@ -373,9 +375,16 @@ class PdfTextRender extends GeneralRender {
         // 启用 Proxy Worker（自动 offload 到后台 Worker）
         window.ort.env.wasm.proxy = true;
 
-        // 可选：启用 SIMD、多线程等（浏览器支持时生效，多线程需 Cross-Origin Isolation）
-        window.ort.env.wasm.numThreads = 4; // 示例：使用 4 线程
+        // 性能优化：增加线程数和启用SIMD加速
+        window.ort.env.wasm.numThreads = Math.min(
+          8,
+          navigator.hardwareConcurrency || 4
+        );
         window.ort.env.wasm.simd = true;
+
+        // 启用图级别优化和执行模式优化
+        window.ort.env.wasm.graphOptimizationLevel = "all";
+        window.ort.env.wasm.executionMode = "parallel";
         const localOCR = await window["esearch-ocr"].init({
           det: {
             input: `https://${
