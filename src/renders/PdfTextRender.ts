@@ -59,6 +59,7 @@ class PdfTextRender extends GeneralRender {
           }
 
           let src = "";
+          console.log(this.cache, "this.cache");
           if (this.isScannedPDF === "yes") {
             // 优先处理当前章节
             src = await this.processCurrentChapter(index);
@@ -131,7 +132,10 @@ class PdfTextRender extends GeneralRender {
         const result = await this.worker.recognize(imageUrl);
         // await this.worker.terminate();
         return result.data.text;
-      } else if (this.ocrEngine === "system") {
+      } else if (this.ocrEngine === "paddle") {
+        const result = await this.worker.ocr(imageUrl);
+        console.log(result, "result");
+        return result.parragraphs.map((p) => p.text).join("\n");
       }
     } catch (error) {
       console.error("OCR Error:", error);
@@ -353,6 +357,44 @@ class PdfTextRender extends GeneralRender {
         });
         await worker.load();
         this.worker = worker;
+      }
+      if (this.isScannedPDF === "yes" && this.ocrEngine === "paddle") {
+        let dictStr = await fetchText(
+          `https://${
+            this.serverRegion === "china"
+              ? "storage.koodoreader.cn"
+              : "storage.koodoreader.com"
+          }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_dict.txt`
+        );
+        // 设置 WASM 文件路径（必须！）
+        window.ort.env.wasm.wasmPaths =
+          "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/";
+
+        // 启用 Proxy Worker（自动 offload 到后台 Worker）
+        window.ort.env.wasm.proxy = true;
+
+        // 可选：启用 SIMD、多线程等（浏览器支持时生效，多线程需 Cross-Origin Isolation）
+        window.ort.env.wasm.numThreads = 4; // 示例：使用 4 线程
+        window.ort.env.wasm.simd = true;
+        const localOCR = await window["esearch-ocr"].init({
+          det: {
+            input: `https://${
+              this.serverRegion === "china"
+                ? "storage.koodoreader.cn"
+                : "storage.koodoreader.com"
+            }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_det.onnx`, // det指识别模型，如果上面提到的文字包没有，那就用中英混合的det（在ch.zip里）。
+          },
+          rec: {
+            input: `https://${
+              this.serverRegion === "china"
+                ? "storage.koodoreader.cn"
+                : "storage.koodoreader.com"
+            }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_rec.onnx`,
+            decodeDic: dictStr, // 在模型压缩包中的txt文件，需要传入里面的内容而不是路径
+          },
+          ort: window.ort, // 传入onnxruntime-web的引用
+        });
+        this.worker = localOCR;
       }
     } catch (error) {
       console.error(error);
