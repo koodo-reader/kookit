@@ -369,22 +369,25 @@ class PdfTextRender extends GeneralRender {
           }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_dict.txt`
         );
         // 设置 WASM 文件路径（必须！）
-        window.ort.env.wasm.wasmPaths =
-          "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/";
+        window.ort.env.wasm.wasmPaths = `https://${
+          this.serverRegion === "china"
+            ? "storage.koodoreader.cn"
+            : "storage.koodoreader.com"
+        }/paddleocr/onnxruntime-web/dist/`;
 
         // 启用 Proxy Worker（自动 offload 到后台 Worker）
         window.ort.env.wasm.proxy = true;
 
-        // 性能优化：增加线程数和启用SIMD加速
-        window.ort.env.wasm.numThreads = Math.min(
-          8,
-          navigator.hardwareConcurrency || 4
-        );
-        window.ort.env.wasm.simd = true;
+        // // 性能优化：增加线程数和启用SIMD加速
+        // window.ort.env.wasm.numThreads = Math.min(
+        //   8,
+        //   navigator.hardwareConcurrency || 4
+        // );
+        // window.ort.env.wasm.simd = true;
 
-        // 启用图级别优化和执行模式优化
-        window.ort.env.wasm.graphOptimizationLevel = "all";
-        window.ort.env.wasm.executionMode = "parallel";
+        // // 启用图级别优化和执行模式优化
+        // window.ort.env.wasm.graphOptimizationLevel = "all";
+        // window.ort.env.wasm.executionMode = "parallel";
         const localOCR = await window["esearch-ocr"].init({
           det: {
             input: `https://${
@@ -392,6 +395,7 @@ class PdfTextRender extends GeneralRender {
                 ? "storage.koodoreader.cn"
                 : "storage.koodoreader.com"
             }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_det.onnx`, // det指识别模型，如果上面提到的文字包没有，那就用中英混合的det（在ch.zip里）。
+            ratio: 0.75,
           },
           rec: {
             input: `https://${
@@ -402,6 +406,9 @@ class PdfTextRender extends GeneralRender {
             decodeDic: dictStr, // 在模型压缩包中的txt文件，需要传入里面的内容而不是路径
           },
           ort: window.ort, // 传入onnxruntime-web的引用
+          ortOption: {
+            executionProviders: [{ name: "webgpu" }, { name: "wasm" }],
+          },
         });
         this.worker = localOCR;
       }
