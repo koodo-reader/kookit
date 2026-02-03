@@ -32,9 +32,12 @@ class PdfTextRender extends GeneralRender {
     this.paraSpacingValue = parseFloat(config.paraSpacingValue) || 1.5; // 支持配置段落间距
     this.titleSizeValue = parseFloat(config.titleSizeValue) || 1.2; // 支持配置标题大小倍数
     this.cache = {};
-    this.serverRegion = config.serverRegion || "global";
+    // this.serverRegion = config.serverRegion || "global";
+    //由于多吉云缓存问题，无法缓存wasm，暂时强制使用global
+    this.serverRegion = "global";
     this.processingPromises = new Map();
     this.ocrEngine = config.ocrEngine || "tesseract"; // 支持配置OCR引擎
+    console.log(this.serverRegion, "this.serverRegion");
   }
 
   renderTo(element: HTMLElement) {
@@ -378,16 +381,6 @@ class PdfTextRender extends GeneralRender {
         // 启用 Proxy Worker（自动 offload 到后台 Worker）
         window.ort.env.wasm.proxy = true;
 
-        // // 性能优化：增加线程数和启用SIMD加速
-        // window.ort.env.wasm.numThreads = Math.min(
-        //   8,
-        //   navigator.hardwareConcurrency || 4
-        // );
-        // window.ort.env.wasm.simd = true;
-
-        // // 启用图级别优化和执行模式优化
-        // window.ort.env.wasm.graphOptimizationLevel = "all";
-        // window.ort.env.wasm.executionMode = "parallel";
         const localOCR = await window["esearch-ocr"].init({
           det: {
             input: `https://${

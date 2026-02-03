@@ -329,7 +329,7 @@ export const handleIOSScrollPage = async (
   }
 };
 export const convertPageToImage = async (page) => {
-  const desiredWidth = 600;
+  const desiredWidth = 800;
   const viewport = page.getViewport({ scale: 1 });
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
