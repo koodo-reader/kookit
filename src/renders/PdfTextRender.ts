@@ -23,6 +23,7 @@ class PdfTextRender extends GeneralRender {
   titleSizeValue: number = 1.2; // 标题大小倍数
   isFinishOCR: boolean = false;
   ocrEngine: string;
+  shouldShowProgress: boolean = false; // 控制是否显示进度
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, format: "PDFTEXT" });
     this.pdfBuffer = pdfBuffer;
@@ -96,7 +97,10 @@ class PdfTextRender extends GeneralRender {
     }
 
     const chapterDoc = this.chapterDocList[index];
+    this.isFinishOCR = false; // 重置完成标志
+    this.shouldShowProgress = true; // 当前章节显示进度
     const src = await this.getTextByOCR(chapterDoc);
+    this.shouldShowProgress = false;
     this.cache[index] = src;
     return src;
   }
@@ -397,6 +401,21 @@ class PdfTextRender extends GeneralRender {
                 : "storage.koodoreader.com"
             }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_rec.onnx`,
             decodeDic: dictStr, // 在模型压缩包中的txt文件，需要传入里面的内容而不是路径
+            // 监听识别进度
+            on: (
+              index: number,
+              result: { text: string; mean: number },
+              total: number
+            ) => {
+              // 只在处理当前页面时显示进度
+              if (this.shouldShowProgress && total > 0) {
+                const progress = (index + 1) / total; // index 从 0 开始，所以需要 +1
+                showOCRProgress(progress);
+                if (progress >= 1) {
+                  this.isFinishOCR = true;
+                }
+              }
+            },
           },
           ort: window.ort, // 传入onnxruntime-web的引用
           ortOption: {
