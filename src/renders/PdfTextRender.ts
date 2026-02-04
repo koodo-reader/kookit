@@ -17,19 +17,21 @@ class PdfTextRender extends GeneralRender {
   worker: any;
   cache: any;
   processingPromises: Map<number, Promise<void>>; // 跟踪正在处理的章节
-  ocrLang: string = "chi_sim"; // 默认OCR语言为简体中文
+  ocrLang: string = "standard_v5_mobile"; // 默认OCR语言为简体中文
   serverRegion: string;
   paraSpacingValue: number = 1.5; // 段落间距
   titleSizeValue: number = 1.2; // 标题大小倍数
   isFinishOCR: boolean = false;
   ocrEngine: string;
   shouldShowProgress: boolean = false; // 控制是否显示进度
+  externalWorker: any;
+  pdfPageCount: number = 0;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, format: "PDFTEXT" });
     this.pdfBuffer = pdfBuffer;
     this.password = config.password || "";
     this.isScannedPDF = config.isScannedPDF || "no";
-    this.ocrLang = config.ocrLang || "chi_sim"; // 支持配置OCR语言
+    this.ocrLang = config.ocrLang || "standard_v5_mobile"; // 支持配置OCR语言
     this.paraSpacingValue = parseFloat(config.paraSpacingValue) || 1.5; // 支持配置段落间距
     this.titleSizeValue = parseFloat(config.titleSizeValue) || 1.2; // 支持配置标题大小倍数
     this.cache = {};
@@ -37,19 +39,50 @@ class PdfTextRender extends GeneralRender {
     //由于多吉云缓存问题，无法缓存wasm，暂时强制使用global
     this.serverRegion = "global";
     this.processingPromises = new Map();
-    this.ocrEngine = config.ocrEngine || "tesseract"; // 支持配置OCR引擎
+    this.ocrEngine = config.ocrEngine || "paddle"; // 支持配置OCR引擎
     console.log(this.serverRegion, "this.serverRegion");
+    this.externalWorker = config.externalWorker || null;
+    this.pdfPageCount = config.pdfPageCount || 0;
   }
 
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
       this.element = element;
-      if (!this.book) {
-        await this.parse();
+      if (this.isScannedPDF === "yes" && this.ocrEngine === "external-engine") {
+        this.chapterDocList = Array.from(
+          { length: this.pdfPageCount },
+          (_, i) => ({
+            label: i + "",
+            text: {
+              load: async () => "",
+              render: async () => {},
+              unload: async () => {},
+              getPage: async () => null,
+              getDimension: async () => ({ width: 0, height: 0 }),
+              getScale: async () => 1,
+              getPageCount: async () => 0,
+            },
+            href: "",
+          })
+        );
+        this.chapterList = Array.from(
+          { length: this.pdfPageCount },
+          (_, i) => ({
+            label: i + "",
+            href: "title" + i,
+            index: i,
+            subitems: [],
+          })
+        );
+        this.worker = this.externalWorker;
+      } else {
+        if (!this.book) {
+          await this.parse();
+        }
+        let parser = new GeneralParser(this.book);
+        this.chapterList = await parser.getChapter(this.book.toc);
+        this.chapterDocList = await parser.getChapterDoc();
       }
-      let parser = new GeneralParser(this.book);
-      this.chapterList = await parser.getChapter(this.book.toc);
-      this.chapterDocList = await parser.getChapterDoc();
 
       for (let index = 0; index < this.chapterDocList.length; index++) {
         let chapterDoc = this.chapterDocList[index];
@@ -99,7 +132,7 @@ class PdfTextRender extends GeneralRender {
     const chapterDoc = this.chapterDocList[index];
     this.isFinishOCR = false; // 重置完成标志
     this.shouldShowProgress = true; // 当前章节显示进度
-    const src = await this.getTextByOCR(chapterDoc);
+    const src = await this.getTextByOCR(chapterDoc, index);
     this.shouldShowProgress = false;
     this.cache[index] = src;
     return src;
@@ -128,7 +161,7 @@ class PdfTextRender extends GeneralRender {
     try {
       const chapterDoc = this.chapterDocList[index];
       console.log("index", index);
-      const src = await this.getTextByOCR(chapterDoc);
+      const src = await this.getTextByOCR(chapterDoc, index);
       console.log("cached", index);
       this.cache[index] = src;
     } catch (error) {
@@ -145,16 +178,81 @@ class PdfTextRender extends GeneralRender {
         const result = await this.worker.ocr(imageUrl);
         console.log(result, "result");
         return result.parragraphs.map((p) => p.text).join("\n");
+      } else if (this.ocrEngine === "official-ai-ocr") {
+        // 模拟进度条变化
+        let progressInterval: any = null;
+        if (this.shouldShowProgress) {
+          let progress = 0;
+          const duration = 5000; // 5秒
+          const intervalTime = 100; // 每100ms更新一次
+          const increment = 0.9 / (duration / intervalTime); // 最多到0.9
+
+          progressInterval = setInterval(() => {
+            progress += increment;
+            if (progress >= 0.9) {
+              progress = 0.9;
+              clearInterval(progressInterval);
+            }
+            showOCRProgress(progress);
+          }, intervalTime);
+        }
+
+        const result = await this.worker.recognize(imageUrl, "auto");
+        // 完成后立即将进度设为1
+        if (this.shouldShowProgress) {
+          if (progressInterval) clearInterval(progressInterval);
+          showOCRProgress(1);
+          this.isFinishOCR = true;
+        }
+        console.log(result, "official-ai-ocr result");
+        if (result && result.data && result.data.text) {
+          return result.data.text;
+        } else {
+          return "";
+        }
+      } else {
+        throw new Error(`Unsupported OCR engine: ${this.ocrEngine}`);
       }
     } catch (error) {
       console.error("OCR Error:", error);
       throw error;
     }
   };
-  async getTextByOCR(chapterDoc) {
-    let page = await chapterDoc.text.getPage();
-    let { imageURL } = await convertPageToImage(page);
-    const textContent = await this.performOCR(imageURL);
+  async getTextByOCR(chapterDoc, chapterDocIndex: number) {
+    let textContent = "";
+    if (this.ocrEngine === "external-engine") {
+      // 模拟进度条变化
+      let progressInterval: any = null;
+      if (this.shouldShowProgress) {
+        let progress = 0;
+        const duration = 5000; // 5秒
+        const intervalTime = 100; // 每100ms更新一次
+        const increment = 0.9 / (duration / intervalTime); // 最多到0.9
+
+        progressInterval = setInterval(() => {
+          progress += increment;
+          if (progress >= 0.9) {
+            progress = 0.9;
+            clearInterval(progressInterval);
+          }
+          showOCRProgress(progress);
+        }, intervalTime);
+      }
+
+      textContent = await this.worker.recognize(chapterDocIndex);
+
+      // 完成后立即将进度设为1
+      if (this.shouldShowProgress) {
+        if (progressInterval) clearInterval(progressInterval);
+        showOCRProgress(1);
+        this.isFinishOCR = true;
+      }
+    } else {
+      let page = await chapterDoc.text.getPage();
+      let { imageURL } = await convertPageToImage(page);
+      textContent = await this.performOCR(imageURL);
+    }
+
     let paraList = textContent.split("\n").filter((para) => para.trim() !== "");
 
     const src = URL.createObjectURL(
@@ -423,6 +521,9 @@ class PdfTextRender extends GeneralRender {
           },
         });
         this.worker = localOCR;
+      }
+      if (this.isScannedPDF === "yes" && this.ocrEngine === "official-ai-ocr") {
+        this.worker = this.externalWorker;
       }
     } catch (error) {
       console.error(error);
