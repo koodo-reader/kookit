@@ -563,7 +563,7 @@ export const addAndroidTouchEvent = (
           let id = targetIframe?.getAttribute("id") || "";
           let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
           charRange = await render.getHightlightCoords(chapterDocIndex);
-          position.chapterDocIndex = chapterDocIndex;
+          position.chapterDocIndex = chapterDocIndex + "";
           let subContainer = targetIframe.parentElement;
           if (subContainer) {
             position.top =
