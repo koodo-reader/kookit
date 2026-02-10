@@ -882,7 +882,12 @@ class PdfRender extends GeneralRender {
     await this.handleRenderPDFChapter(chapterDocIndex, doc);
 
     await this.handleRenderPDFChapter(chapterDocIndex + 1, doc);
+    if (this.platform === "ios") {
+      //ios 性能太差，先不预渲染后续章节了
+      return;
+    }
     await this.handleRenderPDFChapter(chapterDocIndex + 2, doc);
+    await this.handleRenderPDFChapter(chapterDocIndex + 3, doc);
   }
   getPdfScale = async () => {
     if (this.pdfScale && this.pdfScale > 0) {
@@ -897,6 +902,12 @@ class PdfRender extends GeneralRender {
 
     let viewWidth = doc.body.clientWidth;
     let viewHeight = this.element.clientHeight;
+    if (this.readerMode === "double") {
+      let scale = this.readerMode === "double" ? 2 : 1;
+      let section = Math.floor(this.element.clientWidth / 12);
+      let gap = section % 2 === 0 ? section : section - 1;
+      viewWidth = (viewWidth - gap) / scale;
+    }
     let scale = Math.min(viewWidth / width, viewHeight / height);
     if (this.readerMode === "scroll") {
       scale = viewWidth / width;
