@@ -219,6 +219,7 @@ export const handleRenderChapter = async (
   doc: Document,
   iframe: any
 ) => {
+  console.log(1);
   doc.body.innerHTML = "";
   iframe.height = 0 + "px";
   doc.body.scrollTo(0, 0);
@@ -237,6 +238,7 @@ export const handleRenderChapter = async (
       chapterDocIndex = tempChapterDocIndex;
     }
   }
+  console.log(2);
   if (chapterDocIndex === -1 && chapterHref.indexOf("#") > -1) {
     let href = chapterHref.split("#")[0];
     let tempChapterDocIndex = _.findLastIndex(chapterDocList, (chapter) => {
@@ -254,6 +256,7 @@ export const handleRenderChapter = async (
   if (chapterDocIndex === -1 || chapterDocIndex > chapterDocList.length - 1) {
     chapterDocIndex = 0;
   }
+  console.log(3);
   let chapterText = await handleOneChapterDoc(
     chapterDocList[chapterDocIndex].text,
     false
@@ -262,7 +265,7 @@ export const handleRenderChapter = async (
   //get viewport width from chapterText
 
   doc.body.innerHTML = chapterText;
-
+  console.log(4);
   if (bodyAttrs["style"]) {
     doc.body.setAttribute("style", doc.body.getAttribute("style") || "");
   } else if (bodyAttrs["class"]) {
@@ -274,8 +277,10 @@ export const handleRenderChapter = async (
   } else if (!bodyAttrs["id"]) {
     doc.body.removeAttribute("id");
   }
+  console.log(5);
   await handleCssLink(doc);
   await handlePlainText(doc);
+  console.log(6);
   if (!chapterTitle) {
     //取前面最近的章节，且存在的标题
     let tempChapterDocIndex = chapterDocIndex;

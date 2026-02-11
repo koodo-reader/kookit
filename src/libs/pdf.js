@@ -198,9 +198,11 @@ const render = async (page, pdf, doc, zoom, isMobile, viewer) => {
                 console.warn("Invalid destination:", dest);
                 return;
               }
+              console.log(parsed)
 
               // 获取目标页面索引
               const pageIndex = await pdf.getPageIndex(parsed[0]);
+              console.log(pageIndex)
               viewer.goToChapterDocIndex(pageIndex);
             } catch (error) {
               console.error("Error navigating to destination:", error);

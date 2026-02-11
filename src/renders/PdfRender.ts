@@ -271,19 +271,24 @@ class PdfRender extends GeneralRender {
     };
   }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
+    console.log("pdf chapter");
     if (this.readerMode === "double" && chapterDocIndex % 2 == 1) {
       chapterDocIndex--;
     }
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
+    console.log(1);
     await this.renderPdfPage(chapterDocIndex, doc);
+    console.log(2);
     await handleScrollPDFPosition(
       parseInt(chapterDocIndex),
       this.readerMode,
       doc
     );
+    console.log(3);
     await this.recordByChapter(chapterDocIndex);
+    console.log(4);
   }
   getPositionByChapter(chapterDocIndex: number) {
     return {
@@ -879,15 +884,18 @@ class PdfRender extends GeneralRender {
     } else if (chapterDocIndex > 3) {
       await this.handleUnloadPDFChapter(chapterDocIndex - 4, doc);
     }
+    console.log(1.1);
     await this.handleRenderPDFChapter(chapterDocIndex, doc);
-
-    await this.handleRenderPDFChapter(chapterDocIndex + 1, doc);
+    console.log(1.2);
+    this.handleRenderPDFChapter(chapterDocIndex + 1, doc);
     if (this.platform === "ios") {
       //ios 性能太差，先不预渲染后续章节了
       return;
     }
-    await this.handleRenderPDFChapter(chapterDocIndex + 2, doc);
-    await this.handleRenderPDFChapter(chapterDocIndex + 3, doc);
+    console.log(1.3);
+    this.handleRenderPDFChapter(chapterDocIndex + 2, doc);
+    console.log(1.4);
+    this.handleRenderPDFChapter(chapterDocIndex + 3, doc);
   }
   getPdfScale = async () => {
     if (this.pdfScale && this.pdfScale > 0) {
