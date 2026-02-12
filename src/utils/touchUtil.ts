@@ -269,8 +269,9 @@ export const addAndroidTouchEvent = (
     lastTouchEnd = now;
     const touch = event.changedTouches[0];
     const touchEndTime = Date.now();
-    let touchEndX = touch.screenX;
-    let touchEndY = touch.screenY;
+    // 使用 clientX/clientY 获取相对于视口的坐标
+    let touchEndX = touch.clientX;
+    let touchEndY = touch.clientY;
 
     const timeDiff = touchEndTime - touchStartTime;
     const distX = touchEndX - touchStartX;
@@ -278,14 +279,14 @@ export const addAndroidTouchEvent = (
     if (isDragging && animation === "mimical" && readerMode !== "scroll") {
       isDragging = false;
       render.mouseUpHandler(event);
-      if (
-        touch.screenX < (window.innerWidth / 4) * 3 &&
-        touchEndX - touchStartX < 0
-      ) {
+      var viewportWidth = window.visualViewport
+        ? window.visualViewport.width
+        : document.documentElement.clientWidth;
+      if (touchEndX < (viewportWidth / 4) * 3 && touchEndX - touchStartX < 0) {
         render.next();
         isDragging = false;
       } else if (
-        touch.screenX > (window.innerWidth / 4) * 1 &&
+        touchEndX > (viewportWidth / 4) * 1 &&
         touchEndX - touchStartX > 0
       ) {
         render.prev();
@@ -303,7 +304,10 @@ export const addAndroidTouchEvent = (
     // Replace the scrollTo implementation with this optimized version
 
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
-      const dragPercentage = Math.abs(distX) / window.innerWidth;
+      var viewportWidth = window.visualViewport
+        ? window.visualViewport.width
+        : document.documentElement.clientWidth;
+      const dragPercentage = Math.abs(distX) / viewportWidth;
       const dragThreshold = 0.1; // Only 10% drag needed to change page
 
       if (distX > 0 && dragPercentage > dragThreshold) {
@@ -359,8 +363,13 @@ export const addAndroidTouchEvent = (
       Math.abs(distX) < swipeThreshold &&
       Math.abs(distY) < swipeThreshold
     ) {
-      var width = window.innerWidth;
-      var height = window.innerHeight;
+      // 使用 visualViewport 或 documentElement 来适配小窗模式
+      var width = window.visualViewport
+        ? window.visualViewport.width
+        : document.documentElement.clientWidth;
+      var height = window.visualViewport
+        ? window.visualViewport.height
+        : document.documentElement.clientHeight;
 
       var cellWidth = width / 3;
       var cellHeight = height / 3;
@@ -414,15 +423,16 @@ export const addAndroidTouchEvent = (
     }
     const touch = event.touches[0];
 
-    touchStartX = touch.screenX;
-    touchStartY = touch.screenY;
+    // 使用 clientX/clientY 获取相对于视口的坐标
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
   };
 
   let lastTouchX = 0;
 
   let onTouchMove = function (event) {
     // Skip handling if not dragging yet and still determining direction
-    if (!isDragging && Math.abs(event.touches[0].screenX - touchStartX) <= 10) {
+    if (!isDragging && Math.abs(event.touches[0].clientX - touchStartX) <= 10) {
       return;
     }
 
@@ -433,8 +443,9 @@ export const addAndroidTouchEvent = (
       return;
     }
     const touch = event.touches[0];
-    const touchCurrentX = touch.screenX;
-    const touchCurrentY = touch.screenY;
+    // 使用 clientX/clientY 获取相对于视口的坐标
+    const touchCurrentX = touch.clientX;
+    const touchCurrentY = touch.clientY;
 
     // Calculate distance moved
     const distX = touchCurrentX - touchStartX;
@@ -540,13 +551,19 @@ export const addAndroidTouchEvent = (
           rect = combinedRect;
         }
       }
+      var viewportWidth = window.visualViewport
+        ? window.visualViewport.width
+        : document.documentElement.clientWidth;
+      var viewportHeight = window.visualViewport
+        ? window.visualViewport.height
+        : document.documentElement.clientHeight;
       var position: any = {
         top: rect.top - element.scrollTop,
         left: rect.left,
         width: rect.width,
         height: rect.height,
-        screenWidth: window.innerWidth,
-        screenHeight: window.innerHeight,
+        screenWidth: viewportWidth,
+        screenHeight: viewportHeight,
         sectionHeight: pageSize.sectionHeight,
         sectionWidth: pageSize.sectionWidth,
         gap: pageSize.gap,
@@ -723,22 +740,23 @@ export const addAppleTouchEvent = (
     lastTouchEnd = now;
     const touch = event.changedTouches[0];
     const touchEndTime = Date.now();
-    const touchEndX = touch.screenX;
-    const touchEndY = touch.screenY;
+    // 使用 clientX/clientY 获取相对于视口的坐标
+    const touchEndX = touch.clientX;
+    const touchEndY = touch.clientY;
     const timeDiff = touchEndTime - touchStartTime;
     const distX = touchEndX - touchStartX;
     const distY = touchEndY - touchStartY;
     if (isDragging && animation === "mimical" && readerMode !== "scroll") {
       isDragging = false;
       render.mouseUpHandler(event);
-      if (
-        touchEndX < (window.innerWidth / 4) * 3 &&
-        touchEndX - touchStartX < 0
-      ) {
+      var viewportWidth = window.visualViewport
+        ? window.visualViewport.width
+        : document.documentElement.clientWidth;
+      if (touchEndX < (viewportWidth / 4) * 3 && touchEndX - touchStartX < 0) {
         render.next();
         isDragging = false;
       } else if (
-        touchEndX > (window.innerWidth / 4) * 1 &&
+        touchEndX > (viewportWidth / 4) * 1 &&
         touchEndX - touchStartX > 0
       ) {
         render.prev();
@@ -755,7 +773,10 @@ export const addAppleTouchEvent = (
     }
     // Replace the scrollTo implementation with this optimized version
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
-      const dragPercentage = Math.abs(distX) / window.innerWidth;
+      var viewportWidth = window.visualViewport
+        ? window.visualViewport.width
+        : document.documentElement.clientWidth;
+      const dragPercentage = Math.abs(distX) / viewportWidth;
       const dragThreshold = 0.1; // Only 10% drag needed to change page
 
       if (distX > 0 && dragPercentage > dragThreshold) {
@@ -777,13 +798,15 @@ export const addAppleTouchEvent = (
       var range = iWin.getSelection().getRangeAt(0);
       var rect = range.getBoundingClientRect();
       var pageSize = render.getPageSize();
+      const viewportWidth = document.documentElement.clientWidth;
+      const viewportHeight = document.documentElement.clientHeight;
       var position: any = {
         top: rect.top - element.scrollTop,
         left: rect.left,
         width: rect.width,
         height: rect.height,
-        screenWidth: window.innerWidth,
-        screenHeight: window.innerHeight,
+        screenWidth: viewportWidth,
+        screenHeight: viewportHeight,
         sectionHeight: pageSize.sectionHeight,
         sectionWidth: pageSize.sectionWidth,
         gap: pageSize.gap,
@@ -916,8 +939,9 @@ export const addAppleTouchEvent = (
     // }
     const touch = event.touches[0];
     touchStartTime = Date.now();
-    touchStartX = touch.screenX;
-    touchStartY = touch.screenY;
+    // 使用 clientX/clientY 获取相对于视口的坐标
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
   };
   let lastTouchX = 0;
 
@@ -926,7 +950,7 @@ export const addAppleTouchEvent = (
 
     // Skip handling if not dragging yet and still determining direction
     if (
-      (!isDragging && Math.abs(event.touches[0].screenX - touchStartX) <= 10) ||
+      (!isDragging && Math.abs(event.touches[0].clientX - touchStartX) <= 10) ||
       selectedText
     ) {
       return;
@@ -939,8 +963,9 @@ export const addAppleTouchEvent = (
     }
 
     const touch = event.touches[0];
-    const touchCurrentX = touch.screenX;
-    const touchCurrentY = touch.screenY;
+    // 使用 clientX/clientY 获取相对于视口的坐标
+    const touchCurrentX = touch.clientX;
+    const touchCurrentY = touch.clientY;
 
     // Calculate distance moved
     const distX = touchCurrentX - touchStartX;
