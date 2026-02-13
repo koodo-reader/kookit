@@ -61,7 +61,7 @@ class PdfTextRender extends GeneralRender {
               getScale: async () => 1,
               getPageCount: async () => 0,
             },
-            href: "",
+            href: "title" + i,
           })
         );
         this.chapterList = Array.from(
@@ -191,17 +191,22 @@ class PdfTextRender extends GeneralRender {
           }, intervalTime);
         }
 
-        const result = await this.worker.recognize(imageUrl, "auto");
-        // 完成后立即将进度设为1
-        if (this.shouldShowProgress) {
-          if (progressInterval) clearInterval(progressInterval);
-          showOCRProgress(1);
-          this.isFinishOCR = true;
-        }
-        if (result && result.data && result.data.text) {
-          return result.data.text;
-        } else {
-          return "";
+        try {
+          const result = await this.worker.recognize(imageUrl, "auto");
+          // 完成后立即将进度设为1
+          if (this.shouldShowProgress) {
+            showOCRProgress(1);
+            this.isFinishOCR = true;
+          }
+          if (result && result.data && result.data.text) {
+            return result.data.text;
+          } else {
+            return "";
+          }
+        } finally {
+          if (this.shouldShowProgress && progressInterval) {
+            clearInterval(progressInterval);
+          }
         }
       } else {
         throw new Error(`Unsupported OCR engine: ${this.ocrEngine}`);
@@ -232,13 +237,19 @@ class PdfTextRender extends GeneralRender {
         }, intervalTime);
       }
 
-      textContent = await this.worker.recognize(chapterDocIndex);
+      try {
+        textContent = await this.worker.recognize(chapterDocIndex);
 
-      // 完成后立即将进度设为1
-      if (this.shouldShowProgress) {
-        if (progressInterval) clearInterval(progressInterval);
-        showOCRProgress(1);
-        this.isFinishOCR = true;
+        // 完成后立即将进度设为1
+        if (this.shouldShowProgress) {
+          if (progressInterval) clearInterval(progressInterval);
+          showOCRProgress(1);
+          this.isFinishOCR = true;
+        }
+      } finally {
+        if (this.shouldShowProgress && progressInterval) {
+          clearInterval(progressInterval);
+        }
       }
     } else {
       let page = await chapterDoc.text.getPage();
