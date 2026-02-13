@@ -24,7 +24,6 @@ class TxtRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
-      console.log(this.chapterDocList, this.chapterList);
       createIframe(element);
       let doc = this.getDocument();
       if (!doc) return;
@@ -48,7 +47,6 @@ class TxtRender extends GeneralRender {
     let parser = new GeneralParser(this.book);
     this.chapterList = await parser.getChapter(this.book.toc);
     this.chapterDocList = await parser.getChapterDoc();
-    console.log(this.chapterDocList, this.chapterList, "dfgdfgdf");
     await this.record();
     return this.chapterList;
   }

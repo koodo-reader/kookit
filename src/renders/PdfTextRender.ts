@@ -40,7 +40,6 @@ class PdfTextRender extends GeneralRender {
     this.serverRegion = "global";
     this.processingPromises = new Map();
     this.ocrEngine = config.ocrEngine || "paddle"; // 支持配置OCR引擎
-    console.log(this.serverRegion, "this.serverRegion");
     this.externalWorker = config.externalWorker || null;
     this.pdfPageCount = config.pdfPageCount || 0;
   }
@@ -96,7 +95,6 @@ class PdfTextRender extends GeneralRender {
           }
 
           let src = "";
-          console.log(this.cache, "this.cache");
           if (this.isScannedPDF === "yes") {
             // 优先处理当前章节
             src = await this.processCurrentChapter(index);
@@ -145,7 +143,6 @@ class PdfTextRender extends GeneralRender {
     for (let i = currentIndex + 1; i <= maxIndex; i++) {
       // 只处理未缓存且未在处理中的章节
       if (!this.cache[i] && !this.processingPromises.has(i)) {
-        console.log("cacheing", i);
         const promise = this.processChapterOCR(i);
         this.processingPromises.set(i, promise);
 
@@ -160,9 +157,7 @@ class PdfTextRender extends GeneralRender {
   async processChapterOCR(index: number): Promise<void> {
     try {
       const chapterDoc = this.chapterDocList[index];
-      console.log("index", index);
       const src = await this.getTextByOCR(chapterDoc, index);
-      console.log("cached", index);
       this.cache[index] = src;
     } catch (error) {
       console.error(`Failed to process OCR for chapter ${index}:`, error);
@@ -176,7 +171,6 @@ class PdfTextRender extends GeneralRender {
         return result.data.text;
       } else if (this.ocrEngine === "paddle") {
         const result = await this.worker.ocr(imageUrl);
-        console.log(result, "result");
         return result.parragraphs.map((p) => p.text).join("\n");
       } else if (this.ocrEngine === "official-ai-ocr") {
         // 模拟进度条变化
@@ -204,7 +198,6 @@ class PdfTextRender extends GeneralRender {
           showOCRProgress(1);
           this.isFinishOCR = true;
         }
-        console.log(result, "official-ai-ocr result");
         if (result && result.data && result.data.text) {
           return result.data.text;
         } else {
