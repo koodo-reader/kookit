@@ -145,8 +145,8 @@ export const addPageAnimation = (
     // mouse.y = event.clientY - book.offsetTop;
 
     const touch = event.touches[0];
-    const touchCurrentX = touch.screenX;
-    const touchCurrentY = touch.screenY;
+    const touchCurrentX = touch.clientX;
+    const touchCurrentY = touch.clientY;
     mouse.x = touchCurrentX - book.offsetLeft - BOOK_WIDTH / 2;
     mouse.y = touchCurrentY - book.offsetTop;
   }
@@ -154,11 +154,11 @@ export const addPageAnimation = (
   function mouseDownHandler(event) {
     const touch = event.touches[0];
     // flips[page].dragging = true;
-    touchStartX = touch.screenX;
-    if (touch.screenX < window.screen.width / 2 && pageNum - 1 >= 0) {
+    touchStartX = touch.clientX;
+    if (touch.clientX < window.screen.width / 2 && pageNum - 1 >= 0) {
       flips[pageNum - 1].dragging = true;
     } else if (
-      touch.screenX > window.screen.width / 2 &&
+      touch.clientX > window.screen.width / 2 &&
       pageNum + 1 < flips.length
     ) {
       flips[pageNum].dragging = true;
@@ -170,7 +170,7 @@ export const addPageAnimation = (
 
   function mouseUpHandler(event) {
     const touch = event.changedTouches[0];
-    touchEndX = touch.screenX;
+    touchEndX = touch.clientX;
     for (var i = 0; i < flips.length; i++) {
       // If this flip was being dragged we animate to its destination
       if (flips[i].dragging) {
