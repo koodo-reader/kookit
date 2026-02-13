@@ -155,10 +155,13 @@ export const addPageAnimation = (
     const touch = event.touches[0];
     // flips[page].dragging = true;
     touchStartX = touch.clientX;
-    if (touch.clientX < window.screen.width / 2 && pageNum - 1 >= 0) {
+    var viewportWidth = window.visualViewport
+      ? window.visualViewport.width
+      : document.documentElement.clientWidth;
+    if (touch.clientX < viewportWidth / 2 && pageNum - 1 >= 0) {
       flips[pageNum - 1].dragging = true;
     } else if (
-      touch.clientX > window.screen.width / 2 &&
+      touch.clientX > viewportWidth / 2 &&
       pageNum + 1 < flips.length
     ) {
       flips[pageNum].dragging = true;
