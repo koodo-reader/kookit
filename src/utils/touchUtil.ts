@@ -777,15 +777,13 @@ export const addAppleTouchEvent = (
       var range = iWin.getSelection().getRangeAt(0);
       var rect = range.getBoundingClientRect();
       var pageSize = render.getPageSize();
-      const viewportWidth = document.documentElement.clientWidth;
-      const viewportHeight = document.documentElement.clientHeight;
       var position: any = {
         top: rect.top - element.scrollTop,
         left: rect.left,
         width: rect.width,
         height: rect.height,
-        screenWidth: viewportWidth,
-        screenHeight: viewportHeight,
+        screenWidth: window.innerWidth,
+        screenHeight: window.innerHeight,
         sectionHeight: pageSize.sectionHeight,
         sectionWidth: pageSize.sectionWidth,
         gap: pageSize.gap,
