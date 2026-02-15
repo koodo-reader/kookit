@@ -138,29 +138,17 @@ class PdfTextRender extends GeneralRender {
   // 同步预处理后续章节
   async preProcessNextChapters(currentIndex: number) {
     const maxIndex = Math.min(currentIndex + 3, this.chapterDocList.length - 1);
-    console.log(currentIndex, maxIndex, "sdfasd");
-
-    const promises: Promise<void>[] = [];
 
     for (let i = currentIndex + 1; i <= maxIndex; i++) {
-      console.log(i, "prepare");
       // 只处理未缓存且未在处理中的章节
       if (!this.cache[i] && !this.processingPromises.has(i)) {
-        console.log(i, "ocr");
         const promise = this.processChapterOCR(i);
         this.processingPromises.set(i, promise);
 
-        // 并发模式:收集所有 promise
-        promises.push(promise);
-        promise.finally(() => {
-          this.processingPromises.delete(i);
-        });
+        // 等待当前章节处理完成后再处理下一个
+        await promise;
+        this.processingPromises.delete(i);
       }
-    }
-
-    // 如果是并发模式,等待所有章节处理完成
-    if (promises.length > 0) {
-      await Promise.all(promises);
     }
   }
 
