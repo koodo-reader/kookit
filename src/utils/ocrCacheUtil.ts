@@ -18,6 +18,13 @@ class OCRCacheUtil {
   private db: IDBDatabase | null = null;
 
   /**
+   * 判断 URL 是否为远程资源（http/https）
+   */
+  private isRemoteUrl(url: string): boolean {
+    return url.startsWith("http://") || url.startsWith("https://");
+  }
+
+  /**
    * 初始化 IndexedDB
    */
   async init(): Promise<void> {
@@ -142,6 +149,12 @@ class OCRCacheUtil {
    */
   async fetchText(url: string): Promise<string> {
     try {
+      // 只缓存远程资源
+      if (!this.isRemoteUrl(url)) {
+        const response = await fetch(url);
+        return await response.text();
+      }
+
       const cached = await this.get(url);
       if (cached && cached.type === "text") {
         console.log(`从缓存加载: ${url}`);
@@ -169,6 +182,12 @@ class OCRCacheUtil {
    */
   async fetchArrayBuffer(url: string): Promise<ArrayBuffer> {
     try {
+      // 只缓存远程资源
+      if (!this.isRemoteUrl(url)) {
+        const response = await fetch(url);
+        return await response.arrayBuffer();
+      }
+
       const cached = await this.get(url);
       if (cached && cached.type === "arraybuffer") {
         console.log(`从缓存加载: ${url}`);
@@ -197,6 +216,16 @@ class OCRCacheUtil {
    */
   async fetchBlobURL(url: string, mimeType?: string): Promise<string> {
     try {
+      // 只缓存远程资源
+      if (!this.isRemoteUrl(url)) {
+        const response = await fetch(url);
+        const arrayBuffer = await response.arrayBuffer();
+        const blob = new Blob([arrayBuffer], {
+          type: mimeType || "application/javascript",
+        });
+        return URL.createObjectURL(blob);
+      }
+
       const cached = await this.get(url);
       if (cached && cached.type === "blob") {
         console.log(`从缓存加载 Blob: ${url}`);
@@ -275,6 +304,12 @@ class OCRCacheUtil {
       init?: RequestInit
     ): Promise<Response> {
       const url = typeof input === "string" ? input : input.toString();
+
+      // 只缓存远程 HTTP/HTTPS 资源
+      const isRemote = url.startsWith("http://") || url.startsWith("https://");
+      if (!isRemote) {
+        return originalFetch(input, init);
+      }
 
       // 只缓存 GET 请求
       if (init?.method && init.method !== "GET") {
