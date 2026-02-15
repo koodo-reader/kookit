@@ -8,6 +8,7 @@ import {
   isElectron,
   showOCRProgress,
 } from "../utils/pdfUtil";
+import { ocrCache } from "../utils/ocrCacheUtil";
 const fetchText = async (url) => await (await fetch(url)).text();
 declare var window: any;
 class PdfTextRender extends GeneralRender {
@@ -139,17 +140,29 @@ class PdfTextRender extends GeneralRender {
   // 同步预处理后续章节
   async preProcessNextChapters(currentIndex: number) {
     const maxIndex = Math.min(currentIndex + 3, this.chapterDocList.length - 1);
+    console.log(currentIndex, maxIndex, "sdfasd");
+
+    const promises: Promise<void>[] = [];
 
     for (let i = currentIndex + 1; i <= maxIndex; i++) {
+      console.log(i, "prepare");
       // 只处理未缓存且未在处理中的章节
       if (!this.cache[i] && !this.processingPromises.has(i)) {
+        console.log(i, "ocr");
         const promise = this.processChapterOCR(i);
         this.processingPromises.set(i, promise);
 
-        // 等待当前章节处理完成后再处理下一个
-        await promise;
-        this.processingPromises.delete(i);
+        // 并发模式:收集所有 promise
+        promises.push(promise);
+        promise.finally(() => {
+          this.processingPromises.delete(i);
+        });
       }
+    }
+
+    // 如果是并发模式,等待所有章节处理完成
+    if (promises.length > 0) {
+      await Promise.all(promises);
     }
   }
 
@@ -425,6 +438,11 @@ class PdfTextRender extends GeneralRender {
   }
   async parse() {
     try {
+      // 安装 fetch 拦截器以自动缓存所有 OCR 相关资源
+      if (this.isScannedPDF === "yes") {
+        ocrCache.installGlobalFetchInterceptor();
+      }
+
       let blob = new Blob([this.pdfBuffer]);
       let file = new File([blob], "book", {
         lastModified: new Date().getTime(),
@@ -440,6 +458,7 @@ class PdfTextRender extends GeneralRender {
         let workerUrl = URL.createObjectURL(
           new Blob([workerScript], { type: "application/javascript" })
         );
+        // 所有资源都会通过 fetch 拦截器自动缓存
         const worker = await window.Tesseract.createWorker([this.ocrLang], 1, {
           workerPath: workerUrl,
           corePath: `https://${
@@ -470,13 +489,14 @@ class PdfTextRender extends GeneralRender {
         this.worker = worker;
       }
       if (this.isScannedPDF === "yes" && this.ocrEngine === "paddle") {
-        let dictStr = await fetchText(
-          `https://${
-            this.serverRegion === "china"
-              ? "storage.koodoreader.cn"
-              : "storage.koodoreader.com"
-          }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_dict.txt`
-        );
+        // 所有资源都会通过 fetch 拦截器自动缓存
+        const dictUrl = `https://${
+          this.serverRegion === "china"
+            ? "storage.koodoreader.cn"
+            : "storage.koodoreader.com"
+        }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_dict.txt`;
+        const response = await fetch(dictUrl);
+        let dictStr = await response.text();
         // 设置 WASM 文件路径（必须！）
         window.ort.env.wasm.wasmPaths = `https://${
           this.serverRegion === "china"
