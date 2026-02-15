@@ -449,17 +449,8 @@ class PdfTextRender extends GeneralRender {
         // 所有资源会在加载时通过 fetch 拦截器自动缓存
         const worker = await window.Tesseract.createWorker([this.ocrLang], 1, {
           workerPath: workerUrl,
-          corePath: `https://${
-            this.serverRegion === "china"
-              ? "storage.koodoreader.cn"
-              : "storage.koodoreader.com"
-          }/tesseractjs/tesseract-core`,
-          langPath: `https://${
-            this.serverRegion === "china"
-              ? "storage.koodoreader.cn"
-              : "storage.koodoreader.com"
-          }/tesseractjs/4.0.0-fast`,
-          // langPath: "https://tessdata.projectnaptha.com/4.0.0_best",
+          corePath: "https://cdn.jsdelivr.net/npm/tesseract.js-core@6.1.2",
+          langPath: "https://tessdata.projectnaptha.com/4.0.0_best",
           logger: (m) => {
             if (
               m.status === "recognizing text" &&
@@ -486,11 +477,8 @@ class PdfTextRender extends GeneralRender {
         const response = await fetch(dictUrl);
         let dictStr = await response.text();
         // 设置 WASM 文件路径（必须！）
-        window.ort.env.wasm.wasmPaths = `https://${
-          this.serverRegion === "china"
-            ? "storage.koodoreader.cn"
-            : "storage.koodoreader.com"
-        }/paddleocr/onnxruntime-web/dist/`;
+        window.ort.env.wasm.wasmPaths =
+          "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.1/dist/";
 
         // 启用 Proxy Worker（自动 offload 到后台 Worker）
         window.ort.env.wasm.proxy = true;
