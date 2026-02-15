@@ -393,6 +393,92 @@ class OCRCacheUtil {
   }
 
   /**
+   * 创建支持缓存的 Worker Blob URL
+   * 用于拦截 Worker 内部的 importScripts 调用
+   */
+  async createCachedWorkerBlob(
+    originalWorkerUrl: string,
+    cacheInstance: OCRCacheUtil
+  ): Promise<string> {
+    try {
+      // 获取原始 worker 代码
+      const response = await fetch(originalWorkerUrl);
+      const workerCode = await response.text();
+
+      // 创建包装代码，拦截 importScripts
+      const wrappedCode = `
+// 保存原始 importScripts
+const originalImportScripts = self.importScripts;
+
+// 创建支持缓存的 importScripts
+self.importScripts = function(...urls) {
+  const cachedUrls = urls.map(url => {
+    // 只处理远程 URL
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      // 同步获取缓存（在 Worker 中无法使用 IndexedDB，所以通过 postMessage 通信）
+      // 这里暂时降级到原始行为，实际缓存在主线程的 fetch 拦截器中完成
+      return url;
+    }
+    return url;
+  });
+
+  return originalImportScripts.apply(self, cachedUrls);
+};
+
+// 注入原始 worker 代码
+${workerCode}
+`;
+
+      const blob = new Blob([wrappedCode], {
+        type: "application/javascript",
+      });
+      return URL.createObjectURL(blob);
+    } catch (error) {
+      console.error("创建缓存 Worker 失败:", error);
+      // 失败时返回原始 URL
+      return originalWorkerUrl;
+    }
+  }
+
+  /**
+   * 为 Tesseract 创建自定义的资源加载器
+   * 通过 Service Worker 或代理服务器实现缓存
+   */
+  async setupTesseractCacheProxy(): Promise<{
+    getCachedUrl: (url: string) => Promise<string>;
+  }> {
+    const cacheInstance = this;
+
+    return {
+      getCachedUrl: async (url: string): Promise<string> => {
+        // 对于远程资源，尝试从缓存获取并创建 Blob URL
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+          try {
+            const cached = await cacheInstance.get(url);
+            if (cached) {
+              console.log(`从缓存创建 Blob URL: ${url}`);
+              const blob = new Blob([cached.data as ArrayBuffer]);
+              return URL.createObjectURL(blob);
+            }
+
+            // 缓存未命中，下载并缓存
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            await cacheInstance.set(url, arrayBuffer, "arraybuffer");
+
+            const blob = new Blob([arrayBuffer]);
+            return URL.createObjectURL(blob);
+          } catch (error) {
+            console.warn(`缓存处理失败，使用原始 URL (${url}):`, error);
+            return url;
+          }
+        }
+        return url;
+      },
+    };
+  }
+
+  /**
    * 恢复原始 fetch
    */
   restoreOriginalFetch(): void {

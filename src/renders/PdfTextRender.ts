@@ -452,13 +452,15 @@ class PdfTextRender extends GeneralRender {
         this.book = await makePDF(file, this.password);
       }
       if (this.isScannedPDF === "yes" && this.ocrEngine === "tesseract") {
+        // 获取 worker 脚本
         let workerScript = await fetchText(
           `${isElectron() ? "." : ""}/lib/tesseractjs/worker.min.js`
         );
         let workerUrl = URL.createObjectURL(
           new Blob([workerScript], { type: "application/javascript" })
         );
-        // 所有资源都会通过 fetch 拦截器自动缓存
+
+        // 所有资源会在加载时通过 fetch 拦截器自动缓存
         const worker = await window.Tesseract.createWorker([this.ocrLang], 1, {
           workerPath: workerUrl,
           corePath: `https://${
