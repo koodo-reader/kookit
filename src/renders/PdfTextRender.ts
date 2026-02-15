@@ -449,7 +449,7 @@ class PdfTextRender extends GeneralRender {
         // 所有资源会在加载时通过 fetch 拦截器自动缓存
         const worker = await window.Tesseract.createWorker([this.ocrLang], 1, {
           workerPath: workerUrl,
-          corePath: "https://cdn.jsdelivr.net/npm/tesseract.js-core@6.1.2",
+          corePath: "https://unpkg.com/tesseract.js-core@6.1.2",
           langPath: "https://tessdata.projectnaptha.com/4.0.0_best",
           logger: (m) => {
             if (
@@ -478,7 +478,7 @@ class PdfTextRender extends GeneralRender {
         let dictStr = await response.text();
         // 设置 WASM 文件路径（必须！）
         window.ort.env.wasm.wasmPaths =
-          "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.1/dist/";
+          "https://unpkg.com/onnxruntime-web@1.23.2/dist/";
 
         // 启用 Proxy Worker（自动 offload 到后台 Worker）
         window.ort.env.wasm.proxy = true;
