@@ -308,12 +308,12 @@ class OCRCacheUtil {
       // 只缓存远程 HTTP/HTTPS 资源
       const isRemote = url.startsWith("http://") || url.startsWith("https://");
       if (!isRemote) {
-        return originalFetch(input, init);
+        return originalFetch(input as RequestInfo, init);
       }
 
       // 只缓存 GET 请求
       if (init?.method && init.method !== "GET") {
-        return originalFetch(input, init);
+        return originalFetch(input as RequestInfo, init);
       }
 
       try {
@@ -343,7 +343,7 @@ class OCRCacheUtil {
 
         // 缓存未命中，从网络获取
         console.log(`从网络加载资源: ${url}`);
-        const response = await originalFetch(input, init);
+        const response = await originalFetch(input as RequestInfo, init);
 
         // 克隆响应以便同时使用和缓存
         const clonedResponse = response.clone();
@@ -377,7 +377,7 @@ class OCRCacheUtil {
       } catch (error) {
         // 如果缓存逻辑失败，降级到原始 fetch
         console.warn(`缓存逻辑失败，使用原始 fetch (${url}):`, error);
-        return originalFetch(input, init);
+        return originalFetch(input as RequestInfo, init);
       }
     };
   }
@@ -407,27 +407,27 @@ class OCRCacheUtil {
 
       // 创建包装代码，拦截 importScripts
       const wrappedCode = `
-// 保存原始 importScripts
-const originalImportScripts = self.importScripts;
+      // 保存原始 importScripts
+      const originalImportScripts = self.importScripts;
 
-// 创建支持缓存的 importScripts
-self.importScripts = function(...urls) {
-  const cachedUrls = urls.map(url => {
-    // 只处理远程 URL
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      // 同步获取缓存（在 Worker 中无法使用 IndexedDB，所以通过 postMessage 通信）
-      // 这里暂时降级到原始行为，实际缓存在主线程的 fetch 拦截器中完成
-      return url;
-    }
-    return url;
-  });
+      // 创建支持缓存的 importScripts
+      self.importScripts = function(...urls) {
+        const cachedUrls = urls.map(url => {
+          // 只处理远程 URL
+          if (url.startsWith('http://') || url.startsWith('https://')) {
+            // 同步获取缓存（在 Worker 中无法使用 IndexedDB，所以通过 postMessage 通信）
+            // 这里暂时降级到原始行为，实际缓存在主线程的 fetch 拦截器中完成
+            return url;
+          }
+          return url;
+        });
 
-  return originalImportScripts.apply(self, cachedUrls);
-};
+        return originalImportScripts.apply(self, cachedUrls);
+      };
 
-// 注入原始 worker 代码
-${workerCode}
-`;
+      // 注入原始 worker 代码
+      ${workerCode}
+      `;
 
       const blob = new Blob([wrappedCode], {
         type: "application/javascript",

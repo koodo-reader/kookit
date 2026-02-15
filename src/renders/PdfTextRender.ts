@@ -36,9 +36,7 @@ class PdfTextRender extends GeneralRender {
     this.paraSpacingValue = parseFloat(config.paraSpacingValue) || 1.5; // 支持配置段落间距
     this.titleSizeValue = parseFloat(config.titleSizeValue) || 1.2; // 支持配置标题大小倍数
     this.cache = {};
-    // TODO this.serverRegion = config.serverRegion || "global";
-    //由于多吉云缓存问题，无法缓存wasm，暂时强制使用global
-    this.serverRegion = "global";
+    this.serverRegion = config.serverRegion || "global";
     this.processingPromises = new Map();
     this.ocrEngine = config.ocrEngine || "paddle"; // 支持配置OCR引擎
     this.externalWorker = config.externalWorker || null;
