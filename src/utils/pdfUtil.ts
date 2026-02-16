@@ -31,7 +31,7 @@ export const handlePDFLayout = (
   let gap = section % 2 === 0 ? section : section - 1;
   doc.body.setAttribute(
     "style",
-    `height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action: manipulation; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
+    `${readerMode === "double" ? "position: absolute;" : ""}height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action: manipulation; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
       (doc.body.clientWidth - gap) / scale
     }px;`
   );
