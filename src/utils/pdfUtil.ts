@@ -31,10 +31,9 @@ export const handlePDFLayout = (
   let gap = section % 2 === 0 ? section : section - 1;
   doc.body.setAttribute(
     "style",
-    element.getAttribute("style") +
-      `height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action: manipulation; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
-        (doc.body.clientWidth - gap) / scale
-      }px;`
+    `${readerMode === "double" ? "position: absolute;" : ""}height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action: manipulation; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
+      (doc.body.clientWidth - gap) / scale
+    }px;`
   );
 };
 export const createPDFContainer = async (
@@ -329,7 +328,7 @@ export const handleIOSScrollPage = async (
   }
 };
 export const convertPageToImage = async (page) => {
-  const desiredWidth = 1600;
+  const desiredWidth = 800;
   const viewport = page.getViewport({ scale: 1 });
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
@@ -340,7 +339,7 @@ export const convertPageToImage = async (page) => {
     viewport: page.getViewport({ scale: desiredWidth / viewport.width }),
   };
   await page.render(renderContext).promise;
-  const imageURL = canvas.toDataURL("image/jpeg", 1);
+  const imageURL = canvas.toDataURL("image/jpeg", 0.8);
   const size = calculateSize(imageURL);
   return { imageURL, size };
 };

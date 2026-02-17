@@ -8,6 +8,7 @@ import {
   isElectron,
   showOCRProgress,
 } from "../utils/pdfUtil";
+import { ocrCache } from "../utils/ocrCacheUtil";
 const fetchText = async (url) => await (await fetch(url)).text();
 declare var window: any;
 class PdfTextRender extends GeneralRender {
@@ -17,35 +18,69 @@ class PdfTextRender extends GeneralRender {
   worker: any;
   cache: any;
   processingPromises: Map<number, Promise<void>>; // 跟踪正在处理的章节
-  ocrLang: string = "chi_sim"; // 默认OCR语言为简体中文
+  ocrLang: string = "standard_v5_mobile"; // 默认OCR语言为简体中文
   serverRegion: string;
   paraSpacingValue: number = 1.5; // 段落间距
   titleSizeValue: number = 1.2; // 标题大小倍数
   isFinishOCR: boolean = false;
   ocrEngine: string;
+  shouldShowProgress: boolean = false; // 控制是否显示进度
+  externalWorker: any;
+  pdfPageCount: number = 0;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, format: "PDFTEXT" });
     this.pdfBuffer = pdfBuffer;
     this.password = config.password || "";
     this.isScannedPDF = config.isScannedPDF || "no";
-    this.ocrLang = config.ocrLang || "chi_sim"; // 支持配置OCR语言
+    this.ocrLang = config.ocrLang || "standard_v5_mobile"; // 支持配置OCR语言
     this.paraSpacingValue = parseFloat(config.paraSpacingValue) || 1.5; // 支持配置段落间距
     this.titleSizeValue = parseFloat(config.titleSizeValue) || 1.2; // 支持配置标题大小倍数
     this.cache = {};
     this.serverRegion = config.serverRegion || "global";
     this.processingPromises = new Map();
-    this.ocrEngine = config.ocrEngine || "tesseract"; // 支持配置OCR引擎
+    this.ocrEngine = config.ocrEngine || "paddle"; // 支持配置OCR引擎
+    this.externalWorker = config.externalWorker || null;
+    this.pdfPageCount = config.pdfPageCount || 0;
   }
 
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
       this.element = element;
-      if (!this.book) {
-        await this.parse();
+      if (this.isScannedPDF === "yes" && this.ocrEngine === "external-engine") {
+        this.chapterDocList = Array.from(
+          { length: this.pdfPageCount },
+          (_, i) => ({
+            label: i + "",
+            text: {
+              load: async () => "",
+              render: async () => {},
+              unload: async () => {},
+              getPage: async () => null,
+              getDimension: async () => ({ width: 0, height: 0 }),
+              getScale: async () => 1,
+              getPageCount: async () => 0,
+            },
+            href: "title" + i,
+          })
+        );
+        this.chapterList = Array.from(
+          { length: this.pdfPageCount },
+          (_, i) => ({
+            label: i + "",
+            href: "title" + i,
+            index: i,
+            subitems: [],
+          })
+        );
+        this.worker = this.externalWorker;
+      } else {
+        if (!this.book) {
+          await this.parse();
+        }
+        let parser = new GeneralParser(this.book);
+        this.chapterList = await parser.getChapter(this.book.toc);
+        this.chapterDocList = await parser.getChapterDoc();
       }
-      let parser = new GeneralParser(this.book);
-      this.chapterList = await parser.getChapter(this.book.toc);
-      this.chapterDocList = await parser.getChapterDoc();
 
       for (let index = 0; index < this.chapterDocList.length; index++) {
         let chapterDoc = this.chapterDocList[index];
@@ -92,13 +127,16 @@ class PdfTextRender extends GeneralRender {
     }
 
     const chapterDoc = this.chapterDocList[index];
-    const src = await this.getTextByOCR(chapterDoc);
+    this.isFinishOCR = false; // 重置完成标志
+    this.shouldShowProgress = true; // 当前章节显示进度
+    const src = await this.getTextByOCR(chapterDoc, index);
+    this.shouldShowProgress = false;
     this.cache[index] = src;
     return src;
   }
 
-  // 异步预处理后续章节
-  preProcessNextChapters(currentIndex: number) {
+  // 同步预处理后续章节
+  async preProcessNextChapters(currentIndex: number) {
     const maxIndex = Math.min(currentIndex + 3, this.chapterDocList.length - 1);
 
     for (let i = currentIndex + 1; i <= maxIndex; i++) {
@@ -107,10 +145,9 @@ class PdfTextRender extends GeneralRender {
         const promise = this.processChapterOCR(i);
         this.processingPromises.set(i, promise);
 
-        // 处理完成后清理 Promise 记录
-        promise.finally(() => {
-          this.processingPromises.delete(i);
-        });
+        // 等待当前章节处理完成后再处理下一个
+        await promise;
+        this.processingPromises.delete(i);
       }
     }
   }
@@ -119,7 +156,7 @@ class PdfTextRender extends GeneralRender {
   async processChapterOCR(index: number): Promise<void> {
     try {
       const chapterDoc = this.chapterDocList[index];
-      const src = await this.getTextByOCR(chapterDoc);
+      const src = await this.getTextByOCR(chapterDoc, index);
       this.cache[index] = src;
     } catch (error) {
       console.error(`Failed to process OCR for chapter ${index}:`, error);
@@ -131,17 +168,94 @@ class PdfTextRender extends GeneralRender {
         const result = await this.worker.recognize(imageUrl);
         // await this.worker.terminate();
         return result.data.text;
-      } else if (this.ocrEngine === "system") {
+      } else if (this.ocrEngine === "paddle") {
+        const result = await this.worker.ocr(imageUrl);
+        return result.parragraphs.map((p) => p.text).join("\n");
+      } else if (this.ocrEngine === "official-ai-ocr") {
+        // 模拟进度条变化
+        let progressInterval: any = null;
+        if (this.shouldShowProgress) {
+          let progress = 0;
+          const duration = 5000; // 5秒
+          const intervalTime = 100; // 每100ms更新一次
+          const increment = 0.9 / (duration / intervalTime); // 最多到0.9
+
+          progressInterval = setInterval(() => {
+            progress += increment;
+            if (progress >= 0.9) {
+              progress = 0.9;
+              clearInterval(progressInterval);
+            }
+            showOCRProgress(progress);
+          }, intervalTime);
+        }
+
+        try {
+          const result = await this.worker.recognize(imageUrl, "auto");
+          // 完成后立即将进度设为1
+          if (this.shouldShowProgress) {
+            showOCRProgress(1);
+            this.isFinishOCR = true;
+          }
+          if (result && result.data && result.data.text) {
+            return result.data.text;
+          } else {
+            return "";
+          }
+        } finally {
+          if (this.shouldShowProgress && progressInterval) {
+            clearInterval(progressInterval);
+          }
+        }
+      } else {
+        throw new Error(`Unsupported OCR engine: ${this.ocrEngine}`);
       }
     } catch (error) {
       console.error("OCR Error:", error);
       throw error;
     }
   };
-  async getTextByOCR(chapterDoc) {
-    let page = await chapterDoc.text.getPage();
-    let { imageURL } = await convertPageToImage(page);
-    const textContent = await this.performOCR(imageURL);
+  async getTextByOCR(chapterDoc, chapterDocIndex: number) {
+    let textContent = "";
+    if (this.ocrEngine === "external-engine") {
+      // 模拟进度条变化
+      let progressInterval: any = null;
+      if (this.shouldShowProgress) {
+        let progress = 0;
+        const duration = 5000; // 5秒
+        const intervalTime = 100; // 每100ms更新一次
+        const increment = 0.9 / (duration / intervalTime); // 最多到0.9
+
+        progressInterval = setInterval(() => {
+          progress += increment;
+          if (progress >= 0.9) {
+            progress = 0.9;
+            clearInterval(progressInterval);
+          }
+          showOCRProgress(progress);
+        }, intervalTime);
+      }
+
+      try {
+        textContent = await this.worker.recognize(chapterDocIndex);
+
+        // 完成后立即将进度设为1
+        if (this.shouldShowProgress) {
+          if (progressInterval) clearInterval(progressInterval);
+          showOCRProgress(1);
+          this.isFinishOCR = true;
+        }
+      } finally {
+        if (this.shouldShowProgress && progressInterval) {
+          clearInterval(progressInterval);
+        }
+      }
+    } else {
+      let page = await chapterDoc.text.getPage();
+      let { imageURL } = await convertPageToImage(page);
+      textContent = await this.performOCR(imageURL);
+    }
+
     let paraList = textContent.split("\n").filter((para) => para.trim() !== "");
 
     const src = URL.createObjectURL(
@@ -310,6 +424,11 @@ class PdfTextRender extends GeneralRender {
   }
   async parse() {
     try {
+      // 安装 fetch 拦截器以自动缓存所有 OCR 相关资源
+      if (this.isScannedPDF === "yes") {
+        ocrCache.installGlobalFetchInterceptor();
+      }
+
       let blob = new Blob([this.pdfBuffer]);
       let file = new File([blob], "book", {
         lastModified: new Date().getTime(),
@@ -319,25 +438,19 @@ class PdfTextRender extends GeneralRender {
         this.book = await makePDF(file, this.password);
       }
       if (this.isScannedPDF === "yes" && this.ocrEngine === "tesseract") {
+        // 获取 worker 脚本
         let workerScript = await fetchText(
           `${isElectron() ? "." : ""}/lib/tesseractjs/worker.min.js`
         );
         let workerUrl = URL.createObjectURL(
           new Blob([workerScript], { type: "application/javascript" })
         );
+
+        // 所有资源会在加载时通过 fetch 拦截器自动缓存
         const worker = await window.Tesseract.createWorker([this.ocrLang], 1, {
           workerPath: workerUrl,
-          corePath: `https://${
-            this.serverRegion === "china"
-              ? "storage.koodoreader.cn"
-              : "storage.koodoreader.com"
-          }/tesseractjs/tesseract-core`,
-          langPath: `https://${
-            this.serverRegion === "china"
-              ? "storage.koodoreader.cn"
-              : "storage.koodoreader.com"
-          }/tesseractjs/4.0.0-fast`,
-          // langPath: "https://tessdata.projectnaptha.com/4.0.0_best",
+          corePath: "https://unpkg.com/tesseract.js-core@6.1.2",
+          langPath: "https://tessdata.projectnaptha.com/4.0.0_best",
           logger: (m) => {
             if (
               m.status === "recognizing text" &&
@@ -353,6 +466,64 @@ class PdfTextRender extends GeneralRender {
         });
         await worker.load();
         this.worker = worker;
+      }
+      if (this.isScannedPDF === "yes" && this.ocrEngine === "paddle") {
+        // 所有资源都会通过 fetch 拦截器自动缓存
+        const dictUrl = `https://${
+          this.serverRegion === "china"
+            ? "storage.koodoreader.cn"
+            : "storage.koodoreader.com"
+        }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_dict.txt`;
+        const response = await fetch(dictUrl);
+        let dictStr = await response.text();
+        // 设置 WASM 文件路径（必须！）
+        window.ort.env.wasm.wasmPaths =
+          "https://unpkg.com/onnxruntime-web@1.23.2/dist/";
+
+        // 启用 Proxy Worker（自动 offload 到后台 Worker）
+        window.ort.env.wasm.proxy = true;
+
+        const localOCR = await window["esearch-ocr"].init({
+          det: {
+            input: `https://${
+              this.serverRegion === "china"
+                ? "storage.koodoreader.cn"
+                : "storage.koodoreader.com"
+            }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_det.onnx`, // det指识别模型，如果上面提到的文字包没有，那就用中英混合的det（在ch.zip里）。
+            ratio: 0.75,
+          },
+          rec: {
+            input: `https://${
+              this.serverRegion === "china"
+                ? "storage.koodoreader.cn"
+                : "storage.koodoreader.com"
+            }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_rec.onnx`,
+            decodeDic: dictStr, // 在模型压缩包中的txt文件，需要传入里面的内容而不是路径
+            // 监听识别进度
+            on: (
+              index: number,
+              result: { text: string; mean: number },
+              total: number
+            ) => {
+              // 只在处理当前页面时显示进度
+              if (this.shouldShowProgress && total > 0) {
+                const progress = (index + 1) / total; // index 从 0 开始，所以需要 +1
+                showOCRProgress(progress);
+                if (progress >= 1) {
+                  this.isFinishOCR = true;
+                }
+              }
+            },
+          },
+          ort: window.ort, // 传入onnxruntime-web的引用
+          ortOption: {
+            executionProviders: [{ name: "webgpu" }, { name: "wasm" }],
+          },
+        });
+        this.worker = localOCR;
+      }
+      if (this.isScannedPDF === "yes" && this.ocrEngine === "official-ai-ocr") {
+        this.worker = this.externalWorker;
       }
     } catch (error) {
       console.error(error);

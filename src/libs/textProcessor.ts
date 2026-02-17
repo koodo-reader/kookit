@@ -74,8 +74,8 @@ export const txtToHtml = (
     }
 
     // Slice the lines array
-    const startIndex = Math.max(targetLineIndex - 1000, 0);
-    const endIndex = Math.min(targetLineIndex + 1000, lines.length);
+    const startIndex = Math.max(targetLineIndex - 3000, 0);
+    const endIndex = Math.min(targetLineIndex + 3000, lines.length);
     const relevantLines = lines.slice(startIndex, endIndex); // Process only the relevant slice
     // Identify potential titles within the relevant slice
     const titlesInSlice = relevantLines.filter((item) => {

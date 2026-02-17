@@ -84,11 +84,11 @@ class PdfRender extends GeneralRender {
       let viewport: any;
       let templateIndex: number = 0;
       // 分层采样策略：最小化getDimension调用
-      if (this.readerMode === "double") {
-        let maxFrequencyItem = await this.getTemplateChapterDoc();
-        viewport = maxFrequencyItem.dimension;
-        templateIndex = maxFrequencyItem.index;
-      }
+
+      let maxFrequencyItem = await this.getTemplateChapterDoc();
+      viewport = maxFrequencyItem.dimension;
+      templateIndex = maxFrequencyItem.index;
+
       this.templateChapterDocIndex = templateIndex;
       // Set templateChapterDocIndex based on the viewport evaluation result
       let doc: any = this.getDocument();
@@ -880,9 +880,13 @@ class PdfRender extends GeneralRender {
       await this.handleUnloadPDFChapter(chapterDocIndex - 4, doc);
     }
     await this.handleRenderPDFChapter(chapterDocIndex, doc);
-
-    await this.handleRenderPDFChapter(chapterDocIndex + 1, doc);
-    await this.handleRenderPDFChapter(chapterDocIndex + 2, doc);
+    this.handleRenderPDFChapter(chapterDocIndex + 1, doc);
+    if (this.platform === "ios") {
+      //ios 性能太差，先不预渲染后续章节了
+      return;
+    }
+    this.handleRenderPDFChapter(chapterDocIndex + 2, doc);
+    this.handleRenderPDFChapter(chapterDocIndex + 3, doc);
   }
   getPdfScale = async () => {
     if (this.pdfScale && this.pdfScale > 0) {
@@ -897,6 +901,12 @@ class PdfRender extends GeneralRender {
 
     let viewWidth = doc.body.clientWidth;
     let viewHeight = this.element.clientHeight;
+    if (this.readerMode === "double") {
+      let scale = this.readerMode === "double" ? 2 : 1;
+      let section = Math.floor(this.element.clientWidth / 12);
+      let gap = section % 2 === 0 ? section : section - 1;
+      viewWidth = (viewWidth - gap) / scale;
+    }
     let scale = Math.min(viewWidth / width, viewHeight / height);
     if (this.readerMode === "scroll") {
       scale = viewWidth / width;

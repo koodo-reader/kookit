@@ -563,7 +563,7 @@ export const addAndroidTouchEvent = (
           let id = targetIframe?.getAttribute("id") || "";
           let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
           charRange = await render.getHightlightCoords(chapterDocIndex);
-          position.chapterDocIndex = chapterDocIndex;
+          position.chapterDocIndex = chapterDocIndex + "";
           let subContainer = targetIframe.parentElement;
           if (subContainer) {
             position.top =
@@ -799,7 +799,7 @@ export const addAppleTouchEvent = (
         let targetIframe = ownerDoc?.defaultView?.frameElement;
         let id = targetIframe?.getAttribute("id") || "";
         let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
-        position.chapterDocIndex = chapterDocIndex;
+        position.chapterDocIndex = chapterDocIndex + "";
         charRange = await render.getHightlightCoords(chapterDocIndex);
         let subContainer = targetIframe.parentElement;
         if (subContainer) {

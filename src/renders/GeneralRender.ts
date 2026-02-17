@@ -1200,11 +1200,32 @@ class GeneralRender extends EventEmitter {
           }
           let chapterInfo = this.resolveChapter(href.split("#")[0]);
           if (!chapterInfo) return { handled: false };
-          await this.goToChapter(
-            chapterInfo.index,
-            chapterInfo.href,
-            chapterInfo.label
-          );
+
+          if (isElementFootnote(event.target)) {
+            let blob = await fetch(
+              await this.chapterDocList[chapterInfo.index].text.load()
+            ).then((r) => r.blob());
+            let chapterText = await blob.text();
+            node = new DOMParser()
+              .parseFromString(chapterText, "text/html")
+              .body.querySelector("#" + CSS.escape(id));
+            if (!node) {
+              return { handled: false };
+            }
+            return {
+              handled: true,
+              isShowMenu: true,
+              isJump: false,
+              href: "",
+              node: node,
+            };
+          } else {
+            await this.goToChapter(
+              chapterInfo.index,
+              chapterInfo.href,
+              chapterInfo.label
+            );
+          }
         }
         node = doc.body.querySelector("#" + CSS.escape(id));
         if (!node) {
