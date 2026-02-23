@@ -1,4 +1,6 @@
-﻿This library is built with TypeScript and Rollup, designed to be the core rendering engine for [Koodo Reader](https://github.com/koodo-reader/koodo-reader).
+﻿## Introduction
+
+This library is built with TypeScript and Rollup, designed to be the core rendering engine for [Koodo Reader](https://github.com/koodo-reader/koodo-reader).
 
 ## Building
 
@@ -14,8 +16,6 @@ yarn dev
 yarn build
 
 ```
-
-## Dependencies
 
 ## Dependencies
 
