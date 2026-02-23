@@ -6,17 +6,11 @@ import json from "@rollup/plugin-json";
 import { babel } from "@rollup/plugin-babel";
 import path from "path";
 const getDesktopOutputPath = (filename) => {
-  const basePath =
-    process.platform === "win32"
-      ? "D:\\Project\\koodo-reader"
-      : "/Users/troyeguo/Documents/Project/koodo-reader";
+  const basePath = "D:\\Project\\koodo-reader";
   return path.join(basePath, "src", "assets", "lib", filename);
 };
 const getMobileOutputPath = (filename) => {
-  const basePath =
-    process.platform === "win32"
-      ? "D:\\Project\\koodo-reader-expo"
-      : "/Users/troyeguo/Documents/Project/koodo-reader-expo";
+  const basePath = "D:\\Project\\koodo-reader-expo";
   return path.join(basePath, "assets", "lib", filename);
 };
 export default [
