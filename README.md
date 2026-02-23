@@ -5,19 +5,12 @@
 ```bash
 
 # Install dependencies
-
 yarn
 
-
-
 # Development mode (watch)
-
 yarn dev
 
-
-
 # Production build
-
 yarn build
 
 ```
