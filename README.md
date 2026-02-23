@@ -34,4 +34,4 @@ yarn build
 
 ## License
 
-This library is distributed under the terms of GNU [AGPL v3](https://github.com/koodo-reader/kookit)
+This library is distributed under the terms of [GNU AGPL v3](https://github.com/koodo-reader/kookit/blob/main/LICENSE)
