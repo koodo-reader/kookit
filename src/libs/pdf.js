@@ -425,7 +425,7 @@ export const makePDF = async (file, password) => {
     load: async () => {
       const cached = cache.get(i);
       if (cached) return cached;
-      const url = await renderPage(await pdf.getPage(i + 1));
+      const url = await renderPage(await pdf.getPage(i + 1), false);
       cache.set(i, url);
       return url;
     },
