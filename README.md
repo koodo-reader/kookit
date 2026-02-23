@@ -3,20 +3,33 @@
 ## Building
 
 ```bash
+
 # Install dependencies
+
 yarn
 
+
+
 # Development mode (watch)
+
 yarn dev
 
+
+
 # Production build
+
 yarn build
+
 ```
+
+## Dependencies
 
 ## Dependencies
 
 | Package                               | Purpose                                                |
 | ------------------------------------- | ------------------------------------------------------ |
+| `foliate-js`                          | EPUB / MOBI / AZW3 / FB2 rendering engine              |
+| `pdf-js`                              | PDF rendering engine                                   |
 | `jszip` / `@zip.js/zip.js` / `fflate` | ZIP decompression (multiple engines for compatibility) |
 | `7z-wasm`                             | 7z archive support (CB7)                               |
 | `js-untar`                            | TAR archive support (CBT)                              |
@@ -25,7 +38,6 @@ yarn build
 | `mhtml2html`                          | MHTML to HTML conversion                               |
 | `rangy`                               | Cross-browser text selection and range utilities       |
 | `chardet`                             | Automatic character encoding detection                 |
-| `foliate-js`                          | EPUB / FB2 / CBZ rendering engine                      |
 
 ## License
 
