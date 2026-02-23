@@ -64,6 +64,10 @@ const childGetter = (doc, ns) => {
 
 const resolveURL = (url, relativeTo) => {
   try {
+    // replace %2c in the url with a comma, this might be introduced by calibre
+    url = url.replace(/%2c/gi, ",").replace(/%3a/gi, ":");
+    if (relativeTo.includes(":") && !relativeTo.startsWith("OEBPS"))
+      return new URL(url, relativeTo);
     // if (relativeTo.includes(":")) return new URL(url, relativeTo);
     // the base needs to be a valid URL, so set a base URL and then remove it
     const root = "whatever://whatever/";
@@ -993,7 +997,8 @@ export class EPUB {
   }
   async getCover() {
     const cover = this.resources?.cover;
-    return cover?.href
+    const coverBlob = cover?.href ? await this.loadBlob(cover.href) : null;
+    return cover?.href && coverBlob && coverBlob.size > 0
       ? new Blob([await this.loadBlob(cover.href)], { type: cover.mediaType })
       : null;
   }
