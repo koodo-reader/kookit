@@ -222,12 +222,7 @@ class DjvuRender extends GeneralRender {
   }
   async parse() {
     try {
-      let blob = new Blob([this.djvuBuffer]);
-      let file = new File([blob], "book", {
-        lastModified: new Date().getTime(),
-        type: blob.type,
-      });
-      this.book = await makeDJVU(file, this.password);
+      this.book = await makeDJVU(this.djvuBuffer, this.password);
     } catch (error) {
       console.error(error);
       throw error;
