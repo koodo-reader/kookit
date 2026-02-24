@@ -5,7 +5,6 @@ import PdfTextRender from "./renders/PdfTextRender";
 import TxtRender from "./renders/TxtRender";
 import ComicRender from "./renders/ComicRender";
 import Fb2Render from "./renders/Fb2Render";
-import DjvuRender from "./renders/DjvuRender";
 import CacheRender from "./renders/CacheRender";
 import DocxRender from "./renders/DocxRender";
 import MdRender from "./renders/MdRender";
@@ -20,7 +19,6 @@ export {
   TxtRender,
   ComicRender,
   Fb2Render,
-  DjvuRender,
   DocxRender,
   MdRender,
   HtmlRender,

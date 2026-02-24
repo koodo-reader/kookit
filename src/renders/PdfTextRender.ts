@@ -9,6 +9,7 @@ import {
   showOCRProgress,
 } from "../utils/pdfUtil";
 import { ocrCache } from "../utils/ocrCacheUtil";
+import { makeDJVU } from "../libs/djvu";
 const fetchText = async (url) => await (await fetch(url)).text();
 declare var window: any;
 class PdfTextRender extends GeneralRender {
@@ -24,6 +25,7 @@ class PdfTextRender extends GeneralRender {
   titleSizeValue: number = 1.2; // 标题大小倍数
   isFinishOCR: boolean = false;
   ocrEngine: string;
+  extension: string;
   shouldShowProgress: boolean = false; // 控制是否显示进度
   externalWorker: any;
   pdfPageCount: number = 0;
@@ -41,6 +43,7 @@ class PdfTextRender extends GeneralRender {
     this.ocrEngine = config.ocrEngine || "paddle"; // 支持配置OCR引擎
     this.externalWorker = config.externalWorker || null;
     this.pdfPageCount = config.pdfPageCount || 0;
+    this.extension = config.extension || "pdf";
   }
 
   renderTo(element: HTMLElement) {
@@ -294,7 +297,17 @@ class PdfTextRender extends GeneralRender {
     let textContent = await chapterDoc.text.getTextContent();
     let paraList: any[] = [];
 
-    if (textContent && textContent.items && Array.isArray(textContent.items)) {
+    // DjVu returns plain text string; split into paragraphs directly
+    if (typeof textContent === "string") {
+      paraList = textContent
+        .split("\n")
+        .filter((line) => line.trim() !== "")
+        .map((line) => ({ text: line, isBold: false }));
+    } else if (
+      textContent &&
+      textContent.items &&
+      Array.isArray(textContent.items)
+    ) {
       // 先收集所有字体大小，确定基础大小和最大大小
       // 先收集所有字体大小，确定基础大小和最大大小
       const fontSizes = textContent.items
@@ -428,15 +441,18 @@ class PdfTextRender extends GeneralRender {
       if (this.isScannedPDF === "yes") {
         ocrCache.installGlobalFetchInterceptor();
       }
+      if (this.extension === "djvu") {
+        this.book = await makeDJVU(this.pdfBuffer, this.password);
+      } else {
+        let blob = new Blob([this.pdfBuffer]);
+        let file = new File([blob], "book", {
+          lastModified: new Date().getTime(),
+          type: blob.type,
+        });
 
-      let blob = new Blob([this.pdfBuffer]);
-      let file = new File([blob], "book", {
-        lastModified: new Date().getTime(),
-        type: blob.type,
-      });
-      if (await isPDF(file)) {
         this.book = await makePDF(file, this.password);
       }
+
       if (this.isScannedPDF === "yes" && this.ocrEngine === "tesseract") {
         // 获取 worker 脚本
         let workerScript = await fetchText(

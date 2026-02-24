@@ -1,6 +1,7 @@
 import { createIframe, getSelectedElement } from "../utils/layoutUtil.js";
 import GeneralParser from "../utils/generalParser.js";
 import { isPDF, makePDF } from "../libs/pdf.js";
+import { makeDJVU } from "../libs/djvu.js";
 import GeneralRender from "./GeneralRender.js";
 import { clearHighlight, showPDFHighlight } from "../utils/noteUtil.js";
 import {
@@ -31,6 +32,7 @@ class PdfRender extends GeneralRender {
   scrollPDFInterval: any = null;
   templateChapterDocIndex: number = 0;
   platform: string;
+  extension: string;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, convertChinese: "Default", format: "PDF" });
     this.pdfBuffer = pdfBuffer;
@@ -40,6 +42,7 @@ class PdfRender extends GeneralRender {
     this.backgroundColor = config.backgroundColor || "#ffffff";
     this.isScannedPDF = config.isScannedPDF || "no";
     this.platform = config.platform || "web";
+    this.extension = config.extension || "pdf";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -222,6 +225,10 @@ class PdfRender extends GeneralRender {
   }
   async parse() {
     try {
+      if (this.extension === "djvu") {
+        this.book = await makeDJVU(this.pdfBuffer, this.password);
+        return;
+      }
       let blob = new Blob([this.pdfBuffer]);
       let file = new File([blob], "book", {
         lastModified: new Date().getTime(),
