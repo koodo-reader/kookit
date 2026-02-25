@@ -121,8 +121,101 @@ const wrapDjVuPageData = (pageData: {
 };
 
 /**
+ * DjVu text zone type constants (from the DjVu specification).
+ * getPageTextZone() returns a hierarchical RawTextZone tree:
+ *   PAGE → COLUMN → REGION → PARAGRAPH → LINE → WORD → CHARACTER
+ */
+const ZONE_TYPE_LINE = 5;
+
+/**
+ * Extract LINE-level zones from a hierarchical RawTextZone tree.
+ * Instead of using getNormalizedTextZones() which produces one zone per WORD
+ * (causing thousands of DOM spans per page), we walk the tree to LINE level
+ * and concatenate all child word/character texts into a single text per line.
+ * This matches the pdf.js approach where one span ≈ one line of text.
+ *
+ * @param pageTextZone - The root RawTextZone from getPageTextZone()
+ * @param fullText - The page's full text string from getText()
+ * @returns Array of line-level TextZone objects compatible with the existing rendering code
+ */
+const extractLineZones = (
+  pageTextZone: any,
+  fullText: string
+): Array<{
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  text: string;
+}> | null => {
+  if (!pageTextZone || !fullText) return null;
+
+  // RawTextZone.textStart/textLength are byte offsets into the raw UTF-8 byte array,
+  // NOT character indices into the JS string. We must encode back to UTF-8
+  // to correctly extract text by byte offset.
+  const encoder = new TextEncoder();
+  const utf8Bytes = encoder.encode(fullText);
+  const decoder = new TextDecoder();
+
+  const lines: Array<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    text: string;
+  }> = [];
+
+  const walk = (zone: any) => {
+    if (zone.type === ZONE_TYPE_LINE) {
+      // This is a LINE zone — extract its text using UTF-8 byte offsets
+      const textBytes = utf8Bytes.slice(
+        zone.textStart,
+        zone.textStart + zone.textLength
+      );
+      const text = decoder.decode(textBytes);
+      if (text.trim().length > 0) {
+        lines.push({
+          x: zone.x,
+          y: zone.y,
+          width: zone.width,
+          height: zone.height,
+          text: text,
+        });
+      }
+      return; // Don't recurse deeper — we want line-level granularity
+    }
+    // Recurse into children for non-LINE zones (PAGE, COLUMN, REGION, PARAGRAPH)
+    if (zone.children && zone.children.length > 0) {
+      for (const child of zone.children) {
+        walk(child);
+      }
+    } else if (zone.type > ZONE_TYPE_LINE) {
+      // Leaf zone below LINE level without a LINE parent (unusual but possible)
+      // Treat it like a line
+      const textBytes = utf8Bytes.slice(
+        zone.textStart,
+        zone.textStart + zone.textLength
+      );
+      const text = decoder.decode(textBytes);
+      if (text.trim().length > 0) {
+        lines.push({
+          x: zone.x,
+          y: zone.y,
+          width: zone.width,
+          height: zone.height,
+          text: text,
+        });
+      }
+    }
+  };
+
+  walk(pageTextZone);
+  return lines.length > 0 ? lines : null;
+};
+
+/**
  * Render a DjVu page into a sub-iframe document.
- * All heavy decoding (getImageData, getNormalizedTextZones) runs in the Web Worker.
+ * All heavy decoding (getImageData, getPageTextZone) runs in the Web Worker.
  * Only canvas drawing and DOM manipulation happen on the main thread.
  */
 const MAX_CANVAS_PIXELS = 4_000_000;
@@ -137,11 +230,14 @@ const render = async (
   pagesSizes: Array<{ width: number; height: number; dpi: number }>
 ) => {
   try {
-    // Batch fetch imageData and textZones from Worker in a single message
-    const [imageData, textZones] = await worker.run(
+    // Batch fetch imageData, text, and hierarchical text zone from Worker in a single message
+    const [imageData, pageTextZone, fullText] = await worker.run(
       worker.doc.getPage(pageNumber).getImageData(),
-      worker.doc.getPage(pageNumber).getNormalizedTextZones()
+      worker.doc.getPage(pageNumber).getPageTextZone(),
+      worker.doc.getPage(pageNumber).getText()
     );
+    // Extract LINE-level zones (one span per line instead of one per word)
+    const textZones = extractLineZones(pageTextZone, fullText || "");
 
     // Get page dimensions from pre-fetched sizes (no worker call needed)
     const pageWidth = pagesSizes[pageNumber - 1]?.width ?? imageData.width;
@@ -603,14 +699,16 @@ export const makeDJVU = async (file: ArrayBuffer | File, password?: string) => {
     },
     getPage: async () => {
       // Fetch all needed page data from worker in one batch
-      const [imageData, text, textZones, w, h, dpi] = await worker.run(
+      const [imageData, text, pageTextZone, w, h, dpi] = await worker.run(
         worker.doc.getPage(i + 1).getImageData(),
         worker.doc.getPage(i + 1).getText(),
-        worker.doc.getPage(i + 1).getNormalizedTextZones(),
+        worker.doc.getPage(i + 1).getPageTextZone(),
         worker.doc.getPage(i + 1).getWidth(),
         worker.doc.getPage(i + 1).getHeight(),
         worker.doc.getPage(i + 1).getDpi()
       );
+      // Extract LINE-level zones (one span per line instead of one per word)
+      const textZones = extractLineZones(pageTextZone, text || "");
       return wrapDjVuPageData({
         width: w,
         height: h,

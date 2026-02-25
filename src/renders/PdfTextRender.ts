@@ -50,31 +50,41 @@ class PdfTextRender extends GeneralRender {
     return new Promise<void>(async (resolve, reject) => {
       this.element = element;
       if (this.isScannedPDF === "yes" && this.ocrEngine === "external-engine") {
-        this.chapterDocList = Array.from(
-          { length: this.pdfPageCount },
-          (_, i) => ({
-            label: i + "",
-            text: {
-              load: async () => "",
-              render: async () => {},
-              unload: async () => {},
-              getPage: async () => null,
-              getDimension: async () => ({ width: 0, height: 0 }),
-              getScale: async () => 1,
-              getPageCount: async () => 0,
-            },
-            href: "title" + i,
-          })
-        );
-        this.chapterList = Array.from(
-          { length: this.pdfPageCount },
-          (_, i) => ({
-            label: i + "",
-            href: "title" + i,
-            index: i,
-            subitems: [],
-          })
-        );
+        if (this.extension === "pdf") {
+          this.chapterDocList = Array.from(
+            { length: this.pdfPageCount },
+            (_, i) => ({
+              label: i + "",
+              text: {
+                load: async () => "",
+                render: async () => {},
+                unload: async () => {},
+                getPage: async () => null,
+                getDimension: async () => ({ width: 0, height: 0 }),
+                getScale: async () => 1,
+                getPageCount: async () => 0,
+              },
+              href: "title" + i,
+            })
+          );
+          this.chapterList = Array.from(
+            { length: this.pdfPageCount },
+            (_, i) => ({
+              label: i + "",
+              href: "title" + i,
+              index: i,
+              subitems: [],
+            })
+          );
+        } else {
+          if (!this.book) {
+            await this.parse();
+          }
+          let parser = new GeneralParser(this.book);
+          this.chapterList = await parser.getChapter(this.book.toc);
+          this.chapterDocList = await parser.getChapterDoc();
+        }
+
         this.worker = this.externalWorker;
       } else {
         if (!this.book) {
@@ -240,7 +250,13 @@ class PdfTextRender extends GeneralRender {
       }
 
       try {
-        textContent = await this.worker.recognize(chapterDocIndex);
+        if (this.extension === "djvu") {
+          let page = await chapterDoc.text.getPage();
+          let { imageURL } = await convertPageToImage(page);
+          textContent = await this.worker.recognize(chapterDocIndex, imageURL);
+        } else {
+          textContent = await this.worker.recognize(chapterDocIndex, "");
+        }
 
         // 完成后立即将进度设为1
         if (this.shouldShowProgress) {
