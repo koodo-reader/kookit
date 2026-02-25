@@ -52,6 +52,7 @@ class GeneralRender extends EventEmitter {
   mouseUpHandler: (event: TouchEvent) => void;
   mouseMoveHandler: (event: TouchEvent) => void;
   isMobile: string | undefined;
+  isBionic: string = "no";
   touchEventSet: any;
   scrollTimer: any;
   recordTimer: any;
@@ -63,6 +64,7 @@ class GeneralRender extends EventEmitter {
     isIndent?: string;
     isDarkMode?: string;
     isMobile?: string;
+    isBionic?: string;
   }) {
     super();
     this.readerMode = config.readerMode;
@@ -80,6 +82,8 @@ class GeneralRender extends EventEmitter {
     this.book = "";
     this.element = "";
     this.tempLocation = {};
+    this.isBionic = config.isBionic || "no";
+    window.isBionic = this.isBionic;
     this.flipToNextPage = () => {};
     this.flipToPrevPage = () => {};
     this.mouseDownHandler = () => {};
