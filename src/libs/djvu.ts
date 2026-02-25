@@ -2,35 +2,6 @@ declare var window: any;
 
 const DjVu = window.DjVu;
 
-const isElectron = () => {
-  // Renderer process
-  if (
-    typeof window !== "undefined" &&
-    typeof window.process === "object" &&
-    window.process.type === "renderer"
-  ) {
-    return true;
-  }
-  // Main process
-  if (
-    typeof process !== "undefined" &&
-    typeof process.versions === "object" &&
-    !!process.versions.electron
-  ) {
-    return true;
-  }
-  // Detect the user agent when the `nodeIntegration` option is set to true
-  if (
-    typeof navigator === "object" &&
-    typeof navigator.userAgent === "string" &&
-    navigator.userAgent.indexOf("Electron") >= 0
-  ) {
-    return true;
-  }
-
-  return false;
-};
-
 /**
  * Creates a pdf.js-compatible viewport object for a DjVu page.
  * This allows reuse of pdf.js highlight utilities (noteUtil.ts) with DjVu pages.
@@ -80,23 +51,31 @@ class DjVuViewport {
 }
 
 /**
- * Wraps a DjVu page object with pdf.js-compatible methods so that shared
- * utilities (e.g. noteUtil.ts highlight functions) work seamlessly.
+ * Creates a pdf.js-compatible wrapper from pre-fetched page data (from Worker).
+ * Since DjVu.Worker only returns serializable data (ImageData, strings, plain objects),
+ * we cannot get a real DjVuPage object. Instead we fetch all needed data from the
+ * worker and wrap it into an interface expected by shared utilities.
  */
-const wrapDjVuPage = (page: any) => {
+const wrapDjVuPageData = (pageData: {
+  width: number;
+  height: number;
+  dpi: number;
+  imageData: ImageData;
+  text: string;
+  textZones: any[] | null;
+}) => {
   return {
-    // Original DjVu page methods
-    getWidth: () => page.getWidth(),
-    getHeight: () => page.getHeight(),
-    getDpi: () => page.getDpi(),
-    getRotation: () => page.getRotation(),
-    getImageData: (rotate?: boolean) => page.getImageData(rotate),
-    getText: () => page.getText(),
-    getNormalizedTextZones: () => page.getNormalizedTextZones(),
-    reset: () => page.reset(),
+    getWidth: () => pageData.width,
+    getHeight: () => pageData.height,
+    getDpi: () => pageData.dpi,
+    getRotation: () => 0,
+    getImageData: () => pageData.imageData,
+    getText: () => pageData.text,
+    getNormalizedTextZones: () => pageData.textZones,
+    reset: () => {},
     // pdf.js-compatible method for highlight/annotation utilities
     getViewport: ({ scale }: { scale: number }) => {
-      return new DjVuViewport(page.getWidth(), page.getHeight(), scale);
+      return new DjVuViewport(pageData.width, pageData.height, scale);
     },
     // pdf.js-compatible render method for convertPageToImage compatibility
     render: (renderContext: {
@@ -104,60 +83,86 @@ const wrapDjVuPage = (page: any) => {
       viewport: any;
     }) => {
       const promise = (async () => {
-        const imageData = page.getImageData();
-        const { canvasContext, viewport } = renderContext;
-        const pageWidth = page.getWidth();
-        const pageHeight = page.getHeight();
-
-        // Draw native-resolution image into an offscreen canvas first
-        const offscreen = document.createElement("canvas");
-        offscreen.width = pageWidth;
-        offscreen.height = pageHeight;
-        const offCtx = offscreen.getContext("2d");
-        if (offCtx) {
-          offCtx.putImageData(imageData, 0, 0);
-        }
-
-        // Then scale into the target canvas context at the desired viewport size
+        const { canvasContext } = renderContext;
         const targetCanvas = canvasContext.canvas;
-        canvasContext.drawImage(
-          offscreen,
-          0,
-          0,
-          targetCanvas.width,
-          targetCanvas.height
-        );
+
+        if (typeof createImageBitmap === "function") {
+          const bitmap = await createImageBitmap(pageData.imageData);
+          canvasContext.drawImage(
+            bitmap,
+            0,
+            0,
+            targetCanvas.width,
+            targetCanvas.height
+          );
+          bitmap.close();
+        } else {
+          const offscreen = document.createElement("canvas");
+          offscreen.width = pageData.width;
+          offscreen.height = pageData.height;
+          const offCtx = offscreen.getContext("2d");
+          if (offCtx) {
+            offCtx.putImageData(pageData.imageData, 0, 0);
+          }
+          canvasContext.imageSmoothingEnabled = true;
+          canvasContext.imageSmoothingQuality = "medium";
+          canvasContext.drawImage(
+            offscreen,
+            0,
+            0,
+            targetCanvas.width,
+            targetCanvas.height
+          );
+        }
       })();
       return { promise };
     },
-    _djvuPage: page, // Keep reference to original DjVu page
   };
 };
 
 /**
  * Render a DjVu page into a sub-iframe document.
- * Uses DjVu.js page API: getImageData(), getText(), getNormalizedTextZones(),
- * getWidth(), getHeight(), getDpi().
+ * All heavy decoding (getImageData, getNormalizedTextZones) runs in the Web Worker.
+ * Only canvas drawing and DOM manipulation happen on the main thread.
  */
+const MAX_CANVAS_PIXELS = 4_000_000;
+
 const render = async (
-  djvuDoc: any,
+  worker: any,
   pageNumber: number,
   doc: Document,
   zoom: number,
   isMobile: string,
-  viewer: any
+  viewer: any,
+  pagesSizes: Array<{ width: number; height: number; dpi: number }>
 ) => {
   try {
-    const page = await djvuDoc.getPage(pageNumber);
-    const pageWidth = page.getWidth();
-    const pageHeight = page.getHeight();
+    // Batch fetch imageData and textZones from Worker in a single message
+    const [imageData, textZones] = await worker.run(
+      worker.doc.getPage(pageNumber).getImageData(),
+      worker.doc.getPage(pageNumber).getNormalizedTextZones()
+    );
+
+    // Get page dimensions from pre-fetched sizes (no worker call needed)
+    const pageWidth = pagesSizes[pageNumber - 1]?.width ?? imageData.width;
+    const pageHeight = pagesSizes[pageNumber - 1]?.height ?? imageData.height;
 
     let devicePixelRatio =
       window.devicePixelRatio * (isMobile === "yes" ? (1 / zoom) * 1.5 : 1);
     const scale = zoom * devicePixelRatio;
 
-    const scaledWidth = Math.round(pageWidth * scale);
-    const scaledHeight = Math.round(pageHeight * scale);
+    let scaledWidth = Math.round(pageWidth * scale);
+    let scaledHeight = Math.round(pageHeight * scale);
+
+    // Cap canvas resolution to avoid excessive memory/GPU usage
+    const totalPixels = scaledWidth * scaledHeight;
+    let canvasWidth = scaledWidth;
+    let canvasHeight = scaledHeight;
+    if (totalPixels > MAX_CANVAS_PIXELS) {
+      const downscale = Math.sqrt(MAX_CANVAS_PIXELS / totalPixels);
+      canvasWidth = Math.round(scaledWidth * downscale);
+      canvasHeight = Math.round(scaledHeight * downscale);
+    }
 
     let docLayer = doc.querySelector("#koodoPDFLayer") as HTMLElement;
     if (!docLayer) return;
@@ -167,17 +172,27 @@ const render = async (
     docLayer.style.width = `${scaledWidth}px`;
     docLayer.style.height = `${scaledHeight}px`;
 
-    // Render image onto canvas
-    const imageData = page.getImageData();
+    // Render image: imageData was decoded in worker, just draw to canvas on main thread
     const canvas = document.createElement("canvas");
-    canvas.width = pageWidth;
-    canvas.height = pageHeight;
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
     const ctx = canvas.getContext("2d");
     if (ctx) {
-      ctx.putImageData(imageData, 0, 0);
+      if (typeof createImageBitmap === "function") {
+        const bitmap = await createImageBitmap(imageData, {
+          resizeWidth: canvasWidth,
+          resizeHeight: canvasHeight,
+          resizeQuality: "medium",
+        });
+        ctx.drawImage(bitmap, 0, 0);
+        bitmap.close();
+      } else {
+        canvas.width = pageWidth;
+        canvas.height = pageHeight;
+        ctx.putImageData(imageData, 0, 0);
+      }
     }
 
-    // Scale canvas to target size via CSS
     canvas.style.width = `${scaledWidth}px`;
     canvas.style.height = `${scaledHeight}px`;
     canvas.style.display = "block";
@@ -191,13 +206,7 @@ const render = async (
     }
     docLayer.style.overflow = "hidden";
 
-    // Render text layer using getNormalizedTextZones()
-    // Following pdf.js pattern: .textLayer directly contains <span> elements,
-    // each positioned with percentage-based left/top, using --scale-factor
-    // CSS variable for font sizing and scaleX() for width adjustment.
-    //
-    // DjVu text zone coordinates: zone.x from left, zone.y from BOTTOM of page.
-    // We convert zone.y to top-based percentage: top% = (pageHeight - zone.y - zone.height) / pageHeight * 100
+    // Render text layer
     const container = doc.querySelector("#textLayer") as HTMLElement;
     if (container) {
       container.innerHTML = "";
@@ -209,12 +218,12 @@ const render = async (
       container.style.lineHeight = "1";
       container.style.transformOrigin = "0 0";
       container.style.zIndex = "1";
-      // Set --scale-factor CSS variable (like pdf.js)
       container.style.setProperty("--scale-factor", String(scale));
 
       try {
-        const textZones = page.getNormalizedTextZones();
         if (textZones && textZones.length > 0) {
+          // Use DocumentFragment for batch DOM insertion (avoids layout thrashing)
+          const fragment = document.createDocumentFragment();
           textZones.forEach((zone: any) => {
             const span = document.createElement("span");
             span.textContent = zone.text;
@@ -225,17 +234,11 @@ const render = async (
             const topPercent =
               ((pageHeight - zone.y - zone.height) / pageHeight) * 100;
 
-            span.style.position = "absolute";
-            span.style.left = `${leftPercent}%`;
-            span.style.top = `${topPercent}%`;
-            span.style.fontSize = `calc(var(--scale-factor) * ${zone.height * 0.9}px)`;
-            span.style.fontFamily = "sans-serif";
-            span.style.color = "transparent";
-            span.style.whiteSpace = "pre";
-            span.style.lineHeight = "1";
+            span.style.cssText = `position:absolute;left:${leftPercent}%;top:${topPercent}%;font-size:calc(var(--scale-factor) * ${zone.height * 0.9}px);font-family:sans-serif;color:transparent;white-space:pre;line-height:1`;
 
-            container.appendChild(span);
+            fragment.appendChild(span);
           });
+          container.appendChild(fragment);
 
           // Adjust scaleX so each span fills its zone width
           // (like pdf.js uses transform: scaleX(...))
@@ -339,25 +342,52 @@ const render = async (
 
 /**
  * Render a DjVu page for preview (iframe blob URL) or cover (image blob).
- * Uses DjVu.js page API: getImageData(), getWidth(), getHeight().
+ * Heavy decoding runs in the Web Worker.
  */
+const PREVIEW_MAX_WIDTH = 800;
+
 const renderPage = async (
-  djvuDoc: any,
+  worker: any,
   pageNumber: number,
-  getImageBlob: boolean
+  getImageBlob: boolean,
+  pagesSizes: Array<{ width: number; height: number; dpi: number }>
 ) => {
   try {
-    const page = await djvuDoc.getPage(pageNumber);
-    const pageWidth = page.getWidth();
-    const pageHeight = page.getHeight();
-    const imageData = page.getImageData();
+    const imageData: ImageData = await worker.run(
+      worker.doc.getPage(pageNumber).getImageData()
+    );
+    const pageWidth = pagesSizes[pageNumber - 1]?.width ?? imageData.width;
+    const pageHeight = pagesSizes[pageNumber - 1]?.height ?? imageData.height;
+
+    // Determine target size: for covers/previews, cap width to save memory
+    let targetWidth = pageWidth;
+    let targetHeight = pageHeight;
+    if (getImageBlob && pageWidth > PREVIEW_MAX_WIDTH) {
+      const ratio = PREVIEW_MAX_WIDTH / pageWidth;
+      targetWidth = PREVIEW_MAX_WIDTH;
+      targetHeight = Math.round(pageHeight * ratio);
+    }
 
     const canvas = document.createElement("canvas");
-    canvas.width = pageWidth;
-    canvas.height = pageHeight;
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
     const ctx = canvas.getContext("2d");
     if (ctx) {
-      ctx.putImageData(imageData, 0, 0);
+      // Use createImageBitmap for GPU-accelerated resize when available
+      if (typeof createImageBitmap === "function") {
+        const bitmap = await createImageBitmap(imageData, {
+          resizeWidth: targetWidth,
+          resizeHeight: targetHeight,
+          resizeQuality: "medium",
+        });
+        ctx.drawImage(bitmap, 0, 0);
+        bitmap.close();
+      } else {
+        // Fallback: draw at native size, rely on canvas downscale
+        canvas.width = pageWidth;
+        canvas.height = pageHeight;
+        ctx.putImageData(imageData, 0, 0);
+      }
     }
 
     if (getImageBlob) {
@@ -432,27 +462,28 @@ const makeTOCItem = (item: any) => ({
 });
 
 /**
+ * Recursively collect all bookmark URLs from a TOC tree for pre-caching.
+ */
+const collectTOCUrls = (items: any[]): string[] => {
+  const urls: string[] = [];
+  for (const item of items) {
+    if (item.url) urls.push(item.url);
+    if (item.children && item.children.length) {
+      urls.push(...collectTOCUrls(item.children));
+    }
+  }
+  return urls;
+};
+
+/**
  * Create a book object from a DjVu file ArrayBuffer.
- * Uses DjVu.js synchronous API: DjVu.Document(arrayBuffer, options)
+ * Uses DjVu.js asynchronous Worker API (DjVu.Worker) to avoid blocking the main thread.
  *
- * DjVuDocument methods used:
- * - getPagesQuantity(): number
- * - getContents(): Array<Bookmark>
- * - getPage(number): Promise<DjVuPage>
- * - getPageNumberByUrl(url): ?number
- * - toString(): string
- *
- * DjVuPage methods used:
- * - getWidth(): number
- * - getHeight(): number
- * - getDpi(): number
- * - getImageData(rotate?): ImageData
- * - getText(): string
- * - getNormalizedTextZones(): ?Array<TextZone>
- * - reset(): void
+ * All heavy decoding (getPage, getImageData, getText, etc.) runs in a Web Worker.
+ * Only serializable results (ImageData, strings, plain objects, numbers) are
+ * returned to the main thread.
  */
 export const makeDJVU = async (file: ArrayBuffer | File, password?: string) => {
-  // DjVu.Document accepts an ArrayBuffer
   let buffer: ArrayBuffer;
   if (file instanceof File) {
     buffer = await file.arrayBuffer();
@@ -460,61 +491,77 @@ export const makeDJVU = async (file: ArrayBuffer | File, password?: string) => {
     buffer = file;
   }
 
-  const djvuDoc = new DjVu.Document(buffer);
+  // Create DjVu.Worker — all decoding happens off the main thread.
+  // createDocument() transfers the ArrayBuffer to the worker, which detaches it.
+  // We pass a copy so the original buffer remains usable (e.g. for IndexedDB storage).
+  const worker = new DjVu.Worker();
+  await worker.createDocument(buffer.slice(0));
 
-  let isScannedDoc = false;
-  const pageNum = djvuDoc.getPagesQuantity();
+  // Fetch structural metadata from worker (these are fast, no page decoding)
+  const [pageNum, outline, pagesSizes] = await worker.run(
+    worker.doc.getPagesQuantity(),
+    worker.doc.getContents(),
+    worker.doc.getPagesSizes()
+  );
 
   // Sample a middle page to check if text layer exists
+  let isScannedDoc = false;
   if (pageNum > 0) {
     const testPageNum = Math.floor(pageNum / 2) + 1;
     try {
-      const testedPage = await djvuDoc.getPage(testPageNum);
-      const textContent = testedPage.getText();
+      const textContent: string = await worker.run(
+        worker.doc.getPage(testPageNum).getText()
+      );
       isScannedDoc = !textContent || textContent.trim().length < 45;
     } catch (e) {
       isScannedDoc = true;
     }
   }
 
+  // Pre-cache TOC URL → page number mapping.
+  // getPageNumberByUrl() is a sync method on DjVuDocument; via the worker we
+  // batch all lookups at init time so resolveHref/splitTOCHref stay fast.
+  const tocUrlToPage = new Map<string, number>();
+  if (outline && outline.length > 0) {
+    const allUrls = collectTOCUrls(outline);
+    if (allUrls.length > 0) {
+      const tasks = allUrls.map((url) => worker.doc.getPageNumberByUrl(url));
+      const results: any = await worker.run(...tasks);
+      // worker.run with single task returns the value directly, not an array
+      const resultsArray = allUrls.length === 1 ? [results] : results;
+      allUrls.forEach((url, idx) => {
+        const pageNumber = resultsArray[idx];
+        if (pageNumber != null) {
+          tocUrlToPage.set(url, pageNumber);
+        }
+      });
+    }
+  }
+
   const book: any = { rendition: { layout: "pre-paginated" } };
 
-  // DjVu files don't carry rich metadata like PDF; use placeholders
   book.metadata = {
-    title: "DjVu Document",
+    title: "",
     author: "",
   };
   book.metadata.description =
     (isScannedDoc ? "scanned document" : "") +
     (password ? "\nprotected: #" + password + "#" : "");
 
-  // Table of contents via getContents()
-  // Returns Array<Bookmark> where Bookmark = { description, url, children? }
-  const outline = djvuDoc.getContents();
   book.toc = outline && outline.length > 0 ? outline.map(makeTOCItem) : null;
 
-  // Page sizes for layout calculations (sync API: getPagesSizes())
-  // Returns Array<{ width, height, dpi }>
-  let pagesSizes: Array<{ width: number; height: number; dpi: number }> = [];
-  try {
-    pagesSizes = djvuDoc.getPagesSizes();
-  } catch (e) {
-    // Fallback: will get dimensions per-page
-  }
-
   const cache = new Map();
+
   book.sections = Array.from({ length: pageNum }).map((_, i) => ({
     id: i,
     load: async () => {
       const cached = cache.get(i);
       if (cached) return cached;
-      const url = await renderPage(djvuDoc, i + 1, false);
+      const url = await renderPage(worker, i + 1, false, pagesSizes);
       cache.set(i, url);
       return url;
     },
     unload: async () => {
-      // getPage() automatically resets the previously requested page
-      // Explicit cache cleanup
       if (cache.has(i)) {
         const url = cache.get(i);
         if (typeof url === "string" && url.startsWith("blob:")) {
@@ -529,53 +576,98 @@ export const makeDJVU = async (file: ArrayBuffer | File, password?: string) => {
       isMobile: string,
       viewer: any
     ) => {
-      await render(djvuDoc, i + 1, doc, scale, isMobile, viewer);
+      await render(worker, i + 1, doc, scale, isMobile, viewer, pagesSizes);
     },
     getTextContent: async () => {
-      const page = await djvuDoc.getPage(i + 1);
-      const textContent = page.getText();
+      const textContent: string = await worker.run(
+        worker.doc.getPage(i + 1).getText()
+      );
       return textContent || "";
     },
     size: 1000,
     getDimension: async () => {
-      // Use pre-fetched pagesSizes if available (avoids decoding entire page)
-      if (pagesSizes.length > i) {
+      if (pagesSizes && pagesSizes.length > i) {
         return {
           width: pagesSizes[i].width,
           height: pagesSizes[i].height,
           dpi: pagesSizes[i].dpi,
         };
       }
-      // Fallback: decode page to get dimensions
-      const page = await djvuDoc.getPage(i + 1);
-      return {
-        width: page.getWidth(),
-        height: page.getHeight(),
-        dpi: page.getDpi(),
-      };
+      // Fallback: ask worker for dimensions (rare, pagesSizes usually available)
+      const [w, h, dpi] = await worker.run(
+        worker.doc.getPage(i + 1).getWidth(),
+        worker.doc.getPage(i + 1).getHeight(),
+        worker.doc.getPage(i + 1).getDpi()
+      );
+      return { width: w, height: h, dpi: dpi };
     },
     getPage: async () => {
-      return wrapDjVuPage(await djvuDoc.getPage(i + 1));
+      // Fetch all needed page data from worker in one batch
+      const [imageData, text, textZones, w, h, dpi] = await worker.run(
+        worker.doc.getPage(i + 1).getImageData(),
+        worker.doc.getPage(i + 1).getText(),
+        worker.doc.getPage(i + 1).getNormalizedTextZones(),
+        worker.doc.getPage(i + 1).getWidth(),
+        worker.doc.getPage(i + 1).getHeight(),
+        worker.doc.getPage(i + 1).getDpi()
+      );
+      return wrapDjVuPageData({
+        width: w,
+        height: h,
+        dpi: dpi,
+        imageData: imageData,
+        text: text || "",
+        textZones: textZones,
+      });
     },
   }));
+
   book.isExternal = (uri: string) => /^\w+:/i.test(uri);
+
   book.resolveHref = async (href: string) => {
-    // Use getPageNumberByUrl to resolve TOC bookmark URLs to page indices
-    const pageNumber = djvuDoc.getPageNumberByUrl(href);
+    // Use pre-cached mapping (built at init time)
+    const pageNumber = tocUrlToPage.get(href);
     if (pageNumber != null) {
-      return { index: pageNumber - 1 }; // Convert 1-based to 0-based
+      return { index: pageNumber - 1 };
+    }
+    // Fallback: ask worker (for dynamically generated hrefs)
+    try {
+      const pn: number | null = await worker.run(
+        worker.doc.getPageNumberByUrl(href)
+      );
+      if (pn != null) {
+        tocUrlToPage.set(href, pn);
+        return { index: pn - 1 };
+      }
+    } catch (e) {
+      // ignore
     }
     return { index: 0 };
   };
+
   book.splitTOCHref = async (href: string) => {
-    const pageNumber = djvuDoc.getPageNumberByUrl(href);
+    const pageNumber = tocUrlToPage.get(href);
     if (pageNumber != null) {
-      return [pageNumber - 1, null]; // Convert 1-based to 0-based
+      return [pageNumber - 1, null];
+    }
+    try {
+      const pn: number | null = await worker.run(
+        worker.doc.getPageNumberByUrl(href)
+      );
+      if (pn != null) {
+        tocUrlToPage.set(href, pn);
+        return [pn - 1, null];
+      }
+    } catch (e) {
+      // ignore
     }
     return [0, null];
   };
+
   book.getTOCFragment = (doc: Document) => doc.documentElement;
-  book.getCover = async () => renderPage(djvuDoc, 1, true);
+
+  book.getCover = async () => renderPage(worker, 1, true, pagesSizes);
+
   book.destroy = () => {
     // Revoke all cached blob URLs
     cache.forEach((url: string) => {
@@ -584,6 +676,16 @@ export const makeDJVU = async (file: ArrayBuffer | File, password?: string) => {
       }
     });
     cache.clear();
+    // Terminate the worker to free resources
+    try {
+      worker.reset();
+    } catch (e) {
+      // ignore
+    }
   };
+
+  // Expose worker reference for external access if needed
+  book._djvuWorker = worker;
+
   return book;
 };
