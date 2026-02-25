@@ -98,6 +98,38 @@ const wrapDjVuPage = (page: any) => {
     getViewport: ({ scale }: { scale: number }) => {
       return new DjVuViewport(page.getWidth(), page.getHeight(), scale);
     },
+    // pdf.js-compatible render method for convertPageToImage compatibility
+    render: (renderContext: {
+      canvasContext: CanvasRenderingContext2D;
+      viewport: any;
+    }) => {
+      const promise = (async () => {
+        const imageData = page.getImageData();
+        const { canvasContext, viewport } = renderContext;
+        const pageWidth = page.getWidth();
+        const pageHeight = page.getHeight();
+
+        // Draw native-resolution image into an offscreen canvas first
+        const offscreen = document.createElement("canvas");
+        offscreen.width = pageWidth;
+        offscreen.height = pageHeight;
+        const offCtx = offscreen.getContext("2d");
+        if (offCtx) {
+          offCtx.putImageData(imageData, 0, 0);
+        }
+
+        // Then scale into the target canvas context at the desired viewport size
+        const targetCanvas = canvasContext.canvas;
+        canvasContext.drawImage(
+          offscreen,
+          0,
+          0,
+          targetCanvas.width,
+          targetCanvas.height
+        );
+      })();
+      return { promise };
+    },
     _djvuPage: page, // Keep reference to original DjVu page
   };
 };

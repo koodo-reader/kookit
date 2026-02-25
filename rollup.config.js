@@ -65,11 +65,11 @@ export default [
       }),
       json(),
       typescript({ tsconfig: "./tsconfig.json" }),
-      terser({
-        format: {
-          comments: false, // 移除所有注释
-        },
-      }), // 压缩代码
+      // terser({
+      //   format: {
+      //     comments: false, // 移除所有注释
+      //   },
+      // }), // 压缩代码
     ],
 
     external: [
