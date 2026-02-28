@@ -175,6 +175,32 @@ class PdfTextRender extends GeneralRender {
       console.error(`Failed to process OCR for chapter ${index}:`, error);
     }
   }
+  /**
+   * 启动一个模拟进度条，从 0 缓慢爬升到 maxProgress（不超过该值）。
+   * @param maxProgress 最大模拟进度，默认 0.85
+   * @param duration    预估总时长（ms），用于控制爬升速度，默认 30000ms
+   * @returns 停止函数，调用后清除定时器
+   */
+  startFakeProgress(
+    maxProgress: number = 0.85,
+    duration: number = 30000
+  ): () => void {
+    const intervalTime = 200;
+    const totalSteps = duration / intervalTime;
+    // 使用指数衰减曲线：前期快速拉升，后期缓慢趋近 maxProgress
+    // k 越大曲线越陡，约在前 10% 步数内就能到达 ~60% 进度
+    let step = 0;
+    const timer = setInterval(() => {
+      step++;
+      // progress = maxProgress * (1 - e^(-k * step))，k 取 10/totalSteps 使曲线更陡
+      const k = 10 / totalSteps;
+      const progress = maxProgress * (1 - Math.exp(-k * step));
+      showOCRProgress(Math.min(progress, maxProgress));
+    }, intervalTime);
+
+    return () => clearInterval(timer);
+  }
+
   performOCR = async (imageUrl) => {
     try {
       if (this.ocrEngine === "tesseract") {
@@ -478,81 +504,99 @@ class PdfTextRender extends GeneralRender {
           new Blob([workerScript], { type: "application/javascript" })
         );
 
-        // 所有资源会在加载时通过 fetch 拦截器自动缓存
-        const worker = await window.Tesseract.createWorker([this.ocrLang], 1, {
-          workerPath: workerUrl,
-          corePath: "https://unpkg.com/tesseract.js-core@6.1.2",
-          langPath: "https://tessdata.projectnaptha.com/4.0.0_best",
-          logger: (m) => {
-            if (
-              m.status === "recognizing text" &&
-              typeof m.progress === "number" &&
-              !this.isFinishOCR
-            ) {
-              showOCRProgress(m.progress);
-              if (m.progress === 1) {
-                this.isFinishOCR = true;
-              }
+        // 启动模拟进度条（下载 core wasm 和语言模型期间）
+        const stopInitProgress = this.startFakeProgress(0.85, 30000);
+        try {
+          // 所有资源会在加载时通过 fetch 拦截器自动缓存
+          const worker = await window.Tesseract.createWorker(
+            [this.ocrLang],
+            1,
+            {
+              workerPath: workerUrl,
+              corePath: "https://unpkg.com/tesseract.js-core@6.1.2",
+              langPath: "https://tessdata.projectnaptha.com/4.0.0_best",
+              logger: (m) => {
+                if (
+                  m.status === "recognizing text" &&
+                  typeof m.progress === "number" &&
+                  !this.isFinishOCR
+                ) {
+                  showOCRProgress(m.progress);
+                  if (m.progress === 1) {
+                    this.isFinishOCR = true;
+                  }
+                }
+              },
             }
-          },
-        });
-        await worker.load();
-        this.worker = worker;
+          );
+          await worker.load();
+          this.worker = worker;
+        } finally {
+          stopInitProgress();
+          showOCRProgress(1);
+        }
       }
       if (this.isScannedPDF === "yes" && this.ocrEngine === "paddle") {
-        // 所有资源都会通过 fetch 拦截器自动缓存
-        const dictUrl = `https://${
-          this.serverRegion === "china"
-            ? "storage.koodoreader.cn"
-            : "storage.koodoreader.com"
-        }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_dict.txt`;
-        const response = await fetch(dictUrl);
-        let dictStr = await response.text();
-        // 设置 WASM 文件路径（必须！）
-        window.ort.env.wasm.wasmPaths =
-          "https://unpkg.com/onnxruntime-web@1.23.2/dist/";
+        // 启动模拟进度条（下载字典和 ONNX 模型期间）
+        const stopInitProgress = this.startFakeProgress(0.85, 60000);
+        try {
+          // 所有资源都会通过 fetch 拦截器自动缓存
+          const dictUrl = `https://${
+            this.serverRegion === "china"
+              ? "storage.koodoreader.cn"
+              : "storage.koodoreader.com"
+          }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_dict.txt`;
+          const response = await fetch(dictUrl);
+          let dictStr = await response.text();
+          // 设置 WASM 文件路径（必须！）
+          window.ort.env.wasm.wasmPaths =
+            "https://unpkg.com/onnxruntime-web@1.23.2/dist/";
 
-        // 启用 Proxy Worker（自动 offload 到后台 Worker）
-        window.ort.env.wasm.proxy = true;
+          // 启用 Proxy Worker（自动 offload 到后台 Worker）
+          window.ort.env.wasm.proxy = true;
 
-        const localOCR = await window["esearch-ocr"].init({
-          det: {
-            input: `https://${
-              this.serverRegion === "china"
-                ? "storage.koodoreader.cn"
-                : "storage.koodoreader.com"
-            }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_det.onnx`, // det指识别模型，如果上面提到的文字包没有，那就用中英混合的det（在ch.zip里）。
-            ratio: 0.75,
-          },
-          rec: {
-            input: `https://${
-              this.serverRegion === "china"
-                ? "storage.koodoreader.cn"
-                : "storage.koodoreader.com"
-            }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_rec.onnx`,
-            decodeDic: dictStr, // 在模型压缩包中的txt文件，需要传入里面的内容而不是路径
-            // 监听识别进度
-            on: (
-              index: number,
-              result: { text: string; mean: number },
-              total: number
-            ) => {
-              // 只在处理当前页面时显示进度
-              if (this.shouldShowProgress && total > 0) {
-                const progress = (index + 1) / total; // index 从 0 开始，所以需要 +1
-                showOCRProgress(progress);
-                if (progress >= 1) {
-                  this.isFinishOCR = true;
-                }
-              }
+          const localOCR = await window["esearch-ocr"].init({
+            det: {
+              input: `https://${
+                this.serverRegion === "china"
+                  ? "storage.koodoreader.cn"
+                  : "storage.koodoreader.com"
+              }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_det.onnx`, // det指识别模型，如果上面提到的文字包没有，那就用中英混合的det（在ch.zip里）。
+              ratio: 0.75,
             },
-          },
-          ort: window.ort, // 传入onnxruntime-web的引用
-          ortOption: {
-            executionProviders: [{ name: "webgpu" }, { name: "wasm" }],
-          },
-        });
-        this.worker = localOCR;
+            rec: {
+              input: `https://${
+                this.serverRegion === "china"
+                  ? "storage.koodoreader.cn"
+                  : "storage.koodoreader.com"
+              }/paddleocr/models/${this.ocrLang}/${this.ocrLang}_rec.onnx`,
+              decodeDic: dictStr, // 在模型压缩包中的txt文件，需要传入里面的内容而不是路径
+              // 监听识别进度
+              on: (
+                index: number,
+                result: { text: string; mean: number },
+                total: number
+              ) => {
+                // 只在处理当前页面时显示进度
+                if (this.shouldShowProgress && total > 0) {
+                  const progress = (index + 1) / total; // index 从 0 开始，所以需要 +1
+                  showOCRProgress(progress);
+                  if (progress >= 1) {
+                    this.isFinishOCR = true;
+                  }
+                }
+              },
+            },
+            ort: window.ort, // 传入onnxruntime-web的引用
+            ortOption: {
+              executionProviders: [{ name: "webgpu" }, { name: "wasm" }],
+            },
+          });
+          this.worker = localOCR;
+        } finally {
+          stopInitProgress();
+          showOCRProgress(1);
+        }
       }
       if (this.isScannedPDF === "yes" && this.ocrEngine === "official-ai-ocr") {
         this.worker = this.externalWorker;
