@@ -751,7 +751,8 @@ class PdfRender extends GeneralRender {
           handleNoteClick,
           page,
           scale,
-          subDoc
+          subDoc,
+          item.notes !== ""
         );
       } catch (e) {
         console.warn(
@@ -795,7 +796,8 @@ class PdfRender extends GeneralRender {
       handleNoteClick,
       page,
       scale,
-      subDoc
+      subDoc,
+      item.notes !== ""
     );
     this.clearSelection();
   }

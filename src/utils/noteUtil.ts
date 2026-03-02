@@ -21,7 +21,8 @@ export const showNoteHighlight = (
   noteKey: string,
   handleNoteClick: any,
   doc: Document,
-  iframe: any
+  iframe: any,
+  isNote: boolean
 ) => {
   let colorCode = classes[colorIndex];
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
@@ -32,7 +33,7 @@ export const showNoteHighlight = (
 
   selection.restoreCharacterRanges(doc, temp);
   let newRange = selection.getRangeAt(0);
-  highlightRange(newRange, colorCode, noteKey, handleNoteClick, doc);
+  highlightRange(newRange, colorCode, noteKey, handleNoteClick, doc, isNote);
   if (!iWin || !iWin.getSelection()) return;
   iWin.getSelection()?.empty();
 };
@@ -43,7 +44,8 @@ export const showPDFHighlight = (
   handleNoteClick: any,
   page: any,
   scale: number,
-  doc: Document
+  doc: Document,
+  isNote: boolean
 ) => {
   let colorCode = classes[colorIndex];
   let pageElement: any = doc.querySelector(".noteLayer");
@@ -107,6 +109,12 @@ export const showPDFHighlight = (
       filteredRects.push(currentRect);
     }
   }
+  const topLeftPdfRect = filteredRects.reduce<any>((best, r) => {
+    if (!best) return r;
+    if (r.top < best.top || (r.top === best.top && r.left < best.left))
+      return r;
+    return best;
+  }, null);
   for (let i = 0; i < filteredRects.length; i++) {
     const rect = filteredRects[i];
     var newNode = document.createElement("div");
@@ -163,6 +171,50 @@ export const showPDFHighlight = (
       event.stopPropagation();
     };
     pageElement.appendChild(newNode);
+    if (isNote && rect === topLeftPdfRect) {
+      const iconNode = document.createElement("div");
+      iconNode.setAttribute(
+        "style",
+        "position: absolute;" +
+          "left:" +
+          (rect.left +
+            parseFloat(getComputedStyle(docLayer as Element).marginLeft) -
+            5) +
+          "px; top:" +
+          (rect.top - 18) +
+          "px;" +
+          "width: 16px; height: 16px; z-index: 2; cursor: pointer; font-size: 15px; line-height: 1;"
+      );
+      iconNode.setAttribute("class", "kookit-note");
+      iconNode.setAttribute("data-key", noteKey);
+      iconNode.textContent = "📋";
+      iconNode.addEventListener("click", (event) => {
+        if (event && event.target) {
+          if (
+            (event.target as any).dataset &&
+            (event.target as any).dataset.key
+          ) {
+            handleNoteClick(event);
+          }
+        }
+      });
+      iconNode.ontouchend = (event) => {
+        if (window.isSwiping) {
+          return;
+        }
+        if (event && event.target) {
+          if (
+            (event.target as any).dataset &&
+            (event.target as any).dataset.key
+          ) {
+            handleNoteClick(event);
+          }
+        }
+        event.preventDefault();
+        event.stopPropagation();
+      };
+      pageElement.appendChild(iconNode);
+    }
   }
 };
 
@@ -179,7 +231,8 @@ export const highlightRange = (
   colorCode: string,
   noteKey: string,
   handleNoteClick: any,
-  doc: any
+  doc: any,
+  isNote: boolean = false
 ) => {
   const rects: any[] = range.nativeRange.getClientRects();
   const validRects: DOMRect[] = [];
@@ -213,6 +266,12 @@ export const highlightRange = (
       validRects.push(rect);
     }
   }
+  const topLeftRect = validRects.reduce<DOMRect | null>((best, r) => {
+    if (!best) return r;
+    if (r.top < best.top || (r.top === best.top && r.left < best.left))
+      return r;
+    return best;
+  }, null);
   for (let index = 0; index < validRects.length; index++) {
     const rect = validRects[index];
     var newNode = document.createElement("span");
@@ -286,5 +345,47 @@ export const highlightRange = (
       event.stopPropagation();
     };
     doc.body.appendChild(clickNode);
+    if (isNote && rect === topLeftRect) {
+      const iconNode = document.createElement("span");
+      iconNode.setAttribute(
+        "style",
+        "position: absolute;" +
+          "left:" +
+          (Math.min(rect.left, rect.x) + doc.body.scrollLeft - 5) +
+          "px; top:" +
+          (Math.min(rect.top, rect.y) + doc.body.scrollTop - 18) +
+          "px;" +
+          "width: 16px; height: 16px; z-index: 2; font-size: 15px; line-height: 1; "
+      );
+      iconNode.setAttribute("class", "kookit-note");
+      iconNode.setAttribute("data-key", noteKey);
+      iconNode.textContent = "📋";
+      iconNode.addEventListener("click", (event) => {
+        if (event && event.target) {
+          if (
+            (event.target as any).dataset &&
+            (event.target as any).dataset.key
+          ) {
+            handleNoteClick(event);
+          }
+        }
+      });
+      iconNode.ontouchend = (event) => {
+        if (window.isSwiping) {
+          return;
+        }
+        if (event && event.target) {
+          if (
+            (event.target as any).dataset &&
+            (event.target as any).dataset.key
+          ) {
+            handleNoteClick(event);
+          }
+        }
+        event.preventDefault();
+        event.stopPropagation();
+      };
+      doc.body.appendChild(iconNode);
+    }
   }
 };

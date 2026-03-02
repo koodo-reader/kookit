@@ -905,7 +905,8 @@ class GeneralRender extends EventEmitter {
           item.key,
           handleNoteClick,
           doc,
-          iframe
+          iframe,
+          item.notes !== ""
         );
         // highlighter.highlightSelection(classes[item.color]);
       } catch (e) {
@@ -939,7 +940,8 @@ class GeneralRender extends EventEmitter {
       item.key,
       handleNoteClick,
       doc,
-      iframe
+      iframe,
+      item.notes !== ""
     );
   }
 
