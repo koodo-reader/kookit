@@ -178,12 +178,13 @@ export const showPDFHighlight = (
         "position: absolute;" +
           "left:" +
           (rect.left +
-            parseFloat(getComputedStyle(docLayer as Element).marginLeft) -
-            5) +
+            parseFloat(getComputedStyle(docLayer as Element).marginLeft) +
+            rect.width -
+            18) +
           "px; top:" +
           (rect.top - 18) +
           "px;" +
-          "width: 16px; height: 16px; z-index: 2; cursor: pointer; font-size: 15px; line-height: 1;"
+          "width: 16px; height: 16px; z-index: 2; cursor: pointer; font-size: 17px; line-height: 1;"
       );
       iconNode.setAttribute("class", "kookit-note");
       iconNode.setAttribute("data-key", noteKey);
@@ -351,11 +352,14 @@ export const highlightRange = (
         "style",
         "position: absolute;" +
           "left:" +
-          (Math.min(rect.left, rect.x) + doc.body.scrollLeft - 5) +
+          (Math.min(rect.left, rect.x) +
+            doc.body.scrollLeft +
+            rect.width -
+            18) +
           "px; top:" +
           (Math.min(rect.top, rect.y) + doc.body.scrollTop - 18) +
           "px;" +
-          "width: 16px; height: 16px; z-index: 2; font-size: 15px; line-height: 1; "
+          "width: 16px; height: 16px; z-index: 2; font-size: 17px; line-height: 1; "
       );
       iconNode.setAttribute("class", "kookit-note");
       iconNode.setAttribute("data-key", noteKey);
