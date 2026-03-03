@@ -9,7 +9,6 @@ import {
   showOCRProgress,
 } from "../utils/pdfUtil";
 import { ocrCache } from "../utils/ocrCacheUtil";
-import { makeDJVU } from "../libs/djvu";
 const fetchText = async (url) => await (await fetch(url)).text();
 declare var window: any;
 class PdfTextRender extends GeneralRender {
@@ -276,13 +275,7 @@ class PdfTextRender extends GeneralRender {
       }
 
       try {
-        if (this.extension === "djvu") {
-          let page = await chapterDoc.text.getPage();
-          let { imageURL } = await convertPageToImage(page);
-          textContent = await this.worker.recognize(chapterDocIndex, imageURL);
-        } else {
-          textContent = await this.worker.recognize(chapterDocIndex, "");
-        }
+        textContent = await this.worker.recognize(chapterDocIndex, "");
 
         // 完成后立即将进度设为1
         if (this.shouldShowProgress) {
@@ -339,7 +332,6 @@ class PdfTextRender extends GeneralRender {
     let textContent = await chapterDoc.text.getTextContent();
     let paraList: any[] = [];
 
-    // DjVu returns plain text string; split into paragraphs directly
     if (typeof textContent === "string") {
       paraList = textContent
         .split("\n")
@@ -483,17 +475,14 @@ class PdfTextRender extends GeneralRender {
       if (this.isScannedPDF === "yes") {
         ocrCache.installGlobalFetchInterceptor();
       }
-      if (this.extension === "djvu") {
-        this.book = await makeDJVU(this.pdfBuffer, this.password);
-      } else {
-        let blob = new Blob([this.pdfBuffer]);
-        let file = new File([blob], "book", {
-          lastModified: new Date().getTime(),
-          type: blob.type,
-        });
 
-        this.book = await makePDF(file, this.password);
-      }
+      let blob = new Blob([this.pdfBuffer]);
+      let file = new File([blob], "book", {
+        lastModified: new Date().getTime(),
+        type: blob.type,
+      });
+
+      this.book = await makePDF(file, this.password);
 
       if (this.isScannedPDF === "yes" && this.ocrEngine === "tesseract") {
         // 获取 worker 脚本

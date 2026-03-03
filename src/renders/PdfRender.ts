@@ -1,7 +1,6 @@
 import { createIframe, getSelectedElement } from "../utils/layoutUtil.js";
 import GeneralParser from "../utils/generalParser.js";
 import { isPDF, makePDF } from "../libs/pdf.js";
-import { makeDJVU } from "../libs/djvu.js";
 import GeneralRender from "./GeneralRender.js";
 import { clearHighlight, showPDFHighlight } from "../utils/noteUtil.js";
 import {
@@ -225,10 +224,6 @@ class PdfRender extends GeneralRender {
   }
   async parse() {
     try {
-      if (this.extension === "djvu") {
-        this.book = await makeDJVU(this.pdfBuffer, this.password);
-        return;
-      }
       let blob = new Blob([this.pdfBuffer]);
       let file = new File([blob], "book", {
         lastModified: new Date().getTime(),
