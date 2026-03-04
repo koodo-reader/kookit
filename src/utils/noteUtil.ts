@@ -141,7 +141,7 @@ export const showPDFHighlight = (
         rect.height +
         "px; z-index: 1; cursor: pointer; opacity: " +
         (colorCode.indexOf("color") > -1 ? 0.3 : 1) +
-        ";"
+        "; pointer-events: none;"
     );
     newNode?.setAttribute("data-key", noteKey);
     newNode?.setAttribute("class", "kookit-note");
@@ -316,7 +316,7 @@ export const highlightRange = (
         rect.width +
         "px; height:" +
         rect.height +
-        "px; z-index:1;"
+        "px; z-index:1; pointer-events: none;"
     );
     clickNode.setAttribute("class", " kookit-note");
     clickNode.setAttribute("data-key", noteKey);
