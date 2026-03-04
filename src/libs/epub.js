@@ -514,6 +514,18 @@ class Resources {
         );
       }
     }
+    if (!this.cover) {
+      this.cover = this.manifest.find(
+        (item) =>
+          item.href.toLowerCase().includes("cover") &&
+          item.mediaType.startsWith("image/")
+      );
+    }
+    if (!this.cover) {
+      this.cover = this.manifest.find((item) =>
+        item.mediaType.startsWith("image/")
+      );
+    }
 
     this.cfis = CFI.fromElements($$itemref);
   }
