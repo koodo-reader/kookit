@@ -906,7 +906,8 @@ class GeneralRender extends EventEmitter {
           handleNoteClick,
           doc,
           iframe,
-          item.notes !== ""
+          item.notes !== "",
+          this.isMobile === "yes"
         );
         // highlighter.highlightSelection(classes[item.color]);
       } catch (e) {
@@ -941,7 +942,8 @@ class GeneralRender extends EventEmitter {
       handleNoteClick,
       doc,
       iframe,
-      item.notes !== ""
+      item.notes !== "",
+      this.isMobile === "yes"
     );
   }
 

@@ -747,7 +747,8 @@ class PdfRender extends GeneralRender {
           page,
           scale,
           subDoc,
-          item.notes !== ""
+          item.notes !== "",
+          this.isMobile === "yes"
         );
       } catch (e) {
         console.warn(
@@ -792,7 +793,8 @@ class PdfRender extends GeneralRender {
       page,
       scale,
       subDoc,
-      item.notes !== ""
+      item.notes !== "",
+      this.isMobile === "yes"
     );
     this.clearSelection();
   }

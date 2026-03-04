@@ -22,7 +22,8 @@ export const showNoteHighlight = (
   handleNoteClick: any,
   doc: Document,
   iframe: any,
-  isNote: boolean
+  isNote: boolean,
+  isMobile: boolean
 ) => {
   let colorCode = classes[colorIndex];
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
@@ -33,7 +34,15 @@ export const showNoteHighlight = (
 
   selection.restoreCharacterRanges(doc, temp);
   let newRange = selection.getRangeAt(0);
-  highlightRange(newRange, colorCode, noteKey, handleNoteClick, doc, isNote);
+  highlightRange(
+    newRange,
+    colorCode,
+    noteKey,
+    handleNoteClick,
+    doc,
+    isNote,
+    isMobile
+  );
   if (!iWin || !iWin.getSelection()) return;
   iWin.getSelection()?.empty();
 };
@@ -45,7 +54,8 @@ export const showPDFHighlight = (
   page: any,
   scale: number,
   doc: Document,
-  isNote: boolean
+  isNote: boolean,
+  isMobile: boolean
 ) => {
   let colorCode = classes[colorIndex];
   let pageElement: any = doc.querySelector(".noteLayer");
@@ -141,7 +151,8 @@ export const showPDFHighlight = (
         rect.height +
         "px; z-index: 1; cursor: pointer; opacity: " +
         (colorCode.indexOf("color") > -1 ? 0.3 : 1) +
-        "; pointer-events: none;"
+        "; " +
+        (isMobile ? "pointer-events: none;" : "")
     );
     newNode?.setAttribute("data-key", noteKey);
     newNode?.setAttribute("class", "kookit-note");
@@ -233,10 +244,25 @@ export const highlightRange = (
   noteKey: string,
   handleNoteClick: any,
   doc: any,
-  isNote: boolean = false
+  isNote: boolean = false,
+  isMobile: boolean = false
 ) => {
+  if (isMobile && window.isSwiping) {
+    const waitAndHighlight = () => {
+      if (window.isSwiping) {
+        requestAnimationFrame(waitAndHighlight);
+      } else {
+        highlightRange(range, colorCode, noteKey, handleNoteClick, doc, isNote, isMobile);
+      }
+    };
+    requestAnimationFrame(waitAndHighlight);
+    return;
+  }
+  console.log(range, "range");
   const rects: any[] = range.nativeRange.getClientRects();
   const validRects: DOMRect[] = [];
+  let scrollTop = doc.body.scrollTop || doc.documentElement.scrollTop;
+  let scrollLeft = doc.body.scrollLeft || doc.documentElement.scrollLeft;
 
   // 将rects转换为数组并按宽度从小到大排序
   const sortedRects = Array.from(rects).sort((a, b) => a.width - b.width);
@@ -275,6 +301,7 @@ export const highlightRange = (
   }, null);
   for (let index = 0; index < validRects.length; index++) {
     const rect = validRects[index];
+    console.log(rect.left, rect.x, doc.body.scrollLeft);
     var newNode = document.createElement("span");
     newNode?.setAttribute(
       "style",
@@ -286,9 +313,9 @@ export const highlightRange = (
           ? colors[colorCode.split("-")[1]] + ";opacity: 1"
           : `2px solid ${lines[colorCode.split("-")[1]]}`) +
         ";left:" +
-        (Math.min(rect.left, rect.x) + doc.body.scrollLeft) +
+        (Math.min(rect.left, rect.x) + scrollLeft) +
         "px; top:" +
-        (Math.min(rect.top, rect.y) + doc.body.scrollTop) +
+        (Math.min(rect.top, rect.y) + scrollTop) +
         "px;" +
         "width:" +
         rect.width +
@@ -308,15 +335,16 @@ export const highlightRange = (
       "style",
       "position: absolute;" +
         "left:" +
-        (Math.min(rect.left, rect.x) + doc.body.scrollLeft) +
+        (Math.min(rect.left, rect.x) + scrollLeft) +
         "px; top:" +
-        (Math.min(rect.top, rect.y) + doc.body.scrollTop) +
+        (Math.min(rect.top, rect.y) + scrollTop) +
         "px;" +
         "width:" +
         rect.width +
         "px; height:" +
         rect.height +
-        "px; z-index:1; pointer-events: none;"
+        "px; z-index:1; " +
+        (isMobile ? "pointer-events: none;" : "")
     );
     clickNode.setAttribute("class", " kookit-note");
     clickNode.setAttribute("data-key", noteKey);
@@ -357,7 +385,7 @@ export const highlightRange = (
             rect.width -
             18) +
           "px; top:" +
-          (Math.min(rect.top, rect.y) + doc.body.scrollTop - 18) +
+          (Math.min(rect.top, rect.y) + scrollTop - 18) +
           "px;" +
           "width: 16px; height: 16px; z-index: 2; font-size: 17px; line-height: 1; "
       );
