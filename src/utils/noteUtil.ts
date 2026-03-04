@@ -252,7 +252,15 @@ export const highlightRange = (
       if (window.isSwiping) {
         requestAnimationFrame(waitAndHighlight);
       } else {
-        highlightRange(range, colorCode, noteKey, handleNoteClick, doc, isNote, isMobile);
+        highlightRange(
+          range,
+          colorCode,
+          noteKey,
+          handleNoteClick,
+          doc,
+          isNote,
+          isMobile
+        );
       }
     };
     requestAnimationFrame(waitAndHighlight);
