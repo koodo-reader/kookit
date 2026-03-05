@@ -515,12 +515,12 @@ class Resources {
       this.cover = this.manifest.find(
         (item) =>
           item.href.toLowerCase().includes("cover") &&
-          item.mediaType.startsWith("image/")
+          item.mediaType?.startsWith("image/")
       );
     }
     if (!this.cover) {
       this.cover = this.manifest.find((item) =>
-        item.mediaType.startsWith("image/")
+        item.mediaType?.startsWith("image/")
       );
     }
 
@@ -1008,7 +1008,7 @@ export class EPUB {
     const cover = this.resources?.cover;
     const coverBlob = cover?.href ? await this.loadBlob(cover.href) : null;
     return cover?.href && coverBlob && coverBlob.size > 0
-      ? new Blob([await this.loadBlob(cover.href)], { type: cover.mediaType })
+      ? new Blob([coverBlob], { type: cover.mediaType })
       : null;
   }
   async getCalibreBookmarks() {
