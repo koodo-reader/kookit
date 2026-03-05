@@ -35,7 +35,7 @@ const HalfBold = (parentElement) => {
           if (length === 0) length = 1;
 
           const bold = document.createElement("b");
-          bold.innerHTML = word.slice(0, length);
+          bold.textContent = word.slice(0, length);
           insertAfter(bold, recentNode);
           newNodeCount++;
           recentNode = bold;
