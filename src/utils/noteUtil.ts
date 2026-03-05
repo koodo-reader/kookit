@@ -121,7 +121,7 @@ export const showPDFHighlight = (
   }
   const topRightPdfRect = filteredRects.reduce<any>((best, r) => {
     if (!best) return r;
-    if (r.top < best.top || (r.top === best.top && r.left < best.left))
+    if (r.top < best.top || (r.top === best.top && r.right < best.right))
       return r;
     return best;
   }, null);
@@ -301,7 +301,7 @@ export const highlightRange = (
   }
   const topRightRect = validRects.reduce<DOMRect | null>((best, r) => {
     if (!best) return r;
-    if (r.top < best.top || (r.top === best.top && r.left < best.left))
+    if (r.top < best.top || (r.top === best.top && r.right < best.right))
       return r;
     return best;
   }, null);
