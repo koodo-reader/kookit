@@ -119,7 +119,7 @@ export const showPDFHighlight = (
       filteredRects.push(currentRect);
     }
   }
-  const topLeftPdfRect = filteredRects.reduce<any>((best, r) => {
+  const topRightPdfRect = filteredRects.reduce<any>((best, r) => {
     if (!best) return r;
     if (r.top < best.top || (r.top === best.top && r.left < best.left))
       return r;
@@ -182,7 +182,7 @@ export const showPDFHighlight = (
       event.stopPropagation();
     };
     pageElement.appendChild(newNode);
-    if (isNote && rect === topLeftPdfRect) {
+    if (isNote && rect === topRightPdfRect) {
       const iconNode = document.createElement("div");
       iconNode.setAttribute(
         "style",
@@ -191,11 +191,11 @@ export const showPDFHighlight = (
           (rect.left +
             parseFloat(getComputedStyle(docLayer as Element).marginLeft) +
             rect.width -
-            18) +
+            5) +
           "px; top:" +
-          (rect.top - 18) +
+          (rect.top - 15) +
           "px;" +
-          "width: 16px; height: 16px; z-index: 2; cursor: pointer; font-size: 17px; line-height: 1;"
+          "width: 16px; height: 16px; z-index: 2; cursor: pointer; font-size: 14px; line-height: 1;"
       );
       iconNode.setAttribute("class", "kookit-note");
       iconNode.setAttribute("data-key", noteKey);
@@ -300,7 +300,7 @@ export const highlightRange = (
       validRects.push(rect);
     }
   }
-  const topLeftRect = validRects.reduce<DOMRect | null>((best, r) => {
+  const topRightRect = validRects.reduce<DOMRect | null>((best, r) => {
     if (!best) return r;
     if (r.top < best.top || (r.top === best.top && r.left < best.left))
       return r;
@@ -380,20 +380,17 @@ export const highlightRange = (
       event.stopPropagation();
     };
     doc.body.appendChild(clickNode);
-    if (isNote && rect === topLeftRect) {
+    if (isNote && rect === topRightRect) {
       const iconNode = document.createElement("span");
       iconNode.setAttribute(
         "style",
         "position: absolute;" +
           "left:" +
-          (Math.min(rect.left, rect.x) +
-            doc.body.scrollLeft +
-            rect.width -
-            18) +
+          (Math.min(rect.left, rect.x) + doc.body.scrollLeft + rect.width - 5) +
           "px; top:" +
-          (Math.min(rect.top, rect.y) + scrollTop - 18) +
+          (Math.min(rect.top, rect.y) + scrollTop - 15) +
           "px;" +
-          "width: 16px; height: 16px; z-index: 2; font-size: 17px; line-height: 1; "
+          "width: 16px; height: 16px; z-index: 2; font-size: 14px; line-height: 1; "
       );
       iconNode.setAttribute("class", "kookit-note");
       iconNode.setAttribute("data-key", noteKey);
