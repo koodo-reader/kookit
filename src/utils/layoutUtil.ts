@@ -390,6 +390,10 @@ export const handleImageSize = async (
         }
       }
     }
+    if (readerMode !== "scroll" && maxHeight > element.clientHeight) {
+      maxWidth = maxWidth * (element.clientHeight / maxHeight);
+      maxHeight = element.clientHeight;
+    }
     if (maxWidth || maxHeight) {
       //轻易不要改这里，很容易出问题
       item.setAttribute(
