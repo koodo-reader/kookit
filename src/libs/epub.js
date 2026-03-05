@@ -515,12 +515,21 @@ class Resources {
       this.cover = this.manifest.find(
         (item) =>
           item.href.toLowerCase().includes("cover") &&
-          item.mediaType?.startsWith("image/")
+          (item.mediaType?.startsWith("image/") ||
+            item.href.toLowerCase().includes("png") ||
+            item.href.toLowerCase().includes("jpg") ||
+            item.href.toLowerCase().includes("svg") ||
+            item.href.toLowerCase().includes("jpeg"))
       );
     }
     if (!this.cover) {
-      this.cover = this.manifest.find((item) =>
-        item.mediaType?.startsWith("image/")
+      this.cover = this.manifest.find(
+        (item) =>
+          item.mediaType?.startsWith("image/") ||
+          item.href.toLowerCase().includes("png") ||
+          item.href.toLowerCase().includes("jpg") ||
+          item.href.toLowerCase().includes("svg") ||
+          item.href.toLowerCase().includes("jpeg")
       );
     }
 
