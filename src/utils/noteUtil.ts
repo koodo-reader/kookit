@@ -462,10 +462,7 @@ export const highlightRange = (
         "style",
         "position: absolute;" +
           "left:" +
-          (Math.min(rect.left, rect.x) +
-            doc.body.scrollLeft +
-            rect.width -
-            15) +
+          (Math.min(rect.left, rect.x) + scrollLeft + rect.width - 15) +
           "px; top:" +
           (Math.min(rect.top, rect.y) + scrollTop - 15) +
           "px;" +
