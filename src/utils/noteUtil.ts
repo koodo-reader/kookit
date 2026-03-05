@@ -266,7 +266,6 @@ export const highlightRange = (
     requestAnimationFrame(waitAndHighlight);
     return;
   }
-  console.log(range, "range");
   const rects: any[] = range.nativeRange.getClientRects();
   const validRects: DOMRect[] = [];
   let scrollTop = doc.body.scrollTop || doc.documentElement.scrollTop;
@@ -309,7 +308,6 @@ export const highlightRange = (
   }, null);
   for (let index = 0; index < validRects.length; index++) {
     const rect = validRects[index];
-    console.log(rect.left, rect.x, doc.body.scrollLeft);
     var newNode = document.createElement("span");
     newNode?.setAttribute(
       "style",

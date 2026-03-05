@@ -157,11 +157,11 @@ class OCRCacheUtil {
 
       const cached = await this.get(url);
       if (cached && cached.type === "text") {
-        console.log(`从缓存加载: ${url}`);
+        console.info(`从缓存加载: ${url}`);
         return cached.data as string;
       }
 
-      console.log(`从网络下载: ${url}`);
+      console.info(`从网络下载: ${url}`);
       const response = await fetch(url);
       const text = await response.text();
 
@@ -190,11 +190,11 @@ class OCRCacheUtil {
 
       const cached = await this.get(url);
       if (cached && cached.type === "arraybuffer") {
-        console.log(`从缓存加载: ${url}`);
+        console.info(`从缓存加载: ${url}`);
         return cached.data as ArrayBuffer;
       }
 
-      console.log(`从网络下载: ${url}`);
+      console.info(`从网络下载: ${url}`);
       const response = await fetch(url);
       const arrayBuffer = await response.arrayBuffer();
 
@@ -228,7 +228,7 @@ class OCRCacheUtil {
 
       const cached = await this.get(url);
       if (cached && cached.type === "blob") {
-        console.log(`从缓存加载 Blob: ${url}`);
+        console.info(`从缓存加载 Blob: ${url}`);
         // 从缓存的 ArrayBuffer 创建 Blob URL
         const blob = new Blob([cached.data as ArrayBuffer], {
           type: mimeType || "application/javascript",
@@ -236,7 +236,7 @@ class OCRCacheUtil {
         return URL.createObjectURL(blob);
       }
 
-      console.log(`从网络下载 Blob: ${url}`);
+      console.info(`从网络下载 Blob: ${url}`);
       const response = await fetch(url);
       const arrayBuffer = await response.arrayBuffer();
 
@@ -320,7 +320,7 @@ class OCRCacheUtil {
         // 检查缓存
         const cached = await cacheInstance.get(url);
         if (cached) {
-          console.log(`从缓存加载资源: ${url}`);
+          console.info(`从缓存加载资源: ${url}`);
 
           // 根据类型创建 Response
           let body: BodyInit;
@@ -342,7 +342,7 @@ class OCRCacheUtil {
         }
 
         // 缓存未命中，从网络获取
-        console.log(`从网络加载资源: ${url}`);
+        console.info(`从网络加载资源: ${url}`);
         const response = await originalFetch(input as RequestInfo, init);
 
         // 克隆响应以便同时使用和缓存
@@ -367,7 +367,7 @@ class OCRCacheUtil {
               const arrayBuffer = await clonedResponse.arrayBuffer();
               await cacheInstance.set(url, arrayBuffer, "arraybuffer");
             }
-            console.log(`缓存保存成功: ${url}`);
+            console.info(`缓存保存成功: ${url}`);
           } catch (err) {
             console.warn(`缓存保存失败 (${url}):`, err);
           }
@@ -388,7 +388,7 @@ class OCRCacheUtil {
   installGlobalFetchInterceptor(): void {
     if (typeof window !== "undefined") {
       (window as any).fetch = this.createCachedFetch();
-      console.log("OCR 缓存拦截器已安装");
+      console.info("OCR 缓存拦截器已安装");
     }
   }
 
@@ -456,7 +456,7 @@ class OCRCacheUtil {
           try {
             const cached = await cacheInstance.get(url);
             if (cached) {
-              console.log(`从缓存创建 Blob URL: ${url}`);
+              console.info(`从缓存创建 Blob URL: ${url}`);
               const blob = new Blob([cached.data as ArrayBuffer]);
               return URL.createObjectURL(blob);
             }
