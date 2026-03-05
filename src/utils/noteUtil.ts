@@ -474,31 +474,6 @@ export const highlightRange = (
       iconNode.setAttribute("class", "kookit-note");
       iconNode.setAttribute("data-key", noteKey);
       iconNode.textContent = "📋";
-      iconNode.addEventListener("click", (event) => {
-        if (event && event.target) {
-          if (
-            (event.target as any).dataset &&
-            (event.target as any).dataset.key
-          ) {
-            handleNoteClick(event);
-          }
-        }
-      });
-      iconNode.ontouchend = (event) => {
-        if (window.isSwiping) {
-          return;
-        }
-        if (event && event.target) {
-          if (
-            (event.target as any).dataset &&
-            (event.target as any).dataset.key
-          ) {
-            handleNoteClick(event);
-          }
-        }
-        event.preventDefault();
-        event.stopPropagation();
-      };
       doc.body.appendChild(iconNode);
     }
   }
