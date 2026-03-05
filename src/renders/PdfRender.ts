@@ -31,7 +31,6 @@ class PdfRender extends GeneralRender {
   scrollPDFInterval: any = null;
   templateChapterDocIndex: number = 0;
   platform: string;
-  extension: string;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, convertChinese: "Default", format: "PDF" });
     this.pdfBuffer = pdfBuffer;
@@ -41,7 +40,6 @@ class PdfRender extends GeneralRender {
     this.backgroundColor = config.backgroundColor || "#ffffff";
     this.isScannedPDF = config.isScannedPDF || "no";
     this.platform = config.platform || "web";
-    this.extension = config.extension || "pdf";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {

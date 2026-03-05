@@ -24,7 +24,6 @@ class PdfTextRender extends GeneralRender {
   titleSizeValue: number = 1.2; // 标题大小倍数
   isFinishOCR: boolean = false;
   ocrEngine: string;
-  extension: string;
   shouldShowProgress: boolean = false; // 控制是否显示进度
   externalWorker: any;
   pdfPageCount: number = 0;
@@ -42,48 +41,37 @@ class PdfTextRender extends GeneralRender {
     this.ocrEngine = config.ocrEngine || "paddle"; // 支持配置OCR引擎
     this.externalWorker = config.externalWorker || null;
     this.pdfPageCount = config.pdfPageCount || 0;
-    this.extension = config.extension || "pdf";
   }
 
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
       this.element = element;
       if (this.isScannedPDF === "yes" && this.ocrEngine === "external-engine") {
-        if (this.extension === "pdf") {
-          this.chapterDocList = Array.from(
-            { length: this.pdfPageCount },
-            (_, i) => ({
-              label: i + "",
-              text: {
-                load: async () => "",
-                render: async () => {},
-                unload: async () => {},
-                getPage: async () => null,
-                getDimension: async () => ({ width: 0, height: 0 }),
-                getScale: async () => 1,
-                getPageCount: async () => 0,
-              },
-              href: "title" + i,
-            })
-          );
-          this.chapterList = Array.from(
-            { length: this.pdfPageCount },
-            (_, i) => ({
-              label: i + "",
-              href: "title" + i,
-              index: i,
-              subitems: [],
-            })
-          );
-        } else {
-          if (!this.book) {
-            await this.parse();
-          }
-          let parser = new GeneralParser(this.book);
-          this.chapterList = await parser.getChapter(this.book.toc);
-          this.chapterDocList = await parser.getChapterDoc();
-        }
-
+        this.chapterDocList = Array.from(
+          { length: this.pdfPageCount },
+          (_, i) => ({
+            label: i + "",
+            text: {
+              load: async () => "",
+              render: async () => {},
+              unload: async () => {},
+              getPage: async () => null,
+              getDimension: async () => ({ width: 0, height: 0 }),
+              getScale: async () => 1,
+              getPageCount: async () => 0,
+            },
+            href: "title" + i,
+          })
+        );
+        this.chapterList = Array.from(
+          { length: this.pdfPageCount },
+          (_, i) => ({
+            label: i + "",
+            href: "title" + i,
+            index: i,
+            subitems: [],
+          })
+        );
         this.worker = this.externalWorker;
       } else {
         if (!this.book) {
