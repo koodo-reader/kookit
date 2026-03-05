@@ -390,7 +390,12 @@ export const handleImageSize = async (
         }
       }
     }
-    if (readerMode !== "scroll" && maxHeight > element.clientHeight) {
+    if (
+      readerMode !== "scroll" &&
+      maxWidth &&
+      maxHeight &&
+      maxHeight > element.clientHeight
+    ) {
       maxWidth = maxWidth * (element.clientHeight / maxHeight);
       maxHeight = element.clientHeight;
     }
