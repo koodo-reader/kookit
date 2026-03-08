@@ -190,9 +190,9 @@ export const showPDFHighlight = (
           (rect.left +
             parseFloat(getComputedStyle(docLayer as Element).marginLeft) +
             rect.width -
-            18) +
+            15) +
           "px; top:" +
-          (rect.top - 18) +
+          (rect.top - 15) +
           "px;" +
           "width: 16px; height: 16px; z-index: 2; cursor: pointer; font-size: 14px; line-height: 1;"
       );
