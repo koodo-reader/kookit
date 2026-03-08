@@ -86,6 +86,7 @@ async function slideAnimateTo(
 
   const body = tempDoc.body;
   const startTime = performance.now();
+  window.isSwiping = true;
 
   // 更激进的硬件加速设置
   body.style.willChange = "transform";
@@ -112,6 +113,7 @@ async function slideAnimateTo(
 
       render.record();
       isDragging = false;
+      window.isSwiping = false;
       return;
     }
 
