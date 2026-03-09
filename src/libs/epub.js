@@ -64,6 +64,7 @@ const childGetter = (doc, ns) => {
 
 const resolveURL = (url, relativeTo) => {
   try {
+    url = url.replace(/%2c/gi, ",").replace(/%3a/gi, ":");
     // if (relativeTo.includes(":")) return new URL(url, relativeTo);
     // the base needs to be a valid URL, so set a base URL and then remove it
     const root = "whatever://whatever/";
@@ -509,6 +510,27 @@ class Resources {
               item.href.includes("jpeg"))
         );
       }
+    }
+    if (!this.cover) {
+      this.cover = this.manifest.find(
+        (item) =>
+          item.href.toLowerCase().includes("cover") &&
+          (item.mediaType?.startsWith("image/") ||
+            item.href.toLowerCase().includes("png") ||
+            item.href.toLowerCase().includes("jpg") ||
+            item.href.toLowerCase().includes("svg") ||
+            item.href.toLowerCase().includes("jpeg"))
+      );
+    }
+    if (!this.cover) {
+      this.cover = this.manifest.find(
+        (item) =>
+          item.mediaType?.startsWith("image/") ||
+          item.href.toLowerCase().includes("png") ||
+          item.href.toLowerCase().includes("jpg") ||
+          item.href.toLowerCase().includes("svg") ||
+          item.href.toLowerCase().includes("jpeg")
+      );
     }
 
     this.cfis = CFI.fromElements($$itemref);
@@ -993,8 +1015,9 @@ export class EPUB {
   }
   async getCover() {
     const cover = this.resources?.cover;
-    return cover?.href
-      ? new Blob([await this.loadBlob(cover.href)], { type: cover.mediaType })
+    const coverBlob = cover?.href ? await this.loadBlob(cover.href) : null;
+    return cover?.href && coverBlob && coverBlob.size > 0
+      ? new Blob([coverBlob], { type: cover.mediaType })
       : null;
   }
   async getCalibreBookmarks() {

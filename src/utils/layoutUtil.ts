@@ -1,5 +1,6 @@
 import ChapterDoc from "../model/chapterDoc";
 import Chinese from "../libs/zh-convert";
+import { processDocumentBody } from "./bionicUtil";
 declare var window: any;
 export const convertStyleNum = (value: number) => {
   if (!value) return 0;
@@ -276,6 +277,9 @@ export const tranformText = (doc: Document) => {
         }
       });
   }
+  if (window.isBionic === "yes") {
+    processDocumentBody(doc);
+  }
 };
 export const handleTextStyle = (doc: Document) => {
   tranformText(doc);
@@ -385,6 +389,15 @@ export const handleImageSize = async (
           maxWidth = maxHeight * (width / height);
         }
       }
+    }
+    if (
+      readerMode !== "scroll" &&
+      maxWidth &&
+      maxHeight &&
+      maxHeight > element.clientHeight
+    ) {
+      maxWidth = maxWidth * (element.clientHeight / maxHeight);
+      maxHeight = element.clientHeight;
     }
     if (maxWidth || maxHeight) {
       //轻易不要改这里，很容易出问题

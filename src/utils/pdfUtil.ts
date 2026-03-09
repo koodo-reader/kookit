@@ -42,6 +42,7 @@ export const createPDFContainer = async (
   viewport: any,
   readerMode: string
 ) => {
+  const fragment = document.createDocumentFragment();
   for (let index = 0; index < chapterDocList.length; index++) {
     // Create container with aspect ratio
     const iframeContainer = document.createElement("div");
@@ -66,9 +67,9 @@ export const createPDFContainer = async (
       //break-inside: avoid;
       iframeContainer.style.breakInside = "avoid";
     }
-
-    element.appendChild(iframeContainer);
+    fragment.appendChild(iframeContainer);
   }
+  element.appendChild(fragment);
 };
 export const createPDFIframe = (chapterDocIndex: number, doc: Document) => {
   const iframeContainer = doc.getElementById(
