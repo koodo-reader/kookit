@@ -683,6 +683,15 @@ export const addAndroidTouchEvent = (
     },
     false
   );
+  //fix page scroll when selecting text
+  doc.addEventListener("scroll", () => {
+    if (readerMode === "single" || readerMode === "double") {
+      const selectedText = iWin.getSelection().toString().trim();
+      if (selectedText && scrollLeft > 0) {
+        doc.body.scrollLeft = scrollLeft;
+      }
+    }
+  });
 };
 
 export const addAppleTouchEvent = (
