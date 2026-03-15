@@ -165,6 +165,10 @@ export const createIframe = (element: HTMLElement, scale?: number) => {
   iframe.style.verticalAlign = "baseline";
   element.innerHTML = "";
   element.appendChild(iframe);
+  const doc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (doc && doc.documentElement) {
+    doc.documentElement.lang = "en"; // 方式1（推荐）
+  }
   // 控制iframe滚动到页面水平正中的位置
   if (scale) {
     element.scrollLeft = element.scrollWidth / 2 - element.clientWidth / 2;
