@@ -112,6 +112,9 @@ export const handlePrecacheAssets = async (bookStr, loadAsset) => {
 };
 export const handleImageMarker = (bookStr) => {
   let chapterDoc = new DOMParser().parseFromString(bookStr, "text/html") as any;
+  if (chapterDoc && chapterDoc.documentElement) {
+    chapterDoc.documentElement.lang = "en"; // 方式1（推荐）
+  }
   let imgDomList = getImageElement(chapterDoc);
   if (imgDomList.length === 0) {
     return bookStr;
