@@ -197,16 +197,6 @@ class StyleHelper {
     cssRules.push("margin-top: 0 !important");
     cssRules.push("margin-bottom: 0 !important");
 
-    if (ConfigService.getReaderConfig("textOrientation") === "horizontal") {
-      cssRules.push("writing-mode: horizontal-tb !important");
-      cssRules.push("text-orientation: mixed !important");
-    } else if (
-      ConfigService.getReaderConfig("textOrientation") === "vertical"
-    ) {
-      cssRules.push("writing-mode: vertical-rl !important");
-      cssRules.push("text-orientation: mixed !important");
-    }
-
     return cssRules.join("; ") + ";";
   }
   static getComicCss(ConfigService: any) {

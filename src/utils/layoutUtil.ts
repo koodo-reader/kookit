@@ -2,6 +2,9 @@ import ChapterDoc from "../model/chapterDoc";
 import Chinese from "../libs/zh-convert";
 import { processDocumentBody } from "./bionicUtil";
 declare var window: any;
+export const isVerticalLayout = (): boolean => {
+  return window.textOrientation === "vertical";
+};
 export const convertStyleNum = (value: number) => {
   if (!value) return 0;
   return parseFloat(value + "");
@@ -40,23 +43,44 @@ export const handleIframeHeight = async (
   if (readerMode !== "scroll") {
     iframe.height = element.clientHeight + "px";
     if (readerMode === "double") {
-      let section = Math.floor(element.clientWidth / 12);
-      let gap = section % 2 === 0 ? section : section - 1;
-      let pageWidth = (element.clientWidth + gap) / 2;
-      if (
-        ((doc.body.scrollWidth - doc.body.clientWidth) / pageWidth) % 2 ===
-        1
-      ) {
-        let tailElem = document.createElement("div");
-        tailElem.setAttribute(
-          "style",
-          "height: " +
-            doc.body.clientHeight +
-            "px; display: inline-block; width: " +
-            (pageWidth - gap) +
-            "px"
-        );
-        doc.body.appendChild(tailElem);
+      if (isVerticalLayout()) {
+        let section = Math.floor(element.clientHeight / 12);
+        let gap = section % 2 === 0 ? section : section - 1;
+        let pageHeight = (element.clientHeight + gap) / 2;
+        if (
+          ((doc.body.scrollHeight - doc.body.clientHeight) / pageHeight) % 2 ===
+          1
+        ) {
+          let tailElem = document.createElement("div");
+          tailElem.setAttribute(
+            "style",
+            "width: " +
+              doc.body.clientWidth +
+              "px; display: inline-block; height: " +
+              (pageHeight - gap) +
+              "px"
+          );
+          doc.body.appendChild(tailElem);
+        }
+      } else {
+        let section = Math.floor(element.clientWidth / 12);
+        let gap = section % 2 === 0 ? section : section - 1;
+        let pageWidth = (element.clientWidth + gap) / 2;
+        if (
+          ((doc.body.scrollWidth - doc.body.clientWidth) / pageWidth) % 2 ===
+          1
+        ) {
+          let tailElem = document.createElement("div");
+          tailElem.setAttribute(
+            "style",
+            "height: " +
+              doc.body.clientHeight +
+              "px; display: inline-block; width: " +
+              (pageWidth - gap) +
+              "px"
+          );
+          doc.body.appendChild(tailElem);
+        }
       }
     }
   } else {
@@ -187,6 +211,33 @@ export const progressInfo = (
   // if (parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") === 1) {
   //   await new Promise((r) => setTimeout(r, 1000));
   // }
+  const vertical = isVerticalLayout() && readerMode !== "scroll";
+  if (vertical) {
+    let section = Math.floor(element.clientHeight / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+    return {
+      totalPage:
+        readerMode === "single"
+          ? Math.round(
+              parseFloat(
+                doc.body.scrollHeight / (doc.body.clientHeight + gap) + ""
+              )
+            )
+          : Math.round(
+              parseFloat(
+                doc.body.scrollHeight / (doc.body.clientHeight + gap) + ""
+              )
+            ) * 2,
+      currentPage:
+        Math.round(
+          parseFloat(
+            convertStyleNum(doc.body.scrollTop) /
+              (doc.body.clientHeight + gap) +
+              ""
+          )
+        ) + 1,
+    };
+  }
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   return {
@@ -454,20 +505,34 @@ export const handleLayout = (
   style.textContent =
     "p,empty-line{display: inherit;margin-block-start: inherit;margin-block-end: inherit;margin-inline-start: inherit;margin-inline-end: inherit;}body{margin: 0px}";
   doc.head.appendChild(style);
+  const vertical = isVerticalLayout();
   if (readerMode === "scroll") {
     return;
   }
   let scale = readerMode === "double" ? 2 : 1;
-  let section = Math.floor(element.clientWidth / 12);
-  let gap = section % 2 === 0 ? section : section - 1;
-  doc.body.setAttribute(
-    "style",
-    `width: ${
-      element.clientWidth + "px"
-    };height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action:none; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
-      (element.clientWidth - gap) / scale
-    }px;`
-  );
+  if (vertical) {
+    let section = Math.floor(element.clientHeight / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+    doc.body.setAttribute(
+      "style",
+      `writing-mode: vertical-rl; text-orientation: mixed; height: ${
+        element.clientHeight + "px"
+      };width: 100%;overflow-y: hidden;overflow-x: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action:none; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
+        (element.clientHeight - gap) / scale
+      }px;`
+    );
+  } else {
+    let section = Math.floor(element.clientWidth / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+    doc.body.setAttribute(
+      "style",
+      `width: ${
+        element.clientWidth + "px"
+      };height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action:none; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
+        (element.clientWidth - gap) / scale
+      }px;`
+    );
+  }
 };
 
 export const isElement = (obj) => {
