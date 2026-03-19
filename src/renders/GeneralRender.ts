@@ -558,8 +558,7 @@ class GeneralRender extends EventEmitter {
     if (
       (this.readerMode === "scroll" &&
         convertStyleNum(this.element.scrollTop) === 0) ||
-      (this.isVertical() &&
-        convertStyleNum(doc.body.scrollTop) === 0) ||
+      (this.isVertical() && convertStyleNum(doc.body.scrollTop) === 0) ||
       (this.readerMode !== "scroll" &&
         !this.isVertical() &&
         convertStyleNum(doc.body.scrollLeft) === 0)
@@ -901,7 +900,10 @@ class GeneralRender extends EventEmitter {
   getProgress() {
     let doc = this.getDocument();
     if (!doc) return;
-    return progressInfo(this.readerMode, doc, this.element);
+    return {
+      ...progressInfo(this.readerMode, doc, this.element),
+      percentage: this.tempLocation.percentage,
+    };
   }
   async record() {
     if (this.animation !== "") {
