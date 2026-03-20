@@ -31,6 +31,11 @@ class StyleHelper {
     // Code formatting
     cssRules.push("code,pre{white-space: pre-wrap;}");
 
+    // Blockquote styles
+    cssRules.push(
+      "blockquote{border-left: 4px solid #ccc; padding-left: 1em; margin: 1em 0; color: #666;}"
+    );
+
     // Paragraph margin reset
     cssRules.push("div,p{margin-block: 0;margin-inline: 0;display: block;}");
 

@@ -903,7 +903,7 @@ class GeneralRender extends EventEmitter {
     return {
       ...progressInfo(this.readerMode, doc, this.element),
       percentage: this.tempLocation.percentage,
-    };
+    } as any;
   }
   async record() {
     if (this.animation !== "") {
