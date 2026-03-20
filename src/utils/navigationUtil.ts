@@ -1069,6 +1069,14 @@ export const isScrolledIntoView = (
   readerMode: string
 ) => {
   var isVisible = false;
+  const computedStyle = getComputedStyle(el);
+  if (
+    computedStyle.display === "none" ||
+    computedStyle.visibility === "hidden" ||
+    computedStyle.opacity === "0"
+  ) {
+    return false;
+  }
   var rect = el.getBoundingClientRect();
   const vertical = isVerticalLayout() && readerMode !== "scroll";
   if (vertical && el.textContent && el.textContent.trim()) {
