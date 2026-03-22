@@ -30,7 +30,7 @@ import { addPageAnimation } from "../utils/animationUtil";
 import rangy from "rangy/lib/rangy-core.js";
 import "rangy/lib/rangy-textrange";
 
-import { getPDFSearchResult } from "../utils/pdfUtil";
+import { getPDFSearchResult, isElectron } from "../utils/pdfUtil";
 import { addAndroidTouchEvent, addAppleTouchEvent } from "../utils/touchUtil";
 declare var window: any;
 class GeneralRender extends EventEmitter {
@@ -90,7 +90,12 @@ class GeneralRender extends EventEmitter {
     this.tempLocation = {};
     this.isBionic = config.isBionic || "no";
     window.isBionic = this.isBionic;
-    this.isAllowScript = config.isAllowScript || "no";
+
+    //浏览器和手机版环境已经有严格的安全限制，无需额外限制，PDF中无法执行代码，强行开启则无法渲染图书
+    this.isAllowScript =
+      this.isMobile === "yes" || !isElectron() || this.format === "PDF"
+        ? "yes"
+        : config.isAllowScript || "no";
     this.flipToNextPage = () => {};
     this.flipToPrevPage = () => {};
     this.mouseDownHandler = () => {};

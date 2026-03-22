@@ -194,10 +194,9 @@ export const createIframe = (
   iframe.tabIndex = 0;
   iframe.id = "kookit-iframe";
   iframe.style.verticalAlign = "baseline";
-  iframe.setAttribute(
-    "sandbox",
-    isAllowScript === "yes" ? "allow-scripts" : ""
-  );
+  if (isAllowScript !== "yes") {
+    iframe.setAttribute("sandbox", "");
+  }
   element.innerHTML = "";
   element.appendChild(iframe);
   const doc = iframe.contentDocument || iframe.contentWindow?.document;
