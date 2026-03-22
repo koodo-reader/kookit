@@ -177,7 +177,11 @@ export const handleImageMarker = (bookStr) => {
     return chapterDoc.documentElement.innerHTML;
   }
 };
-export const createIframe = (element: HTMLElement, scale?: number) => {
+export const createIframe = (
+  element: HTMLElement,
+  isAllowScript: string,
+  scale?: number
+) => {
   var iframe = document.createElement("iframe");
   iframe.style.width = scale ? (scale - 0.4) * 100 + "%" : "100%";
   iframe.style.margin = "0";
@@ -190,6 +194,10 @@ export const createIframe = (element: HTMLElement, scale?: number) => {
   iframe.tabIndex = 0;
   iframe.id = "kookit-iframe";
   iframe.style.verticalAlign = "baseline";
+  iframe.setAttribute(
+    "sandbox",
+    isAllowScript === "yes" ? "allow-scripts" : ""
+  );
   element.innerHTML = "";
   element.appendChild(iframe);
   const doc = iframe.contentDocument || iframe.contentWindow?.document;

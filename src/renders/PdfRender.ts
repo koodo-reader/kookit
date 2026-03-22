@@ -77,9 +77,9 @@ class PdfRender extends GeneralRender {
           document.body.clientWidth &&
         this.readerMode !== "double"
       ) {
-        createIframe(element, this.scale);
+        createIframe(element, this.isAllowScript, this.scale);
       } else {
-        createIframe(element);
+        createIframe(element, this.isAllowScript);
       }
       let viewport: any;
       let templateIndex: number = 0;

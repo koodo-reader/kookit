@@ -106,7 +106,7 @@ class PdfTextRender extends GeneralRender {
           return src;
         };
       }
-      createIframe(element);
+      createIframe(element, this.isAllowScript);
       let doc = this.getDocument();
       if (!doc) return;
       handleLayout(element, this.readerMode, doc);

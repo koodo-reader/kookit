@@ -90,6 +90,7 @@ export const createPDFIframe = (chapterDocIndex: number, doc: Document) => {
   iframe.style.font = "inherit";
   iframe.scrolling = "no";
   iframe.tabIndex = 0;
+  iframe.setAttribute("sandbox", "");
   iframe.id = "pdf-iframe-" + chapterDocIndex;
 
   // Add style element
