@@ -93,9 +93,7 @@ class GeneralRender extends EventEmitter {
 
     //浏览器和手机版环境已经有严格的安全限制，无需额外限制，PDF中无法执行代码，强行开启则无法渲染图书
     this.isAllowScript =
-      this.isMobile === "yes" || !isElectron() || this.format === "PDF"
-        ? "yes"
-        : config.isAllowScript || "no";
+      this.format === "PDF" ? "yes" : config.isAllowScript || "no";
     this.flipToNextPage = () => {};
     this.flipToPrevPage = () => {};
     this.mouseDownHandler = () => {};
