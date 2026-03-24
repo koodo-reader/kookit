@@ -62,7 +62,7 @@ class StyleHelper {
 
     return cssRules.join("");
   }
-  //force horionztal writing mode
+  //force horizontal writing mode
   static getCustomCss(ConfigService: any, isTitle: boolean = false) {
     let cssRules: string[] = [];
 
