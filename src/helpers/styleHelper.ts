@@ -15,6 +15,11 @@ class StyleHelper {
       "body,html{margin: 0px !important; padding: 0px !important; font-size: 18px; background-color: transparent !important;}"
     );
 
+    // Force horizontal writing mode - only if vertical writing is not enabled
+    if (ConfigService.getReaderConfig("textOrientation") !== "vertical") {
+      cssRules.push("body,html{writing-mode: horizontal-tb !important;}");
+    }
+
     // Content elements with custom styles
     cssRules.push(
       `a, article, cite, div, li, p, span:not(.kookit-note), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
@@ -151,6 +156,11 @@ class StyleHelper {
     // Font weight - only if bold is enabled
     if (ConfigService.getReaderConfig("isBold") === "yes") {
       cssRules.push("font-weight: bold !important");
+    }
+
+    // Force horizontal writing mode - only if vertical writing is not enabled
+    if (ConfigService.getReaderConfig("textOrientation") !== "vertical") {
+      cssRules.push("writing-mode: horizontal-tb !important");
     }
 
     // Font style - only if italic is enabled

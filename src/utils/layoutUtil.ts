@@ -1,6 +1,6 @@
 import Chinese from "../libs/zh-convert";
 import { processDocumentBody } from "./bionicUtil";
-import { isElectron } from "./pdfUtil";
+import { isElectron } from "./common";
 declare var window: any;
 export const isVerticalLayout = (): boolean => {
   return window.textOrientation === "vertical";

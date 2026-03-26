@@ -30,7 +30,7 @@ import { addPageAnimation } from "../utils/animationUtil";
 import rangy from "rangy/lib/rangy-core.js";
 import "rangy/lib/rangy-textrange";
 
-import { getPDFSearchResult, isElectron } from "../utils/pdfUtil";
+import { getPDFSearchResult } from "../utils/pdfUtil";
 import { addAndroidTouchEvent, addAppleTouchEvent } from "../utils/touchUtil";
 declare var window: any;
 class GeneralRender extends EventEmitter {
