@@ -165,7 +165,10 @@ class StyleHelper {
 
     // Hyphenation - only if enabled
     if (ConfigService.getReaderConfig("isHyphenation") === "yes") {
-      cssRules.push("hyphens: auto");
+      // !important 防止被书籍自身 CSS 覆盖；
+      // hyphens: auto 在浏览器有词典时启用语言级连字，
+      // 无词典时（Electron）仍会使用文本中的软连字符 \u00AD（CSS 规范保证）
+      cssRules.push("hyphens: auto !important");
       cssRules.push("text-align: justify !important");
     }
 
@@ -204,6 +207,7 @@ class StyleHelper {
 
     return cssRules.join("; ") + ";";
   }
+
   static getComicCss(ConfigService: any) {
     const cssRules: string[] = [];
 

@@ -39,6 +39,7 @@ class GeneralRender extends EventEmitter {
   animation: string;
   convertChinese: string | undefined;
   isIndent: string | undefined;
+  isHyphenation: string | undefined;
   isDarkMode: string | undefined;
   textOrientation: string | undefined;
   book: any;
@@ -64,6 +65,7 @@ class GeneralRender extends EventEmitter {
     animation: string;
     convertChinese?: string;
     isIndent?: string;
+    isHyphenation?: string;
     isDarkMode?: string;
     isMobile?: string;
     isBionic?: string;
@@ -78,6 +80,8 @@ class GeneralRender extends EventEmitter {
     window.convertChinese = config.convertChinese;
     this.isIndent = config.isIndent;
     window.isIndent = config.isIndent;
+    this.isHyphenation = config.isHyphenation || "no";
+    window.isHyphenation = this.isHyphenation;
     this.isDarkMode = config.isDarkMode;
     this.isMobile = config.isMobile;
     this.textOrientation = config.textOrientation;

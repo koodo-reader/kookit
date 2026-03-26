@@ -1,6 +1,6 @@
-import ChapterDoc from "../model/chapterDoc";
 import Chinese from "../libs/zh-convert";
 import { processDocumentBody } from "./bionicUtil";
+import { isElectron } from "./pdfUtil";
 declare var window: any;
 export const isVerticalLayout = (): boolean => {
   return window.textOrientation === "vertical";
@@ -138,6 +138,10 @@ export const handleImageMarker = (bookStr) => {
   let chapterDoc = new DOMParser().parseFromString(bookStr, "text/html") as any;
   if (chapterDoc && chapterDoc.documentElement) {
     chapterDoc.documentElement.lang = "en"; // 方式1（推荐）
+  }
+  if (window.isHyphenation === "yes" && isElectron()) {
+    // to fix electron-specific issue where `hyphens: auto` is silently ignored without a Chromium hyphenation dictionary.
+    applyHyphenation(chapterDoc);
   }
   let imgDomList = getImageElement(chapterDoc);
   if (imgDomList.length === 0) {
@@ -568,3 +572,65 @@ export function getSelectedElement(doc: Document) {
   }
   return null;
 }
+/**
+ * 向文档文本节点注入软连字符（U+00AD），解决 Electron 无 Chromium 连字词典时
+ * `hyphens: auto` 静默失效的问题。CSS 规范保证：即使 hyphens:auto 无词典，
+ * 浏览器仍会在 \u00AD 处断行并插入可见连字符。
+ *
+ * 调用时机：章节内容渲染完成后，在 Electron 环境中调用。
+ * @param doc - iframe 的 contentDocument
+ */
+export const applyHyphenation = (doc: Document): void => {
+  if (!doc || !doc.body) return;
+  const SHY = "\u00AD";
+  const SKIP_TAGS = new Set([
+    "CODE",
+    "PRE",
+    "SCRIPT",
+    "STYLE",
+    "KBD",
+    "SAMP",
+    "A",
+  ]);
+
+  // 向 9+ 字符的单词中按固定步长插入软连字符
+  // 保证首尾各保留 3 个字符不断，每 6 字符一个断点
+  function addShy(text: string): string {
+    return text.replace(/[A-Za-z\u00C0-\u024F]{9,}/g, (word) => {
+      const len = word.length;
+      let result = "";
+      for (let i = 0; i < len; i++) {
+        result += word[i];
+        if (i >= 2 && len - i - 1 >= 3 && (i + 1) % 6 === 0) {
+          result += SHY;
+        }
+      }
+      return result;
+    });
+  }
+
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, {
+    acceptNode(node: Node) {
+      const parent = (node as Text).parentElement;
+      if (!parent) return NodeFilter.FILTER_REJECT;
+      if (SKIP_TAGS.has(parent.tagName?.toUpperCase())) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+
+  const nodes: Text[] = [];
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    nodes.push(node as Text);
+  }
+
+  for (const textNode of nodes) {
+    const original = textNode.textContent || "";
+    const updated = addShy(original);
+    if (updated !== original) {
+      textNode.textContent = updated;
+    }
+  }
+};
