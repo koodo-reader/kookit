@@ -623,6 +623,7 @@ export const addAndroidTouchEvent = (
     return false;
   };
   let scrollLeft = 0;
+  let scrollTop = 0;
   let offsetLeft = 0;
   let offsetTop = 0;
   doc.addEventListener(
@@ -634,6 +635,7 @@ export const addAndroidTouchEvent = (
       offsetTop = getScreenTopOffset();
       if (readerMode === "scroll") return;
       scrollLeft = doc.body.scrollLeft;
+      scrollTop = doc.body.scrollTop;
 
       //prevent doc.body from scrolling
     },
@@ -666,6 +668,9 @@ export const addAndroidTouchEvent = (
       if (scrollLeft > 0) {
         doc.body.scrollLeft = scrollLeft;
       }
+      if (scrollTop > 0) {
+        doc.body.scrollTop = scrollTop;
+      }
       selectionCount++;
 
       const now = Date.now();
@@ -689,6 +694,9 @@ export const addAndroidTouchEvent = (
       const selectedText = iWin.getSelection().toString().trim();
       if (selectedText && scrollLeft > 0) {
         doc.body.scrollLeft = scrollLeft;
+      }
+      if (selectedText && scrollTop > 0) {
+        doc.body.scrollTop = scrollTop;
       }
     }
   });
