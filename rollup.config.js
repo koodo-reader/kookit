@@ -142,6 +142,41 @@ export default [
       warn(warning);
     },
   },
+  {
+    input: "src/mobile.ts",
+    output: [
+      {
+        name: "Kookit",
+        file: getMobileOutputPath("kookit-mobile.min.js"),
+        format: "es",
+      },
+    ],
+    plugins: [
+      resolve({ browser: true }),
+      commonjs({
+        include: [/node_modules/],
+        ignoreGlobal: true,
+      }),
+      json(),
+      typescript({ tsconfig: "./tsconfig.json" }),
+      terser({
+        format: {
+          comments: false, // 移除所有注释
+        },
+      }), // 压缩代码
+    ],
+    external: [],
+    onwarn: (warning, warn) => {
+      // 忽略循环依赖警告
+      if (warning.code === "CIRCULAR_DEPENDENCY") {
+        return;
+      }
+      if (warning.code === "EVAL") {
+        return;
+      }
+      warn(warning);
+    },
+  },
   // {
   //   input: "src/mobile.ts",
   //   output: [{

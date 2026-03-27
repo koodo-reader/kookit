@@ -7,7 +7,7 @@
     "type": "git",
     "url": "git+https://github.com/troyeguo/koodo-render.git"
   },
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "keywords": [
     "typescript",
     "npm",

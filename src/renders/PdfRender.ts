@@ -77,9 +77,9 @@ class PdfRender extends GeneralRender {
           document.body.clientWidth &&
         this.readerMode !== "double"
       ) {
-        createIframe(element, this.scale);
+        createIframe(element, this.isAllowScript, this.scale);
       } else {
-        createIframe(element);
+        createIframe(element, this.isAllowScript);
       }
       let viewport: any;
       let templateIndex: number = 0;
@@ -746,7 +746,8 @@ class PdfRender extends GeneralRender {
           scale,
           subDoc,
           item.notes !== "",
-          this.isMobile === "yes"
+          this.isMobile === "yes",
+          item.notes || ""
         );
       } catch (e) {
         console.warn(
@@ -792,7 +793,8 @@ class PdfRender extends GeneralRender {
       scale,
       subDoc,
       item.notes !== "",
-      this.isMobile === "yes"
+      this.isMobile === "yes",
+      item.notes || ""
     );
     this.clearSelection();
   }

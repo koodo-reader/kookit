@@ -4,6 +4,7 @@ import {
   convertStyleNum,
   handleIframeHeight,
   handleOneChapterDoc,
+  isVerticalLayout,
   progressInfo,
 } from "./layoutUtil";
 import Chapter from "../model/chapter";
@@ -29,9 +30,7 @@ export const handleScrollPage = async (
   flipToPrevPage: () => void,
   isMobile: string | undefined
 ) => {
-  let section = Math.floor(element.clientWidth / 12);
-  let gap = section % 2 === 0 ? section : section - 1;
-  const width = element.clientWidth;
+  const vertical = isVerticalLayout();
 
   if (animation === "mimical" && isMobile !== "yes") {
     let bookDiv = document.getElementById("book");
@@ -49,31 +48,62 @@ export const handleScrollPage = async (
     }
   }
 
-  const currentScrollLeft = doc.body.scrollLeft;
-  const scrollDistance = width + gap;
+  if (vertical) {
+    let section = Math.floor(element.clientHeight / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+    const height = element.clientHeight;
+    const currentScrollTop = doc.body.scrollTop;
+    const scrollDistance = height + gap;
 
-  if (delta > 0) {
-    // previous page - 计算当前页数并减1
-    const currentPage = Math.round(currentScrollLeft / scrollDistance);
-    const targetPage = Math.max(0, currentPage - 1);
-    const targetScrollLeft = targetPage * scrollDistance;
-    doc.body.scrollTo({
-      top: 0,
-      left: targetScrollLeft,
-      behavior:
-        animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
-    });
-  } else if (delta < 0) {
-    // next page - 计算当前页数并加1
-    const currentPage = Math.round(currentScrollLeft / scrollDistance);
-    const targetPage = currentPage + 1;
-    const targetScrollLeft = targetPage * scrollDistance;
-    doc.body.scrollTo({
-      top: 0,
-      left: targetScrollLeft,
-      behavior:
-        animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
-    });
+    if (delta > 0) {
+      const currentPage = Math.round(currentScrollTop / scrollDistance);
+      const targetPage = Math.max(0, currentPage - 1);
+      const targetScrollTop = targetPage * scrollDistance;
+      doc.body.scrollTo({
+        left: 0,
+        top: targetScrollTop,
+        behavior:
+          animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
+      });
+    } else if (delta < 0) {
+      const currentPage = Math.round(currentScrollTop / scrollDistance);
+      const targetPage = currentPage + 1;
+      const targetScrollTop = targetPage * scrollDistance;
+      doc.body.scrollTo({
+        left: 0,
+        top: targetScrollTop,
+        behavior:
+          animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
+      });
+    }
+  } else {
+    let section = Math.floor(element.clientWidth / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+    const width = element.clientWidth;
+    const currentScrollLeft = doc.body.scrollLeft;
+    const scrollDistance = width + gap;
+
+    if (delta > 0) {
+      const currentPage = Math.round(currentScrollLeft / scrollDistance);
+      const targetPage = Math.max(0, currentPage - 1);
+      const targetScrollLeft = targetPage * scrollDistance;
+      doc.body.scrollTo({
+        top: 0,
+        left: targetScrollLeft,
+        behavior:
+          animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
+      });
+    } else if (delta < 0) {
+      const currentPage = Math.round(currentScrollLeft / scrollDistance);
+      const targetPage = currentPage + 1;
+      const targetScrollLeft = targetPage * scrollDistance;
+      doc.body.scrollTo({
+        top: 0,
+        left: targetScrollLeft,
+        behavior:
+          animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
+      });
+    }
   }
 };
 const findValidChapter = (
@@ -376,13 +406,22 @@ export const handleScrollPosition = async (
   doc: Document
 ) => {
   let left = 0;
+  let top = 0;
   let targetNode: any = doc.body;
+  const vertical = isVerticalLayout() && readerMode !== "scroll";
   if (page && readerMode !== "scroll") {
-    let section = Math.floor(element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
-    const width = convertComputedNum(getComputedStyle(element).width);
-    let pageWidth = width + gap;
-    left = pageWidth * (parseInt(page) - 1);
+    if (vertical) {
+      let section = Math.floor(element.clientHeight / 12);
+      let gap = section % 2 === 0 ? section : section - 1;
+      let pageHeight = element.clientHeight + gap;
+      top = pageHeight * (parseInt(page) - 1);
+    } else {
+      let section = Math.floor(element.clientWidth / 12);
+      let gap = section % 2 === 0 ? section : section - 1;
+      const width = convertComputedNum(getComputedStyle(element).width);
+      let pageWidth = width + gap;
+      left = pageWidth * (parseInt(page) - 1);
+    }
   } else if (text) {
     let nodeList = getBlockElement(doc.body);
     let targetNodeList = nodeList.filter((s, index) => {
@@ -405,15 +444,27 @@ export const handleScrollPosition = async (
       return;
     }
     targetNode = getCloestBlock(targetNodeList[0], element, readerMode);
-    left = targetNode
-      ? convertStyleNum(targetNode.offsetLeft) -
-        convertStyleNum(
-          targetNode.marginLeft ||
-            parseFloat(getComputedStyle(targetNode).marginLeft)
-        )
-      : text === "prevChapter"
-        ? doc.body.scrollWidth
-        : 0;
+    if (vertical) {
+      top = targetNode
+        ? convertStyleNum(targetNode.offsetTop) -
+          convertStyleNum(
+            targetNode.marginTop ||
+              parseFloat(getComputedStyle(targetNode).marginTop)
+          )
+        : text === "prevChapter"
+          ? doc.body.scrollHeight
+          : 0;
+    } else {
+      left = targetNode
+        ? convertStyleNum(targetNode.offsetLeft) -
+          convertStyleNum(
+            targetNode.marginLeft ||
+              parseFloat(getComputedStyle(targetNode).marginLeft)
+          )
+        : text === "prevChapter"
+          ? doc.body.scrollWidth
+          : 0;
+    }
   } else if (href && href.indexOf("#") > -1) {
     let id = CSS.escape(href.split("#").reverse()[0]);
     if (!doc.body.querySelector("#" + CSS.escape(id))) {
@@ -424,16 +475,30 @@ export const handleScrollPosition = async (
       element,
       readerMode
     );
-    left = targetNode
-      ? convertStyleNum(targetNode.offsetLeft) -
-        convertStyleNum(
-          targetNode.marginLeft ||
-            parseFloat(getComputedStyle(targetNode).marginLeft)
-        )
-      : 0;
+    if (vertical) {
+      top = targetNode
+        ? convertStyleNum(targetNode.offsetTop) -
+          convertStyleNum(
+            targetNode.marginTop ||
+              parseFloat(getComputedStyle(targetNode).marginTop)
+          )
+        : 0;
+    } else {
+      left = targetNode
+        ? convertStyleNum(targetNode.offsetLeft) -
+          convertStyleNum(
+            targetNode.marginLeft ||
+              parseFloat(getComputedStyle(targetNode).marginLeft)
+          )
+        : 0;
+    }
   }
   if (readerMode !== "scroll") {
-    doc.body.scrollTo(left, 0);
+    if (vertical) {
+      doc.body.scrollTo(0, top);
+    } else {
+      doc.body.scrollTo(left, 0);
+    }
   } else {
     targetNode.scrollIntoView();
   }
@@ -444,28 +509,52 @@ export const getCloestBlock = (
   element: HTMLElement,
   readerMode: string
 ) => {
-  let section = Math.floor(element.clientWidth / 12);
-  let gap = section % 2 === 0 ? section : section - 1;
-  let offsetLeft =
-    convertStyleNum(targetNode.offsetLeft) -
-    convertStyleNum(
-      (targetNode as any).marginLeft ||
-        parseFloat(getComputedStyle(targetNode).marginLeft)
-    );
+  const vertical = isVerticalLayout() && readerMode !== "scroll";
   if (readerMode === "scroll") {
     return targetNode;
-  } else if (
-    readerMode !== "scroll" &&
-    checkDivisibleInRange(
-      parseInt(offsetLeft + ""),
-      (element.clientWidth + gap) / 2
-    )
-  ) {
-    return targetNode;
-  } else if (targetNode.parentElement) {
-    return getCloestBlock(targetNode.parentElement, element, readerMode);
+  }
+  if (vertical) {
+    let section = Math.floor(element.clientHeight / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+    let offsetTop =
+      convertStyleNum(targetNode.offsetTop) -
+      convertStyleNum(
+        (targetNode as any).marginTop ||
+          parseFloat(getComputedStyle(targetNode).marginTop)
+      );
+    if (
+      checkDivisibleInRange(
+        parseInt(offsetTop + ""),
+        (element.clientHeight + gap) / 2
+      )
+    ) {
+      return targetNode;
+    } else if (targetNode.parentElement) {
+      return getCloestBlock(targetNode.parentElement, element, readerMode);
+    } else {
+      return targetNode;
+    }
   } else {
-    return targetNode;
+    let section = Math.floor(element.clientWidth / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+    let offsetLeft =
+      convertStyleNum(targetNode.offsetLeft) -
+      convertStyleNum(
+        (targetNode as any).marginLeft ||
+          parseFloat(getComputedStyle(targetNode).marginLeft)
+      );
+    if (
+      checkDivisibleInRange(
+        parseInt(offsetLeft + ""),
+        (element.clientWidth + gap) / 2
+      )
+    ) {
+      return targetNode;
+    } else if (targetNode.parentElement) {
+      return getCloestBlock(targetNode.parentElement, element, readerMode);
+    } else {
+      return targetNode;
+    }
   }
 };
 const checkDivisibleInRange = (x: number, y: number): boolean => {
@@ -545,18 +634,35 @@ export const isCurrentNodeFarFromParrent = (
   element: HTMLElement,
   readerMode
 ) => {
-  let section = Math.floor(element.clientWidth / 12);
-  let gap = section % 2 === 0 ? section : section - 1;
-  if (
-    Math.abs(
-      targetNode.offsetLeft -
-        getCloestBlock(targetNode, element, readerMode).offsetLeft
-    ) >
-    (element.clientWidth + gap) / 2
-  ) {
-    return true;
+  const vertical = isVerticalLayout() && readerMode !== "scroll";
+  if (vertical) {
+    let section = Math.floor(element.clientHeight / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+    if (
+      Math.abs(
+        targetNode.offsetTop -
+          getCloestBlock(targetNode, element, readerMode).offsetTop
+      ) >
+      (element.clientHeight + gap) / 2
+    ) {
+      return true;
+    } else {
+      return false;
+    }
   } else {
-    return false;
+    let section = Math.floor(element.clientWidth / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+    if (
+      Math.abs(
+        targetNode.offsetLeft -
+          getCloestBlock(targetNode, element, readerMode).offsetLeft
+      ) >
+      (element.clientWidth + gap) / 2
+    ) {
+      return true;
+    } else {
+      return false;
+    }
   }
 };
 export const handleHashChapter = (
@@ -963,8 +1069,25 @@ export const isScrolledIntoView = (
   readerMode: string
 ) => {
   var isVisible = false;
+  const computedStyle = getComputedStyle(el);
+  if (
+    computedStyle.display === "none" ||
+    computedStyle.visibility === "hidden" ||
+    computedStyle.opacity === "0"
+  ) {
+    return false;
+  }
   var rect = el.getBoundingClientRect();
-  if (readerMode !== "scroll" && el.textContent && el.textContent.trim()) {
+  const vertical = isVerticalLayout() && readerMode !== "scroll";
+  if (vertical && el.textContent && el.textContent.trim()) {
+    let elemTop = rect.top;
+    isVisible = elemTop > -10 && elemTop <= element.clientHeight;
+  } else if (
+    readerMode !== "scroll" &&
+    !vertical &&
+    el.textContent &&
+    el.textContent.trim()
+  ) {
     let elemLeft = rect.left;
     isVisible = elemLeft > -10 && elemLeft <= element.clientWidth;
   } else if (
@@ -976,9 +1099,12 @@ export const isScrolledIntoView = (
     isVisible =
       elemTop >= element.scrollTop &&
       elemTop <= element.scrollTop + element.clientHeight;
-  } else if (readerMode !== "scroll") {
+  } else if (readerMode !== "scroll" && !vertical) {
     let elemLeft = rect.left;
     isVisible = elemLeft >= 0 && elemLeft <= element.clientWidth;
+  } else if (vertical) {
+    let elemTop = rect.top;
+    isVisible = elemTop >= 0 && elemTop <= element.clientHeight;
   }
   return isVisible;
 };

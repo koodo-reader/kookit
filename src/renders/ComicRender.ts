@@ -32,7 +32,7 @@ class ComicRender extends GeneralRender {
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
       this.element = element;
-      createIframe(element);
+      createIframe(element, this.isAllowScript);
       if (!this.book) {
         try {
           await this.parse();

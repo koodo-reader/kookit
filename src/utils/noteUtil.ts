@@ -15,6 +15,70 @@ export const colors = ["#FEF3CD", "#FBFACC", "#CEFACD", "#CDE9FA"];
 export const lines = ["#FF0000", "#000080", "#0000FF", "#2EFF2E"];
 export const pdfColors = ["#fac106", "#ebe702", "#0be603", "#0493e6"];
 
+const TOOLTIP_ID = "kookit-note-tooltip";
+
+const showNoteTooltip = (
+  content: string,
+  clientX: number,
+  clientY: number,
+  doc: Document
+) => {
+  let tooltip = doc.getElementById(TOOLTIP_ID) as HTMLElement | null;
+  if (!tooltip) {
+    tooltip = doc.createElement("span");
+    tooltip.setAttribute("id", TOOLTIP_ID);
+    tooltip.setAttribute("class", "kookit-note");
+    tooltip.setAttribute(
+      "style",
+      "position: fixed; z-index: 9999; max-width: 280px; padding: 6px 10px;" +
+        " background: #383838; color: #fff; font-size: 15px !important;" +
+        " border-radius: 6px; pointer-events: none;" +
+        " word-break: break-word; white-space: pre-wrap; line-height: 1.5;"
+    );
+    doc.body.appendChild(tooltip);
+  }
+  tooltip.textContent = content;
+  tooltip.style.display = "block";
+  const offset = 14;
+  const vpW = doc.documentElement.clientWidth || window.innerWidth;
+  const vpH = doc.documentElement.clientHeight || window.innerHeight;
+  let left = clientX + offset;
+  let top = clientY + offset;
+  tooltip.style.left = left + "px";
+  tooltip.style.top = top + "px";
+  // clamp after paint so we know tooltip size
+  requestAnimationFrame(() => {
+    if (!tooltip) return;
+    const tw = tooltip.offsetWidth;
+    const th = tooltip.offsetHeight;
+    if (left + tw > vpW) left = clientX - tw - offset;
+    if (top + th > vpH) top = clientY - th - offset;
+    tooltip.style.left = Math.max(0, left) + "px";
+    tooltip.style.top = Math.max(0, top) + "px";
+  });
+};
+
+const moveNoteTooltip = (clientX: number, clientY: number, doc: Document) => {
+  const tooltip = doc.getElementById(TOOLTIP_ID) as HTMLElement | null;
+  if (!tooltip || tooltip.style.display === "none") return;
+  const offset = 14;
+  const vpW = doc.documentElement.clientWidth || window.innerWidth;
+  const vpH = doc.documentElement.clientHeight || window.innerHeight;
+  let left = clientX + offset;
+  let top = clientY + offset;
+  const tw = tooltip.offsetWidth;
+  const th = tooltip.offsetHeight;
+  if (left + tw > vpW) left = clientX - tw - offset;
+  if (top + th > vpH) top = clientY - th - offset;
+  tooltip.style.left = Math.max(0, left) + "px";
+  tooltip.style.top = Math.max(0, top) + "px";
+};
+
+const hideNoteTooltip = (doc: Document) => {
+  const tooltip = doc.getElementById(TOOLTIP_ID) as HTMLElement | null;
+  if (tooltip) tooltip.style.display = "none";
+};
+
 export const showNoteHighlight = (
   range: any,
   colorIndex: number,
@@ -23,7 +87,8 @@ export const showNoteHighlight = (
   doc: Document,
   iframe: any,
   isNote: boolean,
-  isMobile: boolean
+  isMobile: boolean,
+  noteContent: string = ""
 ) => {
   let colorCode = classes[colorIndex];
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
@@ -41,7 +106,8 @@ export const showNoteHighlight = (
     handleNoteClick,
     doc,
     isNote,
-    isMobile
+    isMobile,
+    noteContent
   );
   if (!iWin || !iWin.getSelection()) return;
   iWin.getSelection()?.empty();
@@ -55,7 +121,8 @@ export const showPDFHighlight = (
   scale: number,
   doc: Document,
   isNote: boolean,
-  isMobile: boolean
+  isMobile: boolean,
+  noteContent: string = ""
 ) => {
   let colorCode = classes[colorIndex];
   let pageElement: any = doc.querySelector(".noteLayer");
@@ -155,6 +222,20 @@ export const showPDFHighlight = (
     );
     newNode?.setAttribute("data-key", noteKey);
     newNode?.setAttribute("class", "kookit-note");
+    if (isNote && noteContent) {
+      newNode?.setAttribute("data-note-content", noteContent);
+    }
+    newNode?.addEventListener("mouseenter", (event: any) => {
+      if (!isNote || !noteContent) return;
+      showNoteTooltip(noteContent, event.clientX, event.clientY, doc);
+    });
+    newNode?.addEventListener("mousemove", (event: any) => {
+      if (!isNote || !noteContent) return;
+      moveNoteTooltip(event.clientX, event.clientY, doc);
+    });
+    newNode?.addEventListener("mouseleave", () => {
+      hideNoteTooltip(doc);
+    });
     newNode?.addEventListener("click", (event: any) => {
       if (event && event.target) {
         if (
@@ -244,7 +325,8 @@ export const highlightRange = (
   handleNoteClick: any,
   doc: any,
   isNote: boolean = false,
-  isMobile: boolean = false
+  isMobile: boolean = false,
+  noteContent: string = ""
 ) => {
   if (isMobile && window.isSwiping) {
     const waitAndHighlight = () => {
@@ -258,7 +340,8 @@ export const highlightRange = (
           handleNoteClick,
           doc,
           isNote,
-          isMobile
+          isMobile,
+          noteContent
         );
       }
     };
@@ -324,6 +407,7 @@ export const highlightRange = (
           ".kookit-note[data-key]"
         ) as NodeListOf<HTMLElement>;
         let overHighlight = false;
+        let hitNoteContent = "";
         for (let n = 0; n < notes.length; n++) {
           const el = notes[n];
           const s = el.style;
@@ -338,10 +422,17 @@ export const highlightRange = (
             absY <= top + h
           ) {
             overHighlight = true;
+            hitNoteContent = el.getAttribute("data-note-content") || "";
             break;
           }
         }
         doc.body.style.cursor = overHighlight ? "pointer" : "";
+        if (overHighlight && hitNoteContent) {
+          moveNoteTooltip(e.clientX, e.clientY, doc);
+          showNoteTooltip(hitNoteContent, e.clientX, e.clientY, doc);
+        } else {
+          hideNoteTooltip(doc);
+        }
       },
       true
     );
@@ -455,6 +546,9 @@ export const highlightRange = (
     );
     newNode.setAttribute("class", " kookit-note");
     newNode.setAttribute("data-key", noteKey);
+    if (isNote && noteContent) {
+      newNode.setAttribute("data-note-content", noteContent);
+    }
     doc.body.appendChild(newNode);
     if (isNote && rect === topRightRect) {
       const iconNode = document.createElement("span");

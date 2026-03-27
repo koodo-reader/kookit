@@ -5,10 +5,10 @@ import { getCache } from "../libs/cache.js";
 import { isPDF, makePDF } from "../libs/pdf";
 import {
   convertPageToImage,
-  isElectron,
   showOCRProgress,
 } from "../utils/pdfUtil";
 import { ocrCache } from "../utils/ocrCacheUtil";
+import { isElectron } from "../utils/common";
 const fetchText = async (url) => await (await fetch(url)).text();
 declare var window: any;
 class PdfTextRender extends GeneralRender {
@@ -106,7 +106,7 @@ class PdfTextRender extends GeneralRender {
           return src;
         };
       }
-      createIframe(element);
+      createIframe(element, this.isAllowScript);
       let doc = this.getDocument();
       if (!doc) return;
       handleLayout(element, this.readerMode, doc);

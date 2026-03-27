@@ -39,7 +39,9 @@ class GeneralRender extends EventEmitter {
   animation: string;
   convertChinese: string | undefined;
   isIndent: string | undefined;
+  isHyphenation: string | undefined;
   isDarkMode: string | undefined;
+  textOrientation: string | undefined;
   book: any;
   tempLocation: any;
   chapterList: Chapter[];
@@ -53,6 +55,7 @@ class GeneralRender extends EventEmitter {
   mouseMoveHandler: (event: TouchEvent) => void;
   isMobile: string | undefined;
   isBionic: string = "no";
+  isAllowScript: string = "no";
   touchEventSet: any;
   scrollTimer: any;
   recordTimer: any;
@@ -62,9 +65,12 @@ class GeneralRender extends EventEmitter {
     animation: string;
     convertChinese?: string;
     isIndent?: string;
+    isHyphenation?: string;
     isDarkMode?: string;
     isMobile?: string;
     isBionic?: string;
+    textOrientation?: string;
+    isAllowScript?: string;
   }) {
     super();
     this.readerMode = config.readerMode;
@@ -74,8 +80,12 @@ class GeneralRender extends EventEmitter {
     window.convertChinese = config.convertChinese;
     this.isIndent = config.isIndent;
     window.isIndent = config.isIndent;
+    this.isHyphenation = config.isHyphenation || "no";
+    window.isHyphenation = this.isHyphenation;
     this.isDarkMode = config.isDarkMode;
     this.isMobile = config.isMobile;
+    this.textOrientation = config.textOrientation;
+    window.textOrientation = config.textOrientation;
     this.chapterList = [];
     this.chapterDocList = [];
     this.flattenChapters = [];
@@ -84,6 +94,12 @@ class GeneralRender extends EventEmitter {
     this.tempLocation = {};
     this.isBionic = config.isBionic || "no";
     window.isBionic = this.isBionic;
+
+    //浏览器和手机版环境已经有严格的安全限制，无需额外限制，PDF中无法执行代码，强行开启则无法渲染图书
+    this.isAllowScript =
+      this.format === "PDF" || this.isMobile === "yes"
+        ? "yes"
+        : config.isAllowScript || "no";
     this.flipToNextPage = () => {};
     this.flipToPrevPage = () => {};
     this.mouseDownHandler = () => {};
@@ -108,13 +124,31 @@ class GeneralRender extends EventEmitter {
       };
     }
   }
+  isVertical() {
+    return this.textOrientation === "vertical" && this.readerMode !== "scroll";
+  }
   getPageSize() {
     let scale = this.readerMode === "double" ? 2 : 1;
-    let section = Math.floor(this.element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
     let iframe = this.getIframe();
     if (!iframe) return;
     let iframeHeight = iframe?.getBoundingClientRect().height;
+    if (this.isVertical()) {
+      let section = Math.floor(this.element.clientHeight / 12);
+      let gap = section % 2 === 0 ? section : section - 1;
+      return {
+        width: this.element.clientWidth,
+        height: this.element.clientHeight,
+        left: this.element.offsetLeft,
+        top: this.element.offsetTop,
+        scrollTop: this.element.scrollTop,
+        scrollLeft: this.element.scrollWidth / 2 - this.element.clientWidth / 2,
+        sectionWidth: this.element.clientWidth,
+        sectionHeight: (this.element.clientHeight - gap) / scale,
+        gap: gap,
+      };
+    }
+    let section = Math.floor(this.element.clientWidth / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
     return {
       width: this.element.clientWidth,
       height: this.element.clientHeight,
@@ -153,7 +187,11 @@ class GeneralRender extends EventEmitter {
           )
         : 0;
       if (this.readerMode !== "scroll") {
-        doc.body.scrollTo(left, 0);
+        if (this.isVertical()) {
+          doc.body.scrollTo(0, top);
+        } else {
+          doc.body.scrollTo(left, 0);
+        }
       } else {
         this.element.scrollTo(0, top);
       }
@@ -170,28 +208,53 @@ class GeneralRender extends EventEmitter {
     } else {
       let doc = this.getDocument();
       if (!doc) return;
-      let section = Math.floor(this.element.clientWidth / 12);
-      let gap = section % 2 === 0 ? section : section - 1;
-      const width = this.element.clientWidth;
-      const scrollDistance = width + gap;
-      if (this.readerMode === "double") {
-        targetPage =
-          (targetPage % 2 === 0 ? targetPage - 2 : targetPage - 1) / 2;
+      if (this.isVertical()) {
+        let section = Math.floor(this.element.clientHeight / 12);
+        let gap = section % 2 === 0 ? section : section - 1;
+        const height = this.element.clientHeight;
+        const scrollDistance = height + gap;
+        if (this.readerMode === "double") {
+          targetPage =
+            (targetPage % 2 === 0 ? targetPage - 2 : targetPage - 1) / 2;
+        } else {
+          targetPage = targetPage - 1;
+        }
+        if (targetPage < 0) {
+          targetPage = 0;
+        }
+        const targetScrollTop = targetPage * scrollDistance;
+        doc.body.scrollTo({
+          left: 0,
+          top: targetScrollTop,
+          behavior:
+            this.animation === "sliding" && this.isMobile !== "yes"
+              ? "smooth"
+              : "auto",
+        });
       } else {
-        targetPage = targetPage - 1;
+        let section = Math.floor(this.element.clientWidth / 12);
+        let gap = section % 2 === 0 ? section : section - 1;
+        const width = this.element.clientWidth;
+        const scrollDistance = width + gap;
+        if (this.readerMode === "double") {
+          targetPage =
+            (targetPage % 2 === 0 ? targetPage - 2 : targetPage - 1) / 2;
+        } else {
+          targetPage = targetPage - 1;
+        }
+        if (targetPage < 0) {
+          targetPage = 0;
+        }
+        const targetScrollLeft = targetPage * scrollDistance;
+        doc.body.scrollTo({
+          top: 0,
+          left: targetScrollLeft,
+          behavior:
+            this.animation === "sliding" && this.isMobile !== "yes"
+              ? "smooth"
+              : "auto",
+        });
       }
-      if (targetPage < 0) {
-        targetPage = 0;
-      }
-      const targetScrollLeft = targetPage * scrollDistance;
-      doc.body.scrollTo({
-        top: 0,
-        left: targetScrollLeft,
-        behavior:
-          this.animation === "sliding" && this.isMobile !== "yes"
-            ? "smooth"
-            : "auto",
-      });
     }
     await this.record();
   }
@@ -484,7 +547,11 @@ class GeneralRender extends EventEmitter {
         )
       : 0;
     if (this.readerMode !== "scroll") {
-      doc.body.scrollTo(left, 0);
+      if (this.isVertical()) {
+        doc.body.scrollTo(0, top);
+      } else {
+        doc.body.scrollTo(left, 0);
+      }
     } else {
       this.element.scrollTo(0, top);
     }
@@ -503,7 +570,9 @@ class GeneralRender extends EventEmitter {
     if (
       (this.readerMode === "scroll" &&
         convertStyleNum(this.element.scrollTop) === 0) ||
+      (this.isVertical() && convertStyleNum(doc.body.scrollTop) === 0) ||
       (this.readerMode !== "scroll" &&
+        !this.isVertical() &&
         convertStyleNum(doc.body.scrollLeft) === 0)
     ) {
       if (this.tempLocation.chapterDocIndex === "0") {
@@ -531,6 +600,8 @@ class GeneralRender extends EventEmitter {
       if (chapterDocIndex > -1) {
         if (this.readerMode === "scroll") {
           this.element.scrollTo(0, doc.body.scrollHeight);
+        } else if (this.isVertical()) {
+          doc.body.scrollTo(0, doc.body.scrollHeight);
         } else {
           doc.body.scrollTo(doc.body.scrollWidth, 0);
         }
@@ -563,12 +634,19 @@ class GeneralRender extends EventEmitter {
       return;
     }
     if (
+      (this.isVertical() &&
+        Math.abs(
+          doc.body.scrollHeight -
+            convertStyleNum(doc.body.scrollTop) -
+            doc.body.clientHeight
+        ) < 50) ||
       (Math.abs(
         doc.body.scrollWidth -
           convertStyleNum(doc.body.scrollLeft) -
           doc.body.clientWidth
       ) < 50 &&
-        this.readerMode !== "scroll") ||
+        this.readerMode !== "scroll" &&
+        !this.isVertical()) ||
       (Math.abs(
         this.element.scrollHeight -
           convertStyleNum(this.element.scrollTop) -
@@ -834,7 +912,10 @@ class GeneralRender extends EventEmitter {
   getProgress() {
     let doc = this.getDocument();
     if (!doc) return;
-    return progressInfo(this.readerMode, doc, this.element);
+    return {
+      ...progressInfo(this.readerMode, doc, this.element),
+      percentage: this.tempLocation.percentage,
+    } as any;
   }
   async record() {
     if (this.animation !== "") {
@@ -907,7 +988,8 @@ class GeneralRender extends EventEmitter {
           doc,
           iframe,
           item.notes !== "",
-          this.isMobile === "yes"
+          this.isMobile === "yes",
+          item.notes || ""
         );
         // highlighter.highlightSelection(classes[item.color]);
       } catch (e) {
@@ -943,7 +1025,8 @@ class GeneralRender extends EventEmitter {
       doc,
       iframe,
       item.notes !== "",
-      this.isMobile === "yes"
+      this.isMobile === "yes",
+      item.notes || ""
     );
   }
 

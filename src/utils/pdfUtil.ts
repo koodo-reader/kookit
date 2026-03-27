@@ -1,7 +1,7 @@
 import ChapterDoc from "../model/chapterDoc";
 import { convertStyleNum } from "./layoutUtil";
 import _ from "underscore";
-declare var window: any;
+
 export const getPdfScale = async (
   element: HTMLElement,
   readerMode: string,
@@ -354,34 +354,7 @@ function formatSize(size) {
   const sizeInKB = (size / 1024).toFixed(2);
   return `${sizeInKB} KB`;
 }
-export const isElectron = () => {
-  // Renderer process
-  if (
-    typeof window !== "undefined" &&
-    typeof window.process === "object" &&
-    window.process.type === "renderer"
-  ) {
-    return true;
-  }
-  // Main process
-  if (
-    typeof process !== "undefined" &&
-    typeof process.versions === "object" &&
-    !!process.versions.electron
-  ) {
-    return true;
-  }
-  // Detect the user agent when the `nodeIntegration` option is set to true
-  if (
-    typeof navigator === "object" &&
-    typeof navigator.userAgent === "string" &&
-    navigator.userAgent.indexOf("Electron") >= 0
-  ) {
-    return true;
-  }
 
-  return false;
-};
 export const showOCRProgress = (progress: number) => {
   let bar = document.getElementById("ocr-progress-bar") as HTMLProgressElement;
   if (!bar) {
