@@ -104,7 +104,6 @@ export const handleOneChapterDoc = async (item, isSearch: boolean) => {
   if (item && item.loadAsset) {
     chapterText = await handlePrecacheAssets(chapterText, item.loadAsset);
   }
-  chapterText = handleImageMarker(chapterText);
   return chapterText;
 };
 export const getImageElement = (Element) => {
@@ -132,10 +131,6 @@ export const handlePrecacheAssets = async (bookStr, loadAsset) => {
       link.href = await loadAsset(link.getAttribute("href"));
     }
   }
-  return chapterDoc.documentElement.innerHTML;
-};
-export const handleImageMarker = (bookStr) => {
-  let chapterDoc = new DOMParser().parseFromString(bookStr, "text/html") as any;
   if (chapterDoc && chapterDoc.documentElement) {
     chapterDoc.documentElement.lang = "en"; // 方式1（推荐）
   }
@@ -143,10 +138,7 @@ export const handleImageMarker = (bookStr) => {
     // to fix electron-specific issue where `hyphens: auto` is silently ignored without a Chromium hyphenation dictionary.
     applyHyphenation(chapterDoc);
   }
-  let imgDomList = getImageElement(chapterDoc);
-  if (imgDomList.length === 0) {
-    return bookStr;
-  } else {
+  if (imgDomList.length > 0) {
     for (let i = 0; i < imgDomList.length; i++) {
       if (imgDomList[i].tagName === "image") {
         continue;
@@ -180,6 +172,7 @@ export const handleImageMarker = (bookStr) => {
     }
     return chapterDoc.documentElement.innerHTML;
   }
+  return chapterDoc.documentElement.innerHTML;
 };
 export const createIframe = (
   element: HTMLElement,

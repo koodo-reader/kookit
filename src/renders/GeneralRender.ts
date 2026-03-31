@@ -59,6 +59,8 @@ class GeneralRender extends EventEmitter {
   touchEventSet: any;
   scrollTimer: any;
   recordTimer: any;
+  transMap: Record<string, object>;
+  fullTranslationMode: string = "source";
   constructor(config: {
     readerMode: string;
     format: string;
@@ -71,6 +73,7 @@ class GeneralRender extends EventEmitter {
     isBionic?: string;
     textOrientation?: string;
     isAllowScript?: string;
+    fullTranslationMode?: string;
   }) {
     super();
     this.readerMode = config.readerMode;
@@ -94,8 +97,12 @@ class GeneralRender extends EventEmitter {
     this.tempLocation = {};
     this.isBionic = config.isBionic || "no";
     window.isBionic = this.isBionic;
+    this.transMap = {};
+    window.transMap = this.transMap;
+    this.fullTranslationMode = config.fullTranslationMode || "source";
+    window.fullTranslationMode = this.fullTranslationMode;
 
-    //浏览器和手机版环境已经有严格的安全限制，无需额外限制，PDF中无法执行代码，强行开启则无法渲染图书
+    //手机版环境已经有严格的安全限制，无需额外限制，PDF中无法执行代码，强行开启则无法渲染图书
     this.isAllowScript =
       this.format === "PDF" || this.isMobile === "yes"
         ? "yes"
@@ -1382,6 +1389,11 @@ class GeneralRender extends EventEmitter {
     }
     htmlContent = await processHtml(htmlContent);
     return { handled: true, content: htmlContent };
+  }
+  async refreshFullTranslation(texts: string[]) {
+    let doc = this.getDocument();
+    if (!doc) return;
+    // await handleFullTranslation(this.element, this.readerMode, doc);
   }
 }
 export default GeneralRender;
