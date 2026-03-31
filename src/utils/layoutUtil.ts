@@ -1,6 +1,7 @@
 import Chinese from "../libs/zh-convert";
 import { processDocumentBody } from "./bionicUtil";
 import { isElectron } from "./common";
+import { getBlockElement } from "./common";
 declare var window: any;
 export const isVerticalLayout = (): boolean => {
   return window.textOrientation === "vertical";
@@ -101,34 +102,37 @@ export const handleOneChapterDoc = async (item, isSearch: boolean) => {
   if (isSearch) {
     return chapterText;
   }
-  if (item && item.loadAsset) {
-    chapterText = await handlePrecacheAssets(chapterText, item.loadAsset);
-  }
+
+  chapterText = await handlePrecacheAssets(chapterText, item);
+
   return chapterText;
 };
 export const getImageElement = (Element) => {
   return Array.from(Element.querySelectorAll("img, image")) as HTMLElement[];
 };
-export const handlePrecacheAssets = async (bookStr, loadAsset) => {
+export const handlePrecacheAssets = async (bookStr, item) => {
   let chapterDoc = new DOMParser().parseFromString(bookStr, "text/html") as any;
-  let imgDomList = getImageElement(chapterDoc) as any;
-  for (let subindex = 0; subindex < imgDomList.length; subindex++) {
-    if (imgDomList[subindex].getAttribute("src")) {
-      imgDomList[subindex].src = await loadAsset(
-        imgDomList[subindex].getAttribute("src")
-      );
-    } else if (imgDomList[subindex].getAttribute("xlink:href")) {
-      imgDomList[subindex].setAttribute(
-        "xlink:href",
-        await loadAsset(imgDomList[subindex].getAttribute("xlink:href"))
-      );
+  if (item && item.loadAsset) {
+    let loadAsset = item.loadAsset;
+    let imgDomList = getImageElement(chapterDoc) as any;
+    for (let subindex = 0; subindex < imgDomList.length; subindex++) {
+      if (imgDomList[subindex].getAttribute("src")) {
+        imgDomList[subindex].src = await loadAsset(
+          imgDomList[subindex].getAttribute("src")
+        );
+      } else if (imgDomList[subindex].getAttribute("xlink:href")) {
+        imgDomList[subindex].setAttribute(
+          "xlink:href",
+          await loadAsset(imgDomList[subindex].getAttribute("xlink:href"))
+        );
+      }
     }
-  }
-  let linkList = Array.from(chapterDoc.getElementsByTagName("link"));
-  for (let index = 0; index < linkList.length; index++) {
-    const link: any = linkList[index];
-    if (link.getAttribute("href")) {
-      link.href = await loadAsset(link.getAttribute("href"));
+    let linkList = Array.from(chapterDoc.getElementsByTagName("link"));
+    for (let index = 0; index < linkList.length; index++) {
+      const link: any = linkList[index];
+      if (link.getAttribute("href")) {
+        link.href = await loadAsset(link.getAttribute("href"));
+      }
     }
   }
   if (chapterDoc && chapterDoc.documentElement) {
@@ -138,6 +142,25 @@ export const handlePrecacheAssets = async (bookStr, loadAsset) => {
     // to fix electron-specific issue where `hyphens: auto` is silently ignored without a Chromium hyphenation dictionary.
     applyHyphenation(chapterDoc);
   }
+  console.log(window.fullTranslationMode);
+  if (window.fullTranslationMode === "both") {
+    let nodeList = getBlockElement(chapterDoc.body);
+    console.log(nodeList, "nodelist");
+    for (let node of nodeList) {
+      let transNode = document.createElement("span");
+      let id = "kookit-trans-" + Math.random().toString(36).substr(2, 9);
+      transNode?.setAttribute("id", id);
+      transNode?.setAttribute("class", "kookit-translation");
+      //insert transNode after node
+      node.parentNode?.insertBefore(transNode, node.nextSibling);
+      let originalText = node.textContent || "";
+      window.transMap[originalText] = {
+        id,
+      };
+    }
+  }
+  console.log(window.transMap, "transmap");
+  let imgDomList = getImageElement(chapterDoc) as any;
   if (imgDomList.length > 0) {
     for (let i = 0; i < imgDomList.length; i++) {
       if (imgDomList[i].tagName === "image") {

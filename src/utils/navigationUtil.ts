@@ -11,15 +11,9 @@ import Chapter from "../model/chapter";
 import Chinese from "../libs/zh-convert";
 import _ from "underscore";
 import { cleanText } from "../libs/textProcessor";
+import { getBlockElement } from "./common";
 
 let lock = false;
-export const getBlockElement = (Element) => {
-  return Array.from(
-    Element.querySelectorAll(
-      "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,li,dt,dd,pre,blockquote,address,kookitmarker"
-    )
-  ) as HTMLElement[];
-};
 
 export const handleScrollPage = async (
   element: HTMLElement,

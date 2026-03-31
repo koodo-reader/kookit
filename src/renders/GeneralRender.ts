@@ -18,7 +18,6 @@ import {
   handleScrollPosition,
   handleHighlightSearchNode,
   handleHighlightAudioNode,
-  getBlockElement,
   isParentBlock,
   isElementFootnote,
   processHtml,
@@ -32,6 +31,7 @@ import "rangy/lib/rangy-textrange";
 
 import { getPDFSearchResult } from "../utils/pdfUtil";
 import { addAndroidTouchEvent, addAppleTouchEvent } from "../utils/touchUtil";
+import { getBlockElement, isElectron } from "../utils/common";
 declare var window: any;
 class GeneralRender extends EventEmitter {
   readerMode: string;
@@ -59,8 +59,14 @@ class GeneralRender extends EventEmitter {
   touchEventSet: any;
   scrollTimer: any;
   recordTimer: any;
-  transMap: Record<string, object>;
-  fullTranslationMode: string = "source";
+  transMap: Record<
+    string,
+    {
+      id: string;
+      text?: string;
+    }
+  >;
+  fullTranslationMode: string = "no";
   constructor(config: {
     readerMode: string;
     format: string;
@@ -99,12 +105,12 @@ class GeneralRender extends EventEmitter {
     window.isBionic = this.isBionic;
     this.transMap = {};
     window.transMap = this.transMap;
-    this.fullTranslationMode = config.fullTranslationMode || "source";
+    this.fullTranslationMode = config.fullTranslationMode || "no";
     window.fullTranslationMode = this.fullTranslationMode;
 
     //手机版环境已经有严格的安全限制，无需额外限制，PDF中无法执行代码，强行开启则无法渲染图书
     this.isAllowScript =
-      this.format === "PDF" || this.isMobile === "yes"
+      this.format === "PDF" || this.isMobile === "yes" || !isElectron()
         ? "yes"
         : config.isAllowScript || "no";
     this.flipToNextPage = () => {};
@@ -944,6 +950,21 @@ class GeneralRender extends EventEmitter {
   getPosition() {
     return this.tempLocation;
   }
+  async getBatchTransTexts() {
+    let restTexts: string[] = (await this.audioText()) as string[];
+
+    restTexts = restTexts.slice(0, 100);
+    //同时确保总字数不超过5000字
+    let totalLength = 0;
+    restTexts = restTexts.filter((item) => {
+      totalLength += item.length;
+      return totalLength <= 5000;
+    });
+    restTexts = restTexts.filter(
+      (item) => !this.transMap[item] || !this.transMap[item].text
+    );
+    return restTexts.filter((item) => item.trim().length > 0);
+  }
   async getNotePosition() {
     let doc = this.getDocument();
     if (!doc) return;
@@ -1390,10 +1411,21 @@ class GeneralRender extends EventEmitter {
     htmlContent = await processHtml(htmlContent);
     return { handled: true, content: htmlContent };
   }
-  async refreshFullTranslation(texts: string[]) {
+  async handleBatchTransResult(sourcetexts: string[], targetTexts: string[]) {
     let doc = this.getDocument();
     if (!doc) return;
-    // await handleFullTranslation(this.element, this.readerMode, doc);
+    for (let index = 0; index < sourcetexts.length; index++) {
+      const sourceText = sourcetexts[index];
+      if (this.transMap[sourceText]) {
+        this.transMap[sourceText].text = targetTexts[index];
+        let element = doc.querySelector(
+          "#" + this.transMap[sourceText].id
+        ) as HTMLElement;
+        if (element) {
+          element.innerHTML = targetTexts[index];
+        }
+      }
+    }
   }
 }
 export default GeneralRender;

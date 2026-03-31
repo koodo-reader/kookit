@@ -9,6 +9,7 @@ class StyleHelper {
 
     // Note hover effect
     cssRules.push(".kookit-note:hover{cursor:pointer;}");
+    // cssRules.push(".kookit-translation{display: inline-block;}");
 
     // Body and html base styles
     cssRules.push(
