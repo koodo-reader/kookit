@@ -24,7 +24,11 @@ import {
 } from "../utils/navigationUtil";
 import EventEmitter from "../utils/EventEmitter";
 import { CFI } from "../libs/cfi";
-import { clearHighlight, showNoteHighlight } from "../utils/noteUtil";
+import {
+  clearHighlight,
+  showNoteHighlight,
+  showNoteHighlightBatch,
+} from "../utils/noteUtil";
 import { addPageAnimation } from "../utils/animationUtil";
 import rangy from "rangy/lib/rangy-core.js";
 import "rangy/lib/rangy-textrange";
@@ -1003,42 +1007,55 @@ class GeneralRender extends EventEmitter {
     if (!doc || !iframe) return;
     clearHighlight(doc);
 
-    // if more than 20 notes, render one by one to avoid blocking the UI thread
-    for (let index = 0; index < notes.length; index++) {
-      const item = notes[index];
-      try {
-        await new Promise((r) => setTimeout(r, 5));
-        showNoteHighlight(
-          JSON.parse(item.range),
-          item.color,
-          item.key,
-          handleNoteClick,
-          doc,
-          iframe,
-          item.notes !== "",
-          this.isMobile === "yes",
-          item.notes || ""
-        );
-        // highlighter.highlightSelection(classes[item.color]);
-      } catch (e) {
-        console.error(
-          e,
-          "Exception has been caught when restore character ranges."
-        );
-        return;
-      }
+    // Use batch API: resolve all character ranges on clean DOM first,
+    // then apply all inline highlights. This prevents earlier highlights
+    // from shifting character offsets for later ones.
+    const batchItems = notes.map((item) => ({
+      range: JSON.parse(item.range),
+      colorIndex: item.color,
+      noteKey: item.key,
+      isNote: item.notes !== "",
+      noteContent: item.notes || "",
+    }));
+
+    try {
+      showNoteHighlightBatch(
+        batchItems,
+        handleNoteClick,
+        doc,
+        iframe,
+        this.isMobile === "yes"
+      );
+    } catch (e) {
+      console.error(
+        e,
+        "Exception has been caught when restore character ranges."
+      );
     }
   }
   removeOneNote(key: string, chapterDocIndex: number) {
     let doc = this.getDocument();
     if (!doc) return;
-    const elements = doc.querySelectorAll(".kookit-note");
+    // Remove note icon elements for this key
+    const icons = doc.querySelectorAll(
+      ".kookit-note-icon[data-key='" + key + "']"
+    );
+    for (let index = 0; index < icons.length; index++) {
+      icons[index].parentNode?.removeChild(icons[index]);
+    }
+    // Unwrap inline highlight spans for this key (restore original text)
+    const elements = doc.querySelectorAll(
+      "span.kookit-note[data-key='" + key + "']"
+    );
     for (let index = 0; index < elements.length; index++) {
-      const element: any = elements[index];
-      const dataKey = element.getAttribute("data-key");
-      if (dataKey === key) {
-        element.parentNode.removeChild(element);
+      const element = elements[index];
+      const parent = element.parentNode;
+      if (!parent) continue;
+      while (element.firstChild) {
+        parent.insertBefore(element.firstChild, element);
       }
+      parent.removeChild(element);
+      parent.normalize();
     }
   }
   async createOneNote(item: any, handleNoteClick: any) {

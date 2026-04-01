@@ -9,6 +9,14 @@ class StyleHelper {
 
     // Note hover effect
     cssRules.push(".kookit-note:hover{cursor:pointer;}");
+    // Ensure inline highlight spans don't disrupt text flow
+    cssRules.push(".kookit-note{line-height:inherit;}");
+    cssRules.push(
+      ".kookit-note-icon{line-height:1;font-size:14px;cursor:pointer;}"
+    );
+    // Use CSS ::before to render the icon so no text node is added to the DOM
+    // (prevents interference with rangy character-offset calculations)
+    cssRules.push(".kookit-note-icon::before{content:'\\1F4CB';}");
 
     // Translation display styles
     cssRules.push(
@@ -27,7 +35,7 @@ class StyleHelper {
 
     // Content elements with custom styles
     cssRules.push(
-      `a, article, cite, div, li, p, span:not(.kookit-note), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
+      `a, article, cite, div, li, p, span:not(.kookit-note):not(.kookit-note-icon), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
     );
 
     // Title elements with custom styles
