@@ -1,7 +1,7 @@
 import Chinese from "../libs/zh-convert";
 import { processDocumentBody } from "./bionicUtil";
 import { isElectron } from "./common";
-import { getBlockElement } from "./common";
+import { getBlockElement, isParentBlock } from "./common";
 declare var window: any;
 export const isVerticalLayout = (): boolean => {
   return window.textOrientation === "vertical";
@@ -144,24 +144,28 @@ export const handlePrecacheAssets = async (bookStr, item) => {
     applyHyphenation(chapterDoc);
   }
   console.log(window.fullTranslationMode);
-  if (window.fullTranslationMode === "both") {
-    let nodeList = getBlockElement(chapterDoc.body);
+  if (
+    window.fullTranslationMode === "both" ||
+    window.fullTranslationMode === "target"
+  ) {
+    let nodeList = getBlockElement(chapterDoc.body).filter(
+      (item) => !isParentBlock(item)
+    );
     console.log(nodeList, "nodelist");
     for (let node of nodeList) {
-      if (node.textContent.trim().length === 0) {
-        continue;
+      if (node.textContent && node.textContent?.trim()) {
+        let id =
+          node.getAttribute("id") ||
+          "kookit-trans-" + Math.random().toString(36).substr(2, 9);
+        node.setAttribute("id", id);
+        node.classList.add("kookit-translation-host");
+        node.classList.add("kookit-translation-loading");
+        node.setAttribute("data-kookit-translation", "");
+        let originalText = node.textContent || "";
+        window.transMap[originalText] = {
+          id,
+        };
       }
-      let id =
-        node.getAttribute("id") ||
-        "kookit-trans-" + Math.random().toString(36).substr(2, 9);
-      node.setAttribute("id", id);
-      node.classList.add("kookit-translation-host");
-      node.classList.add("kookit-translation-loading");
-      node.setAttribute("data-kookit-translation", "");
-      let originalText = node.textContent || "";
-      window.transMap[originalText] = {
-        id,
-      };
     }
   }
   console.log(window.transMap, "transmap");

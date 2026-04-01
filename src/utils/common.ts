@@ -34,3 +34,23 @@ export const getBlockElement = (Element) => {
     )
   ) as HTMLElement[];
 };
+export const isParentBlock = (myDiv: Element) => {
+  var children = myDiv.children;
+  let flag = false;
+  var blockRegex =
+    /^(address|kookitmarker|section|blockquote|body|center|dir|div|dl|fieldset|form|h[1-6]|hr|isindex|menu|noframes|noscript|ol|p|pre|table|ul|dd|dt|frameset|li|tbody|td|tfoot|th|thead|tr|html)$/i;
+  // let blockElementList = Array.from(children).filter((item) =>
+  //   blockRegex.test(item.nodeName)
+  // );
+  // // some elements might contain image and image subtitle
+  // if (blockElementList.length < 3) {
+  //   return false;
+  // }
+  for (var i = 0; i < children.length; i++) {
+    if (blockRegex.test(children[i].nodeName)) {
+      flag = true;
+      break;
+    }
+  }
+  return flag;
+};

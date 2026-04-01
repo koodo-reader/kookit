@@ -18,7 +18,6 @@ import {
   handleScrollPosition,
   handleHighlightSearchNode,
   handleHighlightAudioNode,
-  isParentBlock,
   isElementFootnote,
   processHtml,
 } from "../utils/navigationUtil";
@@ -35,7 +34,7 @@ import "rangy/lib/rangy-textrange";
 
 import { getPDFSearchResult } from "../utils/pdfUtil";
 import { addAndroidTouchEvent, addAppleTouchEvent } from "../utils/touchUtil";
-import { getBlockElement, isElectron } from "../utils/common";
+import { getBlockElement, isParentBlock } from "../utils/common";
 declare var window: any;
 class GeneralRender extends EventEmitter {
   readerMode: string;
@@ -959,11 +958,11 @@ class GeneralRender extends EventEmitter {
     let restTexts: string[] = (await this.audioText()) as string[];
 
     restTexts = restTexts.slice(0, 100);
-    //同时确保总字数不超过5000字
+    //同时确保总字数不超过10000字
     let totalLength = 0;
     restTexts = restTexts.filter((item) => {
       totalLength += item.length;
-      return totalLength <= 5000;
+      return totalLength <= 10000;
     });
     restTexts = restTexts.filter(
       (item) => !this.transMap[item] || !this.transMap[item].text
@@ -1445,6 +1444,10 @@ class GeneralRender extends EventEmitter {
             targetTexts[index] || ""
           );
           element.classList.remove("kookit-translation-loading");
+          if (this.fullTranslationMode === "target") {
+            element.textContent = "";
+            element.classList.add("kookit-translation-show-after");
+          }
         }
       }
     }

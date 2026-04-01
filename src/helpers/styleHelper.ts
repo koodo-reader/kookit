@@ -20,16 +20,22 @@ class StyleHelper {
 
     // Translation display styles
     cssRules.push(
-      `.kookit-translation-host::after{content: attr(data-kookit-translation);display:block;${ConfigService.getReaderConfig("fullTranslationMode") === "both" ? this.getCustomCss(ConfigService) : "display:none;"} }`
+      `.kookit-translation-host::after{content: attr(data-kookit-translation);display:block;${ConfigService.getReaderConfig("fullTranslationMode") === "both" || ConfigService.getReaderConfig("fullTranslationMode") === "target" ? this.getCustomCss(ConfigService) : "display:none;"} }`
     );
 
     // Translation loading spinner (shown on body while batch translation is in progress)
-    if (ConfigService.getReaderConfig("fullTranslationMode") === "both") {
+    if (
+      ConfigService.getReaderConfig("fullTranslationMode") === "both" ||
+      ConfigService.getReaderConfig("fullTranslationMode") === "target"
+    ) {
       cssRules.push(
         `.kookit-translation-loading:after{content:"";display:block;width:16px;height:16px;margin:4px auto 0;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;opacity:0.4;animation:kookit-spin 0.8s linear infinite;}`
       );
       cssRules.push(
         `@keyframes kookit-spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}`
+      );
+      cssRules.push(
+        `.kookit-translation-host.kookit-translation-show-after:after{visibility:visible;}`
       );
     }
 
