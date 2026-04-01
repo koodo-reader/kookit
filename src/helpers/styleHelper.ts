@@ -23,6 +23,16 @@ class StyleHelper {
       `.kookit-translation-host::after{content: attr(data-kookit-translation);display:block;${ConfigService.getReaderConfig("fullTranslationMode") === "both" ? this.getCustomCss(ConfigService) : "display:none;"} }`
     );
 
+    // Translation loading spinner (shown on body while batch translation is in progress)
+    if (ConfigService.getReaderConfig("fullTranslationMode") === "both") {
+      cssRules.push(
+        `.kookit-translation-loading:after{content:"";display:block;width:16px;height:16px;margin:4px auto 0;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;opacity:0.4;animation:kookit-spin 0.8s linear infinite;}`
+      );
+      cssRules.push(
+        `@keyframes kookit-spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}`
+      );
+    }
+
     // Body and html base styles
     cssRules.push(
       "body,html{margin: 0px !important; padding: 0px !important; font-size: 18px; background-color: transparent !important;}"

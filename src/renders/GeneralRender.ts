@@ -1444,6 +1444,7 @@ class GeneralRender extends EventEmitter {
             "data-kookit-translation",
             targetTexts[index] || ""
           );
+          element.classList.remove("kookit-translation-loading");
         }
       }
     }
