@@ -1422,7 +1422,10 @@ class GeneralRender extends EventEmitter {
           "#" + this.transMap[sourceText].id
         ) as HTMLElement;
         if (element) {
-          element.innerHTML = targetTexts[index];
+          element.setAttribute(
+            "data-kookit-translation",
+            targetTexts[index] || ""
+          );
         }
       }
     }

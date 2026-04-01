@@ -9,7 +9,11 @@ class StyleHelper {
 
     // Note hover effect
     cssRules.push(".kookit-note:hover{cursor:pointer;}");
-    // cssRules.push(".kookit-translation{display: inline-block;}");
+
+    // Translation display styles
+    cssRules.push(
+      `.kookit-translation-host::after{content: attr(data-kookit-translation);display:block;${ConfigService.getReaderConfig("fullTranslationMode") === "both" ? this.getCustomCss(ConfigService) : "display:none;"} }`
+    );
 
     // Body and html base styles
     cssRules.push(

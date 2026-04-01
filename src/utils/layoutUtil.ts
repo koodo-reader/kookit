@@ -147,12 +147,12 @@ export const handlePrecacheAssets = async (bookStr, item) => {
     let nodeList = getBlockElement(chapterDoc.body);
     console.log(nodeList, "nodelist");
     for (let node of nodeList) {
-      let transNode = document.createElement("span");
-      let id = "kookit-trans-" + Math.random().toString(36).substr(2, 9);
-      transNode?.setAttribute("id", id);
-      transNode?.setAttribute("class", "kookit-translation");
-      //insert transNode after node
-      node.parentNode?.insertBefore(transNode, node.nextSibling);
+      let id =
+        node.getAttribute("id") ||
+        "kookit-trans-" + Math.random().toString(36).substr(2, 9);
+      node.setAttribute("id", id);
+      node.classList.add("kookit-translation-host");
+      node.setAttribute("data-kookit-translation", "");
       let originalText = node.textContent || "";
       window.transMap[originalText] = {
         id,
