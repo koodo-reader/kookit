@@ -93,6 +93,7 @@ export const handleIframeHeight = async (
 };
 
 export const handleOneChapterDoc = async (item, isSearch: boolean) => {
+  console.log(1);
   let chapterText = "";
   if (item && item.load) {
     let blob = await fetch(await item.load()).then((r) => r.blob());
@@ -102,9 +103,9 @@ export const handleOneChapterDoc = async (item, isSearch: boolean) => {
   if (isSearch) {
     return chapterText;
   }
-
+  console.log(2);
   chapterText = await handlePrecacheAssets(chapterText, item);
-
+  console.log(3);
   return chapterText;
 };
 export const getImageElement = (Element) => {

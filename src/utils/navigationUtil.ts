@@ -243,6 +243,7 @@ export const handleRenderChapter = async (
   doc: Document,
   iframe: any
 ) => {
+  console.log("handleRenderChapter");
   doc.body.innerHTML = "";
   iframe.height = 0 + "px";
   doc.body.scrollTo(0, 0);
