@@ -1,3 +1,4 @@
+declare var window: any;
 class StyleHelper {
   // get default css for iframe
   static getDefaultCss(ConfigService: any) {
@@ -20,13 +21,13 @@ class StyleHelper {
 
     // Translation display styles
     cssRules.push(
-      `.kookit-translation-host::after{content: attr(data-kookit-translation);display:block;${ConfigService.getReaderConfig("fullTranslationMode") === "both" || ConfigService.getReaderConfig("fullTranslationMode") === "target" ? this.getCustomCss(ConfigService) : "display:none;"} }`
+      `.kookit-translation-host::after{content: attr(data-kookit-translation);display:block;${window.fullTranslationMode === "both" || window.fullTranslationMode === "target" ? this.getCustomCss(ConfigService) : "display:none;"} }`
     );
 
     // Translation loading spinner (shown on body while batch translation is in progress)
     if (
-      ConfigService.getReaderConfig("fullTranslationMode") === "both" ||
-      ConfigService.getReaderConfig("fullTranslationMode") === "target"
+      window.fullTranslationMode === "both" ||
+      window.fullTranslationMode === "target"
     ) {
       cssRules.push(
         `.kookit-translation-loading:after{content:"";display:block;width:16px;height:16px;margin:4px auto 0;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;opacity:0.4;animation:kookit-spin 0.8s linear infinite;}`
