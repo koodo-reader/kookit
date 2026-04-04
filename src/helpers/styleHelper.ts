@@ -24,7 +24,7 @@ class StyleHelper {
       : "";
     // Translation display styles
     cssRules.push(
-      `.kookit-translation-host::after{content: attr(data-kookit-translation);display:block;${fullTranslationMode === "both" || fullTranslationMode === "target" ? this.getCustomCss(ConfigService) : "display:none;"} }`
+      `.kookit-translation-host::after{content: attr(data-kookit-translation);display:block;${fullTranslationMode === "both" || fullTranslationMode === "target" ? this.getCustomCss(ConfigService) : "display:none;"}${fullTranslationMode === "target" ? "font-size: " + (ConfigService.getReaderConfig("fontSize") || 18) + "px !important; text-indent: 2rem !important;" : ""} }`
     );
 
     // Translation loading spinner (shown on body while batch translation is in progress)
@@ -34,9 +34,6 @@ class StyleHelper {
       );
       cssRules.push(
         `@keyframes kookit-spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}`
-      );
-      cssRules.push(
-        `.kookit-translation-host.kookit-translation-show-after:after{visibility:visible;}`
       );
     }
 

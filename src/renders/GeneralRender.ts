@@ -1446,8 +1446,17 @@ class GeneralRender extends EventEmitter {
           );
           element.classList.remove("kookit-translation-loading");
           if (this.fullTranslationMode === "target") {
-            element.textContent = "";
-            element.classList.add("kookit-translation-show-after");
+            element.setAttribute(
+              "style",
+              element.getAttribute("style") + ";font-size:0px !important;"
+            );
+            let childElements = element.querySelectorAll("*");
+            childElements.forEach((child) => {
+              child.setAttribute(
+                "style",
+                child.getAttribute("style") + ";font-size:0px !important;"
+              );
+            });
           }
         }
       }
