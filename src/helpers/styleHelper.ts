@@ -1,7 +1,6 @@
-declare var window: any;
 class StyleHelper {
   // get default css for iframe
-  static getDefaultCss(ConfigService: any) {
+  static getDefaultCss(ConfigService: any, bookKey: string) {
     const cssRules: string[] = [];
 
     // Selection styles
@@ -17,18 +16,19 @@ class StyleHelper {
     );
     // Use CSS ::before to render the icon so no text node is added to the DOM
     // (prevents interference with rangy character-offset calculations)
-    cssRules.push(".kookit-note-icon::before{content:'\\1F4CB';}");
-
+    cssRules.push(".kookit-note-icon::before{content:'📋';}");
+    let fullTranslationMode = ConfigService.getAllListConfig(
+      "fullTranslationBooks"
+    ).includes(bookKey)
+      ? ConfigService.getReaderConfig("fullTranslationMode") || ""
+      : "";
     // Translation display styles
     cssRules.push(
-      `.kookit-translation-host::after{content: attr(data-kookit-translation);display:block;${window.fullTranslationMode === "both" || window.fullTranslationMode === "target" ? this.getCustomCss(ConfigService) : "display:none;"} }`
+      `.kookit-translation-host::after{content: attr(data-kookit-translation);display:block;${fullTranslationMode === "both" || fullTranslationMode === "target" ? this.getCustomCss(ConfigService) : "display:none;"} }`
     );
 
     // Translation loading spinner (shown on body while batch translation is in progress)
-    if (
-      window.fullTranslationMode === "both" ||
-      window.fullTranslationMode === "target"
-    ) {
+    if (fullTranslationMode === "both" || fullTranslationMode === "target") {
       cssRules.push(
         `.kookit-translation-loading:after{content:"";display:block;width:16px;height:16px;margin:4px auto 0;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;opacity:0.4;animation:kookit-spin 0.8s linear infinite;}`
       );

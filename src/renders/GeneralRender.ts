@@ -956,6 +956,7 @@ class GeneralRender extends EventEmitter {
   }
   async getBatchTransTexts() {
     let restTexts: string[] = (await this.audioText()) as string[];
+    console.log(restTexts, "restTexts");
 
     restTexts = restTexts.slice(0, 100);
     //同时确保总字数不超过10000字

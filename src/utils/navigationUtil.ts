@@ -13,6 +13,8 @@ import _ from "underscore";
 import { cleanText } from "../libs/textProcessor";
 import { getBlockElement, isParentBlock } from "./common";
 
+declare var window: any;
+
 let lock = false;
 
 export const handleScrollPage = async (
@@ -429,7 +431,11 @@ export const handleScrollPosition = async (
           cleanText((s as HTMLElement).textContent).includes(
             Chinese.s2t(cleanText(text))
           )) &&
-        (Math.abs(index - parseInt(count)) < 2 ||
+        (Math.abs(index - parseInt(count)) <
+          (window.fullTranslationMode === "both" ||
+          window.fullTranslationMode === "target"
+            ? 1
+            : 2) ||
           count === "search" ||
           count === "ignore" ||
           count === "next")
@@ -732,6 +738,7 @@ export const getAudioText = (
   let nodeList = getBlockElement(doc.body).filter(
     (item) => !isParentBlock(item)
   );
+  console.log(nodeList, "nodelist");
   let audioNode = nodeList.filter((s) => {
     // 检查文本内容是否存在且不为空
     if (!((s as HTMLElement).textContent || "").trim()) {
