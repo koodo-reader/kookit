@@ -1300,15 +1300,22 @@ class GeneralRender extends EventEmitter {
           href = "#" + node.getAttribute("id");
         }
       } else {
-        await this.goToChapterDocIndex(result.index);
-        let node = result.anchor(doc);
-        await this.goToNode(node);
         if (isElementFootnote(event.target)) {
+          let blob = await fetch(
+            await this.chapterDocList[result.index].text.load()
+          ).then((r) => r.blob());
+          let chapterText = await blob.text();
+          let node = result.anchor(
+            new DOMParser().parseFromString(chapterText, "text/html")
+          );
+          if (!node) {
+            return { handled: false };
+          }
           return {
             handled: true,
             isShowMenu: true,
-            isJump: true,
-            href: href,
+            isJump: false,
+            href: "",
             node: node,
           };
         }
