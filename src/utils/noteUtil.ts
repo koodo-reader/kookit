@@ -335,9 +335,14 @@ export const showPDFHighlight = (
         return;
       }
       if (event && event.target) {
+        let selectedText = "";
+        if (doc && doc.getSelection()) {
+          selectedText = doc.getSelection()?.toString().trim() || "";
+        }
         if (
           (event.target as any).dataset &&
-          (event.target as any).dataset.key
+          (event.target as any).dataset.key &&
+          !selectedText
         ) {
           handleNoteClick(event);
         }
@@ -365,31 +370,6 @@ export const showPDFHighlight = (
       iconNode.setAttribute("data-key", noteKey);
       // No textContent — use CSS ::before to display icon, avoiding
       // interference with rangy character-offset calculations
-      iconNode.addEventListener("click", (event) => {
-        if (event && event.target) {
-          if (
-            (event.target as any).dataset &&
-            (event.target as any).dataset.key
-          ) {
-            handleNoteClick(event);
-          }
-        }
-      });
-      iconNode.ontouchend = (event) => {
-        if (window.isSwiping) {
-          return;
-        }
-        if (event && event.target) {
-          if (
-            (event.target as any).dataset &&
-            (event.target as any).dataset.key
-          ) {
-            handleNoteClick(event);
-          }
-        }
-        event.preventDefault();
-        event.stopPropagation();
-      };
       pageElement.appendChild(iconNode);
     }
   }
@@ -617,7 +597,11 @@ export const highlightRange = (
         const target = (el as HTMLElement)?.closest?.(
           ".kookit-note[data-key]"
         ) as HTMLElement | null;
-        if (target) {
+        let selectedText = "";
+        if (doc && doc.getSelection()) {
+          selectedText = doc.getSelection()?.toString().trim() || "";
+        }
+        if (target && !selectedText) {
           handleNoteClick({ target });
           e.preventDefault();
           e.stopPropagation();
@@ -641,23 +625,9 @@ export const highlightRange = (
     // with rangy's character-offset calculations.
     iconNode.setAttribute(
       "style",
-      "position: relative; display: inline-block; width: 16px; height: 16px;" +
-        " margin-left: -15px; margin-top: -15px;" +
+      "position: relative; display: width: 16px; height: 16px;" +
         " z-index: 2; font-size: 14px; line-height: 1; cursor: pointer; pointer-events: auto;"
     );
-    iconNode.addEventListener("click", (event: any) => {
-      if (event?.target?.dataset?.key) {
-        handleNoteClick(event);
-      }
-    });
-    iconNode.ontouchend = (event: TouchEvent) => {
-      if (window.isSwiping) return;
-      if ((event.target as any)?.dataset?.key) {
-        handleNoteClick(event);
-      }
-      event.preventDefault();
-      event.stopPropagation();
-    };
     // Insert icon right before the first highlight span
     firstSpan.parentNode?.insertBefore(iconNode, firstSpan);
   }

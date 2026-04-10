@@ -230,6 +230,34 @@ function getTouchAction(col: number, row: number, touchControlRule: any) {
   }
   return "right";
 }
+const getSelectionSentence = (doc: any): string => {
+  let sel = doc.getSelection();
+  if (!sel || !sel.toString().trim()) return "";
+  try {
+    let range = sel.getRangeAt(0);
+    let container = range.commonAncestorContainer;
+    // Walk up to a text-containing element
+    let el: Node | null =
+      container.nodeType === Node.TEXT_NODE
+        ? container.parentElement
+        : container;
+    let fullText = (el as Element)?.textContent || "";
+    let selectedText = sel.toString().trim();
+    // Split on sentence-ending punctuation to find the sentence
+    let sentences = fullText.split(/(?<=[.!?。！？])\s*/);
+    for (let s of sentences) {
+      if (s.includes(selectedText)) {
+        return s.trim();
+      }
+    }
+    // Fallback: return the whole text content of the container
+    return fullText.trim();
+  } catch {
+    // ignore
+  }
+
+  return "";
+};
 export const addAndroidTouchEvent = (
   doc: Document,
   iframe: any,
@@ -582,6 +610,7 @@ export const addAndroidTouchEvent = (
         JSON.stringify({
           event: "select-text",
           selectedText: selectedText,
+          sentence: getSelectionSentence(doc),
           position: position,
           range: charRange,
         })
@@ -832,6 +861,7 @@ export const addAppleTouchEvent = (
         JSON.stringify({
           event: "select-text",
           selectedText: selectedText,
+          sentence: getSelectionSentence(doc),
           position: position,
           range: charRange,
         })
