@@ -15,6 +15,10 @@ async function slideAnimateTo(
   let pageWidth = element.clientWidth + gap;
   let tempDoc = format === "PDF" ? outerDoc : doc;
 
+  // Stop any ongoing touch-move dragging immediately so onTouchMove
+  // no longer modifies scrollLeft while the animation is running.
+  isDragging = false;
+
   // Clean up any existing animation
   if (window.scrollAnimationId) {
     cancelAnimationFrame(window.scrollAnimationId);
@@ -24,39 +28,12 @@ async function slideAnimateTo(
     Math.abs(
       tempDoc.body.scrollWidth - tempDoc.body.scrollLeft - element.clientWidth
     ) < 10 &&
-    isDragging
-  ) {
-    if (selectionTimeout) {
-      clearTimeout(selectionTimeout);
-    }
-
-    selectionTimeout = setTimeout(() => {
-      render.next();
-      isDragging = false;
-    }, 300);
-    return;
-  }
-  if (
-    Math.abs(
-      tempDoc.body.scrollWidth - tempDoc.body.scrollLeft - element.clientWidth
-    ) < 10 &&
-    !isDragging &&
     direction === "right"
   ) {
     render.next();
     return;
   }
-  if (tempDoc.body.scrollLeft === 0 && isDragging) {
-    if (selectionTimeout) {
-      clearTimeout(selectionTimeout);
-    }
-    selectionTimeout = setTimeout(() => {
-      render.prev();
-      isDragging = false;
-    }, 300);
-    return;
-  }
-  if (tempDoc.body.scrollLeft === 0 && !isDragging && direction === "left") {
+  if (tempDoc.body.scrollLeft === 0 && direction === "left") {
     render.prev();
     return;
   }
@@ -75,10 +52,17 @@ async function slideAnimateTo(
     snapX = currentPage * pageWidth;
   }
 
-  snapX = Math.max(0, Math.min(snapX, tempDoc.body.scrollWidth - pageWidth));
-  if (tempDoc.body.scrollWidth - snapX < pageWidth + gap) {
-    snapX = tempDoc.body.scrollWidth;
+  // Clamp to valid range. For the last page the body may not be an exact
+  // multiple of pageWidth, so if the remaining content after snapX is less
+  // than a full page we snap all the way to the end in one step.
+  const maxScroll = tempDoc.body.scrollWidth - element.clientWidth;
+  if (
+    snapX >= maxScroll ||
+    tempDoc.body.scrollWidth - snapX < pageWidth + gap
+  ) {
+    snapX = maxScroll;
   }
+  snapX = Math.max(0, snapX);
 
   const startLeft = tempDoc.body.scrollLeft;
   const distance = snapX - startLeft;
