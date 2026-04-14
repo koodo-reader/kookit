@@ -1,6 +1,6 @@
 class StyleHelper {
   // get default css for iframe
-  static getDefaultCss(ConfigService: any, bookKey: string) {
+  static getDefaultCss(ConfigService: any, bookKey: string = "") {
     const cssRules: string[] = [];
 
     // Selection styles
