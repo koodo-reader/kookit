@@ -235,7 +235,7 @@ const getSelectionSentence = (doc: any): string => {
       }
     }
     // Fallback: return the whole text content of the container
-    return fullText.trim();
+    return fullText.trim().substring(0, 200); // Limit to 200 chars to avoid huge messages
   } catch {
     // ignore
   }
@@ -590,11 +590,12 @@ export const addAndroidTouchEvent = (
       } else {
         charRange = await render.getHightlightCoords();
       }
+      let sentence = getSelectionSentence(doc);
       window.ReactNativeWebView.postMessage(
         JSON.stringify({
           event: "select-text",
           selectedText: selectedText,
-          sentence: getSelectionSentence(doc),
+          sentence: sentence,
           position: position,
           range: charRange,
         })
@@ -841,11 +842,12 @@ export const addAppleTouchEvent = (
       } else {
         charRange = await render.getHightlightCoords();
       }
+      let sentence = getSelectionSentence(doc);
       window.ReactNativeWebView.postMessage(
         JSON.stringify({
           event: "select-text",
           selectedText: selectedText,
-          sentence: getSelectionSentence(doc),
+          sentence: sentence,
           position: position,
           range: charRange,
         })

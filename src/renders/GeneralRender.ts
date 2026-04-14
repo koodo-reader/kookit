@@ -1453,13 +1453,15 @@ class GeneralRender extends EventEmitter {
           if (this.fullTranslationMode === "target") {
             element.setAttribute(
               "style",
-              element.getAttribute("style") + ";font-size:0px !important;"
+              (element.getAttribute("style") || "") +
+                ";font-size:0px !important;"
             );
             let childElements = element.querySelectorAll("*");
             childElements.forEach((child) => {
               child.setAttribute(
                 "style",
-                child.getAttribute("style") + ";font-size:0px !important;"
+                (child.getAttribute("style") || "") +
+                  ";font-size:0px !important;"
               );
             });
           }
