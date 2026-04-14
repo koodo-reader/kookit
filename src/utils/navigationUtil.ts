@@ -245,7 +245,6 @@ export const handleRenderChapter = async (
   doc: Document,
   iframe: any
 ) => {
-  console.log("handleRenderChapter");
   doc.body.innerHTML = "";
   iframe.height = 0 + "px";
   doc.body.scrollTo(0, 0);
@@ -738,7 +737,6 @@ export const getAudioText = (
   let nodeList = getBlockElement(doc.body).filter(
     (item) => !isParentBlock(item)
   );
-  console.log(nodeList, "nodelist");
   let audioNode = nodeList.filter((s) => {
     // 检查文本内容是否存在且不为空
     if (!((s as HTMLElement).textContent || "").trim()) {

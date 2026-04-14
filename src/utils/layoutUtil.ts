@@ -93,7 +93,6 @@ export const handleIframeHeight = async (
 };
 
 export const handleOneChapterDoc = async (item, isSearch: boolean) => {
-  console.log(1);
   let chapterText = "";
   if (item && item.load) {
     let blob = await fetch(await item.load()).then((r) => r.blob());
@@ -103,9 +102,7 @@ export const handleOneChapterDoc = async (item, isSearch: boolean) => {
   if (isSearch) {
     return chapterText;
   }
-  console.log(2);
   chapterText = await handlePrecacheAssets(chapterText, item);
-  console.log(3);
   return chapterText;
 };
 export const getImageElement = (Element) => {
@@ -143,7 +140,6 @@ export const handlePrecacheAssets = async (bookStr, item) => {
     // to fix electron-specific issue where `hyphens: auto` is silently ignored without a Chromium hyphenation dictionary.
     applyHyphenation(chapterDoc);
   }
-  console.log(window.fullTranslationMode);
   if (
     window.fullTranslationMode === "both" ||
     window.fullTranslationMode === "target"
@@ -151,7 +147,6 @@ export const handlePrecacheAssets = async (bookStr, item) => {
     let nodeList = getBlockElement(chapterDoc.body).filter(
       (item) => !isParentBlock(item)
     );
-    console.log(nodeList, "nodelist");
     for (let node of nodeList) {
       if (node.textContent && node.textContent?.trim()) {
         let id =
@@ -168,7 +163,6 @@ export const handlePrecacheAssets = async (bookStr, item) => {
       }
     }
   }
-  console.log(window.transMap, "transmap");
   let imgDomList = getImageElement(chapterDoc) as any;
   if (imgDomList.length > 0) {
     for (let i = 0; i < imgDomList.length; i++) {

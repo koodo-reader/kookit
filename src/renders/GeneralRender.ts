@@ -449,7 +449,6 @@ class GeneralRender extends EventEmitter {
     this.trigger("rendered");
   }
   async goToPosition(bookLocationStr: string) {
-    console.log("gotoposi");
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -956,7 +955,6 @@ class GeneralRender extends EventEmitter {
   }
   async getBatchTransTexts() {
     let restTexts: string[] = (await this.audioText()) as string[];
-    console.log(restTexts, "restTexts");
 
     restTexts = restTexts.slice(0, 100);
     //同时确保总字数不超过10000字
