@@ -1,3 +1,4 @@
+declare var window: any;
 class StyleHelper {
   // get default css for iframe
   static getDefaultCss(ConfigService: any, bookKey: string = "") {
@@ -215,6 +216,9 @@ class StyleHelper {
       cssRules.push("widows: 1 !important");
     }
 
+    if (window.textOrientation === "vertical") {
+      cssRules.push("display: contents !important");
+    }
     // Text indent - only if indent is enabled
     const isIndent = ConfigService.getReaderConfig("isIndent");
     if (isIndent === "yes") {
