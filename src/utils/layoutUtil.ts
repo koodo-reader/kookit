@@ -45,24 +45,6 @@ export const handleIframeHeight = async (
     iframe.height = element.clientHeight + "px";
     if (readerMode === "double") {
       if (isVerticalLayout()) {
-        let section = Math.floor(element.clientHeight / 12);
-        let gap = section % 2 === 0 ? section : section - 1;
-        let pageHeight = (element.clientHeight + gap) / 2;
-        if (
-          ((doc.body.scrollHeight - doc.body.clientHeight) / pageHeight) % 2 ===
-          1
-        ) {
-          let tailElem = document.createElement("div");
-          tailElem.setAttribute(
-            "style",
-            "width: " +
-              doc.body.clientWidth +
-              "px; display: inline-block; height: " +
-              (pageHeight - gap) +
-              "px"
-          );
-          doc.body.appendChild(tailElem);
-        }
       } else {
         let section = Math.floor(element.clientWidth / 12);
         let gap = section % 2 === 0 ? section : section - 1;
