@@ -1441,29 +1441,31 @@ class GeneralRender extends EventEmitter {
       const sourceText = sourcetexts[index];
       if (this.transMap[sourceText]) {
         this.transMap[sourceText].text = targetTexts[index];
-        let element = doc.querySelector(
-          "#" + this.transMap[sourceText].id
-        ) as HTMLElement;
-        if (element) {
-          element.setAttribute(
-            "data-kookit-translation",
-            targetTexts[index] || ""
-          );
-          element.classList.remove("kookit-translation-loading");
-          if (this.fullTranslationMode === "target") {
+        let elements = doc.querySelectorAll("#" + this.transMap[sourceText].id);
+        for (let i = 0; i < elements.length; i++) {
+          const element = elements[i];
+          console.log(sourceText, element);
+          if (element) {
             element.setAttribute(
-              "style",
-              (element.getAttribute("style") || "") +
-                ";font-size:0px !important;"
+              "data-kookit-translation",
+              targetTexts[index] || ""
             );
-            let childElements = element.querySelectorAll("*");
-            childElements.forEach((child) => {
-              child.setAttribute(
+            element.classList.remove("kookit-translation-loading");
+            if (this.fullTranslationMode === "target") {
+              element.setAttribute(
                 "style",
-                (child.getAttribute("style") || "") +
+                (element.getAttribute("style") || "") +
                   ";font-size:0px !important;"
               );
-            });
+              let childElements = element.querySelectorAll("*");
+              childElements.forEach((child) => {
+                child.setAttribute(
+                  "style",
+                  (child.getAttribute("style") || "") +
+                    ";font-size:0px !important;"
+                );
+              });
+            }
           }
         }
       }

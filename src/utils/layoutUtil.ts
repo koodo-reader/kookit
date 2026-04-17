@@ -134,6 +134,9 @@ export const handlePrecacheAssets = async (bookStr, item) => {
         let id =
           node.getAttribute("id") ||
           "kookit-trans-" + Math.random().toString(36).substr(2, 9);
+        if (window.transMap[node.textContent]) {
+          id = window.transMap[node.textContent].id;
+        }
         node.setAttribute("id", id);
         node.classList.add("kookit-translation-host");
         node.classList.add("kookit-translation-loading");
