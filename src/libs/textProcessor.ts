@@ -82,20 +82,6 @@ export const txtToHtml = (
       const cleaned = cleanText(item); // Clean once
       return cleaned && isTitle(cleaned, parserRegex);
     });
-    if (lines.length > 1000 && titlesInSlice.length < 3) {
-      // If the file is very large and no titles are found, we might want to skip title processing to save time
-      const startIndex = Math.max(targetLineIndex - 500, 0);
-      const endIndex = Math.min(targetLineIndex + 500, lines.length);
-      const relevantLines = lines.slice(startIndex, endIndex); // Process only the relevant slice
-
-      for (const item of relevantLines) {
-        htmlParts.push(`<p>${item}</p>`); // Push to array
-      }
-      // Fallback if no HTML was generated
-      return `<h1 style="opacity: 0; font-size: 5px;">Title</h1>${htmlParts.join(
-        ""
-      )}`;
-    }
 
     // Create a Set of cleaned titles for fast lookup
     const cleanedTitlesSet = new Set(
