@@ -956,7 +956,7 @@ class GeneralRender extends EventEmitter {
   async getBatchTransTexts() {
     let restTexts: string[] = (await this.audioText()) as string[];
 
-    restTexts = restTexts.slice(0, 100);
+    restTexts = restTexts.slice(0, 200);
     //同时确保总字数不超过10000字
     let totalLength = 0;
     restTexts = restTexts.filter((item) => {
@@ -1434,7 +1434,7 @@ class GeneralRender extends EventEmitter {
     htmlContent = await processHtml(htmlContent);
     return { handled: true, content: htmlContent };
   }
-  async handleBatchTransResult(sourcetexts: string[], targetTexts: string[]) {
+  handleBatchTransResult(sourcetexts: string[], targetTexts: string[]) {
     let doc = this.getDocument();
     if (!doc) return;
     for (let index = 0; index < sourcetexts.length; index++) {
@@ -1444,7 +1444,6 @@ class GeneralRender extends EventEmitter {
         let elements = doc.querySelectorAll("#" + this.transMap[sourceText].id);
         for (let i = 0; i < elements.length; i++) {
           const element = elements[i];
-          console.log(sourceText, element);
           if (element) {
             element.setAttribute(
               "data-kookit-translation",
