@@ -1,6 +1,7 @@
 import Chinese from "../libs/zh-convert";
 import { processDocumentBody } from "./bionicUtil";
 import { isElectron } from "./common";
+import { getBlockElement, isParentBlock } from "./common";
 declare var window: any;
 export const isVerticalLayout = (): boolean => {
   return window.textOrientation === "vertical";
@@ -44,24 +45,6 @@ export const handleIframeHeight = async (
     iframe.height = element.clientHeight + "px";
     if (readerMode === "double") {
       if (isVerticalLayout()) {
-        let section = Math.floor(element.clientHeight / 12);
-        let gap = section % 2 === 0 ? section : section - 1;
-        let pageHeight = (element.clientHeight + gap) / 2;
-        if (
-          ((doc.body.scrollHeight - doc.body.clientHeight) / pageHeight) % 2 ===
-          1
-        ) {
-          let tailElem = document.createElement("div");
-          tailElem.setAttribute(
-            "style",
-            "width: " +
-              doc.body.clientWidth +
-              "px; display: inline-block; height: " +
-              (pageHeight - gap) +
-              "px"
-          );
-          doc.body.appendChild(tailElem);
-        }
       } else {
         let section = Math.floor(element.clientWidth / 12);
         let gap = section % 2 === 0 ? section : section - 1;
@@ -101,41 +84,37 @@ export const handleOneChapterDoc = async (item, isSearch: boolean) => {
   if (isSearch) {
     return chapterText;
   }
-  if (item && item.loadAsset) {
-    chapterText = await handlePrecacheAssets(chapterText, item.loadAsset);
-  }
-  chapterText = handleImageMarker(chapterText);
+  chapterText = await handlePrecacheAssets(chapterText, item);
   return chapterText;
 };
 export const getImageElement = (Element) => {
   return Array.from(Element.querySelectorAll("img, image")) as HTMLElement[];
 };
-export const handlePrecacheAssets = async (bookStr, loadAsset) => {
+export const handlePrecacheAssets = async (bookStr, item) => {
   let chapterDoc = new DOMParser().parseFromString(bookStr, "text/html") as any;
-  let imgDomList = getImageElement(chapterDoc) as any;
-  for (let subindex = 0; subindex < imgDomList.length; subindex++) {
-    if (imgDomList[subindex].getAttribute("src")) {
-      imgDomList[subindex].src = await loadAsset(
-        imgDomList[subindex].getAttribute("src")
-      );
-    } else if (imgDomList[subindex].getAttribute("xlink:href")) {
-      imgDomList[subindex].setAttribute(
-        "xlink:href",
-        await loadAsset(imgDomList[subindex].getAttribute("xlink:href"))
-      );
+  if (item && item.loadAsset) {
+    let loadAsset = item.loadAsset;
+    let imgDomList = getImageElement(chapterDoc) as any;
+    for (let subindex = 0; subindex < imgDomList.length; subindex++) {
+      if (imgDomList[subindex].getAttribute("src")) {
+        imgDomList[subindex].src = await loadAsset(
+          imgDomList[subindex].getAttribute("src")
+        );
+      } else if (imgDomList[subindex].getAttribute("xlink:href")) {
+        imgDomList[subindex].setAttribute(
+          "xlink:href",
+          await loadAsset(imgDomList[subindex].getAttribute("xlink:href"))
+        );
+      }
+    }
+    let linkList = Array.from(chapterDoc.getElementsByTagName("link"));
+    for (let index = 0; index < linkList.length; index++) {
+      const link: any = linkList[index];
+      if (link.getAttribute("href")) {
+        link.href = await loadAsset(link.getAttribute("href"));
+      }
     }
   }
-  let linkList = Array.from(chapterDoc.getElementsByTagName("link"));
-  for (let index = 0; index < linkList.length; index++) {
-    const link: any = linkList[index];
-    if (link.getAttribute("href")) {
-      link.href = await loadAsset(link.getAttribute("href"));
-    }
-  }
-  return chapterDoc.documentElement.innerHTML;
-};
-export const handleImageMarker = (bookStr) => {
-  let chapterDoc = new DOMParser().parseFromString(bookStr, "text/html") as any;
   if (chapterDoc && chapterDoc.documentElement) {
     chapterDoc.documentElement.lang = "en"; // 方式1（推荐）
   }
@@ -143,10 +122,34 @@ export const handleImageMarker = (bookStr) => {
     // to fix electron-specific issue where `hyphens: auto` is silently ignored without a Chromium hyphenation dictionary.
     applyHyphenation(chapterDoc);
   }
-  let imgDomList = getImageElement(chapterDoc);
-  if (imgDomList.length === 0) {
-    return bookStr;
-  } else {
+  if (
+    window.fullTranslationMode === "both" ||
+    window.fullTranslationMode === "target"
+  ) {
+    let nodeList = getBlockElement(chapterDoc.body).filter(
+      (item) => !isParentBlock(item)
+    );
+    for (let node of nodeList) {
+      if (node.textContent && node.textContent?.trim()) {
+        let id =
+          node.getAttribute("id") ||
+          "kookit-trans-" + Math.random().toString(36).substr(2, 9);
+        if (window.transMap[node.textContent]) {
+          id = window.transMap[node.textContent].id;
+        }
+        node.setAttribute("id", id);
+        node.classList.add("kookit-translation-host");
+        node.classList.add("kookit-translation-loading");
+        node.setAttribute("data-kookit-translation", "");
+        let originalText = node.textContent || "";
+        window.transMap[originalText] = {
+          id,
+        };
+      }
+    }
+  }
+  let imgDomList = getImageElement(chapterDoc) as any;
+  if (imgDomList.length > 0) {
     for (let i = 0; i < imgDomList.length; i++) {
       if (imgDomList[i].tagName === "image") {
         continue;
@@ -180,6 +183,7 @@ export const handleImageMarker = (bookStr) => {
     }
     return chapterDoc.documentElement.innerHTML;
   }
+  return chapterDoc.documentElement.innerHTML;
 };
 export const createIframe = (
   element: HTMLElement,

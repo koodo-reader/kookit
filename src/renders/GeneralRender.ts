@@ -18,20 +18,23 @@ import {
   handleScrollPosition,
   handleHighlightSearchNode,
   handleHighlightAudioNode,
-  getBlockElement,
-  isParentBlock,
   isElementFootnote,
   processHtml,
 } from "../utils/navigationUtil";
 import EventEmitter from "../utils/EventEmitter";
 import { CFI } from "../libs/cfi";
-import { clearHighlight, showNoteHighlight } from "../utils/noteUtil";
+import {
+  clearHighlight,
+  showNoteHighlight,
+  showNoteHighlightBatch,
+} from "../utils/noteUtil";
 import { addPageAnimation } from "../utils/animationUtil";
 import rangy from "rangy/lib/rangy-core.js";
 import "rangy/lib/rangy-textrange";
 
 import { getPDFSearchResult } from "../utils/pdfUtil";
 import { addAndroidTouchEvent, addAppleTouchEvent } from "../utils/touchUtil";
+import { getBlockElement, isParentBlock } from "../utils/common";
 declare var window: any;
 class GeneralRender extends EventEmitter {
   readerMode: string;
@@ -59,6 +62,14 @@ class GeneralRender extends EventEmitter {
   touchEventSet: any;
   scrollTimer: any;
   recordTimer: any;
+  transMap: Record<
+    string,
+    {
+      id: string;
+      text?: string;
+    }
+  >;
+  fullTranslationMode: string = "no";
   constructor(config: {
     readerMode: string;
     format: string;
@@ -71,6 +82,7 @@ class GeneralRender extends EventEmitter {
     isBionic?: string;
     textOrientation?: string;
     isAllowScript?: string;
+    fullTranslationMode?: string;
   }) {
     super();
     this.readerMode = config.readerMode;
@@ -94,8 +106,12 @@ class GeneralRender extends EventEmitter {
     this.tempLocation = {};
     this.isBionic = config.isBionic || "no";
     window.isBionic = this.isBionic;
+    this.transMap = {};
+    window.transMap = this.transMap;
+    this.fullTranslationMode = config.fullTranslationMode || "no";
+    window.fullTranslationMode = this.fullTranslationMode;
 
-    //浏览器和手机版环境已经有严格的安全限制，无需额外限制，PDF中无法执行代码，强行开启则无法渲染图书
+    //手机版环境已经有严格的安全限制，无需额外限制，PDF中无法执行代码，强行开启则无法渲染图书
     this.isAllowScript =
       this.format === "PDF" || this.isMobile === "yes"
         ? "yes"
@@ -937,6 +953,21 @@ class GeneralRender extends EventEmitter {
   getPosition() {
     return this.tempLocation;
   }
+  async getBatchTransTexts() {
+    let restTexts: string[] = (await this.audioText()) as string[];
+
+    restTexts = restTexts.slice(0, 200);
+    //同时确保总字数不超过10000字
+    let totalLength = 0;
+    restTexts = restTexts.filter((item) => {
+      totalLength += item.length;
+      return totalLength <= 10000;
+    });
+    restTexts = restTexts.filter(
+      (item) => !this.transMap[item] || !this.transMap[item].text
+    );
+    return restTexts.filter((item) => item.trim().length > 0);
+  }
   async getNotePosition() {
     let doc = this.getDocument();
     if (!doc) return;
@@ -975,42 +1006,55 @@ class GeneralRender extends EventEmitter {
     if (!doc || !iframe) return;
     clearHighlight(doc);
 
-    // if more than 20 notes, render one by one to avoid blocking the UI thread
-    for (let index = 0; index < notes.length; index++) {
-      const item = notes[index];
-      try {
-        await new Promise((r) => setTimeout(r, 5));
-        showNoteHighlight(
-          JSON.parse(item.range),
-          item.color,
-          item.key,
-          handleNoteClick,
-          doc,
-          iframe,
-          item.notes !== "",
-          this.isMobile === "yes",
-          item.notes || ""
-        );
-        // highlighter.highlightSelection(classes[item.color]);
-      } catch (e) {
-        console.error(
-          e,
-          "Exception has been caught when restore character ranges."
-        );
-        return;
-      }
+    // Use batch API: resolve all character ranges on clean DOM first,
+    // then apply all inline highlights. This prevents earlier highlights
+    // from shifting character offsets for later ones.
+    const batchItems = notes.map((item) => ({
+      range: JSON.parse(item.range),
+      colorIndex: item.color,
+      noteKey: item.key,
+      isNote: item.notes !== "",
+      noteContent: item.notes || "",
+    }));
+
+    try {
+      showNoteHighlightBatch(
+        batchItems,
+        handleNoteClick,
+        doc,
+        iframe,
+        this.isMobile === "yes"
+      );
+    } catch (e) {
+      console.error(
+        e,
+        "Exception has been caught when restore character ranges."
+      );
     }
   }
   removeOneNote(key: string, chapterDocIndex: number) {
     let doc = this.getDocument();
     if (!doc) return;
-    const elements = doc.querySelectorAll(".kookit-note");
+    // Remove note icon elements for this key
+    const icons = doc.querySelectorAll(
+      ".kookit-note-icon[data-key='" + key + "']"
+    );
+    for (let index = 0; index < icons.length; index++) {
+      icons[index].parentNode?.removeChild(icons[index]);
+    }
+    // Unwrap inline highlight spans for this key (restore original text)
+    const elements = doc.querySelectorAll(
+      "span.kookit-note[data-key='" + key + "']"
+    );
     for (let index = 0; index < elements.length; index++) {
-      const element: any = elements[index];
-      const dataKey = element.getAttribute("data-key");
-      if (dataKey === key) {
-        element.parentNode.removeChild(element);
+      const element = elements[index];
+      const parent = element.parentNode;
+      if (!parent) continue;
+      while (element.firstChild) {
+        parent.insertBefore(element.firstChild, element);
       }
+      parent.removeChild(element);
+      parent.normalize();
     }
   }
   async createOneNote(item: any, handleNoteClick: any) {
@@ -1254,15 +1298,22 @@ class GeneralRender extends EventEmitter {
           href = "#" + node.getAttribute("id");
         }
       } else {
-        await this.goToChapterDocIndex(result.index);
-        let node = result.anchor(doc);
-        await this.goToNode(node);
         if (isElementFootnote(event.target)) {
+          let blob = await fetch(
+            await this.chapterDocList[result.index].text.load()
+          ).then((r) => r.blob());
+          let chapterText = await blob.text();
+          let node = result.anchor(
+            new DOMParser().parseFromString(chapterText, "text/html")
+          );
+          if (!node) {
+            return { handled: false };
+          }
           return {
             handled: true,
             isShowMenu: true,
-            isJump: true,
-            href: href,
+            isJump: false,
+            href: "",
             node: node,
           };
         }
@@ -1382,6 +1433,42 @@ class GeneralRender extends EventEmitter {
     }
     htmlContent = await processHtml(htmlContent);
     return { handled: true, content: htmlContent };
+  }
+  handleBatchTransResult(sourcetexts: string[], targetTexts: string[]) {
+    let doc = this.getDocument();
+    if (!doc) return;
+    for (let index = 0; index < sourcetexts.length; index++) {
+      const sourceText = sourcetexts[index];
+      if (this.transMap[sourceText]) {
+        this.transMap[sourceText].text = targetTexts[index];
+        let elements = doc.querySelectorAll("#" + this.transMap[sourceText].id);
+        for (let i = 0; i < elements.length; i++) {
+          const element = elements[i];
+          if (element) {
+            element.setAttribute(
+              "data-kookit-translation",
+              targetTexts[index] || ""
+            );
+            element.classList.remove("kookit-translation-loading");
+            if (this.fullTranslationMode === "target") {
+              element.setAttribute(
+                "style",
+                (element.getAttribute("style") || "") +
+                  ";font-size:0px !important;"
+              );
+              let childElements = element.querySelectorAll("*");
+              childElements.forEach((child) => {
+                child.setAttribute(
+                  "style",
+                  (child.getAttribute("style") || "") +
+                    ";font-size:0px !important;"
+                );
+              });
+            }
+          }
+        }
+      }
+    }
   }
 }
 export default GeneralRender;

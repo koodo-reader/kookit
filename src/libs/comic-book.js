@@ -40,7 +40,22 @@ export const makeComicBook = (
     cache.delete(name);
   };
 
-  const exts = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"];
+  const exts = [
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".bmp",
+    ".webp",
+    ".svg",
+    ".avif",
+    ".apng",
+    ".ico",
+    ".cur",
+    ".jfif",
+    ".pjpeg",
+    ".pjp",
+  ];
   const files = entries
     .map((entry) => entry.filename)
     .filter((name) => exts.some((ext) => name.endsWith(ext)))

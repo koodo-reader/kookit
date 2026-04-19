@@ -27,7 +27,7 @@ const showNoteTooltip = (
   if (!tooltip) {
     tooltip = doc.createElement("span");
     tooltip.setAttribute("id", TOOLTIP_ID);
-    tooltip.setAttribute("class", "kookit-note");
+    tooltip.setAttribute("class", "kookit-note-tooltip");
     tooltip.setAttribute(
       "style",
       "position: fixed; z-index: 9999; max-width: 280px; padding: 6px 10px;" +
@@ -79,6 +79,82 @@ const hideNoteTooltip = (doc: Document) => {
   if (tooltip) tooltip.style.display = "none";
 };
 
+/**
+ * Batch version: resolve ALL character ranges on a clean DOM first,
+ * then apply all inline highlights. This is used by renderHighlighters
+ * after clearHighlight() has been called, so the DOM is already clean.
+ *
+ * While inline highlight spans don't change the total character count
+ * (rangy walks through all text nodes regardless of nesting), the batch
+ * approach is still preferred for initial rendering because:
+ * 1. It avoids any edge cases with overlapping ranges after splitText()
+ * 2. It's more efficient (single pass for resolve, single pass for apply)
+ */
+export const showNoteHighlightBatch = (
+  notes: Array<{
+    range: any;
+    colorIndex: number;
+    noteKey: string;
+    isNote: boolean;
+    noteContent: string;
+  }>,
+  handleNoteClick: any,
+  doc: Document,
+  iframe: any,
+  isMobile: boolean
+) => {
+  let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
+  let selection = rangy.getSelection(iframe);
+
+  // Phase 1: Resolve all character ranges → native Range objects on clean DOM
+  const resolved: Array<{
+    nativeRange: Range;
+    colorCode: string;
+    noteKey: string;
+    isNote: boolean;
+    noteContent: string;
+  }> = [];
+
+  for (let i = 0; i < notes.length; i++) {
+    const item = notes[i];
+    try {
+      selection.restoreCharacterRanges(doc, [item.range]);
+      const nativeRange = selection.getRangeAt(0).nativeRange.cloneRange();
+      resolved.push({
+        nativeRange,
+        colorCode: classes[item.colorIndex],
+        noteKey: item.noteKey,
+        isNote: item.isNote,
+        noteContent: item.noteContent,
+      });
+    } catch (e) {
+      console.warn(
+        "Failed to restore character range for note:",
+        item.noteKey,
+        e
+      );
+    }
+    if (iWin?.getSelection()) iWin.getSelection().empty();
+  }
+
+  // Phase 2: Apply all inline highlights (order doesn't matter now,
+  // since we already have concrete Range objects)
+  for (let i = 0; i < resolved.length; i++) {
+    const r = resolved[i];
+    // Wrap in a rangy range so highlightRange can access .nativeRange
+    highlightRange(
+      { nativeRange: r.nativeRange },
+      r.colorCode,
+      r.noteKey,
+      handleNoteClick,
+      doc,
+      r.isNote,
+      isMobile,
+      r.noteContent
+    );
+  }
+};
+
 export const showNoteHighlight = (
   range: any,
   colorIndex: number,
@@ -94,9 +170,17 @@ export const showNoteHighlight = (
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
   let temp = range;
   temp = [temp];
-  // sleep(500);
-  let selection = rangy.getSelection(iframe);
 
+  // Inline highlight <span> wrappers don't add or remove characters from the
+  // DOM text — they only nest existing text nodes inside a span. splitText()
+  // also preserves total character count. So rangy's character-offset-based
+  // restoreCharacterRanges works correctly even with existing highlights.
+  //
+  // The key requirement is that NO extra text nodes are introduced by
+  // highlight/icon/tooltip elements. The 📋 icon uses CSS ::before (no text
+  // node), and the tooltip uses class "kookit-note-tooltip" (not counted).
+
+  let selection = rangy.getSelection(iframe);
   selection.restoreCharacterRanges(doc, temp);
   let newRange = selection.getRangeAt(0);
   highlightRange(
@@ -251,9 +335,14 @@ export const showPDFHighlight = (
         return;
       }
       if (event && event.target) {
+        let selectedText = "";
+        if (doc && doc.getSelection()) {
+          selectedText = doc.getSelection()?.toString().trim() || "";
+        }
         if (
           (event.target as any).dataset &&
-          (event.target as any).dataset.key
+          (event.target as any).dataset.key &&
+          !selectedText
         ) {
           handleNoteClick(event);
         }
@@ -277,44 +366,41 @@ export const showPDFHighlight = (
           "px;" +
           "width: 16px; height: 16px; z-index: 2; cursor: pointer; font-size: 14px; line-height: 1;"
       );
-      iconNode.setAttribute("class", "kookit-note");
+      iconNode.setAttribute("class", "kookit-note kookit-note-icon");
+      iconNode.innerHTML = "📋";
       iconNode.setAttribute("data-key", noteKey);
-      iconNode.textContent = "📋";
-      iconNode.addEventListener("click", (event) => {
-        if (event && event.target) {
-          if (
-            (event.target as any).dataset &&
-            (event.target as any).dataset.key
-          ) {
-            handleNoteClick(event);
-          }
-        }
-      });
-      iconNode.ontouchend = (event) => {
-        if (window.isSwiping) {
-          return;
-        }
-        if (event && event.target) {
-          if (
-            (event.target as any).dataset &&
-            (event.target as any).dataset.key
-          ) {
-            handleNoteClick(event);
-          }
-        }
-        event.preventDefault();
-        event.stopPropagation();
-      };
+      // No textContent — use CSS ::before to display icon, avoiding
+      // interference with rangy character-offset calculations
       pageElement.appendChild(iconNode);
     }
   }
 };
 
 export const clearHighlight = (doc: Document) => {
+  // Remove absolutely-positioned note icon elements (📋) first
+  const icons = doc.querySelectorAll(".kookit-note-icon");
+  for (let index = 0; index < icons.length; index++) {
+    icons[index].parentNode?.removeChild(icons[index]);
+  }
+  // Handle two cases:
+  // 1. Inline highlight spans (from highlightRange) → unwrap to restore text
+  // 2. Absolutely-positioned divs (from showPDFHighlight) → just remove
   const elements = doc.querySelectorAll(".kookit-note");
   for (let index = 0; index < elements.length; index++) {
-    const element: any = elements[index];
-    element.parentNode.removeChild(element);
+    const element = elements[index];
+    const parent = element.parentNode;
+    if (!parent) continue;
+    if (element.tagName === "SPAN" && element.childNodes.length > 0) {
+      // Inline span wrapping text: unwrap by moving children out
+      while (element.firstChild) {
+        parent.insertBefore(element.firstChild, element);
+      }
+      parent.removeChild(element);
+      parent.normalize();
+    } else {
+      // Absolutely-positioned overlay (PDF) or empty: just remove
+      parent.removeChild(element);
+    }
   }
 };
 
@@ -348,48 +434,110 @@ export const highlightRange = (
     requestAnimationFrame(waitAndHighlight);
     return;
   }
-  const rects: any[] = range.nativeRange.getClientRects();
-  const validRects: DOMRect[] = [];
-  let scrollTop = doc.body.scrollTop || doc.documentElement.scrollTop;
-  let scrollLeft = doc.body.scrollLeft || doc.documentElement.scrollLeft;
 
-  // 将rects转换为数组并按宽度从小到大排序
-  const sortedRects = Array.from(rects).sort((a, b) => a.width - b.width);
-  // 获取所有rects中的最大宽度
-  const maxWidth = sortedRects.length
-    ? Math.max(...Array.from(rects).map((rect) => rect.width))
-    : 0;
-  // 过滤重复和无效的矩形
-  for (let index = 0; index < sortedRects.length; index++) {
-    const rect = sortedRects[index];
+  // --- Inline wrapping approach ---
+  // Instead of creating absolutely-positioned overlay spans that become
+  // misaligned when page content changes (e.g. ::after pseudo-elements,
+  // translations), we wrap the actual text nodes in the range with inline
+  // <span> elements. This way highlights are part of the document flow
+  // and always stay aligned with the text they belong to.
 
-    // 过滤掉宽度或高度为0的矩形
-    if (rect.width <= 0 || rect.height <= 0) {
+  const nativeRange: Range = range.nativeRange;
+
+  // Collect all text nodes within the range
+  const textNodes: Text[] = [];
+  const walker = doc.createTreeWalker(
+    nativeRange.commonAncestorContainer,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode: (node: Text) => {
+        // Check if this text node is within (or partially within) the range
+        const nodeRange = doc.createRange();
+        nodeRange.selectNodeContents(node);
+        if (
+          nativeRange.compareBoundaryPoints(Range.END_TO_START, nodeRange) <
+            0 &&
+          nativeRange.compareBoundaryPoints(Range.START_TO_END, nodeRange) > 0
+        ) {
+          return NodeFilter.FILTER_ACCEPT;
+        }
+        return NodeFilter.FILTER_REJECT;
+      },
+    }
+  );
+  while (walker.nextNode()) {
+    textNodes.push(walker.currentNode as Text);
+  }
+  // Handle single text node case (commonAncestorContainer is a text node)
+  if (
+    textNodes.length === 0 &&
+    nativeRange.commonAncestorContainer.nodeType === Node.TEXT_NODE
+  ) {
+    textNodes.push(nativeRange.commonAncestorContainer as Text);
+  }
+
+  // Build the inline style for the highlight
+  const isColorHighlight = colorCode.indexOf("color") > -1;
+  const colorIdx = colorCode.split("-")[1];
+  const highlightStyle = isColorHighlight
+    ? "background-color: " + colors[colorIdx]
+    : "border-bottom: 2px solid " + lines[colorIdx];
+
+  const wrappedSpans: HTMLElement[] = [];
+
+  for (let i = 0; i < textNodes.length; i++) {
+    const textNode = textNodes[i];
+    // Skip empty or whitespace-only text nodes
+    if (!textNode.textContent || !textNode.textContent.trim()) continue;
+    // Skip text nodes already inside a kookit-note span for the same key
+    if (
+      textNode.parentElement &&
+      textNode.parentElement.classList.contains("kookit-note") &&
+      textNode.parentElement.getAttribute("data-key") === noteKey
+    ) {
+      wrappedSpans.push(textNode.parentElement);
       continue;
     }
 
-    // 检查是否与已有矩形重叠
-    const isOverlapping = validRects.some((validRect) => {
-      return (
-        Math.abs(rect.bottom - validRect.bottom) < 5 &&
-        rect.width === maxWidth &&
-        Math.abs(rect.left - validRect.left) < maxWidth &&
-        Math.abs(rect.right - validRect.right) < maxWidth
-      );
-    });
-
-    if (!isOverlapping) {
-      validRects.push(rect);
+    // Determine the portion of this text node that falls within the range
+    let startOffset = 0;
+    let endOffset = textNode.textContent.length;
+    if (textNode === nativeRange.startContainer) {
+      startOffset = nativeRange.startOffset;
     }
+    if (textNode === nativeRange.endContainer) {
+      endOffset = nativeRange.endOffset;
+    }
+
+    // If only a partial text node is highlighted, split it
+    let targetNode = textNode;
+    if (startOffset > 0) {
+      targetNode = textNode.splitText(startOffset);
+      endOffset -= startOffset;
+    }
+    if (endOffset < targetNode.textContent!.length) {
+      targetNode.splitText(endOffset);
+    }
+
+    // Create the wrapper span
+    const span = doc.createElement("span");
+    span.setAttribute("style", highlightStyle);
+    span.setAttribute("class", "kookit-note");
+    span.setAttribute("data-key", noteKey);
+    if (isNote && noteContent) {
+      span.setAttribute("data-note-content", noteContent);
+    }
+
+    // Wrap the text node with the span
+    targetNode.parentNode!.insertBefore(span, targetNode);
+    span.appendChild(targetNode);
+    wrappedSpans.push(span);
   }
-  const topRightRect = validRects.reduce<DOMRect | null>((best, r) => {
-    if (!best) return r;
-    if (r.top < best.top || (r.top === best.top && r.right < best.right))
-      return r;
-    return best;
-  }, null);
-  // 事件委托：在 doc.body 上监听点击，通过坐标命中 kookit-note 来触发 handleNoteClick
-  // 仅在第一次循环前注册一次（用自定义标记避免重复注册）
+
+  // --- Event delegation ---
+  // Use DOM-based event delegation on doc.body (registered once)
+  // Since highlights are now inline elements, we can detect them via
+  // event.target.closest() instead of coordinate-based hit testing.
   if (!(doc.body as any).__kookitDelegated) {
     (doc.body as any).__kookitDelegated = true;
     let delegateDownX = 0;
@@ -397,40 +545,18 @@ export const highlightRange = (
     doc.body.addEventListener(
       "mousemove",
       (e: MouseEvent) => {
-        const bodyScrollTop =
-          doc.body.scrollTop || doc.documentElement.scrollTop;
-        const bodyScrollLeft =
-          doc.body.scrollLeft || doc.documentElement.scrollLeft;
-        const absX = e.clientX + bodyScrollLeft;
-        const absY = e.clientY + bodyScrollTop;
-        const notes = doc.body.querySelectorAll(
+        const target = (e.target as HTMLElement)?.closest?.(
           ".kookit-note[data-key]"
-        ) as NodeListOf<HTMLElement>;
-        let overHighlight = false;
-        let hitNoteContent = "";
-        for (let n = 0; n < notes.length; n++) {
-          const el = notes[n];
-          const s = el.style;
-          const left = parseFloat(s.left);
-          const top = parseFloat(s.top);
-          const w = parseFloat(s.width);
-          const h = parseFloat(s.height);
-          if (
-            absX >= left &&
-            absX <= left + w &&
-            absY >= top &&
-            absY <= top + h
-          ) {
-            overHighlight = true;
-            hitNoteContent = el.getAttribute("data-note-content") || "";
-            break;
+        ) as HTMLElement | null;
+        if (target) {
+          doc.body.style.cursor = "pointer";
+          const nc = target.getAttribute("data-note-content") || "";
+          if (nc) {
+            moveNoteTooltip(e.clientX, e.clientY, doc);
+            showNoteTooltip(nc, e.clientX, e.clientY, doc);
           }
-        }
-        doc.body.style.cursor = overHighlight ? "pointer" : "";
-        if (overHighlight && hitNoteContent) {
-          moveNoteTooltip(e.clientX, e.clientY, doc);
-          showNoteTooltip(hitNoteContent, e.clientX, e.clientY, doc);
         } else {
+          doc.body.style.cursor = "";
           hideNoteTooltip(doc);
         }
       },
@@ -452,31 +578,11 @@ export const highlightRange = (
           Math.abs(e.clientY - delegateDownY) > 5
         )
           return;
-        const bodyScrollTop =
-          doc.body.scrollTop || doc.documentElement.scrollTop;
-        const bodyScrollLeft =
-          doc.body.scrollLeft || doc.documentElement.scrollLeft;
-        const absX = e.clientX + bodyScrollLeft;
-        const absY = e.clientY + bodyScrollTop;
-        const notes = doc.body.querySelectorAll(
+        const target = (e.target as HTMLElement)?.closest?.(
           ".kookit-note[data-key]"
-        ) as NodeListOf<HTMLElement>;
-        for (let n = 0; n < notes.length; n++) {
-          const el = notes[n];
-          const s = el.style;
-          const left = parseFloat(s.left);
-          const top = parseFloat(s.top);
-          const w = parseFloat(s.width);
-          const h = parseFloat(s.height);
-          if (
-            absX >= left &&
-            absX <= left + w &&
-            absY >= top &&
-            absY <= top + h
-          ) {
-            handleNoteClick({ target: el });
-            break;
-          }
+        ) as HTMLElement | null;
+        if (target) {
+          handleNoteClick({ target });
         }
       },
       true
@@ -487,85 +593,42 @@ export const highlightRange = (
         if (window.isSwiping) return;
         const touch = e.changedTouches[0];
         if (!touch) return;
-        const bodyScrollTop =
-          doc.body.scrollTop || doc.documentElement.scrollTop;
-        const bodyScrollLeft =
-          doc.body.scrollLeft || doc.documentElement.scrollLeft;
-        const absX = touch.clientX + bodyScrollLeft;
-        const absY = touch.clientY + bodyScrollTop;
-        const notes = doc.body.querySelectorAll(
+        // For touch events, use elementFromPoint to find the target
+        const el = doc.elementFromPoint(touch.clientX, touch.clientY);
+        const target = (el as HTMLElement)?.closest?.(
           ".kookit-note[data-key]"
-        ) as NodeListOf<HTMLElement>;
-        for (let n = 0; n < notes.length; n++) {
-          const el = notes[n];
-          const s = el.style;
-          const left = parseFloat(s.left);
-          const top = parseFloat(s.top);
-          const w = parseFloat(s.width);
-          const h = parseFloat(s.height);
-          if (
-            absX >= left &&
-            absX <= left + w &&
-            absY >= top &&
-            absY <= top + h
-          ) {
-            handleNoteClick({ target: el });
-            e.preventDefault();
-            e.stopPropagation();
-            break;
-          }
+        ) as HTMLElement | null;
+        let selectedText = "";
+        if (doc && doc.getSelection()) {
+          selectedText = doc.getSelection()?.toString().trim() || "";
+        }
+        if (target && !selectedText) {
+          handleNoteClick({ target });
+          e.preventDefault();
+          e.stopPropagation();
         }
       },
       true
     );
   }
-  for (let index = 0; index < validRects.length; index++) {
-    const rect = validRects[index];
-    var newNode = document.createElement("span");
-    // 高亮层置于文字下方（z-index: -1），pointer-events: none 完全不阻断文字选择与点击穿透
-    // 点击事件由上方注册在 doc.body 上的事件委托处理，通过坐标命中高亮区域来触发
-    newNode?.setAttribute(
+
+  // --- Note icon (📋) ---
+  // For notes with content, place a small icon near the first highlight span.
+  // The icon is positioned absolutely but anchored relative to a position:relative
+  // wrapper, or we compute it from the first span's bounding rect.
+  if (isNote && wrappedSpans.length > 0) {
+    const firstSpan = wrappedSpans[0];
+    const iconNode = doc.createElement("span");
+    iconNode.setAttribute("class", "kookit-note-icon");
+    iconNode.setAttribute("data-key", noteKey);
+    // Use CSS content via ::before to display the icon, so no text node
+    // is added to the DOM. This prevents the icon text from interfering
+    // with rangy's character-offset calculations.
+    iconNode.setAttribute(
       "style",
-      "position: absolute;" +
-        (colorCode.indexOf("color") > -1
-          ? "background-color: "
-          : "border-bottom: ") +
-        (colorCode.indexOf("color") > -1
-          ? colors[colorCode.split("-")[1]] + ";opacity: 1"
-          : `2px solid ${lines[colorCode.split("-")[1]]}`) +
-        ";left:" +
-        (Math.min(rect.left, rect.x) + scrollLeft) +
-        "px; top:" +
-        (Math.min(rect.top, rect.y) + scrollTop) +
-        "px;" +
-        "width:" +
-        rect.width +
-        "px; height:" +
-        rect.height +
-        "px; z-index: -1; "
+      "position: relative; z-index: 2; font-size: 14px; line-height: 1; cursor: pointer; pointer-events: auto;"
     );
-    newNode.setAttribute("class", " kookit-note");
-    newNode.setAttribute("data-key", noteKey);
-    if (isNote && noteContent) {
-      newNode.setAttribute("data-note-content", noteContent);
-    }
-    doc.body.appendChild(newNode);
-    if (isNote && rect === topRightRect) {
-      const iconNode = document.createElement("span");
-      iconNode.setAttribute(
-        "style",
-        "position: absolute;" +
-          "left:" +
-          (Math.min(rect.left, rect.x) + scrollLeft + rect.width - 15) +
-          "px; top:" +
-          (Math.min(rect.top, rect.y) + scrollTop - 15) +
-          "px;" +
-          "width: 16px; height: 16px; z-index: 2; font-size: 14px; line-height: 1; "
-      );
-      iconNode.setAttribute("class", "kookit-note");
-      iconNode.setAttribute("data-key", noteKey);
-      iconNode.textContent = "📋";
-      doc.body.appendChild(iconNode);
-    }
+    // Insert icon right before the first highlight span
+    firstSpan.parentNode?.insertBefore(iconNode, firstSpan);
   }
 };

@@ -11,15 +11,11 @@ import Chapter from "../model/chapter";
 import Chinese from "../libs/zh-convert";
 import _ from "underscore";
 import { cleanText } from "../libs/textProcessor";
+import { getBlockElement, isParentBlock } from "./common";
+
+declare var window: any;
 
 let lock = false;
-export const getBlockElement = (Element) => {
-  return Array.from(
-    Element.querySelectorAll(
-      "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,li,dt,dd,pre,blockquote,address,kookitmarker"
-    )
-  ) as HTMLElement[];
-};
 
 export const handleScrollPage = async (
   element: HTMLElement,
@@ -434,7 +430,11 @@ export const handleScrollPosition = async (
           cleanText((s as HTMLElement).textContent).includes(
             Chinese.s2t(cleanText(text))
           )) &&
-        (Math.abs(index - parseInt(count)) < 2 ||
+        (Math.abs(index - parseInt(count)) <
+          (window.fullTranslationMode === "both" ||
+          window.fullTranslationMode === "target"
+            ? 1
+            : 2) ||
           count === "search" ||
           count === "ignore" ||
           count === "next")
@@ -1043,26 +1043,6 @@ export const getSearchResult = async (
   return searchResult;
 };
 
-export const isParentBlock = (myDiv: Element) => {
-  var children = myDiv.children;
-  let flag = false;
-  var blockRegex =
-    /^(address|kookitmarker|section|blockquote|body|center|dir|div|dl|fieldset|form|h[1-6]|hr|isindex|menu|noframes|noscript|ol|p|pre|table|ul|dd|dt|frameset|li|tbody|td|tfoot|th|thead|tr|html)$/i;
-  // let blockElementList = Array.from(children).filter((item) =>
-  //   blockRegex.test(item.nodeName)
-  // );
-  // // some elements might contain image and image subtitle
-  // if (blockElementList.length < 3) {
-  //   return false;
-  // }
-  for (var i = 0; i < children.length; i++) {
-    if (blockRegex.test(children[i].nodeName)) {
-      flag = true;
-      break;
-    }
-  }
-  return flag;
-};
 export const isScrolledIntoView = (
   element: HTMLElement,
   el: HTMLElement,

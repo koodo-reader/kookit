@@ -1,6 +1,7 @@
+declare var window: any;
 class StyleHelper {
   // get default css for iframe
-  static getDefaultCss(ConfigService: any) {
+  static getDefaultCss(ConfigService: any, bookKey: string = "") {
     const cssRules: string[] = [];
 
     // Selection styles
@@ -9,6 +10,33 @@ class StyleHelper {
 
     // Note hover effect
     cssRules.push(".kookit-note:hover{cursor:pointer;}");
+    // Ensure inline highlight spans don't disrupt text flow
+    cssRules.push(".kookit-note{line-height:inherit;}");
+    cssRules.push(
+      ".kookit-note-icon{line-height:1;font-size:14px;cursor:pointer;}"
+    );
+    // Use CSS ::before to render the icon so no text node is added to the DOM
+    // (prevents interference with rangy character-offset calculations)
+    cssRules.push(".kookit-note-icon::before{content:'📋';}");
+    let fullTranslationMode = ConfigService.getAllListConfig(
+      "fullTranslationBooks"
+    ).includes(bookKey)
+      ? ConfigService.getReaderConfig("fullTranslationMode") || ""
+      : "";
+    // Translation display styles
+    cssRules.push(
+      `.kookit-translation-host::after{content: attr(data-kookit-translation);display:block;${fullTranslationMode === "both" || fullTranslationMode === "target" ? this.getCustomCss(ConfigService) : "display:none;"}${fullTranslationMode === "target" ? "font-size: " + (ConfigService.getReaderConfig("fontSize") || 18) + "px !important; text-indent: 2rem !important;" : ""} }`
+    );
+
+    // Translation loading spinner (shown on body while batch translation is in progress)
+    if (fullTranslationMode === "both" || fullTranslationMode === "target") {
+      cssRules.push(
+        `.kookit-translation-loading:after{content:"";display:block;width:16px;height:16px;margin:4px auto 0;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;opacity:0.4;animation:kookit-spin 0.8s linear infinite;}`
+      );
+      cssRules.push(
+        `@keyframes kookit-spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}`
+      );
+    }
 
     // Body and html base styles
     cssRules.push(
@@ -22,7 +50,7 @@ class StyleHelper {
 
     // Content elements with custom styles
     cssRules.push(
-      `a, article, cite, div, li, p, span:not(.kookit-note), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
+      `a, article, cite, div, li, p, span:not(.kookit-note):not(.kookit-note-icon):not(.kookit-note-tooltip), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
     );
 
     // Title elements with custom styles
@@ -188,6 +216,9 @@ class StyleHelper {
       cssRules.push("widows: 1 !important");
     }
 
+    if (window.textOrientation === "vertical") {
+      cssRules.push("display: contents !important");
+    }
     // Text indent - only if indent is enabled
     const isIndent = ConfigService.getReaderConfig("isIndent");
     if (isIndent === "yes") {
