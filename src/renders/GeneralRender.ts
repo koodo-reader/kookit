@@ -69,7 +69,10 @@ class GeneralRender extends EventEmitter {
       text?: string;
     }
   >;
+  definitionMap: Record<string, any>;
   fullTranslationMode: string = "no";
+  wordDefinitionMode: string = "no";
+
   constructor(config: {
     readerMode: string;
     format: string;
@@ -83,6 +86,7 @@ class GeneralRender extends EventEmitter {
     textOrientation?: string;
     isAllowScript?: string;
     fullTranslationMode?: string;
+    wordDefinitionMode?: string;
   }) {
     super();
     this.readerMode = config.readerMode;
@@ -108,8 +112,12 @@ class GeneralRender extends EventEmitter {
     window.isBionic = this.isBionic;
     this.transMap = {};
     window.transMap = this.transMap;
+    this.definitionMap = {};
+    window.definitionMap = this.definitionMap;
     this.fullTranslationMode = config.fullTranslationMode || "no";
     window.fullTranslationMode = this.fullTranslationMode;
+    this.wordDefinitionMode = config.wordDefinitionMode || "no";
+    window.wordDefinitionMode = this.wordDefinitionMode;
 
     //手机版环境已经有严格的安全限制，无需额外限制，PDF中无法执行代码，强行开启则无法渲染图书
     this.isAllowScript =
@@ -1469,6 +1477,10 @@ class GeneralRender extends EventEmitter {
         }
       }
     }
+  }
+  handleWordDefinitionResult(definitions: any[]) {
+    let doc = this.getDocument();
+    if (!doc) return;
   }
 }
 export default GeneralRender;
