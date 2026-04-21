@@ -17,10 +17,94 @@ export const pdfColors = ["#fac106", "#ebe702", "#0be603", "#0493e6"];
 
 const TOOLTIP_ID = "kookit-note-tooltip";
 
+type TooltipAnchorRect = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+};
+
+const getTooltipAnchorRect = (element: Element): TooltipAnchorRect => {
+  const rect = element.getBoundingClientRect();
+  return {
+    left: rect.left,
+    top: rect.top,
+    right: rect.right,
+    bottom: rect.bottom,
+    width: rect.width,
+    height: rect.height,
+  };
+};
+
+const mergeTooltipAnchorRects = (
+  elements: HTMLElement[]
+): TooltipAnchorRect | null => {
+  if (elements.length === 0) return null;
+  const rects = elements
+    .map((element) => getTooltipAnchorRect(element))
+    .filter((rect) => rect.width > 0 || rect.height > 0);
+  if (rects.length === 0) return null;
+  const left = Math.min(...rects.map((rect) => rect.left));
+  const top = Math.min(...rects.map((rect) => rect.top));
+  const right = Math.max(...rects.map((rect) => rect.right));
+  const bottom = Math.max(...rects.map((rect) => rect.bottom));
+  return {
+    left,
+    top,
+    right,
+    bottom,
+    width: right - left,
+    height: bottom - top,
+  };
+};
+
+const positionTooltipAboveRect = (
+  tooltip: HTMLElement,
+  rect: TooltipAnchorRect,
+  doc: Document,
+  offset: number
+) => {
+  tooltip.style.left = "0px";
+  tooltip.style.top = "0px";
+  requestAnimationFrame(() => {
+    const vpW = doc.documentElement.clientWidth || window.innerWidth;
+    const vpH = doc.documentElement.clientHeight || window.innerHeight;
+    const tw = tooltip.offsetWidth;
+    const th = tooltip.offsetHeight;
+    let left = rect.left + rect.width / 2 - tw / 2;
+    let top = rect.top - th - offset;
+    if (left < 0) left = 0;
+    if (left + tw > vpW) left = Math.max(0, vpW - tw);
+    if (top < 0) {
+      top = rect.bottom + offset;
+      if (top + th > vpH) {
+        top = Math.max(0, vpH - th);
+      }
+    }
+    tooltip.style.left = left + "px";
+    tooltip.style.top = top + "px";
+  });
+};
+
+const getNoteTooltipAnchorRect = (
+  target: HTMLElement,
+  doc: Document
+): TooltipAnchorRect => {
+  const noteKey = target.getAttribute("data-key");
+  if (!noteKey) return getTooltipAnchorRect(target);
+  const noteElements = Array.from(
+    doc.querySelectorAll(".kookit-note[data-key], .kookit-note-icon[data-key]")
+  ).filter((element) => {
+    return (element as HTMLElement).getAttribute("data-key") === noteKey;
+  }) as HTMLElement[];
+  return mergeTooltipAnchorRects(noteElements) || getTooltipAnchorRect(target);
+};
+
 const showNoteTooltip = (
   content: string,
-  clientX: number,
-  clientY: number,
+  target: HTMLElement,
   doc: Document
 ) => {
   let tooltip = doc.getElementById(TOOLTIP_ID) as HTMLElement | null;
@@ -39,44 +123,12 @@ const showNoteTooltip = (
   }
   tooltip.textContent = content;
   tooltip.style.display = "block";
-  const offset = 14;
-  const vpW = doc.documentElement.clientWidth || window.innerWidth;
-  const vpH = doc.documentElement.clientHeight || window.innerHeight;
-  let left = clientX + offset;
-  let top = clientY + offset;
-  tooltip.style.left = left + "px";
-  tooltip.style.top = top + "px";
-  // clamp after paint so we know tooltip size
-  requestAnimationFrame(() => {
-    if (!tooltip) return;
-    const tw = tooltip.offsetWidth;
-    const th = tooltip.offsetHeight;
-    if (left + tw > vpW) left = clientX - tw - offset;
-    if (top + th > vpH) top = clientY - th - offset;
-    tooltip.style.left = Math.max(0, left) + "px";
-    tooltip.style.top = Math.max(0, top) + "px";
-  });
-};
-
-const moveNoteTooltip = (clientX: number, clientY: number, doc: Document) => {
-  const tooltip = doc.getElementById(TOOLTIP_ID) as HTMLElement | null;
-  if (!tooltip || tooltip.style.display === "none") return;
-  const offset = 14;
-  const vpW = doc.documentElement.clientWidth || window.innerWidth;
-  const vpH = doc.documentElement.clientHeight || window.innerHeight;
-  let left = clientX + offset;
-  let top = clientY + offset;
-  const tw = tooltip.offsetWidth;
-  const th = tooltip.offsetHeight;
-  if (left + tw > vpW) left = clientX - tw - offset;
-  if (top + th > vpH) top = clientY - th - offset;
-  tooltip.style.left = Math.max(0, left) + "px";
-  tooltip.style.top = Math.max(0, top) + "px";
+  positionTooltipAboveRect(tooltip, getNoteTooltipAnchorRect(target, doc), doc, 10);
 };
 
 const hideNoteTooltip = (doc: Document) => {
   const tooltip = doc.getElementById(TOOLTIP_ID) as HTMLElement | null;
-  if (tooltip) tooltip.style.display = "none";
+  tooltip?.remove();
 };
 
 /**
@@ -311,11 +363,7 @@ export const showPDFHighlight = (
     }
     newNode?.addEventListener("mouseenter", (event: any) => {
       if (!isNote || !noteContent) return;
-      showNoteTooltip(noteContent, event.clientX, event.clientY, doc);
-    });
-    newNode?.addEventListener("mousemove", (event: any) => {
-      if (!isNote || !noteContent) return;
-      moveNoteTooltip(event.clientX, event.clientY, doc);
+      showNoteTooltip(noteContent, event.currentTarget as HTMLElement, doc);
     });
     newNode?.addEventListener("mouseleave", () => {
       hideNoteTooltip(doc);
@@ -552,8 +600,9 @@ export const highlightRange = (
           doc.body.style.cursor = "pointer";
           const nc = target.getAttribute("data-note-content") || "";
           if (nc) {
-            moveNoteTooltip(e.clientX, e.clientY, doc);
-            showNoteTooltip(nc, e.clientX, e.clientY, doc);
+            showNoteTooltip(nc, target, doc);
+          } else {
+            hideNoteTooltip(doc);
           }
         } else {
           doc.body.style.cursor = "";
@@ -637,8 +686,7 @@ const WORD_TOOLTIP_ID = "kookit-word-tooltip";
 
 const showWordTooltip = (
   content: string,
-  clientX: number,
-  clientY: number,
+  target: HTMLElement,
   doc: Document
 ) => {
   let tooltip = doc.getElementById(WORD_TOOLTIP_ID) as HTMLElement | null;
@@ -657,43 +705,12 @@ const showWordTooltip = (
   }
   tooltip.textContent = content;
   tooltip.style.display = "block";
-  const offset = 14;
-  const vpW = doc.documentElement.clientWidth || window.innerWidth;
-  const vpH = doc.documentElement.clientHeight || window.innerHeight;
-  let left = clientX + offset;
-  let top = clientY + offset;
-  tooltip.style.left = left + "px";
-  tooltip.style.top = top + "px";
-  requestAnimationFrame(() => {
-    if (!tooltip) return;
-    const tw = (tooltip as HTMLElement).offsetWidth;
-    const th = (tooltip as HTMLElement).offsetHeight;
-    if (left + tw > vpW) left = clientX - tw - offset;
-    if (top + th > vpH) top = clientY - th - offset;
-    (tooltip as HTMLElement).style.left = Math.max(0, left) + "px";
-    (tooltip as HTMLElement).style.top = Math.max(0, top) + "px";
-  });
-};
-
-const moveWordTooltip = (clientX: number, clientY: number, doc: Document) => {
-  const tooltip = doc.getElementById(WORD_TOOLTIP_ID) as HTMLElement | null;
-  if (!tooltip || tooltip.style.display === "none") return;
-  const offset = 14;
-  const vpW = doc.documentElement.clientWidth || window.innerWidth;
-  const vpH = doc.documentElement.clientHeight || window.innerHeight;
-  let left = clientX + offset;
-  let top = clientY + offset;
-  const tw = tooltip.offsetWidth;
-  const th = tooltip.offsetHeight;
-  if (left + tw > vpW) left = clientX - tw - offset;
-  if (top + th > vpH) top = clientY - th - offset;
-  tooltip.style.left = Math.max(0, left) + "px";
-  tooltip.style.top = Math.max(0, top) + "px";
+  positionTooltipAboveRect(tooltip, getTooltipAnchorRect(target), doc, 6);
 };
 
 const hideWordTooltip = (doc: Document) => {
   const tooltip = doc.getElementById(WORD_TOOLTIP_ID) as HTMLElement | null;
-  if (tooltip) tooltip.style.display = "none";
+  tooltip?.remove();
 };
 
 export const clearWordDefinitions = (doc: Document) => {
@@ -803,27 +820,16 @@ export const applyWordDefinitions = (
     (doc.body as any).__kookitWordDefDelegated = true;
 
     doc.body.addEventListener(
-      "mouseover",
+      "mousemove",
       (e: MouseEvent) => {
         const target = (e.target as HTMLElement)?.closest?.(
           ".kookit-word-def"
         ) as HTMLElement | null;
         if (target) {
           const fullDef = target.getAttribute("data-def-full") || "";
-          showWordTooltip(fullDef, e.clientX, e.clientY, doc);
+          showWordTooltip(fullDef, target, doc);
         } else {
           hideWordTooltip(doc);
-        }
-      },
-      true
-    );
-
-    doc.body.addEventListener(
-      "mousemove",
-      (e: MouseEvent) => {
-        const tooltip = doc.getElementById(WORD_TOOLTIP_ID);
-        if (tooltip && tooltip.style.display !== "none") {
-          moveWordTooltip(e.clientX, e.clientY, doc);
         }
       },
       true
