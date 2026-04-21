@@ -22,7 +22,6 @@ class StyleHelper {
     cssRules.push(
       ".kookit-word-def::after{" +
         "content:'(' attr(data-meaning) ')';" +
-        "border-bottom:1px dashed currentColor;" +
         "font-size:0.82em;opacity:0.75;" +
         "margin-left:2px;" +
         "}"
