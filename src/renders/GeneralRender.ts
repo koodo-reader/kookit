@@ -27,6 +27,8 @@ import {
   clearHighlight,
   showNoteHighlight,
   showNoteHighlightBatch,
+  applyWordDefinitions,
+  clearWordDefinitions,
 } from "../utils/noteUtil";
 import { addPageAnimation } from "../utils/animationUtil";
 import rangy from "rangy/lib/rangy-core.js";
@@ -1481,6 +1483,18 @@ class GeneralRender extends EventEmitter {
   handleWordDefinitionResult(definitions: any[]) {
     let doc = this.getDocument();
     if (!doc) return;
+    for (const def of definitions) {
+      const key = (def.word || "").toLowerCase();
+      if (key) this.definitionMap[key] = def;
+    }
+    applyWordDefinitions(this.definitionMap, doc);
+  }
+  clearWordDefinitionResult() {
+    let doc = this.getDocument();
+    if (!doc) return;
+    this.definitionMap = {};
+    window.definitionMap = this.definitionMap;
+    clearWordDefinitions(doc);
   }
 }
 export default GeneralRender;

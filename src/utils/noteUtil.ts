@@ -632,3 +632,209 @@ export const highlightRange = (
     firstSpan.parentNode?.insertBefore(iconNode, firstSpan);
   }
 };
+
+const WORD_TOOLTIP_ID = "kookit-word-tooltip";
+
+const showWordTooltip = (
+  content: string,
+  clientX: number,
+  clientY: number,
+  doc: Document
+) => {
+  let tooltip = doc.getElementById(WORD_TOOLTIP_ID) as HTMLElement | null;
+  if (!tooltip) {
+    tooltip = doc.createElement("span");
+    tooltip.setAttribute("id", WORD_TOOLTIP_ID);
+    tooltip.setAttribute("class", WORD_TOOLTIP_ID);
+    tooltip.setAttribute(
+      "style",
+      "position: fixed; z-index: 9999; max-width: 280px; padding: 6px 10px;" +
+        " background: #383838; color: #fff; font-size: 15px !important;" +
+        " border-radius: 6px; pointer-events: none;" +
+        " word-break: break-word; white-space: pre-wrap; line-height: 1.5;"
+    );
+    doc.body.appendChild(tooltip);
+  }
+  tooltip.textContent = content;
+  tooltip.style.display = "block";
+  const offset = 14;
+  const vpW = doc.documentElement.clientWidth || window.innerWidth;
+  const vpH = doc.documentElement.clientHeight || window.innerHeight;
+  let left = clientX + offset;
+  let top = clientY + offset;
+  tooltip.style.left = left + "px";
+  tooltip.style.top = top + "px";
+  requestAnimationFrame(() => {
+    if (!tooltip) return;
+    const tw = (tooltip as HTMLElement).offsetWidth;
+    const th = (tooltip as HTMLElement).offsetHeight;
+    if (left + tw > vpW) left = clientX - tw - offset;
+    if (top + th > vpH) top = clientY - th - offset;
+    (tooltip as HTMLElement).style.left = Math.max(0, left) + "px";
+    (tooltip as HTMLElement).style.top = Math.max(0, top) + "px";
+  });
+};
+
+const moveWordTooltip = (clientX: number, clientY: number, doc: Document) => {
+  const tooltip = doc.getElementById(WORD_TOOLTIP_ID) as HTMLElement | null;
+  if (!tooltip || tooltip.style.display === "none") return;
+  const offset = 14;
+  const vpW = doc.documentElement.clientWidth || window.innerWidth;
+  const vpH = doc.documentElement.clientHeight || window.innerHeight;
+  let left = clientX + offset;
+  let top = clientY + offset;
+  const tw = tooltip.offsetWidth;
+  const th = tooltip.offsetHeight;
+  if (left + tw > vpW) left = clientX - tw - offset;
+  if (top + th > vpH) top = clientY - th - offset;
+  tooltip.style.left = Math.max(0, left) + "px";
+  tooltip.style.top = Math.max(0, top) + "px";
+};
+
+const hideWordTooltip = (doc: Document) => {
+  const tooltip = doc.getElementById(WORD_TOOLTIP_ID) as HTMLElement | null;
+  if (tooltip) tooltip.style.display = "none";
+};
+
+export const clearWordDefinitions = (doc: Document) => {
+  const spans = doc.querySelectorAll(".kookit-word-def");
+  for (let i = 0; i < spans.length; i++) {
+    const span = spans[i];
+    const parent = span.parentNode;
+    if (!parent) continue;
+    while (span.firstChild) {
+      parent.insertBefore(span.firstChild, span);
+    }
+    parent.removeChild(span);
+    parent.normalize();
+  }
+};
+
+export const applyWordDefinitions = (
+  definitionMap: Record<string, any>,
+  doc: Document
+) => {
+  const words = Object.keys(definitionMap);
+  if (words.length === 0) return;
+
+  // Clear existing word definition spans first
+  clearWordDefinitions(doc);
+
+  // Build a case-insensitive whole-word regex for all defined words
+  const escapedWords = words.map((w) =>
+    w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  );
+  const pattern = new RegExp("\\b(" + escapedWords.join("|") + ")\\b", "gi");
+
+  // Collect text nodes (skip nodes inside kookit spans or script/style)
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node: Node) => {
+      let parent = (node as Text).parentElement;
+      while (parent) {
+        const tag = parent.tagName;
+        if (
+          tag === "SCRIPT" ||
+          tag === "STYLE" ||
+          tag === "RUBY" ||
+          parent.classList.contains("kookit-note") ||
+          parent.classList.contains("kookit-word-def") ||
+          parent.classList.contains("kookit-note-tooltip") ||
+          parent.classList.contains("kookit-word-tooltip")
+        ) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        parent = parent.parentElement;
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+
+  const textNodes: Text[] = [];
+  while (walker.nextNode()) {
+    textNodes.push(walker.currentNode as Text);
+  }
+
+  for (const textNode of textNodes) {
+    const text = textNode.textContent || "";
+    pattern.lastIndex = 0;
+    if (!pattern.test(text)) continue;
+    pattern.lastIndex = 0;
+
+    const fragment = doc.createDocumentFragment();
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = pattern.exec(text)) !== null) {
+      const before = text.slice(lastIndex, match.index);
+      if (before) fragment.appendChild(doc.createTextNode(before));
+
+      const word = match[0];
+      const defKey = word.toLowerCase();
+      const def = definitionMap[defKey] || definitionMap[word];
+
+      const span = doc.createElement("span");
+      span.className = "kookit-word-def";
+      span.setAttribute("data-meaning", def.meaning || "");
+      const fullDef = [
+        def.pronunciation || "",
+        def.meaning || "",
+        def.level ? "[" + def.level + "]" : "",
+      ]
+        .filter(Boolean)
+        .join("  ");
+      span.setAttribute("data-def-full", fullDef);
+      // The word text node — no extra text nodes added, so rangy offsets are safe
+      span.appendChild(doc.createTextNode(word));
+      fragment.appendChild(span);
+
+      lastIndex = match.index + word.length;
+    }
+
+    if (lastIndex === 0) continue; // no match found
+
+    const after = text.slice(lastIndex);
+    if (after) fragment.appendChild(doc.createTextNode(after));
+
+    textNode.parentNode?.replaceChild(fragment, textNode);
+  }
+
+  // Register event delegation on doc.body once per document
+  if (!(doc.body as any).__kookitWordDefDelegated) {
+    (doc.body as any).__kookitWordDefDelegated = true;
+
+    doc.body.addEventListener(
+      "mouseover",
+      (e: MouseEvent) => {
+        const target = (e.target as HTMLElement)?.closest?.(
+          ".kookit-word-def"
+        ) as HTMLElement | null;
+        if (target) {
+          const fullDef = target.getAttribute("data-def-full") || "";
+          showWordTooltip(fullDef, e.clientX, e.clientY, doc);
+        } else {
+          hideWordTooltip(doc);
+        }
+      },
+      true
+    );
+
+    doc.body.addEventListener(
+      "mousemove",
+      (e: MouseEvent) => {
+        const tooltip = doc.getElementById(WORD_TOOLTIP_ID);
+        if (tooltip && tooltip.style.display !== "none") {
+          moveWordTooltip(e.clientX, e.clientY, doc);
+        }
+      },
+      true
+    );
+
+    doc.body.addEventListener(
+      "mouseleave",
+      () => {
+        hideWordTooltip(doc);
+      },
+      true
+    );
+  }
+};

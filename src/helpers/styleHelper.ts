@@ -12,6 +12,21 @@ class StyleHelper {
     cssRules.push(".kookit-note:hover{cursor:pointer;}");
     // Ensure inline highlight spans don't disrupt text flow
     cssRules.push(".kookit-note{line-height:inherit;}");
+    // Word definition styles
+    cssRules.push(
+      ".kookit-word-def{" +
+        "border-bottom:1px dashed currentColor;" +
+        "cursor:pointer;line-height:inherit;" +
+        "}"
+    );
+    cssRules.push(
+      ".kookit-word-def::after{" +
+        "content:'(' attr(data-meaning) ')';" +
+        "border-bottom:1px dashed currentColor;" +
+        "font-size:0.82em;opacity:0.75;" +
+        "margin-left:2px;" +
+        "}"
+    );
     cssRules.push(
       ".kookit-note-icon{line-height:1;font-size:14px;cursor:pointer;}"
     );
@@ -50,7 +65,7 @@ class StyleHelper {
 
     // Content elements with custom styles
     cssRules.push(
-      `a, article, cite, div, li, p, span:not(.kookit-note):not(.kookit-note-icon):not(.kookit-note-tooltip), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
+      `a, article, cite, div, li, p, span:not(.kookit-note):not(.kookit-note-icon):not(.kookit-note-tooltip):not(.kookit-word-def):not(.kookit-word-tooltip), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
     );
 
     // Title elements with custom styles
