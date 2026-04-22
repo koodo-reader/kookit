@@ -736,13 +736,11 @@ export const applyWordDefinitions = (
   definitionMap: Record<string, any>,
   doc: Document,
   lang: string = "English",
-  locale: string = "en"
+  locale: string = "en",
+  rootElement?: Element
 ) => {
   const words = Object.keys(definitionMap);
   if (words.length === 0) return;
-
-  // Clear existing word definition spans first
-  clearWordDefinitions(doc);
 
   const isCJK = lang === "Chinese" || lang === "Japanese";
 
@@ -760,27 +758,31 @@ export const applyWordDefinitions = (
     : new RegExp("\\b(" + escapedWords.join("|") + ")\\b", "gi");
 
   // Collect text nodes (skip nodes inside kookit spans or script/style)
-  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, {
-    acceptNode: (node: Node) => {
-      let parent = (node as Text).parentElement;
-      while (parent) {
-        const tag = parent.tagName;
-        if (
-          tag === "SCRIPT" ||
-          tag === "STYLE" ||
-          tag === "RUBY" ||
-          parent.classList.contains("kookit-note") ||
-          parent.classList.contains("kookit-word-def") ||
-          parent.classList.contains("kookit-note-tooltip") ||
-          parent.classList.contains("kookit-word-tooltip")
-        ) {
-          return NodeFilter.FILTER_REJECT;
+  const walker = doc.createTreeWalker(
+    rootElement || doc.body,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode: (node: Node) => {
+        let parent = (node as Text).parentElement;
+        while (parent) {
+          const tag = parent.tagName;
+          if (
+            tag === "SCRIPT" ||
+            tag === "STYLE" ||
+            tag === "RUBY" ||
+            parent.classList.contains("kookit-note") ||
+            parent.classList.contains("kookit-word-def") ||
+            parent.classList.contains("kookit-note-tooltip") ||
+            parent.classList.contains("kookit-word-tooltip")
+          ) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          parent = parent.parentElement;
         }
-        parent = parent.parentElement;
-      }
-      return NodeFilter.FILTER_ACCEPT;
-    },
-  });
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    }
+  );
 
   const textNodes: Text[] = [];
   while (walker.nextNode()) {

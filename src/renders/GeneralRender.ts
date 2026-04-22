@@ -1480,22 +1480,61 @@ class GeneralRender extends EventEmitter {
       }
     }
   }
-  handleWordDefinitionResult(definitions: any[], lang: string, locale: string) {
+  handleWordDefinitionResult(
+    results: { text: string; words: any[] }[],
+    lang: string,
+    locale: string
+  ) {
     let doc = this.getDocument();
     if (!doc) return;
-    for (const def of definitions) {
-      if (lang === "Chinese") {
-        const simplified = def.simplified || "";
-        const traditional = def.traditional || "";
-        if (simplified) this.definitionMap[simplified] = def;
-        if (traditional && traditional !== simplified)
-          this.definitionMap[traditional] = def;
-      } else {
-        const key = (def.word || "").toLowerCase();
-        if (key) this.definitionMap[key] = def;
+    console.log(results, "results");
+    // Clear previous definitions before re-applying
+    clearWordDefinitions(doc);
+    this.definitionMap = {};
+    window.definitionMap = this.definitionMap;
+    // Build a flat list of audio nodes to match against result.text
+    const nodeList = getBlockElement(doc.body).filter(
+      (item) => !isParentBlock(item)
+    );
+    console.log(nodeList, "nodelist");
+    for (const result of results) {
+      const { text, words } = result;
+      if (!words || words.length === 0) continue;
+      // Find the matching DOM node by textContent
+      const targetNode = nodeList.find(
+        (n) => (n as HTMLElement).textContent === text
+      );
+      if (!targetNode) continue;
+      // Build a per-node definitionMap from the words for this node
+      const nodeDefMap: Record<string, any> = {};
+      for (const def of words) {
+        if (lang === "Chinese") {
+          const simplified = def.simplified || "";
+          const traditional = def.traditional || "";
+          if (simplified) nodeDefMap[simplified] = def;
+          if (traditional && traditional !== simplified)
+            nodeDefMap[traditional] = def;
+        } else {
+          const key = (def.word || "").toLowerCase();
+          if (key) nodeDefMap[key] = def;
+        }
+        // Also merge into the global definitionMap for reference
+        const gKey =
+          lang === "Chinese"
+            ? def.simplified || (def.word || "").toLowerCase()
+            : (def.word || "").toLowerCase();
+        if (gKey) this.definitionMap[gKey] = def;
       }
+      console.log(nodeDefMap, "nodeDefMap");
+      applyWordDefinitions(
+        nodeDefMap,
+        doc,
+        lang,
+        locale,
+        targetNode as Element
+      );
     }
-    applyWordDefinitions(this.definitionMap, doc, lang, locale);
+    window.definitionMap = this.definitionMap;
   }
   clearWordDefinitionResult() {
     let doc = this.getDocument();
