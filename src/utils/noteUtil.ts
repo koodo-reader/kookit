@@ -123,7 +123,12 @@ const showNoteTooltip = (
   }
   tooltip.textContent = content;
   tooltip.style.display = "block";
-  positionTooltipAboveRect(tooltip, getNoteTooltipAnchorRect(target, doc), doc, 10);
+  positionTooltipAboveRect(
+    tooltip,
+    getNoteTooltipAnchorRect(target, doc),
+    doc,
+    10
+  );
 };
 
 const hideNoteTooltip = (doc: Document) => {
@@ -729,7 +734,9 @@ export const clearWordDefinitions = (doc: Document) => {
 
 export const applyWordDefinitions = (
   definitionMap: Record<string, any>,
-  doc: Document
+  doc: Document,
+  lang: string = "English",
+  locale: string = "en"
 ) => {
   const words = Object.keys(definitionMap);
   if (words.length === 0) return;
@@ -737,11 +744,20 @@ export const applyWordDefinitions = (
   // Clear existing word definition spans first
   clearWordDefinitions(doc);
 
-  // Build a case-insensitive whole-word regex for all defined words
-  const escapedWords = words.map((w) =>
+  const isCJK = lang === "Chinese" || lang === "Japanese";
+
+  // Sort longest first to prefer longer matches in CJK
+  const sortedWords = isCJK
+    ? [...words].sort((a, b) => b.length - a.length)
+    : words;
+
+  const escapedWords = sortedWords.map((w) =>
     w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
   );
-  const pattern = new RegExp("\\b(" + escapedWords.join("|") + ")\\b", "gi");
+  // CJK languages have no word boundaries; English uses \b
+  const pattern = isCJK
+    ? new RegExp("(" + escapedWords.join("|") + ")", "g")
+    : new RegExp("\\b(" + escapedWords.join("|") + ")\\b", "gi");
 
   // Collect text nodes (skip nodes inside kookit spans or script/style)
   const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, {
@@ -791,14 +807,43 @@ export const applyWordDefinitions = (
 
       const span = doc.createElement("span");
       span.className = "kookit-word-def";
-      span.setAttribute("data-meaning", def.meaning || "");
-      const fullDef = [
-        def.pronunciation || "",
-        def.meaning || "",
-        def.level ? "[" + def.level + "]" : "",
-      ]
-        .filter(Boolean)
-        .join("  ");
+      let meaning = def.meaning || "";
+      if (locale === "zhCN" && def.cn_meaning) {
+        meaning = def.cn_meaning;
+      }
+      span.setAttribute("data-meaning", meaning || "");
+      let fullDef: string;
+      if (lang === "Chinese") {
+        fullDef = [
+          "[" + def.pinyin + "]" || "",
+          meaning || "",
+          def.level ? "[HSK" + def.level + "]" : "",
+        ]
+          .filter(Boolean)
+          .join("  ");
+      } else if (lang === "Japanese") {
+        const reading = [
+          def.furigana || "",
+          def.romaji ? "(" + def.romaji + ")" : "",
+        ]
+          .filter(Boolean)
+          .join("");
+        fullDef = [
+          reading,
+          meaning || "",
+          def.level ? "[N" + def.level + "]" : "",
+        ]
+          .filter(Boolean)
+          .join("  ");
+      } else {
+        fullDef = [
+          def.pronunciation || "",
+          meaning || "",
+          def.level ? "[" + def.level + "]" : "",
+        ]
+          .filter(Boolean)
+          .join("  ");
+      }
       span.setAttribute("data-def-full", fullDef);
       // The word text node — no extra text nodes added, so rangy offsets are safe
       span.appendChild(doc.createTextNode(word));

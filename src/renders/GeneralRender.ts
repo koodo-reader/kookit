@@ -1480,14 +1480,22 @@ class GeneralRender extends EventEmitter {
       }
     }
   }
-  handleWordDefinitionResult(definitions: any[]) {
+  handleWordDefinitionResult(definitions: any[], lang: string, locale: string) {
     let doc = this.getDocument();
     if (!doc) return;
     for (const def of definitions) {
-      const key = (def.word || "").toLowerCase();
-      if (key) this.definitionMap[key] = def;
+      if (lang === "Chinese") {
+        const simplified = def.simplified || "";
+        const traditional = def.traditional || "";
+        if (simplified) this.definitionMap[simplified] = def;
+        if (traditional && traditional !== simplified)
+          this.definitionMap[traditional] = def;
+      } else {
+        const key = (def.word || "").toLowerCase();
+        if (key) this.definitionMap[key] = def;
+      }
     }
-    applyWordDefinitions(this.definitionMap, doc);
+    applyWordDefinitions(this.definitionMap, doc, lang, locale);
   }
   clearWordDefinitionResult() {
     let doc = this.getDocument();
