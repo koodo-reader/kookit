@@ -735,14 +735,14 @@ export const clearWordDefinitions = (doc: Document) => {
 export const applyWordDefinitions = (
   definitionMap: Record<string, any>,
   doc: Document,
-  lang: string = "English",
+  lang: string = "en",
   locale: string = "en",
   rootElement?: Element
 ) => {
   const words = Object.keys(definitionMap);
   if (words.length === 0) return;
 
-  const isCJK = lang === "Chinese" || lang === "Japanese";
+  const isCJK = lang === "zh" || lang === "ja";
 
   // Sort longest first to prefer longer matches in CJK
   const sortedWords = isCJK
@@ -815,7 +815,7 @@ export const applyWordDefinitions = (
       }
       span.setAttribute("data-meaning", meaning || "");
       let fullDef: string;
-      if (lang === "Chinese") {
+      if (lang === "zh") {
         fullDef = [
           "[" + def.pinyin + "]" || "",
           meaning || "",
@@ -823,7 +823,7 @@ export const applyWordDefinitions = (
         ]
           .filter(Boolean)
           .join("  ");
-      } else if (lang === "Japanese") {
+      } else if (lang === "ja") {
         const reading = [
           def.furigana || "",
           def.romaji ? "(" + def.romaji + ")" : "",

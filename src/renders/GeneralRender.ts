@@ -73,7 +73,6 @@ class GeneralRender extends EventEmitter {
   >;
   definitionMap: Record<string, any>;
   fullTranslationMode: string = "no";
-  wordDefinitionMode: string = "no";
 
   constructor(config: {
     readerMode: string;
@@ -88,7 +87,6 @@ class GeneralRender extends EventEmitter {
     textOrientation?: string;
     isAllowScript?: string;
     fullTranslationMode?: string;
-    wordDefinitionMode?: string;
   }) {
     super();
     this.readerMode = config.readerMode;
@@ -118,8 +116,6 @@ class GeneralRender extends EventEmitter {
     window.definitionMap = this.definitionMap;
     this.fullTranslationMode = config.fullTranslationMode || "no";
     window.fullTranslationMode = this.fullTranslationMode;
-    this.wordDefinitionMode = config.wordDefinitionMode || "no";
-    window.wordDefinitionMode = this.wordDefinitionMode;
 
     //手机版环境已经有严格的安全限制，无需额外限制，PDF中无法执行代码，强行开启则无法渲染图书
     this.isAllowScript =
@@ -1508,7 +1504,7 @@ class GeneralRender extends EventEmitter {
       // Build a per-node definitionMap from the words for this node
       const nodeDefMap: Record<string, any> = {};
       for (const def of words) {
-        if (lang === "Chinese") {
+        if (lang === "zh") {
           const simplified = def.simplified || "";
           const traditional = def.traditional || "";
           if (simplified) nodeDefMap[simplified] = def;
@@ -1520,7 +1516,7 @@ class GeneralRender extends EventEmitter {
         }
         // Also merge into the global definitionMap for reference
         const gKey =
-          lang === "Chinese"
+          lang === "zh"
             ? def.simplified || (def.word || "").toLowerCase()
             : (def.word || "").toLowerCase();
         if (gKey) this.definitionMap[gKey] = def;

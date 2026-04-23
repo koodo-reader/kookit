@@ -11,7 +11,6 @@ import MdRender from "./renders/MdRender";
 import HtmlRender from "./renders/HtmlRender";
 import BookHelper from "./helpers/bookHelper";
 import StyleHelper from "./helpers/styleHelper";
-
 export {
   CacheRender,
   EpubRender,
