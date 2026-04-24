@@ -22,7 +22,7 @@ class StyleHelper {
     cssRules.push(
       ".kookit-word-def::after{" +
         "content:'(' attr(data-meaning) ')';" +
-        "font-size:0.82em;opacity:0.75;" +
+        "font-size:0.7em;opacity:0.6;" +
         "margin-left:2px;" +
         "}"
     );

@@ -71,7 +71,6 @@ class GeneralRender extends EventEmitter {
       text?: string;
     }
   >;
-  definitionMap: Record<string, any>;
   fullTranslationMode: string = "no";
 
   constructor(config: {
@@ -112,8 +111,6 @@ class GeneralRender extends EventEmitter {
     window.isBionic = this.isBionic;
     this.transMap = {};
     window.transMap = this.transMap;
-    this.definitionMap = {};
-    window.definitionMap = this.definitionMap;
     this.fullTranslationMode = config.fullTranslationMode || "no";
     window.fullTranslationMode = this.fullTranslationMode;
 
@@ -780,7 +777,7 @@ class GeneralRender extends EventEmitter {
   }
   async audioText() {
     let doc = this.getDocument();
-    if (!doc) return "";
+    if (!doc) return [];
     let audioTexts = await getAudioText(this.element, this.readerMode, doc);
     return audioTexts;
   }
@@ -1483,16 +1480,13 @@ class GeneralRender extends EventEmitter {
   ) {
     let doc = this.getDocument();
     if (!doc) return;
-    console.log(results, "results");
+    // console.log(results, "results");
     // Clear previous definitions before re-applying
     clearWordDefinitions(doc);
-    this.definitionMap = {};
-    window.definitionMap = this.definitionMap;
     // Build a flat list of audio nodes to match against result.text
     const nodeList = getBlockElement(doc.body).filter(
       (item) => !isParentBlock(item)
     );
-    console.log(nodeList, "nodelist");
     for (const result of results) {
       const { text, words } = result;
       if (!words || words.length === 0) continue;
@@ -1514,14 +1508,7 @@ class GeneralRender extends EventEmitter {
           const key = (def.word || "").toLowerCase();
           if (key) nodeDefMap[key] = def;
         }
-        // Also merge into the global definitionMap for reference
-        const gKey =
-          lang === "zh"
-            ? def.simplified || (def.word || "").toLowerCase()
-            : (def.word || "").toLowerCase();
-        if (gKey) this.definitionMap[gKey] = def;
       }
-      console.log(nodeDefMap, "nodeDefMap");
       applyWordDefinitions(
         nodeDefMap,
         doc,
@@ -1530,13 +1517,10 @@ class GeneralRender extends EventEmitter {
         targetNode as Element
       );
     }
-    window.definitionMap = this.definitionMap;
   }
   clearWordDefinitionResult() {
     let doc = this.getDocument();
     if (!doc) return;
-    this.definitionMap = {};
-    window.definitionMap = this.definitionMap;
     clearWordDefinitions(doc);
   }
 }
