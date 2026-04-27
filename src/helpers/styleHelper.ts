@@ -73,7 +73,7 @@ class StyleHelper {
     );
 
     // Hide aside elements
-    cssRules.push("aside{position: absolute; left: -9999px}");
+    cssRules.push("aside{position: absolute; left: -9999px; top: -9999px;}");
 
     // Code formatting
     cssRules.push("code,pre{white-space: pre-wrap;}");
@@ -81,6 +81,17 @@ class StyleHelper {
     // Blockquote styles
     cssRules.push(
       "blockquote{border-left: 4px solid #ccc; padding-left: 1em; margin: 1em 0; color: #666;}"
+    );
+
+    // Table styles
+    cssRules.push(
+      "table{width:100%;border-collapse:collapse;margin:20px 0;line-height:1.6;border: 1px solid #ddd;}"
+    );
+    cssRules.push(
+      "thead th{font-weight:bold;padding:14px 12px;text-align:left;white-space:nowrap;border-bottom: 2px solid #ccc;}"
+    );
+    cssRules.push(
+      "td,th{padding:12px 14px;vertical-align:top;text-align:left;border: 2px solid #e0e0e0;}"
     );
 
     // Paragraph margin reset
