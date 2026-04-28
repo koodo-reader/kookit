@@ -118,16 +118,17 @@ body {
   cursor: default;
 }
 
-.textLayer ::selection,
-.textLayer ::-moz-selection {
-  background: rgba(0, 0, 255, 0.25);
+.textLayer ::selection {
+  /* stylelint-disable declaration-block-no-duplicate-properties */
+  /*#if !MOZCENTRAL*/
+  background: rgba(0 0 255 / 0.25);
+  /*#endif*/
+  /* stylelint-enable declaration-block-no-duplicate-properties */
+  background: color-mix(in srgb, AccentColor, transparent 75%);
 }
-
-.textLayer br::selection,
-.textLayer br::-moz-selection {
+.textLayer br::selection {
   background: transparent;
 }
-
 .textLayer .endOfContent {
   display: block;
   position: absolute;
@@ -136,10 +137,13 @@ body {
   cursor: default;
   user-select: none;
 }
-
 .textLayer.selecting .endOfContent {
   top: 0;
 }
+#koodoPDFLayerExtra {
+  display: none;
+}
+
 `;
 
 const isElectron = () => {
@@ -354,6 +358,13 @@ const renderTextLayer = async (
   attachTextSelectionHandlers(container, doc, isMobile);
   hideOffscreenCanvases(document);
   hideOffscreenCanvases(doc);
+  hideBrElement(container);
+};
+const hideBrElement = (container) => {
+  const brElements = container.querySelectorAll("br");
+  for (const br of brElements) {
+    br.style.display = "none";
+  }
 };
 
 const renderAnnotationLayer = async (
