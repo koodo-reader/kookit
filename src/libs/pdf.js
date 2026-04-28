@@ -14,11 +14,7 @@ const configurePdfjs = () => {
   const pdfjsLib = getPdfjsLib();
   const workerOptions = pdfjsLib.GlobalWorkerOptions;
 
-  if (
-    workerOptions &&
-    !workerOptions.workerSrc &&
-    !workerOptions.workerPort
-  ) {
+  if (workerOptions && !workerOptions.workerSrc && !workerOptions.workerPort) {
     workerOptions.workerSrc = pdfjsPath("pdf.worker.mjs");
   }
 
@@ -503,7 +499,8 @@ const attachTextSelectionHandlers = (container, doc, isMobile) => {
 const createLinkService = (pdf, viewer) => ({
   goToDestination: async (dest) => {
     try {
-      const parsed = typeof dest === "string" ? await pdf.getDestination(dest) : dest;
+      const parsed =
+        typeof dest === "string" ? await pdf.getDestination(dest) : dest;
 
       if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
         console.warn("Invalid destination:", dest);
@@ -522,7 +519,14 @@ const createLinkService = (pdf, viewer) => ({
   },
 });
 
-const renderTextLayer = async (pdfjsLib, page, container, viewport, doc, isMobile) => {
+const renderTextLayer = async (
+  pdfjsLib,
+  page,
+  container,
+  viewport,
+  doc,
+  isMobile
+) => {
   container.replaceChildren();
   container.removeAttribute("data-main-rotation");
   container.style.setProperty("--total-scale-factor", `${viewport.scale}`);
@@ -669,9 +673,7 @@ const makeTOCItem = (item) => ({
 function getPasswordPrompt(type = "need") {
   const lang = navigator.language?.toLowerCase() || "en";
   if (lang.startsWith("zh")) {
-    return type === "need"
-      ? "请输入 PDF 密码："
-      : "密码错误，请重试：";
+    return type === "need" ? "请输入 PDF 密码：" : "密码错误，请重试：";
   }
   return type === "need"
     ? "Need password to open this PDF:"
@@ -685,9 +687,8 @@ export const makePDF = async (file, password) => {
 
   while (true) {
     try {
-      pdf = await pdfjsLib.getDocument(
-        getDocumentOptions({ data }, password)
-      ).promise;
+      pdf = await pdfjsLib.getDocument(getDocumentOptions({ data }, password))
+        .promise;
       break;
     } catch (error) {
       if (error.name !== "PasswordException") {
@@ -701,9 +702,7 @@ export const makePDF = async (file, password) => {
         } else {
           password = prompt(getPasswordPrompt("need"));
         }
-      } else if (
-        error.code === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD
-      ) {
+      } else if (error.code === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD) {
         if (isElectron()) {
           password = await vexPromptAsync(
             getPasswordPrompt("incorrect"),
