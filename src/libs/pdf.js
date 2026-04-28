@@ -1,152 +1,10 @@
 const pdfjsPath = (path) => `${isElectron() ? "." : ""}/lib/pdfjs/${path}`;
 
-const getPdfjsLib = () => {
-  const pdfjsLib = window.pdfjsLib || globalThis.pdfjsLib;
-  if (!pdfjsLib) {
-    throw new Error(
-      "pdf.js is not available. Please load the pdf.js bundle before using Kookit."
-    );
-  }
-  return pdfjsLib;
-};
+const pdfjsLib = window.pdfjsLib;
 
-const configurePdfjs = () => {
-  const pdfjsLib = getPdfjsLib();
-  const workerOptions = pdfjsLib.GlobalWorkerOptions;
-
-  if (workerOptions && !workerOptions.workerSrc && !workerOptions.workerPort) {
-    workerOptions.workerSrc = pdfjsPath("pdf.worker.mjs");
-  }
-
-  return pdfjsLib;
-};
-
-const getDocumentOptions = (source, password) => ({
-  ...source,
-  cMapUrl: pdfjsPath("cmaps/"),
-  cMapPacked: true,
-  standardFontDataUrl: pdfjsPath("standard_fonts/"),
-  wasmUrl: pdfjsPath("wasm/"),
-  isEvalSupported: false,
-  password,
-});
-
-const PDF_LAYER_CSS = `
-html, body {
-  margin: 0;
-  padding: 0;
-  background: transparent;
-  overflow: hidden;
-}
-
-body {
-  color-scheme: only light;
-}
-
-.noteLayer {
-  position: relative;
-  z-index: 3;
-}
-
-.koodoPDFLayer {
-  position: relative;
-  isolation: isolate;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  will-change: contents;
-}
-
-#canvas {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-
-#canvas canvas {
-  display: block;
-}
-
-.textLayer {
-  --min-font-size: 1;
-  --text-scale-factor: calc(var(--total-scale-factor, 1) * var(--min-font-size));
-  --min-font-size-inv: calc(1 / var(--min-font-size));
-  position: absolute;
-  inset: 0;
-  overflow: clip;
-  opacity: 1;
-  line-height: 1;
-  text-align: initial;
-  transform-origin: 0 0;
-  z-index: 1;
-  color-scheme: only light;
-  forced-color-adjust: none;
-  caret-color: CanvasText;
-  -webkit-text-size-adjust: none;
-  -moz-text-size-adjust: none;
-  text-size-adjust: none;
-}
-
-.textLayer.highlighting {
-  touch-action: none;
-}
-
-.textLayer :is(span, br) {
-  color: transparent;
-  position: absolute;
-  white-space: pre;
-  cursor: text;
-  transform-origin: 0 0;
-}
-
-.textLayer > :not(.markedContent),
-.textLayer .markedContent span:not(.markedContent) {
-  z-index: 1;
-  --font-height: 0;
-  --scale-x: 1;
-  --rotate: 0deg;
-  font-size: calc(var(--text-scale-factor) * var(--font-height));
-  transform: rotate(var(--rotate)) scaleX(var(--scale-x))
-    scale(var(--min-font-size-inv));
-}
-
-.textLayer .markedContent {
-  display: contents;
-}
-
-.textLayer span[role="img"] {
-  user-select: none;
-  cursor: default;
-}
-
-.textLayer ::selection {
-  /* stylelint-disable declaration-block-no-duplicate-properties */
-  /*#if !MOZCENTRAL*/
-  background: rgba(0 0 255 / 0.25);
-  /*#endif*/
-  /* stylelint-enable declaration-block-no-duplicate-properties */
-  background: color-mix(in srgb, AccentColor, transparent 75%);
-}
-.textLayer br::selection {
-  background: transparent;
-}
-.textLayer .endOfContent {
-  display: block;
-  position: absolute;
-  inset: 100% 0 0;
-  z-index: 0;
-  cursor: default;
-  user-select: none;
-}
-.textLayer.selecting .endOfContent {
-  top: 0;
-}
-#koodoPDFLayerExtra {
-  display: none;
-}
-
-`;
-
+const fetchText = async (url) => await (await fetch(url)).text();
 const isElectron = () => {
+  // Renderer process
   if (
     typeof window !== "undefined" &&
     typeof window.process === "object" &&
@@ -154,6 +12,7 @@ const isElectron = () => {
   ) {
     return true;
   }
+  // Main process
   if (
     typeof process !== "undefined" &&
     typeof process.versions === "object" &&
@@ -161,6 +20,7 @@ const isElectron = () => {
   ) {
     return true;
   }
+  // Detect the user agent when the `nodeIntegration` option is set to true
   if (
     typeof navigator === "object" &&
     typeof navigator.userAgent === "string" &&
@@ -171,7 +31,6 @@ const isElectron = () => {
 
   return false;
 };
-
 function vexPromptAsync(message, placeholder = "", value = "") {
   return new Promise((resolve) => {
     vex.dialog.prompt({
@@ -184,280 +43,176 @@ function vexPromptAsync(message, placeholder = "", value = "") {
     });
   });
 }
-
-const buildPdfPageMarkup = (viewport) => `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta
-    name="viewport"
-    content="width=${viewport.width}, height=${viewport.height}, initial-scale=1"
-  >
-  <style>${PDF_LAYER_CSS}</style>
-</head>
-<body>
-  <div class="noteLayer"></div>
-  <div class="koodoPDFLayer" id="koodoPDFLayer">
-    <div id="canvas"></div>
-    <div class="textLayer" id="textLayer"></div>
-    <div class="annotationLayer" id="annotationLayer"></div>
-  </div>
-</body>
-</html>
-`;
-
-const hideOffscreenCanvases = (root) => {
-  if (!root?.querySelectorAll) {
-    return;
-  }
-
-  for (const canvas of root.querySelectorAll(".hiddenCanvasElement")) {
-    Object.assign(canvas.style, {
-      position: "absolute",
-      top: "0",
-      left: "0",
-      width: "0",
-      height: "0",
-      display: "none",
-    });
-  }
-};
-
-const attachTextSelectionHandlers = (container, doc, isMobile) => {
-  const endOfContent = document.createElement("div");
-  endOfContent.className = "endOfContent";
-  container.append(endOfContent);
-
-  let isSelecting = false;
-  let closestElement = null;
-
-  container.onpointerdown = () => {
-    const innerWindow = doc?.defaultView;
-    const selectedText = innerWindow?.getSelection()?.toString().trim() || "";
-
-    if (selectedText.length > 0) {
-      container.classList.remove("selecting");
-      isSelecting = false;
-      endOfContent.remove();
-      container.append(endOfContent);
-      return;
-    }
-
-    container.classList.add("selecting");
-    isSelecting = true;
-  };
-
-  if (isMobile !== "yes") {
-    container.onpointerup = () => {
-      container.classList.remove("selecting");
-      isSelecting = false;
-      endOfContent.remove();
-      container.append(endOfContent);
-    };
-
-    container.onpointermove = (event) => {
-      if (!isSelecting) {
-        return;
-      }
-
-      const element = event.target.closest(".textLayer > span");
-      const isText = element !== null;
-      container.style.cursor = isText ? "text" : "default";
-
-      if (isText) {
-        closestElement = element;
-      }
-
-      endOfContent.remove();
-      container.insertBefore(endOfContent, closestElement);
-    };
-    return;
-  }
-
-  doc.addEventListener("selectionchange", () => {
-    if (!isSelecting) {
-      return;
-    }
-
-    const innerWindow = doc?.defaultView;
-    const selection = innerWindow?.getSelection();
-
-    if (!selection || selection.rangeCount === 0) {
-      return;
-    }
-
-    const range = selection.getRangeAt(0);
-    const endNode = range.endContainer;
-    let element =
-      endNode.nodeType === Node.TEXT_NODE ? endNode.parentNode : endNode;
-    element = element?.closest(".textLayer > span");
-
-    const isText = element !== null;
-    container.style.cursor = isText ? "text" : "default";
-
-    if (isText) {
-      closestElement = element;
-    }
-
-    endOfContent.remove();
-    container.insertBefore(
-      endOfContent,
-      closestElement?.nextSibling || closestElement || null
-    );
-  });
-};
-
-const createLinkService = (pdf, viewer) => ({
-  goToDestination: async (dest) => {
-    try {
-      const parsed =
-        typeof dest === "string" ? await pdf.getDestination(dest) : dest;
-
-      if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
-        console.warn("Invalid destination:", dest);
-        return;
-      }
-
-      const pageIndex = await pdf.getPageIndex(parsed[0]);
-      viewer.goToChapterDocIndex(pageIndex);
-    } catch (error) {
-      console.error("Error navigating to destination:", error);
-    }
-  },
-  getDestinationHash: (dest) => JSON.stringify(dest),
-  addLinkAttributes: (link, url) => {
-    link.href = url;
-  },
-});
-
-const renderTextLayer = async (
-  pdfjsLib,
-  page,
-  container,
-  viewport,
-  doc,
-  isMobile
-) => {
-  container.replaceChildren();
-  container.removeAttribute("data-main-rotation");
-  container.style.setProperty("--total-scale-factor", `${viewport.scale}`);
-  container.style.setProperty("--scale-round-x", "1px");
-  container.style.setProperty("--scale-round-y", "1px");
-
-  const textLayer = new pdfjsLib.TextLayer({
-    textContentSource: page.streamTextContent({
-      includeMarkedContent: true,
-      disableNormalization: true,
-    }),
-    container,
-    viewport: viewport.clone({ dontFlip: true }),
-  });
-
-  await textLayer.render();
-  attachTextSelectionHandlers(container, doc, isMobile);
-  hideOffscreenCanvases(document);
-  hideOffscreenCanvases(doc);
-  hideBrElement(container);
-};
-const hideBrElement = (container) => {
-  const brElements = container.querySelectorAll("br");
-  for (const br of brElements) {
-    br.style.display = "none";
-  }
-};
-
-const renderAnnotationLayer = async (
-  pdfjsLib,
-  page,
-  pdf,
-  container,
-  viewport,
-  viewer
-) => {
-  container.replaceChildren();
-  container.removeAttribute("data-main-rotation");
-  container.style.setProperty("--total-scale-factor", `${viewport.scale}`);
-
-  const annotationLayer = new pdfjsLib.AnnotationLayer({
-    div: container,
-    page,
-    viewport: viewport.clone({ dontFlip: true }),
-    linkService: createLinkService(pdf, viewer),
-  });
-
-  await annotationLayer.render({
-    annotations: await page.getAnnotations({ intent: "display" }),
-    imageResourcesPath: pdfjsPath("images/"),
-    renderForms: true,
-  });
-};
+// https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/text_layer_builder.css
+const textLayerBuilderCSS = async () =>
+  await fetchText(pdfjsPath("text_layer_builder.css"));
+// https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/annotation_layer_builder.css
+const annotationLayerBuilderCSS = async () =>
+  await fetchText(pdfjsPath("annotation_layer_builder.css"));
 
 const render = async (page, pdf, doc, zoom, isMobile, viewer) => {
   try {
-    const pdfjsLib = configurePdfjs();
-    const docLayer = doc.querySelector("#koodoPDFLayer");
-    const canvasHost = doc.querySelector("#canvas");
-    const textLayerHost = doc.querySelector("#textLayer");
-    const annotationLayerHost = doc.querySelector("#annotationLayer");
-
-    if (!docLayer || !canvasHost || !textLayerHost || !annotationLayerHost) {
-      return;
-    }
-
-    const devicePixelRatio =
-      (window.devicePixelRatio || 1) *
-      (isMobile === "yes" ? (1 / zoom) * 1.5 : 1);
-    const viewport = page.getViewport({ scale: zoom });
-
+    let devicePixelRatio =
+      window.devicePixelRatio * (isMobile === "yes" ? (1 / zoom) * 1.5 : 1);
+    const scale = zoom * devicePixelRatio;
+    let docLayer = doc.querySelector("#koodoPDFLayer");
     docLayer.style.visibility = "hidden";
+    docLayer.style.transform = `scale(${1 / devicePixelRatio})`;
+    docLayer.style.transformOrigin = "top left";
+    docLayer.style.setProperty("--scale-factor", scale);
+    const viewport = page.getViewport({ scale });
+
+    // the canvas must be in the `PDFDocument`'s `ownerDocument`
+    // (`globalThis.document` by default); that's where the fonts are loaded
+    const canvas = document.createElement("canvas");
     docLayer.style.width = `${viewport.width}px`;
     docLayer.style.height = `${viewport.height}px`;
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+    const canvasContext = canvas.getContext("2d");
+    try {
+      await page.render({
+        canvasContext,
+        viewport,
+        background: "rgba(0,0,0,0)",
+      }).promise;
+    } catch (error) {
+      console.error(error);
+    }
+    doc.querySelector("#canvas").replaceChildren(doc.adoptNode(canvas));
     docLayer.style.overflow = "hidden";
-    docLayer.style.setProperty("--scale-factor", `${zoom}`);
-    docLayer.style.setProperty("--total-scale-factor", `${zoom}`);
-
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(Math.floor(viewport.width * devicePixelRatio), 1);
-    canvas.height = Math.max(Math.floor(viewport.height * devicePixelRatio), 1);
-    canvas.style.width = `${viewport.width}px`;
-    canvas.style.height = `${viewport.height}px`;
-
-    const canvasContext = canvas.getContext("2d", { alpha: true });
-    if (!canvasContext) {
-      return;
+    const container = doc.querySelector("#textLayer");
+    try {
+      const textLayer = new pdfjsLib.TextLayer({
+        textContentSource: await page.streamTextContent(),
+        container,
+        viewport,
+      });
+      await textLayer.render();
+    } catch (error) {
+      console.error(error);
     }
 
-    await page.render({
-      canvasContext,
-      viewport,
-      transform:
-        devicePixelRatio === 1
-          ? null
-          : [devicePixelRatio, 0, 0, devicePixelRatio, 0, 0],
-      background: "rgba(0,0,0,0)",
-    }).promise;
+    // hide "offscreen" canvases appended to docuemnt when rendering text layer
+    // https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/pdf_viewer.css#L51-L58
+    for (const canvas of document.querySelectorAll(".hiddenCanvasElement"))
+      Object.assign(canvas.style, {
+        position: "absolute",
+        top: "0",
+        left: "0",
+        width: "0",
+        height: "0",
+        display: "none",
+      });
 
-    canvasHost.replaceChildren(doc.adoptNode(canvas));
+    // fix text selection
+    // https://github.com/mozilla/pdf.js/blob/642b9a5ae67ef642b9a8808fd9efd447e8c350e2/web/text_layer_builder.js#L105-L107
+    const endOfContent = document.createElement("div");
+    endOfContent.className = "endOfContent";
+    container.append(endOfContent);
+    let isSelecting = false;
+    let closestElement = null;
+    // TODO: this only works in Firefox; see https://github.com/mozilla/pdf.js/pull/17923
+    container.onpointerdown = () => {
+      let iWin = doc?.defaultView;
+      const selectedText = iWin.getSelection().toString().trim();
+      if (selectedText.length > 0) {
+        // if there is already selected text, do not start selecting
+        container.classList.remove("selecting");
+        isSelecting = false;
+        endOfContent.remove();
+        container.append(endOfContent);
+        return;
+      }
+      container.classList.add("selecting");
+      isSelecting = true;
+    };
+    if (isMobile !== "yes") {
+      container.onpointerup = () => {
+        container.classList.remove("selecting");
+        isSelecting = false;
+        endOfContent.remove();
+        container.append(endOfContent);
+      };
+      container.onpointermove = (e) => {
+        if (!isSelecting) return;
+        let element = e.target.closest(".textLayer > span");
+        // Check if the target or any of its parents is a span element within the text layer
+        const isText = element !== null;
+        container.style.cursor = isText ? "text" : "default";
+        //if not, insert end of content element next to closest element
+        //remove end of content element from container
+        if (isText) {
+          closestElement = element;
+        }
 
-    await renderTextLayer(
-      pdfjsLib,
-      page,
-      textLayerHost,
-      viewport,
-      doc,
-      isMobile
-    );
-    await renderAnnotationLayer(
-      pdfjsLib,
-      page,
-      pdf,
-      annotationLayerHost,
-      viewport,
-      viewer
-    );
+        endOfContent.remove();
+        container.insertBefore(endOfContent, closestElement);
+      };
+    } else {
+      //adapt to touch screen
+      doc.addEventListener("selectionchange", (e) => {
+        if (!isSelecting) return;
+        // get the end element of the current selection
+        let iWin = doc?.defaultView;
+        var range = iWin.getSelection().getRangeAt(0);
+        // get the end element of the current range
+        var endNode = range.endContainer;
+        // Get the parent HTMLElement. If endNode is a Text node, parentNode is the element.
+        // If endNode is already an element (less common for endContainer), use it directly.
+        let element =
+          endNode.nodeType === Node.TEXT_NODE ? endNode.parentNode : endNode;
+        element = element.closest(".textLayer > span");
+        // Check if the target or any of its parents is a span element within the text layer
+        const isText = element !== null;
+        container.style.cursor = isText ? "text" : "default";
+        //if not, insert end of content element next to closest element
+        //remove end of content element from container
+        if (isText) {
+          closestElement = element;
+        }
+        endOfContent.remove();
+        container.insertBefore(
+          endOfContent,
+          closestElement.nextSibling
+            ? closestElement.nextSibling
+            : closestElement
+        );
+      });
+    }
 
-    docLayer.style.visibility = "visible";
+    const div = doc.querySelector("#annotationLayer");
+    try {
+      await new pdfjsLib.AnnotationLayer({ page, viewport, div }).render({
+        annotations: await page.getAnnotations(),
+        linkService: {
+          goToDestination: async (dest) => {
+            try {
+              // 解析目标位置
+              const parsed =
+                typeof dest === "string"
+                  ? await pdf.getDestination(dest)
+                  : dest;
+
+              if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
+                console.warn("Invalid destination:", dest);
+                return;
+              }
+
+              // 获取目标页面索引
+              const pageIndex = await pdf.getPageIndex(parsed[0]);
+              viewer.goToChapterDocIndex(pageIndex);
+            } catch (error) {
+              console.error("Error navigating to destination:", error);
+            }
+          },
+          getDestinationHash: (dest) => JSON.stringify(dest),
+          addLinkAttributes: (link, url) => (link.href = url),
+        },
+      });
+    } catch (error) {
+      console.error(error);
+    }
   } catch (error) {
     console.error(error);
   }
@@ -474,10 +229,80 @@ const renderPage = async (page, getImageBlob) => {
       await page.render({ canvasContext, viewport }).promise;
       return new Promise((resolve) => canvas.toBlob(resolve));
     }
+    const src = URL.createObjectURL(
+      new Blob(
+        [
+          `
+    <!DOCTYPE html>
+    <html lang="en">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=${viewport.width}, height=${viewport.height}">
+    <style>
+    html, body {
+        margin: 0;
+        padding: 0;
+    }
+    ${await textLayerBuilderCSS()}
+    ${await annotationLayerBuilderCSS()}
+    .koodoPDFLayer {
+        position: relative;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+        will-change: transform;
+    }
 
-    return URL.createObjectURL(
-      new Blob([buildPdfPageMarkup(viewport)], { type: "text/html" })
+    .textLayer {
+        position: absolute;
+        z-index: 1;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+        contain: layout style paint;
+        pointer-events: auto;
+    }
+
+    .annotationLayer {
+        position: absolute;
+        z-index: 2;
+        transform: translateZ(1px);
+        -webkit-transform: translateZ(1px);
+        will-change: transform;
+        contain: layout style paint;
+        pointer-events: none;
+    }
+
+    #canvas {
+        position: relative;
+        z-index: 0;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+    }
+
+    /* 只有注释元素本身可点击 */
+    .annotationLayer > * {
+        pointer-events: auto !important;
+    }
+
+    /* 链接和按钮等交互元素 */
+    .annotationLayer a,
+    .annotationLayer button,
+    .annotationLayer input,
+    .annotationLayer [data-annotation-id] {
+        pointer-events: auto !important;
+        z-index: inherit;
+    }
+    </style>
+    <div class="noteLayer"></div>
+    <div class="koodoPDFLayer" id="koodoPDFLayer">
+        <div id="canvas"></div>
+        <div class="textLayer" id="textLayer"></div>
+        <div class="annotationLayer" id="annotationLayer"></div>
+    </div>
+`,
+        ],
+        { type: "text/html" }
+      )
     );
+    return src;
   } catch (error) {
     console.error(error);
   }
@@ -488,84 +313,92 @@ const makeTOCItem = (item) => ({
   href: item.dest ? JSON.stringify(item.dest) : null,
   subitems: item.items.length ? item.items.map(makeTOCItem) : null,
 });
-
 function getPasswordPrompt(type = "need") {
   const lang = navigator.language?.toLowerCase() || "en";
   if (lang.startsWith("zh")) {
-    return type === "need" ? "请输入 PDF 密码：" : "密码错误，请重试：";
+    return type === "need" ? "请输入PDF密码：" : "密码错误，请重新输入：";
   }
+  // 可扩展更多语言
   return type === "need"
     ? "Need password to open this PDF:"
     : "Incorrect password, please try again:";
 }
-
 export const makePDF = async (file, password) => {
-  const pdfjsLib = configurePdfjs();
-  const data = new Uint8Array(await file.arrayBuffer());
   let pdf;
-
   while (true) {
+    // 每次都新建 transport，避免 no PDFDataTransportStreamRangeReader instance found 错误
+    const transport = new pdfjsLib.PDFDataRangeTransport(file.size, []);
+    transport.requestDataRange = (begin, end) => {
+      file
+        .slice(begin, end)
+        .arrayBuffer()
+        .then((chunk) => {
+          transport.onDataRange(begin, chunk);
+        });
+    };
     try {
-      pdf = await pdfjsLib.getDocument(getDocumentOptions({ data }, password))
-        .promise;
-      break;
-    } catch (error) {
-      if (error.name !== "PasswordException") {
-        throw error;
-      }
-
-      if (error.code === pdfjsLib.PasswordResponses.NEED_PASSWORD) {
-        if (isElectron()) {
-          password = await vexPromptAsync(getPasswordPrompt("need"), "", "");
-          vex.closeAll();
-        } else {
-          password = prompt(getPasswordPrompt("need"));
+      pdf = await pdfjsLib.getDocument({
+        range: transport,
+        cMapUrl: pdfjsPath("cmaps/"),
+        standardFontDataUrl: pdfjsPath("standard_fonts/"),
+        isEvalSupported: false,
+        password,
+      }).promise;
+      break; // 成功加载，跳出循环
+    } catch (e) {
+      if (e.name === "PasswordException") {
+        if (e.code === pdfjsLib.PasswordResponses.NEED_PASSWORD) {
+          // 如果是 Electron 环境，使用 electron-prompt 获取密码
+          if (isElectron()) {
+            password = await vexPromptAsync(getPasswordPrompt("need"), "", "");
+            vex.closeAll(); // 关闭对话框
+          } else {
+            password = prompt(getPasswordPrompt("need"));
+          }
+        } else if (e.code === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD) {
+          if (isElectron()) {
+            password = await vexPromptAsync(
+              getPasswordPrompt("incorrect"),
+              "",
+              ""
+            );
+            vex.closeAll(); // 关闭对话框
+          } else {
+            password = prompt(getPasswordPrompt("incorrect"));
+          }
         }
-      } else if (error.code === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD) {
-        if (isElectron()) {
-          password = await vexPromptAsync(
-            getPasswordPrompt("incorrect"),
-            "",
-            ""
-          );
-          vex.closeAll();
-        } else {
-          password = prompt(getPasswordPrompt("incorrect"));
+        if (!password) {
+          throw new Error("PDF loading failed: no password provided");
         }
       } else {
-        throw error;
-      }
-
-      if (!password) {
-        throw new Error("PDF loading failed: no password provided");
+        throw e;
       }
     }
   }
-
   let isScannedPdf = false;
-  const testedPage =
+  let testedPage =
     pdf.numPages > 0
       ? await pdf.getPage(Math.floor(pdf.numPages / 2) + 1)
       : null;
-
   if (testedPage) {
     const textContent = await testedPage.getTextContent();
     isScannedPdf = textContent.items.length === 0;
-
+    // 进一步检查文本有效性（避免误判带OCR的扫描件）
     if (textContent.items.length > 0) {
       const totalChars = textContent.items.reduce(
         (sum, item) => sum + item.str.trim().length,
         0
       );
+      // 阈值策略：字符少于50或文本覆盖率过低
       isScannedPdf = totalChars < 45;
     }
-
     testedPage.cleanup();
   }
 
   const book = { rendition: { layout: "pre-paginated" } };
-  const { metadata, info } = (await pdf.getMetadata()) ?? {};
 
+  const { metadata, info } = (await pdf.getMetadata()) ?? {};
+  // TODO: for better results, parse `metadata.getRaw()`
   book.metadata = {
     title: metadata?.get("dc:title") ?? info?.Title,
     author: metadata?.get("dc:creator") ?? info?.Author,
@@ -578,11 +411,10 @@ export const makePDF = async (file, password) => {
     source: metadata?.get("dc:source"),
     rights: metadata?.get("dc:rights"),
   };
-
   book.metadata.description =
-    (book.metadata.description || "") +
+    (book.metadata.description ? book.metadata.description : "") +
     (isScannedPdf ? "\nscanned PDF" : "") +
-    (password ? `\nprotected PDF: #${password}#` : "");
+    (password ? "\nprotected PDF: #" + password + "#" : "");
 
   const outline = await pdf.getOutline();
   book.toc = outline?.map(makeTOCItem);
@@ -592,16 +424,13 @@ export const makePDF = async (file, password) => {
     id: i,
     load: async () => {
       const cached = cache.get(i);
-      if (cached) {
-        return cached;
-      }
-
+      if (cached) return cached;
       const url = await renderPage(await pdf.getPage(i + 1), false);
       cache.set(i, url);
       return url;
     },
     unload: async () => {
-      const page = await pdf.getPage(i + 1);
+      let page = await pdf.getPage(i + 1);
       page.cleanup();
     },
     render: async (doc, scale, isMobile, viewer) => {
@@ -609,18 +438,19 @@ export const makePDF = async (file, password) => {
     },
     getTextContent: async () => {
       const page = await pdf.getPage(i + 1);
-      return await page.getTextContent();
+      const textContent = await page.getTextContent();
+      return textContent;
+      // return textContent.items.map(item => item.str).join('\n')
     },
     size: 1000,
     getDimension: async () => {
-      const viewport = (await pdf.getPage(i + 1)).getViewport({ scale: 1 });
+      let viewport = (await pdf.getPage(i + 1)).getViewport({ scale: 1 });
       return { width: viewport.width, height: viewport.height };
     },
     getPage: async () => {
       return await pdf.getPage(i + 1);
     },
   }));
-
   book.isExternal = (uri) => /^\w+:/i.test(uri);
   book.resolveHref = async (href) => {
     const parsed = JSON.parse(href);
@@ -639,10 +469,8 @@ export const makePDF = async (file, password) => {
   book.getTOCFragment = (doc) => doc.documentElement;
   book.getCover = async () => renderPage(await pdf.getPage(1), true);
   book.destroy = () => pdf.destroy();
-
   return book;
 };
-
 export const isPDF = async (file) => {
   const arr = new Uint8Array(await file.slice(0, 5).arrayBuffer());
   return (
