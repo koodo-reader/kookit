@@ -88,7 +88,7 @@ class StyleHelper {
       "table{width:100%;border-collapse:collapse;margin:20px 0;line-height:1.6;border: 1px solid #ddd;}"
     );
     cssRules.push(
-      "thead th{font-weight:bold;padding:14px 12px;text-align:left;white-space:nowrap;border-bottom: 2px solid #ccc;}"
+      "thead th{font-weight:bold;padding:14px 12px;text-align:left;white-space:nowrap;border-bottom: 2px solid #ccc; background-color: rgba(0,0,0,0.05);}"
     );
     cssRules.push(
       "td,th{padding:12px 14px;vertical-align:top;text-align:left;border: 2px solid #e0e0e0;}"
