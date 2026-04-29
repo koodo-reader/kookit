@@ -798,6 +798,161 @@ class PdfRender extends GeneralRender {
     );
     this.clearSelection();
   }
+  applyPDFTextLayerLineHeight(subDoc: Document) {
+    let textLayer = subDoc.querySelector("#textLayer") as HTMLElement | null;
+    if (!textLayer) {
+      return;
+    }
+
+    const getAverage = (values: number[]) => {
+      if (!values.length) {
+        return 0;
+      }
+      return values.reduce((sum, value) => sum + value, 0) / values.length;
+    };
+    const filterByAverage = <T>(
+      items: T[],
+      getValue: (item: T) => number,
+      deviationRatio: number
+    ) => {
+      if (items.length < 3) {
+        return items;
+      }
+      let averageValue = getAverage(items.map(getValue));
+      if (!averageValue) {
+        return items;
+      }
+      let threshold = Math.max(averageValue * deviationRatio, 1);
+      let filteredItems = items.filter(
+        (item) => Math.abs(getValue(item) - averageValue) <= threshold
+      );
+      return filteredItems.length ? filteredItems : items;
+    };
+
+    let spans = Array.from(textLayer.querySelectorAll("span"))
+      .map((span) => {
+        let rect = span.getBoundingClientRect();
+        return {
+          left: rect.left,
+          top: rect.top,
+          bottom: rect.bottom,
+          height: rect.height,
+          text: span.textContent?.trim() || "",
+        };
+      })
+      .filter((item) => item.text && item.height > 0);
+
+    if (spans.length < 2) {
+      return;
+    }
+
+    spans.sort((a, b) => {
+      if (Math.abs(a.top - b.top) < 0.5) {
+        return a.left - b.left;
+      }
+      return a.top - b.top;
+    });
+
+    let lines: {
+      top: number;
+      bottom: number;
+      avgTop: number;
+      avgHeight: number;
+      count: number;
+    }[] = [];
+
+    for (let index = 0; index < spans.length; index++) {
+      let span = spans[index];
+      let currentLine = lines[lines.length - 1];
+      if (!currentLine) {
+        lines.push({
+          top: span.top,
+          bottom: span.bottom,
+          avgTop: span.top,
+          avgHeight: span.height,
+          count: 1,
+        });
+        continue;
+      }
+
+      let sameLineTolerance = Math.max(
+        2,
+        Math.min(currentLine.avgHeight, span.height) * 0.5
+      );
+      if (Math.abs(span.top - currentLine.avgTop) <= sameLineTolerance) {
+        currentLine.top = Math.min(currentLine.top, span.top);
+        currentLine.bottom = Math.max(currentLine.bottom, span.bottom);
+        currentLine.avgTop =
+          (currentLine.avgTop * currentLine.count + span.top) /
+          (currentLine.count + 1);
+        currentLine.avgHeight =
+          (currentLine.avgHeight * currentLine.count + span.height) /
+          (currentLine.count + 1);
+        currentLine.count += 1;
+      } else {
+        lines.push({
+          top: span.top,
+          bottom: span.bottom,
+          avgTop: span.top,
+          avgHeight: span.height,
+          count: 1,
+        });
+      }
+    }
+
+    if (lines.length < 2) {
+      return;
+    }
+
+    let filteredLines = filterByAverage(lines, (line) => line.avgHeight, 0.3);
+    let averageHeight = getAverage(
+      filteredLines.map((line) => line.avgHeight).filter((height) => height > 0)
+    );
+    if (!averageHeight) {
+      textLayer.style.removeProperty("--kookit-pdf-text-line-height");
+      return;
+    }
+
+    let gaps: number[] = [];
+    for (let index = 0; index < filteredLines.length - 1; index++) {
+      let currentLine = filteredLines[index];
+      let nextLine = filteredLines[index + 1];
+      let lineGap = nextLine.top - currentLine.bottom;
+      if (lineGap > 0) {
+        gaps.push(lineGap);
+      }
+    }
+
+    let filteredGaps = filterByAverage(gaps, (gap) => gap, 0.5);
+    let averageGap = getAverage(filteredGaps.filter((gap) => gap >= 0));
+    let requiredLineHeight = (averageGap + averageHeight) / averageHeight;
+
+    console.log(lines, requiredLineHeight, averageGap, averageHeight);
+
+    if (requiredLineHeight <= 1) {
+      textLayer.style.removeProperty("--kookit-pdf-text-line-height");
+      return;
+    }
+
+    let styleTag = subDoc.getElementById(
+      "kookit-pdf-text-layer-style"
+    ) as HTMLStyleElement | null;
+    if (!styleTag) {
+      styleTag = subDoc.createElement("style");
+      styleTag.id = "kookit-pdf-text-layer-style";
+      styleTag.textContent = `
+        .textLayer span {
+          line-height: var(--kookit-pdf-text-line-height, 1) !important;
+        }
+      `;
+      (subDoc.head || subDoc.documentElement).appendChild(styleTag);
+    }
+
+    textLayer.style.setProperty(
+      "--kookit-pdf-text-line-height",
+      requiredLineHeight.toFixed(3)
+    );
+  }
   async handleRenderPDFChapter(chapterDocIndex: number, doc: Document) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
@@ -825,6 +980,10 @@ class PdfRender extends GeneralRender {
       this.isMobile,
       this
     );
+    if (this.platform === "android") {
+      this.applyPDFTextLayerLineHeight(subDoc);
+    }
+
     let docLayer: any = subDoc.querySelector("#koodoPDFLayer");
     if (!docLayer) {
       return;
