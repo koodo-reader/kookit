@@ -991,9 +991,19 @@ class GeneralRender extends EventEmitter {
     let doc = this.getDocument();
     if (!doc) return;
 
-    var defaultStyle = document.createElement("style");
-    defaultStyle.innerHTML = css;
-    doc.head.appendChild(defaultStyle);
+    const styleId = "kookit-default-style";
+    let existingStyle = doc.head.querySelector(`style#${styleId}`);
+
+    if (existingStyle) {
+      // 如果已存在相同 id 的 style，则替换其内容
+      existingStyle.innerHTML = css;
+    } else {
+      // 如果不存在，则创建新的 style 元素
+      var defaultStyle = document.createElement("style");
+      defaultStyle.id = styleId;
+      defaultStyle.innerHTML = css;
+      doc.head.appendChild(defaultStyle);
+    }
   }
   async getHightlightCoords() {
     let doc = this.getDocument();
