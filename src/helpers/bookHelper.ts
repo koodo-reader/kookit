@@ -288,7 +288,7 @@ class BookHelper {
             throttledPageChanged();
             pageChangeDebounceTimer = null;
           },
-          window.isTouchNavigation ? 2000 : 0
+          window.isTouchNavigation ? 1000 : 0
         );
       });
       window.ReactNativeWebView.postMessage(
