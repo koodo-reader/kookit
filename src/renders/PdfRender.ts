@@ -929,7 +929,7 @@ class PdfRender extends GeneralRender {
 
     console.log(lines, requiredLineHeight, averageGap, averageHeight);
 
-    if (requiredLineHeight <= 1) {
+    if (requiredLineHeight <= 1 || requiredLineHeight > 3) {
       textLayer.style.removeProperty("--kookit-pdf-text-line-height");
       return;
     }
