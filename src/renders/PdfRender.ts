@@ -980,9 +980,6 @@ class PdfRender extends GeneralRender {
       this.isMobile,
       this
     );
-    if (this.platform === "android") {
-      this.applyPDFTextLayerLineHeight(subDoc);
-    }
 
     let docLayer: any = subDoc.querySelector("#koodoPDFLayer");
     if (!docLayer) {
@@ -1024,6 +1021,9 @@ class PdfRender extends GeneralRender {
     }
     docLayer.style.visibility = "visible";
     window.chapterDocIndex = chapterDocIndex;
+    if (this.platform === "android") {
+      this.applyPDFTextLayerLineHeight(subDoc);
+    }
     this.trigger("rendered");
   }
   async handleUnloadPDFChapter(chapterDocIndex: number, doc: Document) {
