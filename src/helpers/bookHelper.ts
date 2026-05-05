@@ -275,21 +275,9 @@ class BookHelper {
           })
         );
       }, 6000);
-      // 新增：3000ms 防抖计时器
-      let pageChangeDebounceTimer: any = null;
 
       window.rendition.on("page-changed", () => {
-        // 每次触发都重置定时器，3000ms 内再次触发则忽略执行（即推迟）
-        if (pageChangeDebounceTimer) {
-          clearTimeout(pageChangeDebounceTimer);
-        }
-        pageChangeDebounceTimer = setTimeout(
-          () => {
-            throttledPageChanged();
-            pageChangeDebounceTimer = null;
-          },
-          window.isTouchNavigation ? 1000 : 0
-        );
+        throttledPageChanged();
       });
       window.ReactNativeWebView.postMessage(
         JSON.stringify({

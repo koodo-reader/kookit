@@ -263,17 +263,8 @@ export const addAndroidTouchEvent = (
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   let pageWidth = element.clientWidth + gap;
-  let pageChangeDebounceTimer: any = null;
   let onTouchEnd = function (event) {
     window.isSwiping = false;
-    window.isTouchNavigation = true;
-    if (pageChangeDebounceTimer) {
-      clearTimeout(pageChangeDebounceTimer);
-    }
-    pageChangeDebounceTimer = setTimeout(() => {
-      window.isTouchNavigation = false;
-      pageChangeDebounceTimer = null;
-    }, 4000);
 
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
@@ -737,17 +728,8 @@ export const addAppleTouchEvent = (
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  let pageChangeDebounceTimer: any = null;
   let onTouchEnd = async function (event) {
     window.isSwiping = false;
-    window.isTouchNavigation = true;
-    if (pageChangeDebounceTimer) {
-      clearTimeout(pageChangeDebounceTimer);
-    }
-    pageChangeDebounceTimer = setTimeout(() => {
-      window.isTouchNavigation = false;
-      pageChangeDebounceTimer = null;
-    }, 4000);
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
       event.preventDefault();

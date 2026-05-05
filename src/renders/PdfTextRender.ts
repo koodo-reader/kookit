@@ -3,10 +3,7 @@ import GeneralParser from "../utils/generalParser";
 import GeneralRender from "./GeneralRender";
 import { getCache } from "../libs/cache.js";
 import { isPDF, makePDF } from "../libs/pdf";
-import {
-  convertPageToImage,
-  showOCRProgress,
-} from "../utils/pdfUtil";
+import { convertPageToImage, showOCRProgress } from "../utils/pdfUtil";
 import { ocrCache } from "../utils/ocrCacheUtil";
 import { isElectron } from "../utils/common";
 const fetchText = async (url) => await (await fetch(url)).text();
@@ -142,12 +139,15 @@ class PdfTextRender extends GeneralRender {
     for (let i = currentIndex + 1; i <= maxIndex; i++) {
       // 只处理未缓存且未在处理中的章节
       if (!this.cache[i] && !this.processingPromises.has(i)) {
-        const promise = this.processChapterOCR(i);
+        const promise = this.processChapterOCR(i).finally(() => {
+          this.processingPromises.delete(i);
+        });
         this.processingPromises.set(i, promise);
 
-        // 等待当前章节处理完成后再处理下一个
-        await promise;
-        this.processingPromises.delete(i);
+        if (this.ocrEngine !== "official-ai-ocr") {
+          // 非 official-ai-ocr 引擎需等待当前章节处理完成后再处理下一个
+          await promise;
+        }
       }
     }
   }
@@ -242,6 +242,7 @@ class PdfTextRender extends GeneralRender {
     }
   };
   async getTextByOCR(chapterDoc, chapterDocIndex: number) {
+    console.log(chapterDocIndex, "getTextByOCR");
     let textContent = "";
     if (this.ocrEngine === "external-engine") {
       // 模拟进度条变化
