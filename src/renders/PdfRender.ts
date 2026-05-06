@@ -927,8 +927,6 @@ class PdfRender extends GeneralRender {
     let averageGap = getAverage(filteredGaps.filter((gap) => gap >= 0));
     let requiredLineHeight = (averageGap + averageHeight) / averageHeight;
 
-    console.log(lines, requiredLineHeight, averageGap, averageHeight);
-
     if (requiredLineHeight <= 1 || requiredLineHeight > 2) {
       textLayer.style.removeProperty("--kookit-pdf-text-line-height");
       return;

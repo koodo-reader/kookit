@@ -137,7 +137,6 @@ class PdfTextRender extends GeneralRender {
     const maxIndex = Math.min(currentIndex + 5, this.chapterDocList.length - 1);
 
     for (let i = currentIndex + 1; i <= maxIndex; i++) {
-      console.log("preProcessNextChapters", i, this.ocrEngine);
       // 只处理未缓存且未在处理中的章节
       if (!this.cache[i] && !this.processingPromises.has(i)) {
         const promise = this.processChapterOCR(i).finally(() => {
@@ -246,7 +245,6 @@ class PdfTextRender extends GeneralRender {
     }
   };
   async getTextByOCR(chapterDoc, chapterDocIndex: number) {
-    console.log(chapterDocIndex, "getTextByOCR");
     let textContent = "";
     if (this.ocrEngine === "external-engine") {
       // 模拟进度条变化
