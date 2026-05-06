@@ -134,9 +134,10 @@ class PdfTextRender extends GeneralRender {
 
   // 同步预处理后续章节
   async preProcessNextChapters(currentIndex: number) {
-    const maxIndex = Math.min(currentIndex + 3, this.chapterDocList.length - 1);
+    const maxIndex = Math.min(currentIndex + 5, this.chapterDocList.length - 1);
 
     for (let i = currentIndex + 1; i <= maxIndex; i++) {
+      console.log("preProcessNextChapters", i, this.ocrEngine);
       // 只处理未缓存且未在处理中的章节
       if (!this.cache[i] && !this.processingPromises.has(i)) {
         const promise = this.processChapterOCR(i).finally(() => {
@@ -144,7 +145,10 @@ class PdfTextRender extends GeneralRender {
         });
         this.processingPromises.set(i, promise);
 
-        if (this.ocrEngine !== "official-ai-ocr") {
+        if (
+          this.ocrEngine !== "official-ai-ocr" &&
+          this.ocrEngine !== "external-engine"
+        ) {
           // 非 official-ai-ocr 引擎需等待当前章节处理完成后再处理下一个
           await promise;
         }
