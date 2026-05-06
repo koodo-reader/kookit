@@ -438,11 +438,19 @@ export const clearHighlight = (doc: Document) => {
   // Handle two cases:
   // 1. Inline highlight spans (from highlightRange) → unwrap to restore text
   // 2. Absolutely-positioned divs (from showPDFHighlight) → just remove
-  const elements = doc.querySelectorAll(".kookit-note");
-  for (let index = 0; index < elements.length; index++) {
-    const element = elements[index];
+  //
+  // Overlapping highlights produce nested .kookit-note spans. We must unwrap
+  // from outermost to innermost; querySelectorAll returns them in DOM order
+  // (outer first), so each iteration re-queries to pick up newly-exposed
+  // inner spans after the outer span is removed.
+  let elements = doc.querySelectorAll(".kookit-note");
+  while (elements.length > 0) {
+    const element = elements[0];
     const parent = element.parentNode;
-    if (!parent) continue;
+    if (!parent) {
+      elements = doc.querySelectorAll(".kookit-note");
+      continue;
+    }
     if (element.tagName === "SPAN" && element.childNodes.length > 0) {
       // Inline span wrapping text: unwrap by moving children out
       while (element.firstChild) {
@@ -454,6 +462,7 @@ export const clearHighlight = (doc: Document) => {
       // Absolutely-positioned overlay (PDF) or empty: just remove
       parent.removeChild(element);
     }
+    elements = doc.querySelectorAll(".kookit-note");
   }
 };
 
@@ -537,6 +546,9 @@ export const highlightRange = (
     : "border-bottom: 2px solid " + lines[colorIdx];
 
   const wrappedSpans: HTMLElement[] = [];
+  // Track existing kookit-note parent spans already promoted to outer wrappers
+  // so we don't double-wrap them when multiple text nodes share the same parent.
+  const promotedSpans = new Set<HTMLElement>();
 
   for (let i = 0; i < textNodes.length; i++) {
     const textNode = textNodes[i];
@@ -550,6 +562,66 @@ export const highlightRange = (
     ) {
       wrappedSpans.push(textNode.parentElement);
       continue;
+    }
+
+    // If the text node lives inside a *different* kookit-note span, decide
+    // whether the new highlight should go OUTSIDE (new is larger) or INSIDE
+    // (new is smaller / partial) the existing span.
+    //
+    // Rule: wrap the existing span from the outside only when the new range
+    // FULLY CONTAINS the existing span. In that case the existing (smaller)
+    // highlight stays innermost and keeps its own color + click identity.
+    // Otherwise (new range is smaller or partially overlapping), fall through
+    // to the normal text-node splitting logic so the new highlight becomes
+    // innermost for its specific portion of text.
+    const existingNoteParent = textNode.parentElement?.closest?.(
+      ".kookit-note[data-key]"
+    ) as HTMLElement | null;
+    if (
+      existingNoteParent &&
+      existingNoteParent.getAttribute("data-key") !== noteKey
+    ) {
+      // Check whether the new range fully contains the existing span
+      const parentRange = doc.createRange();
+      parentRange.selectNodeContents(existingNoteParent);
+      const newStartBeforeOrAt =
+        nativeRange.compareBoundaryPoints(Range.START_TO_START, parentRange) <=
+        0;
+      const newEndAfterOrAt =
+        nativeRange.compareBoundaryPoints(Range.END_TO_END, parentRange) >= 0;
+      const parentFullyContained = newStartBeforeOrAt && newEndAfterOrAt;
+
+      if (parentFullyContained) {
+        // New highlight is larger — wrap the existing span from outside so
+        // the existing (inner) highlight keeps visual and click priority.
+        if (promotedSpans.has(existingNoteParent)) continue;
+        promotedSpans.add(existingNoteParent);
+
+        // Check if existingNoteParent is already wrapped by our noteKey
+        const alreadyOuter = existingNoteParent.parentElement?.closest?.(
+          `.kookit-note[data-key="${noteKey}"]`
+        ) as HTMLElement | null;
+        if (alreadyOuter) {
+          wrappedSpans.push(alreadyOuter);
+          continue;
+        }
+
+        const span = doc.createElement("span");
+        span.setAttribute("style", highlightStyle);
+        span.setAttribute("class", "kookit-note");
+        span.setAttribute("data-key", noteKey);
+        if (isNote && noteContent) {
+          span.setAttribute("data-note-content", noteContent);
+        }
+        existingNoteParent.parentNode!.insertBefore(span, existingNoteParent);
+        span.appendChild(existingNoteParent);
+        wrappedSpans.push(span);
+        continue;
+      }
+      // else: new range is smaller or partially overlapping — fall through to
+      // the normal text-node path below. The new span will be inserted
+      // innermost (directly around the text), which ensures the new
+      // highlight's color and click handler take priority for its region.
     }
 
     // Determine the portion of this text node that falls within the range
