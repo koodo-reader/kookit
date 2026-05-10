@@ -198,6 +198,7 @@ export const isElementFootnote = (element: HTMLElement) => {
       textContent.toLowerCase().indexOf("footnote") > -1 ||
       textContent.toLowerCase().indexOf("脚注") > -1 ||
       textContent.toLowerCase().indexOf("注释") > -1 ||
+      textContent.toLowerCase().indexOf("注") > -1 ||
       textContent.toLowerCase().indexOf("fn") > -1
     ) {
       return true;
