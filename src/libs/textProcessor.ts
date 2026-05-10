@@ -158,15 +158,7 @@ export const txtToHtml = (
   if (finalHtml && finalHtml.includes("<h1>")) {
     return finalHtml;
   } else {
-    // --- Loop for Full File (if not large or no bookLocation) ---
-    let htmlParts: string[] = []; // Reset htmlParts array
-    for (const item of lines) {
-      htmlParts.push(`<p>${item}</p>`); // Push to array
-    }
-    // Fallback if no HTML was generated
-    return `<h1 style="opacity: 0; font-size: 5px;">Title</h1>${htmlParts.join(
-      ""
-    )}`;
+    return txtToHtml(text, parserRegex, { noTitle: true });
   }
 };
 export const cleanText = (str) => {
