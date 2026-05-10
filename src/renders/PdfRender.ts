@@ -31,6 +31,8 @@ class PdfRender extends GeneralRender {
   scrollPDFInterval: any = null;
   templateChapterDocIndex: number = 0;
   platform: string;
+  pdfTextLineHeightRecord: Record<string, number> = {};
+  pdfTextLineHeightFixed: number | null = null;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, convertChinese: "Default", format: "PDF" });
     this.pdfBuffer = pdfBuffer;
@@ -804,6 +806,28 @@ class PdfRender extends GeneralRender {
       return;
     }
 
+    // If a stable line height has been determined, apply it directly
+    if (this.pdfTextLineHeightFixed !== null) {
+      let styleTag = subDoc.getElementById(
+        "kookit-pdf-text-layer-style"
+      ) as HTMLStyleElement | null;
+      if (!styleTag) {
+        styleTag = subDoc.createElement("style");
+        styleTag.id = "kookit-pdf-text-layer-style";
+        styleTag.textContent = `
+        .textLayer span {
+          line-height: var(--kookit-pdf-text-line-height, 1) !important;
+        }
+      `;
+        (subDoc.head || subDoc.documentElement).appendChild(styleTag);
+      }
+      textLayer.style.setProperty(
+        "--kookit-pdf-text-line-height",
+        this.pdfTextLineHeightFixed.toFixed(1)
+      );
+      return;
+    }
+
     const getAverage = (values: number[]) => {
       if (!values.length) {
         return 0;
@@ -946,10 +970,14 @@ class PdfRender extends GeneralRender {
       (subDoc.head || subDoc.documentElement).appendChild(styleTag);
     }
 
-    textLayer.style.setProperty(
-      "--kookit-pdf-text-line-height",
-      requiredLineHeight.toFixed(3)
-    );
+    let lineHeightKey = requiredLineHeight.toFixed(1);
+    let count = (this.pdfTextLineHeightRecord[lineHeightKey] || 0) + 1;
+    this.pdfTextLineHeightRecord[lineHeightKey] = count;
+    if (count >= 3) {
+      this.pdfTextLineHeightFixed = requiredLineHeight;
+    }
+
+    textLayer.style.setProperty("--kookit-pdf-text-line-height", lineHeightKey);
   }
   async handleRenderPDFChapter(chapterDocIndex: number, doc: Document) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
