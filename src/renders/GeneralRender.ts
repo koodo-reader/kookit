@@ -27,6 +27,8 @@ import {
   clearHighlight,
   showNoteHighlight,
   showNoteHighlightBatch,
+  applyWordDefinitions,
+  clearWordDefinitions,
 } from "../utils/noteUtil";
 import { addPageAnimation } from "../utils/animationUtil";
 import rangy from "rangy/lib/rangy-core.js";
@@ -70,6 +72,7 @@ class GeneralRender extends EventEmitter {
     }
   >;
   fullTranslationMode: string = "no";
+
   constructor(config: {
     readerMode: string;
     format: string;
@@ -774,7 +777,7 @@ class GeneralRender extends EventEmitter {
   }
   async audioText() {
     let doc = this.getDocument();
-    if (!doc) return "";
+    if (!doc) return [];
     let audioTexts = await getAudioText(this.element, this.readerMode, doc);
     return audioTexts;
   }
@@ -988,9 +991,19 @@ class GeneralRender extends EventEmitter {
     let doc = this.getDocument();
     if (!doc) return;
 
-    var defaultStyle = document.createElement("style");
-    defaultStyle.innerHTML = css;
-    doc.head.appendChild(defaultStyle);
+    const styleId = "kookit-default-style";
+    let existingStyle = doc.head.querySelector(`style#${styleId}`);
+
+    if (existingStyle) {
+      // 如果已存在相同 id 的 style，则替换其内容
+      existingStyle.innerHTML = css;
+    } else {
+      // 如果不存在，则创建新的 style 元素
+      var defaultStyle = document.createElement("style");
+      defaultStyle.id = styleId;
+      defaultStyle.innerHTML = css;
+      doc.head.appendChild(defaultStyle);
+    }
   }
   async getHightlightCoords() {
     let doc = this.getDocument();
@@ -1469,6 +1482,56 @@ class GeneralRender extends EventEmitter {
         }
       }
     }
+  }
+  handleWordDefinitionResult(
+    results: { text: string; words: any[] }[],
+    lang: string,
+    locale: string
+  ) {
+    let doc = this.getDocument();
+    if (!doc) return;
+    // console.log(results, "results");
+    // Clear previous definitions before re-applying
+    clearWordDefinitions(doc);
+    // Build a flat list of audio nodes to match against result.text
+    const nodeList = getBlockElement(doc.body).filter(
+      (item) => !isParentBlock(item)
+    );
+    for (const result of results) {
+      const { text, words } = result;
+      if (!words || words.length === 0) continue;
+      // Find the matching DOM node by textContent
+      const targetNode = nodeList.find(
+        (n) => (n as HTMLElement).textContent === text
+      );
+      if (!targetNode) continue;
+      // Build a per-node definitionMap from the words for this node
+      const nodeDefMap: Record<string, any> = {};
+      for (const def of words) {
+        if (lang === "zh") {
+          const simplified = def.simplified || "";
+          const traditional = def.traditional || "";
+          if (simplified) nodeDefMap[simplified] = def;
+          if (traditional && traditional !== simplified)
+            nodeDefMap[traditional] = def;
+        } else {
+          const key = (def.word || "").toLowerCase();
+          if (key) nodeDefMap[key] = def;
+        }
+      }
+      applyWordDefinitions(
+        nodeDefMap,
+        doc,
+        lang,
+        locale,
+        targetNode as Element
+      );
+    }
+  }
+  clearWordDefinitionResult() {
+    let doc = this.getDocument();
+    if (!doc) return;
+    clearWordDefinitions(doc);
   }
 }
 export default GeneralRender;

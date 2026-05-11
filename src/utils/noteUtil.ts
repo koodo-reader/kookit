@@ -17,10 +17,94 @@ export const pdfColors = ["#fac106", "#ebe702", "#0be603", "#0493e6"];
 
 const TOOLTIP_ID = "kookit-note-tooltip";
 
+type TooltipAnchorRect = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+};
+
+const getTooltipAnchorRect = (element: Element): TooltipAnchorRect => {
+  const rect = element.getBoundingClientRect();
+  return {
+    left: rect.left,
+    top: rect.top,
+    right: rect.right,
+    bottom: rect.bottom,
+    width: rect.width,
+    height: rect.height,
+  };
+};
+
+const mergeTooltipAnchorRects = (
+  elements: HTMLElement[]
+): TooltipAnchorRect | null => {
+  if (elements.length === 0) return null;
+  const rects = elements
+    .map((element) => getTooltipAnchorRect(element))
+    .filter((rect) => rect.width > 0 || rect.height > 0);
+  if (rects.length === 0) return null;
+  const left = Math.min(...rects.map((rect) => rect.left));
+  const top = Math.min(...rects.map((rect) => rect.top));
+  const right = Math.max(...rects.map((rect) => rect.right));
+  const bottom = Math.max(...rects.map((rect) => rect.bottom));
+  return {
+    left,
+    top,
+    right,
+    bottom,
+    width: right - left,
+    height: bottom - top,
+  };
+};
+
+const positionTooltipAboveRect = (
+  tooltip: HTMLElement,
+  rect: TooltipAnchorRect,
+  doc: Document,
+  offset: number
+) => {
+  tooltip.style.left = "0px";
+  tooltip.style.top = "0px";
+  requestAnimationFrame(() => {
+    const vpW = doc.documentElement.clientWidth || window.innerWidth;
+    const vpH = doc.documentElement.clientHeight || window.innerHeight;
+    const tw = tooltip.offsetWidth;
+    const th = tooltip.offsetHeight;
+    let left = rect.left + rect.width / 2 - tw / 2;
+    let top = rect.top - th - offset;
+    if (left < 0) left = 0;
+    if (left + tw > vpW) left = Math.max(0, vpW - tw);
+    if (top < 0) {
+      top = rect.bottom + offset;
+      if (top + th > vpH) {
+        top = Math.max(0, vpH - th);
+      }
+    }
+    tooltip.style.left = left + "px";
+    tooltip.style.top = top + "px";
+  });
+};
+
+const getNoteTooltipAnchorRect = (
+  target: HTMLElement,
+  doc: Document
+): TooltipAnchorRect => {
+  const noteKey = target.getAttribute("data-key");
+  if (!noteKey) return getTooltipAnchorRect(target);
+  const noteElements = Array.from(
+    doc.querySelectorAll(".kookit-note[data-key], .kookit-note-icon[data-key]")
+  ).filter((element) => {
+    return (element as HTMLElement).getAttribute("data-key") === noteKey;
+  }) as HTMLElement[];
+  return mergeTooltipAnchorRects(noteElements) || getTooltipAnchorRect(target);
+};
+
 const showNoteTooltip = (
   content: string,
-  clientX: number,
-  clientY: number,
+  target: HTMLElement,
   doc: Document
 ) => {
   let tooltip = doc.getElementById(TOOLTIP_ID) as HTMLElement | null;
@@ -39,44 +123,17 @@ const showNoteTooltip = (
   }
   tooltip.textContent = content;
   tooltip.style.display = "block";
-  const offset = 14;
-  const vpW = doc.documentElement.clientWidth || window.innerWidth;
-  const vpH = doc.documentElement.clientHeight || window.innerHeight;
-  let left = clientX + offset;
-  let top = clientY + offset;
-  tooltip.style.left = left + "px";
-  tooltip.style.top = top + "px";
-  // clamp after paint so we know tooltip size
-  requestAnimationFrame(() => {
-    if (!tooltip) return;
-    const tw = tooltip.offsetWidth;
-    const th = tooltip.offsetHeight;
-    if (left + tw > vpW) left = clientX - tw - offset;
-    if (top + th > vpH) top = clientY - th - offset;
-    tooltip.style.left = Math.max(0, left) + "px";
-    tooltip.style.top = Math.max(0, top) + "px";
-  });
-};
-
-const moveNoteTooltip = (clientX: number, clientY: number, doc: Document) => {
-  const tooltip = doc.getElementById(TOOLTIP_ID) as HTMLElement | null;
-  if (!tooltip || tooltip.style.display === "none") return;
-  const offset = 14;
-  const vpW = doc.documentElement.clientWidth || window.innerWidth;
-  const vpH = doc.documentElement.clientHeight || window.innerHeight;
-  let left = clientX + offset;
-  let top = clientY + offset;
-  const tw = tooltip.offsetWidth;
-  const th = tooltip.offsetHeight;
-  if (left + tw > vpW) left = clientX - tw - offset;
-  if (top + th > vpH) top = clientY - th - offset;
-  tooltip.style.left = Math.max(0, left) + "px";
-  tooltip.style.top = Math.max(0, top) + "px";
+  positionTooltipAboveRect(
+    tooltip,
+    getNoteTooltipAnchorRect(target, doc),
+    doc,
+    10
+  );
 };
 
 const hideNoteTooltip = (doc: Document) => {
   const tooltip = doc.getElementById(TOOLTIP_ID) as HTMLElement | null;
-  if (tooltip) tooltip.style.display = "none";
+  tooltip?.remove();
 };
 
 /**
@@ -311,11 +368,7 @@ export const showPDFHighlight = (
     }
     newNode?.addEventListener("mouseenter", (event: any) => {
       if (!isNote || !noteContent) return;
-      showNoteTooltip(noteContent, event.clientX, event.clientY, doc);
-    });
-    newNode?.addEventListener("mousemove", (event: any) => {
-      if (!isNote || !noteContent) return;
-      moveNoteTooltip(event.clientX, event.clientY, doc);
+      showNoteTooltip(noteContent, event.currentTarget as HTMLElement, doc);
     });
     newNode?.addEventListener("mouseleave", () => {
       hideNoteTooltip(doc);
@@ -385,11 +438,19 @@ export const clearHighlight = (doc: Document) => {
   // Handle two cases:
   // 1. Inline highlight spans (from highlightRange) → unwrap to restore text
   // 2. Absolutely-positioned divs (from showPDFHighlight) → just remove
-  const elements = doc.querySelectorAll(".kookit-note");
-  for (let index = 0; index < elements.length; index++) {
-    const element = elements[index];
+  //
+  // Overlapping highlights produce nested .kookit-note spans. We must unwrap
+  // from outermost to innermost; querySelectorAll returns them in DOM order
+  // (outer first), so each iteration re-queries to pick up newly-exposed
+  // inner spans after the outer span is removed.
+  let elements = doc.querySelectorAll(".kookit-note");
+  while (elements.length > 0) {
+    const element = elements[0];
     const parent = element.parentNode;
-    if (!parent) continue;
+    if (!parent) {
+      elements = doc.querySelectorAll(".kookit-note");
+      continue;
+    }
     if (element.tagName === "SPAN" && element.childNodes.length > 0) {
       // Inline span wrapping text: unwrap by moving children out
       while (element.firstChild) {
@@ -401,6 +462,7 @@ export const clearHighlight = (doc: Document) => {
       // Absolutely-positioned overlay (PDF) or empty: just remove
       parent.removeChild(element);
     }
+    elements = doc.querySelectorAll(".kookit-note");
   }
 };
 
@@ -484,6 +546,9 @@ export const highlightRange = (
     : "border-bottom: 2px solid " + lines[colorIdx];
 
   const wrappedSpans: HTMLElement[] = [];
+  // Track existing kookit-note parent spans already promoted to outer wrappers
+  // so we don't double-wrap them when multiple text nodes share the same parent.
+  const promotedSpans = new Set<HTMLElement>();
 
   for (let i = 0; i < textNodes.length; i++) {
     const textNode = textNodes[i];
@@ -497,6 +562,66 @@ export const highlightRange = (
     ) {
       wrappedSpans.push(textNode.parentElement);
       continue;
+    }
+
+    // If the text node lives inside a *different* kookit-note span, decide
+    // whether the new highlight should go OUTSIDE (new is larger) or INSIDE
+    // (new is smaller / partial) the existing span.
+    //
+    // Rule: wrap the existing span from the outside only when the new range
+    // FULLY CONTAINS the existing span. In that case the existing (smaller)
+    // highlight stays innermost and keeps its own color + click identity.
+    // Otherwise (new range is smaller or partially overlapping), fall through
+    // to the normal text-node splitting logic so the new highlight becomes
+    // innermost for its specific portion of text.
+    const existingNoteParent = textNode.parentElement?.closest?.(
+      ".kookit-note[data-key]"
+    ) as HTMLElement | null;
+    if (
+      existingNoteParent &&
+      existingNoteParent.getAttribute("data-key") !== noteKey
+    ) {
+      // Check whether the new range fully contains the existing span
+      const parentRange = doc.createRange();
+      parentRange.selectNodeContents(existingNoteParent);
+      const newStartBeforeOrAt =
+        nativeRange.compareBoundaryPoints(Range.START_TO_START, parentRange) <=
+        0;
+      const newEndAfterOrAt =
+        nativeRange.compareBoundaryPoints(Range.END_TO_END, parentRange) >= 0;
+      const parentFullyContained = newStartBeforeOrAt && newEndAfterOrAt;
+
+      if (parentFullyContained) {
+        // New highlight is larger — wrap the existing span from outside so
+        // the existing (inner) highlight keeps visual and click priority.
+        if (promotedSpans.has(existingNoteParent)) continue;
+        promotedSpans.add(existingNoteParent);
+
+        // Check if existingNoteParent is already wrapped by our noteKey
+        const alreadyOuter = existingNoteParent.parentElement?.closest?.(
+          `.kookit-note[data-key="${noteKey}"]`
+        ) as HTMLElement | null;
+        if (alreadyOuter) {
+          wrappedSpans.push(alreadyOuter);
+          continue;
+        }
+
+        const span = doc.createElement("span");
+        span.setAttribute("style", highlightStyle);
+        span.setAttribute("class", "kookit-note");
+        span.setAttribute("data-key", noteKey);
+        if (isNote && noteContent) {
+          span.setAttribute("data-note-content", noteContent);
+        }
+        existingNoteParent.parentNode!.insertBefore(span, existingNoteParent);
+        span.appendChild(existingNoteParent);
+        wrappedSpans.push(span);
+        continue;
+      }
+      // else: new range is smaller or partially overlapping — fall through to
+      // the normal text-node path below. The new span will be inserted
+      // innermost (directly around the text), which ensures the new
+      // highlight's color and click handler take priority for its region.
     }
 
     // Determine the portion of this text node that falls within the range
@@ -552,8 +677,9 @@ export const highlightRange = (
           doc.body.style.cursor = "pointer";
           const nc = target.getAttribute("data-note-content") || "";
           if (nc) {
-            moveNoteTooltip(e.clientX, e.clientY, doc);
-            showNoteTooltip(nc, e.clientX, e.clientY, doc);
+            showNoteTooltip(nc, target, doc);
+          } else {
+            hideNoteTooltip(doc);
           }
         } else {
           doc.body.style.cursor = "";
@@ -630,5 +756,210 @@ export const highlightRange = (
     );
     // Insert icon right before the first highlight span
     firstSpan.parentNode?.insertBefore(iconNode, firstSpan);
+  }
+};
+
+const WORD_TOOLTIP_ID = "kookit-word-tooltip";
+
+const showWordTooltip = (
+  content: string,
+  target: HTMLElement,
+  doc: Document
+) => {
+  let tooltip = doc.getElementById(WORD_TOOLTIP_ID) as HTMLElement | null;
+  if (!tooltip) {
+    tooltip = doc.createElement("span");
+    tooltip.setAttribute("id", WORD_TOOLTIP_ID);
+    tooltip.setAttribute("class", WORD_TOOLTIP_ID);
+    tooltip.setAttribute(
+      "style",
+      "position: fixed; z-index: 9999; max-width: 280px; padding: 6px 10px;" +
+        " background: #383838; color: #fff; font-size: 15px !important;" +
+        " border-radius: 6px; pointer-events: none;" +
+        " word-break: break-word; white-space: pre-wrap; line-height: 1.5;"
+    );
+    doc.body.appendChild(tooltip);
+  }
+  tooltip.textContent = content;
+  tooltip.style.display = "block";
+  positionTooltipAboveRect(tooltip, getTooltipAnchorRect(target), doc, 6);
+};
+
+const hideWordTooltip = (doc: Document) => {
+  const tooltip = doc.getElementById(WORD_TOOLTIP_ID) as HTMLElement | null;
+  tooltip?.remove();
+};
+
+export const clearWordDefinitions = (doc: Document) => {
+  const spans = doc.querySelectorAll(".kookit-word-def");
+  for (let i = 0; i < spans.length; i++) {
+    const span = spans[i];
+    const parent = span.parentNode;
+    if (!parent) continue;
+    while (span.firstChild) {
+      parent.insertBefore(span.firstChild, span);
+    }
+    parent.removeChild(span);
+    parent.normalize();
+  }
+};
+
+export const applyWordDefinitions = (
+  definitionMap: Record<string, any>,
+  doc: Document,
+  lang: string = "en",
+  locale: string = "en",
+  rootElement?: Element
+) => {
+  const words = Object.keys(definitionMap);
+  if (words.length === 0) return;
+
+  const isCJK = lang === "zh" || lang === "ja";
+
+  // Sort longest first to prefer longer matches in CJK
+  const sortedWords = isCJK
+    ? [...words].sort((a, b) => b.length - a.length)
+    : words;
+
+  const escapedWords = sortedWords.map((w) =>
+    w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  );
+  // CJK languages have no word boundaries; English uses \b
+  const pattern = isCJK
+    ? new RegExp("(" + escapedWords.join("|") + ")", "g")
+    : new RegExp("\\b(" + escapedWords.join("|") + ")\\b", "gi");
+
+  // Collect text nodes (skip nodes inside kookit spans or script/style)
+  const walker = doc.createTreeWalker(
+    rootElement || doc.body,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode: (node: Node) => {
+        let parent = (node as Text).parentElement;
+        while (parent) {
+          const tag = parent.tagName;
+          if (
+            tag === "SCRIPT" ||
+            tag === "STYLE" ||
+            tag === "RUBY" ||
+            parent.classList.contains("kookit-note") ||
+            parent.classList.contains("kookit-word-def") ||
+            parent.classList.contains("kookit-note-tooltip") ||
+            parent.classList.contains("kookit-word-tooltip")
+          ) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          parent = parent.parentElement;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    }
+  );
+
+  const textNodes: Text[] = [];
+  while (walker.nextNode()) {
+    textNodes.push(walker.currentNode as Text);
+  }
+
+  for (const textNode of textNodes) {
+    const text = textNode.textContent || "";
+    pattern.lastIndex = 0;
+    if (!pattern.test(text)) continue;
+    pattern.lastIndex = 0;
+
+    const fragment = doc.createDocumentFragment();
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = pattern.exec(text)) !== null) {
+      const before = text.slice(lastIndex, match.index);
+      if (before) fragment.appendChild(doc.createTextNode(before));
+
+      const word = match[0];
+      const defKey = word.toLowerCase();
+      const def = definitionMap[defKey] || definitionMap[word];
+
+      const span = doc.createElement("span");
+      span.className = "kookit-word-def";
+      let meaning = def.meaning || "";
+      if (locale === "zhCN" && def.cn_meaning) {
+        meaning = def.cn_meaning;
+      }
+      span.setAttribute("data-meaning", meaning || "");
+      let fullDef: string;
+      if (lang === "zh") {
+        fullDef = [
+          "[" + def.pinyin + "]" || "",
+          meaning || "",
+          def.level ? "[HSK" + def.level + "]" : "",
+        ]
+          .filter(Boolean)
+          .join("  ");
+      } else if (lang === "ja") {
+        const reading = [
+          def.furigana || "",
+          def.romaji ? "(" + def.romaji + ")" : "",
+        ]
+          .filter(Boolean)
+          .join("");
+        fullDef = [
+          reading,
+          meaning || "",
+          def.level ? "[N" + def.level + "]" : "",
+        ]
+          .filter(Boolean)
+          .join("  ");
+      } else {
+        fullDef = [
+          def.pronunciation || "",
+          meaning || "",
+          def.level ? "[" + def.level + "]" : "",
+        ]
+          .filter(Boolean)
+          .join("  ");
+      }
+      span.setAttribute("data-def-full", fullDef);
+      // The word text node — no extra text nodes added, so rangy offsets are safe
+      span.appendChild(doc.createTextNode(word));
+      fragment.appendChild(span);
+
+      lastIndex = match.index + word.length;
+    }
+
+    if (lastIndex === 0) continue; // no match found
+
+    const after = text.slice(lastIndex);
+    if (after) fragment.appendChild(doc.createTextNode(after));
+
+    textNode.parentNode?.replaceChild(fragment, textNode);
+  }
+
+  // Register event delegation on doc.body once per document
+  if (!(doc.body as any).__kookitWordDefDelegated) {
+    (doc.body as any).__kookitWordDefDelegated = true;
+
+    doc.body.addEventListener(
+      "mousemove",
+      (e: MouseEvent) => {
+        const target = (e.target as HTMLElement)?.closest?.(
+          ".kookit-word-def"
+        ) as HTMLElement | null;
+        if (target) {
+          const fullDef = target.getAttribute("data-def-full") || "";
+          showWordTooltip(fullDef, target, doc);
+        } else {
+          hideWordTooltip(doc);
+        }
+      },
+      true
+    );
+
+    doc.body.addEventListener(
+      "mouseleave",
+      () => {
+        hideWordTooltip(doc);
+      },
+      true
+    );
   }
 };

@@ -254,8 +254,7 @@ const renderPage = async (page, getImageBlob) => {
     .textLayer {
         position: absolute;
         z-index: 1;
-        transform: translateZ(0);
-        -webkit-transform: translateZ(0);
+        transform-origin: 0 0;
         contain: layout style paint;
         pointer-events: auto;
     }
@@ -263,8 +262,7 @@ const renderPage = async (page, getImageBlob) => {
     .annotationLayer {
         position: absolute;
         z-index: 2;
-        transform: translateZ(1px);
-        -webkit-transform: translateZ(1px);
+        transform-origin: 0 0;
         will-change: transform;
         contain: layout style paint;
         pointer-events: none;
@@ -289,6 +287,24 @@ const renderPage = async (page, getImageBlob) => {
     .annotationLayer [data-annotation-id] {
         pointer-events: auto !important;
         z-index: inherit;
+    }
+
+    /* Match pdf.js viewer rotation handling for layers with page-level rotation.
+       Without these rules, PDFs that embed a 90/180/270 degree page rotation
+       can render the text/annotation layers mirrored relative to the canvas. */
+    .textLayer[data-main-rotation="90"],
+    .annotationLayer[data-main-rotation="90"] {
+        transform: rotate(90deg) translateY(-100%);
+    }
+
+    .textLayer[data-main-rotation="180"],
+    .annotationLayer[data-main-rotation="180"] {
+        transform: rotate(180deg) translate(-100%, -100%);
+    }
+
+    .textLayer[data-main-rotation="270"],
+    .annotationLayer[data-main-rotation="270"] {
+        transform: rotate(270deg) translateX(-100%);
     }
     </style>
     <div class="noteLayer"></div>

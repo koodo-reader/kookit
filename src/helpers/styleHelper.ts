@@ -12,6 +12,20 @@ class StyleHelper {
     cssRules.push(".kookit-note:hover{cursor:pointer;}");
     // Ensure inline highlight spans don't disrupt text flow
     cssRules.push(".kookit-note{line-height:inherit;}");
+    // Word definition styles
+    cssRules.push(
+      ".kookit-word-def{" +
+        "border-bottom:1px dashed currentColor;" +
+        "cursor:pointer;line-height:inherit;" +
+        "}"
+    );
+    cssRules.push(
+      ".kookit-word-def::after{" +
+        "content:'(' attr(data-meaning) ')';" +
+        "font-size:0.7em;opacity:0.6;" +
+        "margin-left:2px;" +
+        "}"
+    );
     cssRules.push(
       ".kookit-note-icon{line-height:1;font-size:14px;cursor:pointer;}"
     );
@@ -50,7 +64,7 @@ class StyleHelper {
 
     // Content elements with custom styles
     cssRules.push(
-      `a, article, cite, div, li, p, span:not(.kookit-note):not(.kookit-note-icon):not(.kookit-note-tooltip), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
+      `a, article, cite, div, li, p, span:not(.kookit-note):not(.kookit-note-icon):not(.kookit-note-tooltip):not(.kookit-word-def):not(.kookit-word-tooltip), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
     );
 
     // Title elements with custom styles
@@ -59,7 +73,7 @@ class StyleHelper {
     );
 
     // Hide aside elements
-    cssRules.push("aside{position: absolute; left: -9999px}");
+    cssRules.push("aside{position: absolute; left: -9999px; top: -9999px;}");
 
     // Code formatting
     cssRules.push("code,pre{white-space: pre-wrap;}");
@@ -67,6 +81,17 @@ class StyleHelper {
     // Blockquote styles
     cssRules.push(
       "blockquote{border-left: 4px solid #ccc; padding-left: 1em; margin: 1em 0; color: #666;}"
+    );
+
+    // Table styles
+    cssRules.push(
+      "table{width:100%;border-collapse:collapse;margin:20px 0;line-height:1.6;border: 1px solid #ddd;}"
+    );
+    cssRules.push(
+      "thead th{font-weight:bold;padding:14px 12px;text-align:left;white-space:nowrap;border-bottom: 2px solid #ccc; background-color: rgba(0,0,0,0.05);}"
+    );
+    cssRules.push(
+      "td,th{padding:12px 14px;vertical-align:top;text-align:left;border: 2px solid #e0e0e0;}"
     );
 
     // Paragraph margin reset

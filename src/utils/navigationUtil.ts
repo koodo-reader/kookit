@@ -190,7 +190,7 @@ export const isElementFootnote = (element: HTMLElement) => {
     let textContent = element.textContent.trim();
     // Check for patterns like [1], [a], (1), (a), 〔2〕, 【3】, 〈4〉, 《5》, roman numerals, and circled numbers (①-㊿)
     const footnotePattern =
-      /^(\[|\(|〔|【|〈|《)([a-zA-Z0-9零一二三四五六七八九十百千万]+)(\]|\)|〕|】|〉|》)$|^\d+$|^(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3}))$|^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚㉛㉜㉝㉞㉟㊱㊲㊳㊴㊵㊶㊷㊸㊹㊺㊻㊼㊽㊾㊿]$/i;
+      /^(\[|\(|〔|【|〈|《|〚)([a-zA-Z0-9零一二三四五六七八九十百千万]+)(\]|\)|〕|】|〉|》|〛)$|^\d+$|^(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3}))$|^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚㉛㉜㉝㉞㉟㊱㊲㊳㊴㊵㊶㊷㊸㊹㊺㊻㊼㊽㊾㊿]$/i;
     if (footnotePattern.test(textContent)) {
       return true;
     }
@@ -198,6 +198,7 @@ export const isElementFootnote = (element: HTMLElement) => {
       textContent.toLowerCase().indexOf("footnote") > -1 ||
       textContent.toLowerCase().indexOf("脚注") > -1 ||
       textContent.toLowerCase().indexOf("注释") > -1 ||
+      textContent.toLowerCase().indexOf("注") > -1 ||
       textContent.toLowerCase().indexOf("fn") > -1
     ) {
       return true;

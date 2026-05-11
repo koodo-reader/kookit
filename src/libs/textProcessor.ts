@@ -49,11 +49,25 @@ export const txtToHtml = (
 
   const htmlParts: string[] = []; // Use an array to store HTML parts
   let isRefresh = false;
+  let noTitle = false;
   if (bookLocation && bookLocation.refresh) {
     isRefresh = true;
   }
-
-  if (lines.length > 10000 && !isRefresh) {
+  if (bookLocation && bookLocation.noTitle) {
+    noTitle = true;
+  }
+  if (noTitle) {
+    //分章方式改成每500行分一章，且不进行标题识别
+    let chapterIndex = 0;
+    for (let i = 0; i < lines.length; i += 500) {
+      const chapterLines = lines.slice(i, i + 500);
+      htmlParts.push(`<h1>Chapter ${chapterIndex}</h1>`); // Push chapter title to array
+      chapterLines.forEach((line) => {
+        htmlParts.push(`<p>${line}</p>`); // Push line content to array
+      });
+      chapterIndex++;
+    }
+  } else if (lines.length > 10000 && !isRefresh) {
     if (!bookLocation || !bookLocation.chapterTitle) {
       bookLocation = {
         text: lines[0],
@@ -82,6 +96,10 @@ export const txtToHtml = (
       const cleaned = cleanText(item); // Clean once
       return cleaned && isTitle(cleaned, parserRegex);
     });
+    if (titlesInSlice.length <= 1) {
+      // Fallback to processing the entire file if no titles found in slice
+      return txtToHtml(text, parserRegex, { noTitle: true });
+    }
 
     // Create a Set of cleaned titles for fast lookup
     const cleanedTitlesSet = new Set(
@@ -140,15 +158,7 @@ export const txtToHtml = (
   if (finalHtml && finalHtml.includes("<h1>")) {
     return finalHtml;
   } else {
-    // --- Loop for Full File (if not large or no bookLocation) ---
-    let htmlParts: string[] = []; // Reset htmlParts array
-    for (const item of lines) {
-      htmlParts.push(`<p>${item}</p>`); // Push to array
-    }
-    // Fallback if no HTML was generated
-    return `<h1 style="opacity: 0; font-size: 5px;">Title</h1>${htmlParts.join(
-      ""
-    )}`;
+    return txtToHtml(text, parserRegex, { noTitle: true });
   }
 };
 export const cleanText = (str) => {
