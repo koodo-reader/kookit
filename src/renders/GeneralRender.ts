@@ -20,6 +20,7 @@ import {
   handleHighlightAudioNode,
   isElementFootnote,
   processHtml,
+  resolveXPath,
 } from "../utils/navigationUtil";
 import EventEmitter from "../utils/EventEmitter";
 import { CFI } from "../libs/cfi";
@@ -574,6 +575,37 @@ class GeneralRender extends EventEmitter {
     } else {
       this.element.scrollTo(0, top);
     }
+    await this.record();
+    this.trigger("rendered");
+  }
+  async goToXpath(xpath: string) {
+    let doc = this.getDocument();
+    if (!doc) return;
+    ///body/DocFragment[3]/body/div/div/p[12]/text().87
+    let chapterDocIndexMatch = xpath.match(/\/body\/DocFragment\[(\d+)\]/);
+    let chapterDocIndex = chapterDocIndexMatch
+      ? parseInt(chapterDocIndexMatch[1]) - 1
+      : 0;
+    let chapterDoc = this.chapterDocList[chapterDocIndex];
+    await handleRenderChapter(
+      chapterDocIndex,
+      chapterDoc.label || "",
+      chapterDoc.href,
+      this.chapterDocList,
+      this.element,
+      this.readerMode,
+      this.format,
+      this.tempLocation,
+      doc,
+      this.getIframe()
+    );
+    doc = this.getDocument();
+    if (!doc) return;
+    let newXpath = xpath.replace(/\/body\/DocFragment\[\d+\]/, "");
+    newXpath = newXpath.split("/text()")[0];
+    const node = resolveXPath(newXpath, doc);
+    await this.goToNode(node);
+    rangy.init();
     await this.record();
     this.trigger("rendered");
   }
