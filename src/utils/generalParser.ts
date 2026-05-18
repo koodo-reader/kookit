@@ -25,10 +25,12 @@ class GeneralParser {
         toc.map(async (item, index) => {
           let chapterIndex = index;
           try {
-            chapterIndex =
-              item.href && (await this.book.resolveHref(item.href))
-                ? (await this.book.resolveHref(item.href)).index
-                : chapterIndex;
+            if (item.href) {
+              const resolved = await this.book.resolveHref(item.href);
+              if (resolved) {
+                chapterIndex = resolved.index;
+              }
+            }
           } catch (error) {
             console.error(error);
           }
