@@ -130,8 +130,15 @@ class StyleHelper {
         `font-size: ${ConfigService.getReaderConfig("fontSize")}px !important`
       );
     }
-    if (isTitle && !ConfigService.getReaderConfig("fontSize")) {
-      cssRules.push(`font-size: 1.25em`);
+    if (isTitle) {
+      if (ConfigService.getReaderConfig("fontSize")) {
+        const fontSize = Math.round(
+          parseInt(ConfigService.getReaderConfig("fontSize") || "18") * 1.25
+        );
+        cssRules.push(`font-size: ${fontSize}px !important`);
+      } else {
+        cssRules.push(`font-size: 1.25em`);
+      }
     }
 
     // Line height - has default value
