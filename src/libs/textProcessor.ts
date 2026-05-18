@@ -61,7 +61,7 @@ export const txtToHtml = (
     let chapterIndex = 0;
     for (let i = 0; i < lines.length; i += 500) {
       const chapterLines = lines.slice(i, i + 500);
-      htmlParts.push(`<h1>Title ${chapterIndex}</h1>`); // Push chapter title to array
+      htmlParts.push(`<h1>Chapter ${chapterIndex}</h1>`); // Push chapter title to array
       chapterLines.forEach((line) => {
         htmlParts.push(`<p>${line}</p>`); // Push line content to array
       });
