@@ -78,6 +78,7 @@ export const txtToHtml = (
     if (!bookLocation.text) {
       bookLocation.text = bookLocation.chapterTitle || "";
     }
+    console.log(bookLocation, "bookLocation567656");
     // --- Slicing and Title Identification Logic ---
     let targetLineIndex = lines.findIndex((item) => {
       // Optimization: cleanText called only once here if needed often
@@ -122,8 +123,8 @@ export const txtToHtml = (
       if (prependLength > 0) {
         for (let i = 0; i < prependLength; i++) {
           // Push to array instead of concatenating
-          htmlParts.push(`<h1>Chapter ${i}</h1>`);
-          htmlParts.push(`<p>Chapter ${i}</p>`);
+          htmlParts.push(`<h1>Prepend ${i}</h1>`);
+          htmlParts.push(`<p>Text ${i}</p>`);
         }
       }
     }
