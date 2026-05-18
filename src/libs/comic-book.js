@@ -100,6 +100,9 @@ export const makeComicBook = (
   book.resolveHref = (href) => ({
     index: book.sections.findIndex((s) => s.id === href),
   });
+  book.resolveHrefIndex = (href) => ({
+    index: book.sections.findIndex((s) => s.id === href),
+  });
   book.splitTOCHref = (href) => [href, null];
   book.getTOCFragment = (doc) => doc.documentElement;
   return book;

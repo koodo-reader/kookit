@@ -375,6 +375,14 @@ export const makeFB2 = async (blob) => {
       : // link from within the page
         { index: idMap.get(b), anchor: (doc) => doc.getElementById(b) };
   };
+  book.resolveHrefIndex = (href) => {
+    const [a, b] = href.split("#");
+    return a
+      ? {
+          index: Number(a),
+        }
+      : { index: idMap.get(b) };
+  };
   book.splitTOCHref = (href) => href?.split("#")?.map((x) => Number(x)) ?? [];
   book.getTOCFragment = (doc, id) => doc.querySelector(`[${dataID}="${id}"]`);
 

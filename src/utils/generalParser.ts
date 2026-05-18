@@ -26,7 +26,7 @@ class GeneralParser {
           let chapterIndex = index;
           try {
             if (item.href) {
-              const resolved = await this.book.resolveHref(item.href);
+              const resolved = await this.book.resolveHrefIndex(item.href);
               if (resolved) {
                 chapterIndex = resolved.index;
               }

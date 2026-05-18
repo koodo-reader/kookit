@@ -29,6 +29,9 @@ export const makeCacheBook = async (toc, sections) => {
   book.resolveHref = (href: string) => {
     return { index: _.findLastIndex(sections, { href }) };
   };
+  book.resolveHrefIndex = (href: string) => {
+    return { index: _.findLastIndex(sections, { href }) };
+  };
   book.splitTOCHref = (href) => [href, null];
   book.getTOCFragment = (doc) => doc.documentElement;
   return book;
