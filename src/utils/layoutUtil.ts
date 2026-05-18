@@ -77,7 +77,10 @@ export const handleIframeHeight = async (
 export const handleOneChapterDoc = async (item, isSearch: boolean) => {
   let chapterText = "";
   if (item && item.load) {
-    let blob = await fetch(await item.load()).then((r) => r.blob());
+    let chapteruUrl = await item.load();
+    console.log(chapteruUrl, "chapteruUrl");
+    let res = await fetch(chapteruUrl);
+    let blob = await res.blob();
     chapterText = await blob.text();
   }
 
@@ -377,81 +380,138 @@ export const handleImageSize = async (
   let gap = section % 2 === 0 ? section : section - 1;
   let scale = readerMode === "double" ? 2 : 1;
   let pageWidth = (element.clientWidth - gap) / scale;
-  let imgs = doc.querySelectorAll("img, image") as any;
-  for (let item of imgs) {
-    let parentItem = item.parentElement;
-    let grandItem = parentItem?.parentElement;
+  let imgs = Array.from(doc.querySelectorAll("img, image")) as any[];
+
+  // --- Phase 1: batch-resolve natural dimensions for all <image> (SVG) tags in parallel ---
+  await Promise.all(
+    imgs.map(async (item) => {
+      if (item.tagName === "image" && !item._naturalWidth) {
+        let img = await getImageMeta(item.getAttribute("xlink:href"));
+        item._naturalWidth = img.naturalWidth;
+        item._naturalHeight = img.naturalHeight;
+      }
+    })
+  );
+
+  // --- Phase 2: read all layout measurements up-front (no style writes yet) ---
+  // Snapshot every value we need from the DOM in one pass to avoid layout thrashing.
+  const BATCH = 20; // yield every N images to keep the UI responsive
+  const elementClientWidth = element.clientWidth;
+  const elementClientHeight = element.clientHeight;
+  const bodyClientHeight = doc.body.clientHeight;
+
+  type ImageMeasure = {
+    item: any;
+    width: number;
+    height: number;
+    parentOffsetWidth: number;
+    parentClientWidth: number;
+    parentClientHeight: number;
+    grandClientWidth: number;
+    grandClientHeight: number;
+    grandTagName: string;
+    existingStyle: string;
+  };
+
+  const measures: ImageMeasure[] = imgs.map((item) => {
+    const parentItem = item.parentElement;
+    const grandItem = parentItem?.parentElement;
+    const width =
+      item.tagName === "image" ? item._naturalWidth : item.naturalWidth;
+    const height =
+      item.tagName === "image" ? item._naturalHeight : item.naturalHeight;
+    return {
+      item,
+      width: width || 0,
+      height: height || 0,
+      parentOffsetWidth: parentItem?.offsetWidth || 0,
+      parentClientWidth: parentItem?.clientWidth || 0,
+      parentClientHeight: parentItem?.clientHeight || 0,
+      grandClientWidth: grandItem?.clientWidth || 0,
+      grandClientHeight: grandItem?.clientHeight || 0,
+      grandTagName: grandItem?.tagName || "",
+      existingStyle: item.getAttribute("style") || "",
+    };
+  });
+
+  // --- Phase 3: compute styles (pure calculation, no DOM reads) ---
+  type StyleWrite = {
+    item: any;
+    styles: string[];
+    isSvgImage: boolean;
+    maxWidth: number;
+    maxHeight: number;
+    parentItem: any;
+    grandItem: any;
+    setParentIndent: boolean;
+    setGrandIndent: boolean;
+  };
+
+  const writes: StyleWrite[] = measures.map((m) => {
+    const {
+      item,
+      width,
+      height,
+      parentOffsetWidth,
+      parentClientWidth,
+      parentClientHeight,
+      grandClientWidth,
+      grandClientHeight,
+      grandTagName,
+    } = m;
+
     let maxHeight = 0;
     let maxWidth = 0;
-    let width = item.naturalWidth;
-    let height = item.naturalHeight;
-    if (item.tagName === "image") {
-      let img = await getImageMeta(item.getAttribute("xlink:href"));
-      width = img.naturalWidth;
-      height = img.naturalHeight;
-    }
+    let setParentIndent = false;
+    let setGrandIndent = false;
+
     if (format.startsWith("CB") && readerMode === "scroll") {
-      maxWidth = parentItem.offsetWidth;
+      maxWidth = parentOffsetWidth;
     } else if (format.startsWith("CB") && readerMode === "single") {
-      maxHeight = element.clientHeight;
-      maxWidth = element.clientWidth;
-    } else if (
-      parentItem &&
-      width &&
-      height &&
-      parentItem.clientHeight &&
-      parentItem.clientWidth
-    ) {
+      maxHeight = elementClientHeight;
+      maxWidth = elementClientWidth;
+    } else if (parentClientWidth && parentClientHeight && width && height) {
       let isImageScaleLargerThanElement =
-        height / width > parentItem.clientHeight / parentItem.clientWidth;
+        height / width > parentClientHeight / parentClientWidth;
       if (isImageScaleLargerThanElement) {
-        maxHeight = parentItem.clientHeight;
+        maxHeight = parentClientHeight;
         maxWidth = parseInt((maxHeight * width) / height + "");
       } else {
-        maxWidth = parentItem.clientWidth;
+        maxWidth = parentClientWidth;
         maxHeight = parseInt((maxWidth * height) / width + "");
       }
-      if (maxHeight > doc.body.clientHeight && readerMode !== "scroll") {
-        maxWidth = parseInt(
-          maxWidth * (doc.body.clientHeight / maxHeight) + ""
-        );
-        maxHeight = doc.body.clientHeight;
+      if (maxHeight > bodyClientHeight && readerMode !== "scroll") {
+        maxWidth = parseInt(maxWidth * (bodyClientHeight / maxHeight) + "");
+        maxHeight = bodyClientHeight;
       }
-      parentItem.style.textIndent = "0px";
-    } else if (
-      parentItem &&
-      parentItem.clientWidth &&
-      parentItem.clientWidth > 0
-    ) {
-      maxWidth = parentItem.clientWidth;
-      maxHeight = parentItem.clientHeight;
-      parentItem.style.textIndent = "0px";
-    } else if (
-      grandItem &&
-      grandItem.tagName !== "BODY" &&
-      grandItem.clientWidth &&
-      grandItem.clientWidth > 0
-    ) {
-      maxWidth = grandItem.clientWidth;
-      maxHeight = grandItem.clientHeight;
-      grandItem.style.textIndent = "0px";
+      setParentIndent = true;
+    } else if (parentClientWidth > 0) {
+      maxWidth = parentClientWidth;
+      maxHeight = parentClientHeight;
+      setParentIndent = true;
+    } else if (grandTagName !== "BODY" && grandClientWidth > 0) {
+      maxWidth = grandClientWidth;
+      maxHeight = grandClientHeight;
+      setGrandIndent = true;
     } else {
-      maxWidth = element.clientWidth;
-      maxHeight = element.clientHeight;
+      maxWidth = elementClientWidth;
+      maxHeight = elementClientHeight;
     }
+
     if (maxWidth) {
       maxWidth = Math.min(
         readerMode === "scroll" || readerMode === "single"
-          ? element.clientWidth
-          : (element.clientWidth - gap) / 2,
+          ? elementClientWidth
+          : (elementClientWidth - gap) / 2,
         maxWidth
       );
     } else {
       maxWidth =
         readerMode === "scroll" || readerMode === "single"
-          ? element.clientWidth
-          : (element.clientWidth - gap) / 2;
+          ? elementClientWidth
+          : (elementClientWidth - gap) / 2;
     }
+
     if (width && height) {
       if (width > height) {
         maxHeight = maxWidth * (height / width);
@@ -463,48 +523,79 @@ export const handleImageSize = async (
         }
       }
     }
+
     if (
       readerMode !== "scroll" &&
       maxWidth &&
       maxHeight &&
-      maxHeight > element.clientHeight
+      maxHeight > elementClientHeight
     ) {
-      maxWidth = maxWidth * (element.clientHeight / maxHeight);
-      maxHeight = element.clientHeight;
+      maxWidth = maxWidth * (elementClientHeight / maxHeight);
+      maxHeight = elementClientHeight;
     }
+
+    const styles: string[] = [];
     if (maxWidth || maxHeight) {
       //轻易不要改这里，很容易出问题
-      item.setAttribute(
-        "style",
-        (item.getAttribute("style") ? item.getAttribute("style") : "") +
-          ";" +
-          `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${
-            maxHeight > 0 ? maxHeight + "px" : ""
-          }; margin: 0 auto; min-width: 0px; min-height: 0px; ${
-            format.startsWith("CB")
-              ? `margin-left: calc(100% - ${item.clientWidth}px);`
-              : ""
-          }`
+      styles.push(
+        `max-width: ${maxWidth > 0 ? maxWidth + "px" : ""};max-height:${
+          maxHeight > 0 ? maxHeight + "px" : ""
+        }; margin: 0 auto; min-width: 0px; min-height: 0px;`
       );
+      // Note: CB margin-left using item.clientWidth is deferred to write phase
+      // because it requires a live layout read after the first style is applied.
     }
-    if (item.tagName === "image") {
+    if (format.startsWith("CB") && readerMode === "scroll") {
+      styles.push("margin-left: 0px; width: 100%;");
+    }
+
+    return {
+      item,
+      styles,
+      isSvgImage: item.tagName === "image",
+      maxWidth,
+      maxHeight,
+      parentItem: item.parentElement,
+      grandItem: item.parentElement?.parentElement,
+      setParentIndent,
+      setGrandIndent,
+    };
+  });
+
+  // --- Phase 4: apply all writes in batches, yielding between batches ---
+  for (let i = 0; i < writes.length; i++) {
+    if (i > 0 && i % BATCH === 0) {
+      // Yield to the browser so it can handle input/render between batches
+      await new Promise((r) => setTimeout(r, 0));
+    }
+
+    const w = writes[i];
+    const { item, styles, isSvgImage, maxWidth, maxHeight } = w;
+
+    if (w.setParentIndent && w.parentItem) {
+      w.parentItem.style.textIndent = "0px";
+    }
+    if (w.setGrandIndent && w.grandItem) {
+      w.grandItem.style.textIndent = "0px";
+    }
+
+    if (styles.length > 0) {
+      const existing = item.getAttribute("style") || "";
+      item.setAttribute("style", existing + ";" + styles.join(";"));
+    }
+
+    if (isSvgImage) {
       item.parentElement?.setAttribute("width", maxWidth);
       item.parentElement?.setAttribute("height", maxHeight);
     }
-    if (format.startsWith("CB") && readerMode === "scroll") {
-      item.setAttribute(
-        "style",
-        (item.getAttribute("style") ? item.getAttribute("style") : "") +
-          ";margin-left: 0px; width: 100%;"
-      );
-    }
+
+    // CB non-scroll: margin-left needs live clientWidth after styles are applied
     if (format.startsWith("CB") && readerMode !== "scroll") {
+      const liveWidth = item.getBoundingClientRect().width;
+      const existing = item.getAttribute("style") || "";
       item.setAttribute(
         "style",
-        (item.getAttribute("style") ? item.getAttribute("style") : "") +
-          `;margin-left: calc(50% - ${
-            item.getBoundingClientRect().width / 2
-          }px);`
+        existing + `;margin-left: calc(50% - ${liveWidth / 2}px);`
       );
     }
   }
