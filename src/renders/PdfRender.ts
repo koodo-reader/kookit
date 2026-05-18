@@ -156,37 +156,82 @@ class PdfRender extends GeneralRender {
       dimension: v.dimension,
     }));
 
-    // 找出出现频率最多的长宽比，如果频率相同则选择最大的
-    const ratioFrequency = new Map<
-      number,
-      { count: number; dimension: any; index: number }
-    >();
+    // 统计长宽比出现频率
+    const ratioFrequency = new Map<number, number>();
+    // 统计页面宽度出现频率
+    const widthFrequency = new Map<number, number>();
 
     aspectRatios.forEach((item) => {
-      const roundedRatio = Math.round(item.ratio * 1000) / 1000; // 保留3位小数进行分组
-      const existing = ratioFrequency.get(roundedRatio);
-      if (existing) {
-        existing.count++;
-      } else {
-        ratioFrequency.set(roundedRatio, {
-          count: 1,
+      const roundedRatio = Math.round(item.ratio * 1000) / 1000;
+      ratioFrequency.set(
+        roundedRatio,
+        (ratioFrequency.get(roundedRatio) || 0) + 1
+      );
+      const roundedWidth = Math.round(item.dimension.width);
+      widthFrequency.set(
+        roundedWidth,
+        (widthFrequency.get(roundedWidth) || 0) + 1
+      );
+    });
+    console.log(ratioFrequency, widthFrequency);
+
+    // 找出长宽比和页面宽度各自的最大频率
+    let maxRatioCount = 0;
+    ratioFrequency.forEach((count) => {
+      if (count > maxRatioCount) maxRatioCount = count;
+    });
+    let maxWidthCount = 0;
+    widthFrequency.forEach((count) => {
+      if (count > maxWidthCount) maxWidthCount = count;
+    });
+
+    // 候选项：长宽比和页面宽度的出现频率都等于各自最大频率
+    const candidates = aspectRatios.filter((item) => {
+      const roundedRatio = Math.round(item.ratio * 1000) / 1000;
+      const roundedWidth = Math.round(item.dimension.width);
+      return (
+        ratioFrequency.get(roundedRatio) === maxRatioCount &&
+        widthFrequency.get(roundedWidth) === maxWidthCount
+      );
+    });
+    console.log(candidates, "candidatas");
+
+    // 从候选项中选择长宽比最大的
+    let maxFrequencyItem = {
+      count: maxRatioCount,
+      dimension: null as any,
+      index: 0,
+      ratio: 0,
+    };
+    candidates.forEach((item) => {
+      if (item.ratio > maxFrequencyItem.ratio) {
+        maxFrequencyItem = {
+          count: maxRatioCount,
           dimension: item.dimension,
           index: item.index,
-        });
+          ratio: item.ratio,
+        };
       }
     });
 
-    // 获取出现频率最高的长宽比，如果频率相同则选择最大的
-    let maxFrequencyItem = { count: 0, dimension: null, index: 0, ratio: 0 };
-    ratioFrequency.forEach((value, ratio) => {
-      if (
-        value.count > maxFrequencyItem.count ||
-        (value.count === maxFrequencyItem.count &&
-          ratio > maxFrequencyItem.ratio)
-      ) {
-        maxFrequencyItem = { ...value, ratio };
-      }
-    });
+    // 若无候选项（极端情况），回退到长宽比最大频率的项
+    if (!maxFrequencyItem.dimension) {
+      aspectRatios.forEach((item) => {
+        const roundedRatio = Math.round(item.ratio * 1000) / 1000;
+        if (
+          ratioFrequency.get(roundedRatio) === maxRatioCount &&
+          item.ratio > maxFrequencyItem.ratio
+        ) {
+          maxFrequencyItem = {
+            count: maxRatioCount,
+            dimension: item.dimension,
+            index: item.index,
+            ratio: item.ratio,
+          };
+        }
+      });
+    }
+
     return maxFrequencyItem;
   }
   async autoScrollPDF(isStart: string) {
