@@ -36,7 +36,14 @@ let startWithChars = [
   "尾聲",
 ];
 let startWithNumAndChars = [" ", "　", "、", "·", ".", "：", ":"];
-
+export const findLastIndex = (arr: any[], callback: (item: any) => boolean) => {
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (callback(arr[i])) {
+      return i;
+    }
+  }
+  return -1;
+};
 export const txtToHtml = (
   text: string,
   parserRegex: string,
@@ -107,8 +114,7 @@ export const txtToHtml = (
       titlesInSlice.map((title) => cleanText(title))
     );
 
-    let targetTitleIndex = titlesInSlice.findIndex((item) => {
-      // Optimization: cleanText called only once here
+    let targetTitleIndex = findLastIndex(titlesInSlice, (item) => {
       return cleanText(item) === cleanText(bookLocation.chapterTitle);
     });
     if (targetTitleIndex === -1) {
