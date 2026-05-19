@@ -78,7 +78,6 @@ export const handleOneChapterDoc = async (item, isSearch: boolean) => {
   let chapterText = "";
   if (item && item.load) {
     let chapteruUrl = await item.load();
-    console.log(chapteruUrl, "chapteruUrl");
     let res = await fetch(chapteruUrl);
     let blob = await res.blob();
     chapterText = await blob.text();

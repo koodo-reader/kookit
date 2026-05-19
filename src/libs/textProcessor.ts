@@ -85,7 +85,6 @@ export const txtToHtml = (
     if (!bookLocation.text) {
       bookLocation.text = bookLocation.chapterTitle || "";
     }
-    console.log(bookLocation, "bookLocation567656");
     // --- Slicing and Title Identification Logic ---
     let targetLineIndex = lines.findIndex((item) => {
       // Optimization: cleanText called only once here if needed often

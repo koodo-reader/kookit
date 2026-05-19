@@ -173,7 +173,6 @@ class PdfRender extends GeneralRender {
         (widthFrequency.get(roundedWidth) || 0) + 1
       );
     });
-    console.log(ratioFrequency, widthFrequency);
 
     // 找出长宽比和页面宽度各自的最大频率
     let maxRatioCount = 0;
@@ -194,7 +193,6 @@ class PdfRender extends GeneralRender {
         widthFrequency.get(roundedWidth) === maxWidthCount
       );
     });
-    console.log(candidates, "candidatas");
 
     // 从候选项中选择长宽比最大的
     let maxFrequencyItem = {
