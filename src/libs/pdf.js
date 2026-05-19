@@ -480,7 +480,7 @@ export const makePDF = async (file, password) => {
     const dest =
       typeof parsed === "string" ? await pdf.getDestination(parsed) : parsed;
     const index = await pdf.getPageIndex(dest[0]);
-    return { index };
+    return { index: index ? index : 0 };
   };
   book.splitTOCHref = async (href) => {
     const parsed = JSON.parse(href);

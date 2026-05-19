@@ -584,7 +584,7 @@ class GeneralRender extends EventEmitter {
     ///body/DocFragment[3]/body/div/div/p[12]/text().87
     let chapterDocIndexMatch = xpath.match(/\/body\/DocFragment\[(\d+)\]/);
     let chapterDocIndex = chapterDocIndexMatch
-      ? parseInt(chapterDocIndexMatch[1]) - 1
+      ? parseInt(chapterDocIndexMatch[1] || "1") - 1
       : 0;
     let chapterDoc = this.chapterDocList[chapterDocIndex];
     await handleRenderChapter(
