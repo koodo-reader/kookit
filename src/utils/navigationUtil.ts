@@ -17,6 +17,60 @@ declare var window: any;
 
 let lock = false;
 
+export const getXPathForNode = (node: Node, doc: Document): string => {
+  if (!node || !doc || !doc.body) return "";
+  const parts: string[] = [];
+  let current: Node | null = node;
+  while (current && current !== doc.body && current !== doc) {
+    const parent = current.parentNode;
+    if (!parent) break;
+    if (current.nodeType === Node.TEXT_NODE) {
+      current = parent;
+      continue;
+    }
+    const el = current as Element;
+    const tag = el.tagName.toLowerCase();
+    const siblings = (Array.from(parent.childNodes) as ChildNode[]).filter(
+      (n) =>
+        n.nodeType === Node.ELEMENT_NODE &&
+        (n as Element).tagName.toLowerCase() === tag
+    );
+    const index = siblings.indexOf(el as ChildNode) + 1;
+    parts.unshift(siblings.length > 1 ? `${tag}[${index}]` : tag);
+    current = parent;
+  }
+  return "/body/" + parts.join("/");
+};
+
+export const resolveXPath = (xpath: string, doc: Document): Element | null => {
+  if (!xpath || !doc || !doc.body) return null;
+  try {
+    // Strip leading /body/ prefix and resolve from body
+    let path = xpath;
+    if (path.startsWith("/body/")) {
+      path = path.slice("/body/".length);
+    } else if (path.startsWith("/body")) {
+      return doc.body;
+    }
+    const segments = path.split("/").filter(Boolean);
+    let current: Element = doc.body;
+    for (const seg of segments) {
+      const match = seg.match(/^([a-zA-Z0-9]+)(?:\[(\d+)\])?$/);
+      if (!match) return null;
+      const tag = match[1].toLowerCase();
+      const idx = match[2] ? parseInt(match[2]) - 1 : 0;
+      const children = Array.from(current.children).filter(
+        (c) => c.tagName.toLowerCase() === tag
+      );
+      if (!children[idx]) return null;
+      current = children[idx];
+    }
+    return current;
+  } catch {
+    return null;
+  }
+};
+
 export const handleScrollPage = async (
   element: HTMLElement,
   animation: string,
@@ -326,6 +380,8 @@ export const handleRenderChapter = async (
         .reduce((a, b) => a + b, 0) +
     "";
   tempLocation.text = "";
+  tempLocation.xpath = `/body/DocFragment[${chapterDocIndex + 1}]`;
+  tempLocation.timestamp = parseInt(new Date().getTime() / 1000 + "");
   await handleIframeHeight(element, readerMode, format, iframe, doc);
   await handleScrollPosition(element, readerMode, "", "", "", "", doc);
 };
@@ -605,6 +661,10 @@ export const handleRecord = async (
     tempLocation.text = firstVisibleNode.textContent.substring(0, 200) || "";
     tempLocation.count = count + "";
     tempLocation.page = "";
+    tempLocation.xpath =
+      `/body/DocFragment[${parseInt(tempLocation.chapterDocIndex) + 1}]` +
+      getXPathForNode(firstVisibleNode, doc);
+    tempLocation.timestamp = parseInt(new Date().getTime() / 1000 + "");
     let totalSize = chapterDocList
       .map((item) => (item.text ? item.text.size || 1 : 1))
       .reduce((a, b) => a + b, 0);

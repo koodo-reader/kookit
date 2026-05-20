@@ -48,6 +48,9 @@ export const makeHtmlBook = (
   book.resolveHref = (href: string) => {
     return { index: parseInt(href.substring(5, href.length)) };
   };
+  book.resolveHrefIndex = (href: string) => {
+    return { index: parseInt(href.substring(5, href.length)) };
+  };
   book.splitTOCHref = (href) => [href, null];
   book.getTOCFragment = (doc) => doc.documentElement;
   return book;

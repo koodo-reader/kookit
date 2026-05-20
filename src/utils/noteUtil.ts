@@ -404,28 +404,6 @@ export const showPDFHighlight = (
       event.stopPropagation();
     };
     pageElement.appendChild(newNode);
-    if (isNote && rect === topRightPdfRect) {
-      const iconNode = document.createElement("div");
-      iconNode.setAttribute(
-        "style",
-        "position: absolute;" +
-          "left:" +
-          (rect.left +
-            parseFloat(getComputedStyle(docLayer as Element).marginLeft) +
-            rect.width -
-            15) +
-          "px; top:" +
-          (rect.top - 15) +
-          "px;" +
-          "width: 16px; height: 16px; z-index: 2; cursor: pointer; font-size: 14px; line-height: 1;"
-      );
-      iconNode.setAttribute("class", "kookit-note kookit-note-icon");
-      iconNode.innerHTML = "📋";
-      iconNode.setAttribute("data-key", noteKey);
-      // No textContent — use CSS ::before to display icon, avoiding
-      // interference with rangy character-offset calculations
-      pageElement.appendChild(iconNode);
-    }
   }
 };
 

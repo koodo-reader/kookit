@@ -1002,6 +1002,15 @@ export class EPUB {
     const anchor = hash ? (doc) => getHTMLFragment(doc, hash) : () => 0;
     return { index, anchor };
   }
+  resolveHrefIndex(href) {
+    const [path, hash] = href.split("#");
+    const item = this.resources.getItemByHref(decodeURI(path));
+    if (!item) return null;
+    const index = this.resources.spine.findIndex(
+      ({ idref }) => idref === item.id
+    );
+    return { index };
+  }
   splitTOCHref(href) {
     return href?.split("#") ?? [];
   }

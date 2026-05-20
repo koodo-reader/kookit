@@ -78,10 +78,10 @@ class StyleHelper {
     // Code formatting
     cssRules.push("code,pre{white-space: pre-wrap;}");
 
-    // Blockquote styles
-    cssRules.push(
-      "blockquote{border-left: 4px solid #ccc; padding-left: 1em; margin: 1em 0; color: #666;}"
-    );
+    // // Blockquote styles
+    // cssRules.push(
+    //   "blockquote{border-left: 4px solid #ccc; padding-left: 1em; margin: 1em 0; color: #666;}"
+    // );
 
     // Table styles
     cssRules.push(
@@ -129,6 +129,16 @@ class StyleHelper {
       cssRules.push(
         `font-size: ${ConfigService.getReaderConfig("fontSize")}px !important`
       );
+    }
+    if (isTitle) {
+      if (ConfigService.getReaderConfig("fontSize")) {
+        const fontSize = Math.round(
+          parseInt(ConfigService.getReaderConfig("fontSize") || "18") * 1.25
+        );
+        cssRules.push(`font-size: ${fontSize}px !important`);
+      } else {
+        cssRules.push(`font-size: 1.25em`);
+      }
     }
 
     // Line height - has default value

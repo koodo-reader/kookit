@@ -1027,6 +1027,12 @@ class MOBI6 {
     const anchor = (doc) => doc.getElementById(`filepos${filepos}`);
     return { index, anchor };
   }
+  resolveHrefIndex(href) {
+    const filepos = href.match(/#filepos(.*)/)[1];
+    const number = Number(filepos);
+    const index = this.#sections.findIndex((section) => section.end > number);
+    return { index };
+  }
   splitTOCHref(href) {
     const filepos = href.match(/#filepos(.*)/)[1];
     const number = Number(filepos);
@@ -1340,7 +1346,7 @@ class KF8 {
       const offsets = this.#fragmentOffsets.get(frag.index);
       if (offsets)
         for (const offset of offsets) {
-          const str = this.mobi.decode(fragRaw).slice(offset);
+          const str = this.mobi.decode(fragRaw.slice(offset));
           const selector = getFragmentSelector(str);
           this.#setFragmentSelector(frag.index, offset, selector);
         }
@@ -1403,6 +1409,12 @@ class KF8 {
     this.#setFragmentSelector(fid, off, selector);
     const anchor = (doc) => doc.querySelector(selector);
     return { index, anchor };
+  }
+  async resolveHrefIndex(href) {
+    const { fid, off } = parsePosURI(href);
+    const index = this.getIndexByFID(fid);
+    if (index < 0) return;
+    return { index };
   }
   splitTOCHref(href) {
     const pos = parsePosURI(href);
