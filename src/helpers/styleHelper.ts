@@ -73,7 +73,9 @@ class StyleHelper {
     );
 
     // Hide aside elements
-    cssRules.push("aside{position: absolute; left: -9999px; top: -9999px;}");
+    cssRules.push(
+      "aside,.hide{position: absolute; left: -9999px; top: -9999px;}"
+    );
 
     // Code formatting
     cssRules.push("code,pre{white-space: pre-wrap;}");
@@ -135,7 +137,7 @@ class StyleHelper {
         const fontSize = Math.round(
           parseInt(ConfigService.getReaderConfig("fontSize") || "18") * 1.25
         );
-        cssRules.push(`font-size: ${fontSize}px !important`);
+        cssRules.push(`font-size: ${fontSize}px`);
       } else {
         cssRules.push(`font-size: 1.25em`);
       }

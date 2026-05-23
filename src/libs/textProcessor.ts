@@ -68,7 +68,7 @@ export const txtToHtml = (
     let chapterIndex = 0;
     for (let i = 0; i < lines.length; i += 500) {
       const chapterLines = lines.slice(i, i + 500);
-      htmlParts.push(`<h1>Chapter ${chapterIndex}</h1>`); // Push chapter title to array
+      htmlParts.push(`<h1 class="hide">Chapter ${chapterIndex}</h1>`); // Push chapter title to array
       chapterLines.forEach((line) => {
         htmlParts.push(`<p>${line}</p>`); // Push line content to array
       });
@@ -161,7 +161,7 @@ export const txtToHtml = (
   // Join the array at the end
   const finalHtml = htmlParts.join("");
 
-  if (finalHtml && finalHtml.includes("<h1>")) {
+  if (finalHtml && finalHtml.includes("<h1")) {
     return finalHtml;
   } else {
     return txtToHtml(text, parserRegex, { noTitle: true });
