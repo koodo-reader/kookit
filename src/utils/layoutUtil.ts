@@ -411,6 +411,24 @@ export const handleImageSize = async (
     grandTagName: string;
     existingStyle: string;
   };
+  const getContentWidth = (el: Element | null | undefined): number => {
+    if (!el) return 0;
+    const style = getComputedStyle(el);
+    return (
+      Math.min(el.clientWidth, pageWidth) -
+      parseFloat(style.paddingLeft) -
+      parseFloat(style.paddingRight)
+    );
+  };
+  const getContentHeight = (el: Element | null | undefined): number => {
+    if (!el) return 0;
+    const style = getComputedStyle(el);
+    return (
+      Math.min(el.clientHeight, elementClientHeight) -
+      parseFloat(style.paddingTop) -
+      parseFloat(style.paddingBottom)
+    );
+  };
 
   const measures: ImageMeasure[] = imgs.map((item) => {
     const parentItem = item.parentElement;
@@ -424,10 +442,10 @@ export const handleImageSize = async (
       width: width || 0,
       height: height || 0,
       parentOffsetWidth: parentItem?.offsetWidth || 0,
-      parentClientWidth: parentItem?.clientWidth || 0,
-      parentClientHeight: parentItem?.clientHeight || 0,
-      grandClientWidth: grandItem?.clientWidth || 0,
-      grandClientHeight: grandItem?.clientHeight || 0,
+      parentClientWidth: getContentWidth(parentItem),
+      parentClientHeight: getContentHeight(parentItem),
+      grandClientWidth: getContentWidth(grandItem),
+      grandClientHeight: getContentHeight(grandItem),
       grandTagName: grandItem?.tagName || "",
       existingStyle: item.getAttribute("style") || "",
     };
@@ -501,14 +519,14 @@ export const handleImageSize = async (
       maxWidth = Math.min(
         readerMode === "scroll" || readerMode === "single"
           ? elementClientWidth
-          : (elementClientWidth - gap) / 2,
+          : pageWidth,
         maxWidth
       );
     } else {
       maxWidth =
         readerMode === "scroll" || readerMode === "single"
           ? elementClientWidth
-          : (elementClientWidth - gap) / 2;
+          : pageWidth;
     }
 
     if (width && height) {
