@@ -827,10 +827,184 @@ export const getAudioText = (
   if (visibleText && visibleText.length > 0) {
     let firstVisibleText = visibleText[0];
     firstSliceIndex = audioText.indexOf(firstVisibleText);
+    if (firstSliceIndex === -1) {
+      firstSliceIndex = audioText.findIndex(
+        (item) =>
+          !!item &&
+          !!firstVisibleText &&
+          (item.includes(firstVisibleText) || firstVisibleText.includes(item))
+      );
+    }
+    if (firstSliceIndex === -1) {
+      firstSliceIndex = 0;
+    }
   }
 
   return audioText.slice(firstSliceIndex).filter((s) => s);
 };
+
+const PAGE_SPLIT_PUNCTUATION =
+  /[，。！？；：、,.!?;:，．、】【】）》〉」』）]/;
+
+const isTextVisibleInViewport = (
+  rect: DOMRect | ClientRect,
+  element: HTMLElement
+) => {
+  return (
+    rect.width > 0 &&
+    rect.height > 0 &&
+    rect.bottom > 0 &&
+    rect.top < element.clientHeight &&
+    rect.right > 0 &&
+    rect.left < element.clientWidth
+  );
+};
+
+const isNodeVisibleInViewport = (element: HTMLElement, el: HTMLElement) => {
+  const computedStyle = getComputedStyle(el);
+  if (
+    computedStyle.display === "none" ||
+    computedStyle.visibility === "hidden" ||
+    computedStyle.opacity === "0"
+  ) {
+    return false;
+  }
+  const rect = el.getBoundingClientRect();
+  return isTextVisibleInViewport(rect, element);
+};
+
+const isNodePartiallyVisibleInViewport = (
+  element: HTMLElement,
+  el: HTMLElement
+) => {
+  if (!isNodeVisibleInViewport(element, el)) {
+    return false;
+  }
+  const rect = el.getBoundingClientRect();
+  return (
+    rect.top < 0 ||
+    rect.left < 0 ||
+    rect.bottom > element.clientHeight ||
+    rect.right > element.clientWidth
+  );
+};
+
+const findNearestSplitBoundary = (text: string, index: number) => {
+  if (!text) return 0;
+  let safeIndex = Math.max(0, Math.min(index, text.length - 1));
+  let prev = -1;
+  let next = -1;
+
+  for (let i = safeIndex; i >= 0; i--) {
+    if (PAGE_SPLIT_PUNCTUATION.test(text[i])) {
+      prev = i;
+      break;
+    }
+  }
+
+  for (let i = safeIndex; i < text.length; i++) {
+    if (PAGE_SPLIT_PUNCTUATION.test(text[i])) {
+      next = i;
+      break;
+    }
+  }
+
+  if (prev === -1 && next === -1) {
+    return index;
+  }
+  if (prev === -1) {
+    return next + 1;
+  }
+  if (next === -1) {
+    return prev + 1;
+  }
+  return safeIndex - prev <= next - safeIndex ? prev + 1 : next + 1;
+};
+
+const getVisibleCharRange = (element: HTMLElement, root: HTMLElement) => {
+  const text = root.textContent || "";
+  if (!text.trim()) {
+    return null;
+  }
+
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let currentNode = walker.nextNode();
+  let offset = 0;
+  let start = -1;
+  let end = -1;
+
+  while (currentNode) {
+    const content = currentNode.textContent || "";
+    if (content.length > 0) {
+      const nodeRange = document.createRange();
+      nodeRange.selectNodeContents(currentNode);
+      const nodeRects = Array.from(nodeRange.getClientRects());
+      const nodeMayBeVisible = nodeRects.some((rect) =>
+        isTextVisibleInViewport(rect, element)
+      );
+
+      if (nodeMayBeVisible) {
+        for (let i = 0; i < content.length; i++) {
+          const charRange = document.createRange();
+          charRange.setStart(currentNode, i);
+          charRange.setEnd(currentNode, i + 1);
+          const charRects = Array.from(charRange.getClientRects());
+          const visible = charRects.some((rect) =>
+            isTextVisibleInViewport(rect, element)
+          );
+
+          if (visible) {
+            if (start === -1) {
+              start = offset + i;
+            }
+            end = offset + i + 1;
+          }
+        }
+      }
+    }
+
+    offset += content.length;
+    currentNode = walker.nextNode();
+  }
+
+  if (start === -1 || end === -1) {
+    return null;
+  }
+
+  return { start, end, text };
+};
+
+const getNodeVisibleText = (element: HTMLElement, item: HTMLElement) => {
+  const text = item.textContent || "";
+  if (!text.trim()) {
+    return "";
+  }
+
+  if (!isNodePartiallyVisibleInViewport(element, item)) {
+    return text.trim();
+  }
+
+  const visibleRange = getVisibleCharRange(element, item);
+  if (!visibleRange) {
+    return text.trim();
+  }
+
+  let { start, end } = visibleRange;
+  if (start > 0) {
+    start = findNearestSplitBoundary(text, start);
+  }
+  if (end < text.length) {
+    end = findNearestSplitBoundary(text, end);
+  }
+
+  if (end <= start) {
+    start = visibleRange.start;
+    end = visibleRange.end;
+  }
+
+  return text.substring(start, end).trim();
+};
+
 export const getVisibleText = (
   element: HTMLElement,
   readerMode: string,
@@ -842,7 +1016,7 @@ export const getVisibleText = (
 
   let visibleNode = nodeList.filter(
     (s) =>
-      isScrolledIntoView(element, s as HTMLElement, readerMode) &&
+      isNodeVisibleInViewport(element, s as HTMLElement) &&
       ((s as HTMLElement).textContent || "").trim()
   );
   visibleNode = visibleNode.filter((s) => {
@@ -868,7 +1042,7 @@ export const getVisibleText = (
       (item) =>
         item.textContent !== "img" && !item.textContent?.startsWith("img")
     )
-    .map((item) => item.textContent)
+    .map((item) => getNodeVisibleText(element, item as HTMLElement))
     .filter((s) => s);
 };
 export const handleHighlightSearchNode = (
