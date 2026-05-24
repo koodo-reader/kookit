@@ -64,17 +64,12 @@ class StyleHelper {
 
     // Content elements with custom styles
     cssRules.push(
-      `a, article, cite, div, li, p, span:not(.kookit-note):not(.kookit-note-icon):not(.kookit-note-tooltip):not(.kookit-word-def):not(.kookit-word-tooltip), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
+      `a, article, cite, div, li, p, span:not(.kookit-note):not(.kookit-note-icon):not(.kookit-highlight-text):not(.kookit-note-tooltip):not(.kookit-word-def):not(.kookit-word-tooltip), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
     );
 
     // Title elements with custom styles
     cssRules.push(
       `h1, h2, h3, h4, h5, h6, title{${this.getCustomCss(ConfigService, true)}}`
-    );
-
-    // Hide aside elements
-    cssRules.push(
-      "aside,.hide{position: absolute; left: -9999px; top: -9999px;}"
     );
 
     // Code formatting
@@ -119,6 +114,14 @@ class StyleHelper {
 
     // Comic styles
     cssRules.push(this.getComicCss(ConfigService));
+
+    // Hide aside elements
+    cssRules.push(
+      `aside[type="footnote"],aside[epub\\:type="footnote"]{position: absolute; left: -9999px; top: -9999px;}`
+    );
+    cssRules.push(
+      `aside[type="sidebar"],aside[epub\\:type="sidebar"]{ margin: 1.5em 0; padding: 1.2em 1.4em; background-color: #c7eafc; break-inside: avoid; page-break-inside: avoid; }`
+    );
 
     return cssRules.join("");
   }

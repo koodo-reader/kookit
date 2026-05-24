@@ -947,6 +947,7 @@ export const handleHighlightSearchNode = (
             const highlightSpan = doc.createElement("span");
             highlightSpan.setAttribute("style", style);
             highlightSpan.setAttribute("data-highlight", "true");
+            highlightSpan.setAttribute("class", "kookit-highlight-text");
             highlightSpan.textContent = match.originalText;
             fragment.appendChild(highlightSpan);
 
@@ -1035,7 +1036,7 @@ export const handleHighlightAudioNode = (
           highlightSpan.setAttribute("style", style);
           highlightSpan.setAttribute("data-highlight", "true");
           highlightSpan.textContent = text;
-
+          highlightSpan.setAttribute("class", "kookit-highlight-text");
           // Replace the original text node with three new nodes
           const fragment = doc.createDocumentFragment();
           if (before) fragment.appendChild(doc.createTextNode(before));
