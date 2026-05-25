@@ -843,8 +843,7 @@ export const getAudioText = (
   return audioText.slice(firstSliceIndex).filter((s) => s);
 };
 
-const PAGE_SPLIT_PUNCTUATION =
-  /[，。！？；：、,.!?;:，．、】【】）》〉」』）]/;
+const PAGE_SPLIT_PUNCTUATION = /[，。！？；：、,.!?;:，．、】【】）》〉」』）]/;
 
 const isTextVisibleInViewport = (
   rect: DOMRect | ClientRect,
@@ -1182,11 +1181,7 @@ export const handleHighlightAudioNode = (
   if (!text.trim()) return;
 
   // Get block elements and find those containing the target text
-  let nodeList = getBlockElement(doc.body).filter(
-    (s) =>
-      isScrolledIntoView(element, s as HTMLElement, readerMode) &&
-      ((s as HTMLElement).textContent || "").trim()
-  );
+  let nodeList = getBlockElement(doc.body);
   let nodes = nodeList.filter((node) => {
     const content = (node as HTMLElement).textContent || "";
     return content.trim() && content.indexOf(text) > -1;
