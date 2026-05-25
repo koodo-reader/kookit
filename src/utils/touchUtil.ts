@@ -280,7 +280,11 @@ export const addAndroidTouchEvent = (
     const timeDiff = touchEndTime - touchStartTime;
     const distX = touchEndX - touchStartX;
     const distY = touchEndY - touchStartY;
-    if (isDragging && animation === "mimical" && readerMode !== "scroll") {
+    if (
+      isDragging &&
+      (animation === "mimical" || animation === "none") &&
+      readerMode !== "scroll"
+    ) {
       isDragging = false;
       render.mouseUpHandler(event);
       if (
@@ -743,7 +747,11 @@ export const addAppleTouchEvent = (
     const timeDiff = touchEndTime - touchStartTime;
     const distX = touchEndX - touchStartX;
     const distY = touchEndY - touchStartY;
-    if (isDragging && animation === "mimical" && readerMode !== "scroll") {
+    if (
+      isDragging &&
+      (animation === "mimical" || animation === "none") &&
+      readerMode !== "scroll"
+    ) {
       isDragging = false;
       render.mouseUpHandler(event);
       if (
