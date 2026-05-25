@@ -939,5 +939,29 @@ export const applyWordDefinitions = (
       },
       true
     );
+    doc.body.addEventListener(
+      "touchend",
+      (e: TouchEvent) => {
+        const target = (e.target as HTMLElement)?.closest?.(
+          ".kookit-word-def"
+        ) as HTMLElement | null;
+        if (target) {
+          const fullDef = target.getAttribute("data-def-full") || "";
+          showWordTooltip(fullDef, target, doc);
+          e?.preventDefault();
+          e?.stopPropagation();
+        } else {
+          let tooltip = doc.getElementById(
+            WORD_TOOLTIP_ID
+          ) as HTMLElement | null;
+          if (tooltip) {
+            hideWordTooltip(doc);
+            e?.preventDefault();
+            e?.stopPropagation();
+          }
+        }
+      },
+      true
+    );
   }
 };
