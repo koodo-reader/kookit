@@ -45,6 +45,7 @@ class GeneralRender extends EventEmitter {
   animation: string;
   convertChinese: string | undefined;
   isIndent: string | undefined;
+  bookLayout: string | undefined;
   isHyphenation: string | undefined;
   isDarkMode: string | undefined;
   textOrientation: string | undefined;
@@ -87,6 +88,7 @@ class GeneralRender extends EventEmitter {
     textOrientation?: string;
     isAllowScript?: string;
     fullTranslationMode?: string;
+    bookLayout?: string;
   }) {
     super();
     this.readerMode = config.readerMode;
@@ -114,6 +116,8 @@ class GeneralRender extends EventEmitter {
     window.transMap = this.transMap;
     this.fullTranslationMode = config.fullTranslationMode || "no";
     window.fullTranslationMode = this.fullTranslationMode;
+    this.bookLayout = config.bookLayout || "";
+    window.bookLayout = this.bookLayout;
 
     //手机版环境已经有严格的安全限制，无需额外限制，PDF中无法执行代码，强行开启则无法渲染图书
     this.isAllowScript =

@@ -117,7 +117,7 @@ class StyleHelper {
 
     // Hide aside elements
     cssRules.push(
-      `aside[type="footnote"],aside[epub\\:type="footnote"]{position: absolute; left: -9999px; top: -9999px;}`
+      `aside[epub\\:type="footnote"],aside[epub\\:type="note"],aside[epub\\:type="endnote"],aside[epub\\:type="rearnote"]{position: absolute; left: -9999px; top: -9999px;}`
     );
     cssRules.push(
       `aside[type="sidebar"],aside[epub\\:type="sidebar"]{ margin: 1.5em 0; padding: 1.2em 1.4em; background-color: #c7eafc; break-inside: avoid; page-break-inside: avoid; }`
@@ -148,7 +148,7 @@ class StyleHelper {
 
     // Line height - has default value
     const lineHeight = ConfigService.getReaderConfig("lineHeight") || "1.25";
-    cssRules.push(`line-height: ${lineHeight} !important`);
+    cssRules.push(`line-height: ${lineHeight}`);
 
     // Font family - only if exists
     const fontFamily = ConfigService.getReaderConfig("fontFamily");
@@ -276,15 +276,15 @@ class StyleHelper {
 
     // Padding bottom - has default value of 0
     const paraSpacing = ConfigService.getReaderConfig("paraSpacing") || 0;
-    cssRules.push(`padding-bottom: ${paraSpacing}px !important`);
+    cssRules.push(`padding-bottom: ${paraSpacing}px `);
 
     // Fixed styles that are always applied
-    cssRules.push("word-wrap: break-word !important");
+    cssRules.push("word-wrap: break-word ");
 
-    cssRules.push("max-width: 100% !important");
-    cssRules.push("overflow: visible !important");
-    cssRules.push("margin-top: 0 !important");
-    cssRules.push("margin-bottom: 0 !important");
+    cssRules.push("max-width: 100%");
+    cssRules.push("overflow: visible");
+    cssRules.push("margin-top: 0");
+    cssRules.push("margin-bottom: 0");
 
     return cssRules.join("; ") + ";";
   }

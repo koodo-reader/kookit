@@ -40,7 +40,7 @@ export const handleIframeHeight = async (
     }),
   ]);
   await handleImageSize(element, readerMode, format, doc);
-  handleTextStyle(doc);
+  await handleTextStyle(doc);
   if (readerMode !== "scroll") {
     iframe.height = element.clientHeight + "px";
     if (readerMode === "double") {
@@ -284,7 +284,24 @@ export const progressInfo = (
           ) + 1,
   };
 };
-export const tranformText = (doc: Document) => {
+export const tranformText = async (doc: Document) => {
+  if (window.bookLayout) {
+    const cssPath = () =>
+      `${isElectron() ? "." : ""}/lib/${window.bookLayout}-css/${window.bookLayout}.min.css`;
+
+    const fetchText = async (url) => await (await fetch(url)).text();
+    const textCSS = async () => await fetchText(cssPath());
+
+    const style = document.createElement("style");
+    style.id = "kookit-book-layout-style";
+    style.textContent = await textCSS();
+    console.log(await textCSS(), "textCSS");
+    doc.head.appendChild(style);
+    //attach class to body for book layout specific adjustments if not exist
+    if (!doc.body.classList.contains(window.bookLayout)) {
+      doc.body.classList.add(window.bookLayout);
+    }
+  }
   if (window.convertChinese === "Simplified To Traditional") {
     doc
       .querySelectorAll(
@@ -356,8 +373,8 @@ export const tranformText = (doc: Document) => {
     processDocumentBody(doc);
   }
 };
-export const handleTextStyle = (doc: Document) => {
-  tranformText(doc);
+export const handleTextStyle = async (doc: Document) => {
+  await tranformText(doc);
 };
 export const getImageMeta = async (url) => {
   const img = new Image();
