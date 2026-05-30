@@ -284,7 +284,7 @@ export const progressInfo = (
           ) + 1,
   };
 };
-export const tranformText = async (doc: Document) => {
+export const transformText = async (doc: Document) => {
   if (window.bookLayout) {
     const cssPath = () =>
       `${isElectron() ? "." : ""}/lib/${window.bookLayout}-css/${window.bookLayout}.min.css`;
@@ -374,7 +374,7 @@ export const tranformText = async (doc: Document) => {
   }
 };
 export const handleTextStyle = async (doc: Document) => {
-  await tranformText(doc);
+  await transformText(doc);
 };
 export const getImageMeta = async (url) => {
   const img = new Image();
