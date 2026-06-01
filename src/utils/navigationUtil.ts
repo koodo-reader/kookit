@@ -341,23 +341,57 @@ export const handleRenderChapter = async (
   );
   console.log(chapterText, "chapterText");
   let bodyAttrs = getBodyAttributes(chapterText);
-  //get viewport width from chapterText
+  const viewport = getViewportSize(chapterText);
 
   doc.body.innerHTML = chapterText;
   console.log(bodyAttrs, bodyAttrs["style"], "bodyAttrs");
-  if (bodyAttrs["style"]) {
-    doc.body.setAttribute(
-      "style",
-      `${doc.body.getAttribute("style") || ""};` + bodyAttrs["style"]
-    );
-  } else if (bodyAttrs["class"]) {
+  // Apply body attrs without duplicating style on re-render
+  if (bodyAttrs["class"]) {
     doc.body.setAttribute("class", bodyAttrs["class"]);
-  } else if (bodyAttrs["id"]) {
-    doc.body.setAttribute("id", bodyAttrs["id"]);
-  } else if (!bodyAttrs["class"]) {
+  } else {
     doc.body.removeAttribute("class");
-  } else if (!bodyAttrs["id"]) {
+  }
+  if (bodyAttrs["id"]) {
+    doc.body.setAttribute("id", bodyAttrs["id"]);
+  } else {
     doc.body.removeAttribute("id");
+  }
+
+  const baseStyle = doc.body.getAttribute("style") || "";
+  const incomingStyle = (bodyAttrs as any)["style"] || "";
+  const mergedStyle = mergeStyleStrings(baseStyle, incomingStyle);
+
+  // If chapter specifies a fixed viewport size, scale down to fit both page width
+  // and iframe height so the whole page is visible (e.g. pdf2html fixed layout).
+  const chapterFixedWidth =
+    viewport?.width || getStylePxNumber(incomingStyle, "width");
+  const chapterFixedHeight =
+    viewport?.height || getStylePxNumber(incomingStyle, "height");
+  if (chapterFixedWidth && chapterFixedHeight) {
+    const pageWidth = getPageWidth(element, readerMode);
+    const iframeHeight = iframe?.getBoundingClientRect().height;
+    const availableHeight =
+      iframeHeight > 0 ? iframeHeight : element.clientHeight;
+    if (pageWidth > 0 && availableHeight > 0) {
+      const widthRatio = pageWidth / chapterFixedWidth;
+      const heightRatio = availableHeight / chapterFixedHeight;
+      const scaleValue = Math.min(1, widthRatio, heightRatio);
+      const scaledStyle = mergeStyleStrings(
+        mergedStyle,
+        `transform: scale(${scaleValue}); transform-origin: left top;`
+      );
+      doc.body.setAttribute("style", scaledStyle);
+      doc.body.setAttribute("data-kookit-fixed-scale", "true");
+    } else {
+      doc.body.setAttribute("style", mergedStyle);
+      doc.body.removeAttribute("data-kookit-fixed-scale");
+    }
+  } else if (mergedStyle) {
+    doc.body.setAttribute("style", mergedStyle);
+    doc.body.removeAttribute("data-kookit-fixed-scale");
+  } else {
+    doc.body.removeAttribute("style");
+    doc.body.removeAttribute("data-kookit-fixed-scale");
   }
   await handleCssLink(doc);
   await handlePlainText(doc);
@@ -410,6 +444,76 @@ export function getBodyAttributes(htmlStr: string) {
   }
 
   return attributes;
+}
+
+function parseStyleToMap(styleText: string): Record<string, string> {
+  const map: Record<string, string> = {};
+  if (!styleText) return map;
+  const parts = styleText.split(";");
+  for (const rawPart of parts) {
+    const part = rawPart.trim();
+    if (!part) continue;
+    const idx = part.indexOf(":");
+    if (idx <= 0) continue;
+    const prop = part.slice(0, idx).trim().toLowerCase();
+    const value = part.slice(idx + 1).trim();
+    if (!prop) continue;
+    map[prop] = value;
+  }
+  return map;
+}
+
+function styleMapToString(map: Record<string, string>): string {
+  const entries = Object.entries(map).filter(([, v]) => (v || "").trim());
+  if (entries.length === 0) return "";
+  // Keep output stable to avoid noisy diffs / DOM churn
+  entries.sort(([a], [b]) => a.localeCompare(b));
+  return entries.map(([k, v]) => `${k}: ${v}`).join("; ");
+}
+
+function mergeStyleStrings(baseStyle: string, extraStyle: string): string {
+  const base = parseStyleToMap(baseStyle);
+  const extra = parseStyleToMap(extraStyle);
+  // extra overrides base; no duplication of identical declarations
+  const merged: Record<string, string> = { ...base, ...extra };
+  return styleMapToString(merged);
+}
+
+function getViewportSize(
+  htmlStr: string
+): { width?: number; height?: number } | null {
+  if (!htmlStr) return null;
+  const metaMatch = htmlStr.match(
+    /<meta\b[^>]*name\s*=\s*["']viewport["'][^>]*content\s*=\s*["']([^"']+)["'][^>]*>/i
+  );
+  if (!metaMatch) return null;
+  const content = metaMatch[1] || "";
+  const widthMatch = content.match(/\bwidth\s*=\s*(\d+(?:\.\d+)?)\b/i);
+  const heightMatch = content.match(/\bheight\s*=\s*(\d+(?:\.\d+)?)\b/i);
+  const width = widthMatch ? parseFloat(widthMatch[1]) : undefined;
+  const height = heightMatch ? parseFloat(heightMatch[1]) : undefined;
+  if (!width && !height) return null;
+  return { width, height };
+}
+
+function getStylePxNumber(styleText: string, prop: string): number | null {
+  if (!styleText || !prop) return null;
+  const map = parseStyleToMap(styleText);
+  const val = map[prop.toLowerCase()];
+  if (!val) return null;
+  // Accept "1571px" or "1571"
+  const m = val.match(/(-?\d+(?:\.\d+)?)/);
+  if (!m) return null;
+  const num = parseFloat(m[1]);
+  return Number.isFinite(num) && num > 0 ? num : null;
+}
+
+function getPageWidth(element: HTMLElement, readerMode: string): number {
+  if (!element) return 0;
+  const section = Math.floor(element.clientWidth / 12);
+  const gap = section % 2 === 0 ? section : section - 1;
+  const scale = readerMode === "double" ? 2 : 1;
+  return (element.clientWidth - gap) / scale;
 }
 export const handleCssLink = async (doc) => {
   let linkList = Array.from(doc.getElementsByTagName("link"));

@@ -39,7 +39,9 @@ export const handleIframeHeight = async (
       }, 10);
     }),
   ]);
-  await handleImageSize(element, readerMode, format, doc);
+  if (!doc.body.getAttribute("data-kookit-fixed-scale")) {
+    await handleImageSize(element, readerMode, format, doc);
+  }
   await handleTextStyle(doc);
   if (readerMode !== "scroll") {
     iframe.height = element.clientHeight + "px";
