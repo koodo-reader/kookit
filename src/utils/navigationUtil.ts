@@ -343,8 +343,9 @@ export const handleRenderChapter = async (
   //get viewport width from chapterText
 
   doc.body.innerHTML = chapterText;
+  console.log(bodyAttrs,bodyAttrs["style"], "bodyAttrs");
   if (bodyAttrs["style"]) {
-    doc.body.setAttribute("style", doc.body.getAttribute("style") || "");
+    doc.body.setAttribute("style", `${doc.body.getAttribute("style") || ""};`+ bodyAttrs["style"]);
   } else if (bodyAttrs["class"]) {
     doc.body.setAttribute("class", bodyAttrs["class"]);
   } else if (bodyAttrs["id"]) {
