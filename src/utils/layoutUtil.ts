@@ -1,6 +1,6 @@
 import Chinese from "../libs/zh-convert";
 import { processDocumentBody } from "./bionicUtil";
-import { isElectron } from "./common";
+import { getStylePxNumber, isElectron } from "./common";
 import { getBlockElement, isParentBlock } from "./common";
 declare var window: any;
 export const isVerticalLayout = (): boolean => {
@@ -452,10 +452,21 @@ export const handleImageSize = async (
   const measures: ImageMeasure[] = imgs.map((item) => {
     const parentItem = item.parentElement;
     const grandItem = parentItem?.parentElement;
-    const width =
-      item.tagName === "image" ? item._naturalWidth : item.naturalWidth;
-    const height =
-      item.tagName === "image" ? item._naturalHeight : item.naturalHeight;
+    let width = item.getAttribute("width");
+    let height = item.getAttribute("height");
+    if (!width && item.getAttribute("style")) {
+      width = getStylePxNumber(item.getAttribute("style") as string, "width");
+    }
+    if (!height && item.getAttribute("style")) {
+      height = getStylePxNumber(item.getAttribute("style") as string, "height");
+    }
+    if (!width) {
+      width = item.tagName === "image" ? item._naturalWidth : item.naturalWidth;
+    }
+    if (!height) {
+      height =
+        item.tagName === "image" ? item._naturalHeight : item.naturalHeight;
+    }
     return {
       item,
       width: width || 0,
