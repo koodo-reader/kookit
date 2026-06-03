@@ -117,7 +117,7 @@ class StyleHelper {
 
     // Hide aside elements
     cssRules.push(
-      `aside[epub\\:type="footnote"],aside[epub\\:type="note"],aside[epub\\:type="endnote"],aside[epub\\:type="rearnote"]{position: absolute; left: -9999px; top: -9999px;}`
+      `aside[epub\\:type="footnote"],aside[epub\\:type="note"],aside[epub\\:type="endnote"],aside[epub\\:type="rearnote"],.hide{position: absolute; left: -9999px; top: -9999px;}`
     );
     cssRules.push(
       `aside[type="sidebar"],aside[epub\\:type="sidebar"]{ margin: 1.5em 0; padding: 1.2em 1.4em; background-color: #c7eafc; break-inside: avoid; page-break-inside: avoid; }`

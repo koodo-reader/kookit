@@ -74,8 +74,7 @@ export function parseStyleToMap(styleText: string): Record<string, string> {
 export function styleMapToString(map: Record<string, string>): string {
   const entries = Object.entries(map).filter(([, v]) => (v || "").trim());
   if (entries.length === 0) return "";
-  // Keep output stable to avoid noisy diffs / DOM churn
-  entries.sort(([a], [b]) => a.localeCompare(b));
+  // Preserve declaration order to keep shorthand/longhand cascade semantics.
   return entries.map(([k, v]) => `${k}: ${v}`).join("; ");
 }
 

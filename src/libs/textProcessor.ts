@@ -71,7 +71,7 @@ export const txtToHtml = (
       htmlParts.push(`<h1 class="hide">Chapter ${chapterIndex}</h1>`); // Push chapter title to array
       chapterLines.forEach((line) => {
         if (line.trim() === "") {
-          htmlParts.push(`<span>${line}</span>`); // Push line break for empty lines
+          htmlParts.push(`<p class="hide">${line}</p>`); // Push line break for empty lines
         } else {
           htmlParts.push(`<p>${line}</p>`); // Push line content to array
         }
@@ -147,7 +147,7 @@ export const txtToHtml = (
         htmlParts.push(`<h1>${cleanedItem}</h1>`); // Push to array
       } else {
         if (item.trim() === "") {
-          htmlParts.push(`<span>${item}</span>`); // Push line break for empty lines
+          htmlParts.push(`<p class="hide">${item}</p>`); // Push line break for empty lines
           continue; // Skip further processing for empty lines
         }
         // Avoid cleaning again if not necessary, use original item for content
@@ -162,7 +162,7 @@ export const txtToHtml = (
         htmlParts.push(`<h1>${cleanedItem}</h1>`); // Push to array
       } else {
         if (item.trim() === "") {
-          htmlParts.push(`<span>${item}</span>`); // Push line break for empty lines
+          htmlParts.push(`<p class="hide">${item}</p>`); // Push line break for empty lines
           continue; // Skip further processing for empty lines
         }
         htmlParts.push(`<p>${item}</p>`); // Push to array
