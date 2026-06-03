@@ -873,7 +873,9 @@ export const getAudioText = (
   let visibleText = getVisibleText(element, readerMode, doc);
   console.log(visibleText, "visibleText");
   if (visibleText && visibleText.length > 0) {
-    firstSliceIndex = audioText.findIndex((item) => visibleText.includes(item));
+    firstSliceIndex = audioText.findIndex(
+      (item) => item && visibleText.includes(item)
+    );
   }
 
   return audioText.slice(firstSliceIndex).filter((s) => s);
