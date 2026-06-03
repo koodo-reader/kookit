@@ -229,8 +229,9 @@ const getSelectionSentence = (doc: any): string => {
     let selectedText = sel.toString().trim();
     // Split after sentence-ending punctuation (avoid lookbehind for old WebViews)
     let sentences =
-      fullText.match(/[^.!?。！？]*[.!?。！？]?/g)?.filter((s) => s.length > 0) ??
-      [];
+      fullText
+        .match(/[^.!?。！？]*[.!?。！？]?/g)
+        ?.filter((s) => s.length > 0) ?? [];
     for (let s of sentences) {
       if (s.includes(selectedText)) {
         return s.trim();
@@ -282,6 +283,7 @@ export const addAndroidTouchEvent = (
     const timeDiff = touchEndTime - touchStartTime;
     const distX = touchEndX - touchStartX;
     const distY = touchEndY - touchStartY;
+    // 墨水屏模式下的animation为none，需要关闭动画
     if (
       isDragging &&
       (animation === "mimical" || animation === "none") &&
