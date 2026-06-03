@@ -227,8 +227,10 @@ const getSelectionSentence = (doc: any): string => {
         : container;
     let fullText = (el as Element)?.textContent || "";
     let selectedText = sel.toString().trim();
-    // Split on sentence-ending punctuation to find the sentence
-    let sentences = fullText.split(/(?<=[.!?。！？])\s*/);
+    // Split after sentence-ending punctuation (avoid lookbehind for old WebViews)
+    let sentences =
+      fullText.match(/[^.!?。！？]*[.!?。！？]?/g)?.filter((s) => s.length > 0) ??
+      [];
     for (let s of sentences) {
       if (s.includes(selectedText)) {
         return s.trim();
