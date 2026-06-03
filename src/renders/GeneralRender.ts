@@ -1537,7 +1537,6 @@ class GeneralRender extends EventEmitter {
   ) {
     let doc = this.getDocument();
     if (!doc) return;
-    // console.log(results, "results");
     // Clear previous definitions before re-applying
     clearWordDefinitions(doc);
     // Build a flat list of audio nodes to match against result.text

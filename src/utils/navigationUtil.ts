@@ -346,12 +346,10 @@ export const handleRenderChapter = async (
     chapterDocList[chapterDocIndex].text,
     false
   );
-  console.log(chapterText, "chapterText");
   let bodyAttrs = getBodyAttributes(chapterText);
   const viewport = getViewportSize(chapterText);
 
   doc.body.innerHTML = chapterText;
-  console.log(bodyAttrs, bodyAttrs["style"], "bodyAttrs");
   // Apply body attrs without duplicating style on re-render
   if (bodyAttrs["class"]) {
     doc.body.setAttribute("class", bodyAttrs["class"]);
@@ -871,7 +869,6 @@ export const getAudioText = (
     .map((item) => item.textContent);
   let firstSliceIndex = 0;
   let visibleText = getVisibleText(element, readerMode, doc);
-  console.log(visibleText, "visibleText");
   if (visibleText && visibleText.length > 0) {
     firstSliceIndex = audioText.findIndex(
       (item) => item && visibleText.includes(item)

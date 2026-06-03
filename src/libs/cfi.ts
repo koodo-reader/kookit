@@ -724,7 +724,6 @@ class CFI {
     index: number,
     offset: number
   ) {
-    // console.log(`getChildNodeByCFIIndex`, { parentNode, index, offset })
     const children = parentNode.childNodes;
     if (!children.length) return { node: parentNode, offset: 0 };
 
@@ -738,7 +737,6 @@ class CFI {
     let lastChild;
     let i, child;
 
-    // console.log(children, children.length)
     for (i = 0; i < children.length; i++) {
       child = children[i];
       // @ts-ignore
@@ -786,7 +784,6 @@ class CFI {
           break;
         case TEXT_NODE:
         case CDATA_SECTION_NODE:
-          // console.log('TEXT')
           // If this is the first node or the previous node was an element node
           if (cfiCount === 0 || cfiCount % 2 === 0) {
             cfiCount += 1;
@@ -814,8 +811,6 @@ class CFI {
           continue;
       }
     }
-
-    // console.log(lastChild, index, cfiCount)
 
     // index is pointing to the virtual node after the last child
     // as defined in the CFI spec
@@ -966,8 +961,6 @@ class CFI {
       }
     }
 
-    // console.log(startNode, startFrom)
-
     if (!node) {
       node = startNode;
     }
@@ -978,7 +971,6 @@ class CFI {
       subpart = subparts[i];
 
       if (subpart) {
-        // console.log(o, dom, o.node, subpart.nodeIndex, subpart.offset)
         // @ts-ignore
         o = this.getChildNodeByCFIIndex(
           dom,
@@ -989,7 +981,6 @@ class CFI {
 
         // @ts-ignore
         if (subpart.textLocationAssertion) {
-          // console.log(subparts, subpart, o)
           // @ts-ignore
           o = this.correctOffset(
             dom,

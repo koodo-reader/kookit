@@ -297,7 +297,6 @@ export const transformText = async (doc: Document) => {
     const style = document.createElement("style");
     style.id = "kookit-book-layout-style";
     style.textContent = await textCSS();
-    console.log(await textCSS(), "textCSS");
     doc.head.appendChild(style);
     //attach class to body for book layout specific adjustments if not exist
     if (!doc.body.classList.contains(window.bookLayout)) {
