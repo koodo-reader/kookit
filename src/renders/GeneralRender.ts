@@ -36,7 +36,11 @@ import rangy from "rangy/lib/rangy-core.js";
 import "rangy/lib/rangy-textrange";
 
 import { getPDFSearchResult } from "../utils/pdfUtil";
-import { addAndroidTouchEvent, addAppleTouchEvent } from "../utils/touchUtil";
+import {
+  addAndroidTouchEvent,
+  addAppleTouchEvent,
+  slideAnimateTo,
+} from "../utils/touchUtil";
 import { getBlockElement, isParentBlock } from "../utils/common";
 declare var window: any;
 class GeneralRender extends EventEmitter {
@@ -771,6 +775,13 @@ class GeneralRender extends EventEmitter {
       );
     }
     await this.record();
+  }
+  async slideTo(direction: string) {
+    let doc = this.getDocument();
+    if (!doc) return;
+    let section = Math.floor(this.element.clientWidth / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+    slideAnimateTo(direction, this.format, doc, doc, this.element, this, gap);
   }
   async prevChapter() {
     let doc = this.getDocument();

@@ -871,25 +871,13 @@ export const getAudioText = (
     .map((item) => item.textContent);
   let firstSliceIndex = 0;
   let visibleText = getVisibleText(element, readerMode, doc);
+  console.log(visibleText, "visibleText");
   if (visibleText && visibleText.length > 0) {
-    let firstVisibleText = visibleText[0];
-    firstSliceIndex = audioText.indexOf(firstVisibleText);
-    if (firstSliceIndex === -1) {
-      firstSliceIndex = audioText.findIndex(
-        (item) =>
-          !!item &&
-          !!firstVisibleText &&
-          (item.includes(firstVisibleText) || firstVisibleText.includes(item))
-      );
-    }
-    if (firstSliceIndex === -1) {
-      firstSliceIndex = 0;
-    }
+    firstSliceIndex = audioText.findIndex((item) => visibleText.includes(item));
   }
 
   return audioText.slice(firstSliceIndex).filter((s) => s);
 };
-
 const PAGE_SPLIT_PUNCTUATION = /[，。！？；：、,.!?;:，．、】【】）》〉」』）]/;
 
 const isTextVisibleInViewport = (

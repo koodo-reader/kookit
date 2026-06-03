@@ -3,7 +3,7 @@ import rangy from "rangy/lib/rangy-core.js";
 declare var window: any;
 let selectionTimeout: any = null;
 let isDragging = false;
-async function slideAnimateTo(
+export const slideAnimateTo = (
   direction: string,
   format: string,
   doc: any,
@@ -11,7 +11,7 @@ async function slideAnimateTo(
   element: any,
   render: any,
   gap: number
-) {
+) => {
   let pageWidth = element.clientWidth + gap;
   let tempDoc = format === "PDF" ? outerDoc : doc;
 
@@ -113,7 +113,7 @@ async function slideAnimateTo(
   }
 
   window.scrollAnimationId = requestAnimationFrame(animateScroll);
-}
+};
 async function blobUrlToBase64(blobUrl) {
   try {
     // 1. 获取Blob数据
