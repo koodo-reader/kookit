@@ -1010,16 +1010,16 @@ const getVisibleCharRange = (element: HTMLElement, root: HTMLElement) => {
 const getNodeVisibleText = (element: HTMLElement, item: HTMLElement) => {
   const text = item.textContent || "";
   if (!text.trim()) {
-    return "";
+    return text;
   }
 
   if (!isNodePartiallyVisibleInViewport(element, item)) {
-    return text.trim();
+    return text;
   }
 
   const visibleRange = getVisibleCharRange(element, item);
   if (!visibleRange) {
-    return text.trim();
+    return text;
   }
 
   let { start, end } = visibleRange;
@@ -1035,7 +1035,7 @@ const getNodeVisibleText = (element: HTMLElement, item: HTMLElement) => {
     end = visibleRange.end;
   }
 
-  return text.substring(start, end).trim();
+  return text.substring(start, end);
 };
 
 export const getVisibleText = (
