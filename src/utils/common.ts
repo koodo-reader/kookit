@@ -114,8 +114,10 @@ export function getStylePxNumber(
   const map = parseStyleToMap(styleText);
   const val = map[prop.toLowerCase()];
   if (!val) return null;
-  // Accept "1571px" or "1571"
-  const m = val.match(/(-?\d+(?:\.\d+)?)/);
+  // Only accept plain numbers or px values (e.g. "1571" / "1571px").
+  // Reject values with other units like "%", "em", "rem", etc.
+  const normalized = val.replace(/\s*!important\s*$/i, "").trim();
+  const m = normalized.match(/^(-?\d+(?:\.\d+)?)(?:px)?$/i);
   if (!m) return null;
   const num = parseFloat(m[1]);
   return Number.isFinite(num) && num > 0 ? num : null;
