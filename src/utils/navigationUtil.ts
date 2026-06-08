@@ -879,7 +879,10 @@ export const getAudioText = (
 
   return audioText.slice(firstSliceIndex).filter((s) => s);
 };
-const PAGE_SPLIT_PUNCTUATION = /[，。！？；：、,.!?;:，．、】【】）》〉」』）]/;
+const PAGE_SPLIT_PUNCTUATION =
+  /[，。！？；：、,.!?;:，．、】【】）》〉」』）"'"\u201d\u2019」』》]/;
+// Android WebView may return empty getClientRects() for quotes; treat as visible when adjacent char is visible
+const ZERO_WIDTH_QUOTE_CHARS = /["'\u201d\u2019」』]/;
 
 const isTextVisibleInViewport = (
   rect: DOMRect | ClientRect,
@@ -979,14 +982,22 @@ const getVisibleCharRange = (element: HTMLElement, root: HTMLElement) => {
       );
 
       if (nodeMayBeVisible) {
+        let prevCharVisible = false;
         for (let i = 0; i < content.length; i++) {
           const charRange = document.createRange();
           charRange.setStart(currentNode, i);
           charRange.setEnd(currentNode, i + 1);
           const charRects = Array.from(charRange.getClientRects());
-          const visible = charRects.some((rect) =>
+          let visible = charRects.some((rect) =>
             isTextVisibleInViewport(rect, element)
           );
+          if (
+            !visible &&
+            prevCharVisible &&
+            ZERO_WIDTH_QUOTE_CHARS.test(content[i])
+          ) {
+            visible = true;
+          }
 
           if (visible) {
             if (start === -1) {
@@ -994,6 +1005,7 @@ const getVisibleCharRange = (element: HTMLElement, root: HTMLElement) => {
             }
             end = offset + i + 1;
           }
+          prevCharVisible = visible;
         }
       }
     }
