@@ -3,6 +3,7 @@ import ChapterDoc from "../model/chapterDoc";
 import {
   convertStyleNum,
   getSelectedElement,
+  handleOneChapterDoc,
   progressInfo,
 } from "../utils/layoutUtil";
 import {
@@ -833,7 +834,35 @@ class GeneralRender extends EventEmitter {
     );
     return audioTexts;
   }
-  async getRestAudioText() {}
+  async getRestAudioText(count: number) {
+    const currentIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
+    const result: { chapterDocIndex: number; audioText: string[] }[] = [];
+    const startIndex = currentIndex + 1;
+    const endIndex = Math.min(startIndex + count, this.chapterDocList.length);
+
+    for (let i = startIndex; i < endIndex; i++) {
+      const chapterText = await handleOneChapterDoc(
+        this.chapterDocList[i].text,
+        true
+      );
+      if (!chapterText) continue;
+      const chapterDoc = new DOMParser().parseFromString(
+        chapterText,
+        "text/html"
+      );
+      const audioText = getAudioText(
+        this.element,
+        this.readerMode,
+        chapterDoc,
+        true
+      );
+      result.push({
+        chapterDocIndex: i,
+        audioText: audioText.filter((s): s is string => !!s),
+      });
+    }
+    return result;
+  }
   async chapterText() {
     let doc = this.getDocument();
     if (!doc) return "";
