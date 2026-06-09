@@ -825,7 +825,12 @@ class GeneralRender extends EventEmitter {
   async audioText() {
     let doc = this.getDocument();
     if (!doc) return [];
-    let audioTexts = await getAudioText(this.element, this.readerMode, doc);
+    let audioTexts = await getAudioText(
+      this.element,
+      this.readerMode,
+      doc,
+      false
+    );
     return audioTexts;
   }
   async getRestAudioText() {}

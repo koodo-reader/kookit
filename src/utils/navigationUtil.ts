@@ -838,7 +838,8 @@ export const handleNextChapter = async (
 export const getAudioText = (
   element: HTMLElement,
   readerMode: string,
-  doc: Document
+  doc: Document,
+  isBackground: boolean
 ) => {
   let nodeList = getBlockElement(doc.body).filter(
     (item) => !isParentBlock(item)
@@ -867,6 +868,9 @@ export const getAudioText = (
         item.textContent !== "img" && !item.textContent?.startsWith("img")
     )
     .map((item) => item.textContent);
+  if (isBackground) {
+    return audioText.filter((s) => s);
+  }
   let firstSliceIndex = 0;
   let visibleText = getVisibleText(element, readerMode, doc);
   if (visibleText && visibleText.length > 0) {
