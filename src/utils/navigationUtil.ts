@@ -869,7 +869,6 @@ export const getAudioText = (
     .map((item) => item.textContent);
   let firstSliceIndex = 0;
   let visibleText = getVisibleText(element, readerMode, doc);
-  console.log(visibleText, "visibletext");
   if (visibleText && visibleText.length > 0) {
     let trimmedVisibleText = visibleText.map((s) => s.trim());
     firstSliceIndex = audioText.findIndex((item) => {
