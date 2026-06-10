@@ -882,10 +882,42 @@ export const getAudioText = (
 
   return audioText.slice(firstSliceIndex).filter((s) => s);
 };
-const PAGE_SPLIT_PUNCTUATION =
-  /[，。！？；：、,.!?;:，．、】【】）》〉」』）"'"\u201d\u2019」』》]/;
 // Android WebView may return empty getClientRects() for quotes; treat as visible when adjacent char is visible
 const ZERO_WIDTH_QUOTE_CHARS = /["'\u201d\u2019」』]/;
+
+const getTextSentences = (text: string, lang?: string) => {
+  if (typeof (Intl as any).Segmenter === "undefined") {
+    return [{ start: 0, end: text.length }];
+  }
+  const segmenter = new (Intl as any).Segmenter(lang, {
+    granularity: "sentence",
+  });
+  const segments = segmenter.segment(text);
+  return Array.from(segments)
+    .map((s: any) => ({
+      start: s.index as number,
+      end: (s.index as number) + (s.segment as string).length,
+    }))
+    .filter(
+      (sentence) => text.slice(sentence.start, sentence.end).trim() !== ""
+    );
+};
+
+const snapRangeToSentences = (text: string, start: number, end: number) => {
+  const lang = detectLocalLanguage(text);
+  const sentences = getTextSentences(text, lang);
+  if (sentences.length === 0) {
+    return { start, end };
+  }
+  const overlapping = sentences.filter((s) => s.end > start && s.start < end);
+  if (overlapping.length === 0) {
+    return { start, end };
+  }
+  return {
+    start: overlapping[0].start,
+    end: overlapping[overlapping.length - 1].end,
+  };
+};
 
 const isTextVisibleInViewport = (
   rect: DOMRect | ClientRect,
@@ -928,38 +960,6 @@ const isNodePartiallyVisibleInViewport = (
     rect.bottom > element.clientHeight ||
     rect.right > element.clientWidth
   );
-};
-
-const findNearestSplitBoundary = (text: string, index: number) => {
-  if (!text) return 0;
-  let safeIndex = Math.max(0, Math.min(index, text.length - 1));
-  let prev = -1;
-  let next = -1;
-
-  for (let i = safeIndex; i >= 0; i--) {
-    if (PAGE_SPLIT_PUNCTUATION.test(text[i])) {
-      prev = i;
-      break;
-    }
-  }
-
-  for (let i = safeIndex; i < text.length; i++) {
-    if (PAGE_SPLIT_PUNCTUATION.test(text[i])) {
-      next = i;
-      break;
-    }
-  }
-
-  if (prev === -1 && next === -1) {
-    return index;
-  }
-  if (prev === -1) {
-    return next + 1;
-  }
-  if (next === -1) {
-    return prev + 1;
-  }
-  return safeIndex - prev <= next - safeIndex ? prev + 1 : next + 1;
 };
 
 const getVisibleCharRange = (element: HTMLElement, root: HTMLElement) => {
@@ -1023,7 +1023,23 @@ const getVisibleCharRange = (element: HTMLElement, root: HTMLElement) => {
 
   return { start, end, text };
 };
+export const detectLocalLanguage = (text: string): string => {
+  const chinesePattern = /[\u4e00-\u9fff\u3000-\u303f\uf900-\ufaff]/g;
+  const japanesePattern = /[\u3040-\u309f\u30a0-\u30ff]/g;
+  const koreanPattern = /[\uac00-\ud7af\u1100-\u11ff]/g;
 
+  const chineseCount = (text.match(chinesePattern) || []).length;
+  const japaneseCount = (text.match(japanesePattern) || []).length;
+  const koreanCount = (text.match(koreanPattern) || []).length;
+
+  const cjkTotal = chineseCount + japaneseCount + koreanCount;
+  if (cjkTotal / text.length <= 0.3) return "en";
+
+  if (chineseCount >= japaneseCount && chineseCount >= koreanCount) return "zh";
+  if (japaneseCount >= chineseCount && japaneseCount >= koreanCount)
+    return "ja";
+  return "ko";
+};
 const getNodeVisibleText = (element: HTMLElement, item: HTMLElement) => {
   const text = item.textContent || "";
   if (!text.trim()) {
@@ -1039,17 +1055,14 @@ const getNodeVisibleText = (element: HTMLElement, item: HTMLElement) => {
     return text;
   }
 
-  let { start, end } = visibleRange;
-  if (start > 0) {
-    start = findNearestSplitBoundary(text, start);
-  }
-  if (end < text.length) {
-    end = findNearestSplitBoundary(text, end);
-  }
+  const { start, end } = snapRangeToSentences(
+    text,
+    visibleRange.start,
+    visibleRange.end
+  );
 
   if (end <= start) {
-    start = visibleRange.start;
-    end = visibleRange.end;
+    return text.substring(visibleRange.start, visibleRange.end);
   }
 
   return text.substring(start, end);
