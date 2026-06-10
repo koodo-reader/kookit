@@ -190,7 +190,7 @@ class GeneralRender extends EventEmitter {
       gap: gap,
     };
   }
-  scrollToText(text: string) {
+  async scrollToText(text: string) {
     let doc = this.getDocument();
     if (!doc) return;
     let nodeList = getBlockElement(doc.body).filter(
@@ -225,6 +225,7 @@ class GeneralRender extends EventEmitter {
         this.element.scrollTo(0, top);
       }
     }
+    await this.record();
   }
   async goToPage(targetPage: number) {
     if (this.readerMode === "scroll") {
