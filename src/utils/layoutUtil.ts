@@ -76,7 +76,6 @@ export const handleIframeHeight = async (
 };
 
 export const handleOneChapterDoc = async (item, isSearch: boolean) => {
-  console.log("handleOneChapterDoc", 1.1);
   let chapterText = "";
   if (item && item.load) {
     let chapteruUrl = await item.load();
@@ -84,21 +83,17 @@ export const handleOneChapterDoc = async (item, isSearch: boolean) => {
     let blob = await res.blob();
     chapterText = await blob.text();
   }
-  console.log("handleOneChapterDoc", 1.2);
 
   if (isSearch) {
     return chapterText;
   }
-  console.log("handleOneChapterDoc", 1.3);
   chapterText = await handlePrecacheAssets(chapterText, item);
-  console.log("handleOneChapterDoc", 1.4);
   return chapterText;
 };
 export const getImageElement = (Element) => {
   return Array.from(Element.querySelectorAll("img, image")) as HTMLElement[];
 };
 export const handlePrecacheAssets = async (bookStr, item) => {
-  console.log("handlePrecacheAssets", 1.31);
   let chapterDoc = new DOMParser().parseFromString(bookStr, "text/html") as any;
   if (item && item.loadAsset) {
     let loadAsset = item.loadAsset;
@@ -123,7 +118,6 @@ export const handlePrecacheAssets = async (bookStr, item) => {
       }
     }
   }
-  console.log("handlePrecacheAssets", 1.32);
   if (chapterDoc && chapterDoc.documentElement) {
     chapterDoc.documentElement.lang = "en"; // 方式1（推荐）
   }
@@ -131,7 +125,6 @@ export const handlePrecacheAssets = async (bookStr, item) => {
     // to fix electron-specific issue where `hyphens: auto` is silently ignored without a Chromium hyphenation dictionary.
     applyHyphenation(chapterDoc);
   }
-  console.log("handlePrecacheAssets", 1.33);
   if (
     window.fullTranslationMode === "both" ||
     window.fullTranslationMode === "target"
@@ -158,7 +151,6 @@ export const handlePrecacheAssets = async (bookStr, item) => {
       }
     }
   }
-  console.log("handlePrecacheAssets", 1.34);
   let imgDomList = getImageElement(chapterDoc) as any;
   if (imgDomList.length > 0) {
     for (let i = 0; i < imgDomList.length; i++) {

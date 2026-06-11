@@ -307,7 +307,6 @@ export const handleRenderChapter = async (
   doc: Document,
   iframe: any
 ) => {
-  console.log("handleRenderChapter", 0);
   doc.body.innerHTML = "";
   iframe.height = 0 + "px";
   doc.body.scrollTo(0, 0);
@@ -343,14 +342,12 @@ export const handleRenderChapter = async (
   if (chapterDocIndex === -1 || chapterDocIndex > chapterDocList.length - 1) {
     chapterDocIndex = 0;
   }
-  console.log("handleRenderChapter", 1);
   let chapterText = await handleOneChapterDoc(
     chapterDocList[chapterDocIndex].text,
     false
   );
   let bodyAttrs = getBodyAttributes(chapterText);
   const viewport = getViewportSize(chapterText);
-  console.log("handleRenderChapter", 2);
   doc.body.innerHTML = chapterText;
   // Apply body attrs without duplicating style on re-render
   if (bodyAttrs["class"]) {
@@ -363,7 +360,6 @@ export const handleRenderChapter = async (
   } else {
     doc.body.removeAttribute("id");
   }
-  console.log("handleRenderChapter", 3);
   const baseStyle = doc.body.getAttribute("style") || "";
   const incomingStyle = (bodyAttrs as any)["style"] || "";
   const mergedStyle = mergeStyleStrings(baseStyle, incomingStyle);
@@ -400,11 +396,8 @@ export const handleRenderChapter = async (
     doc.body.removeAttribute("style");
     doc.body.removeAttribute("data-kookit-fixed-scale");
   }
-  console.log("handleRenderChapter", 4);
   await handleCssLink(doc);
-  console.log("handleRenderChapter", 5);
   await handlePlainText(doc);
-  console.log("handleRenderChapter", 6);
   if (!chapterTitle) {
     //取前面最近的章节，且存在的标题
     let tempChapterDocIndex = chapterDocIndex;
@@ -431,11 +424,8 @@ export const handleRenderChapter = async (
   tempLocation.text = "";
   tempLocation.xpath = `/body/DocFragment[${chapterDocIndex + 1}]`;
   tempLocation.timestamp = parseInt(new Date().getTime() / 1000 + "");
-  console.log("handleRenderChapter", 7);
   await handleIframeHeight(element, readerMode, format, iframe, doc);
-  console.log("handleRenderChapter", 8);
   await handleScrollPosition(element, readerMode, "", "", "", "", doc);
-  console.log("handleRenderChapter", 9);
 };
 
 export function getBodyAttributes(htmlStr: string) {

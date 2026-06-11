@@ -414,7 +414,6 @@ class GeneralRender extends EventEmitter {
     }
   }
   async goToChapterDocIndex(chapterDocIndex: number) {
-    console.log("goToChapterDocIndex", chapterDocIndex);
     if (this.chapterDocList.length > 0) {
       await this.goToChapter(
         chapterDocIndex,
@@ -424,7 +423,6 @@ class GeneralRender extends EventEmitter {
     }
   }
   async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
-    console.log("goToChapter", chapterDocIndex, chapterHref, chapterTitle);
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -440,7 +438,6 @@ class GeneralRender extends EventEmitter {
       doc,
       iframe
     );
-    console.log("render chapter done");
     if (chapterHref && chapterHref.startsWith("kindle")) {
       let result = await this.book.resolveHref(chapterHref);
       if (result.anchor) {
@@ -450,7 +447,6 @@ class GeneralRender extends EventEmitter {
         }
       }
     }
-    console.log("scroll to position done");
     if (chapterHref && chapterHref.indexOf("#") > -1) {
       await handleScrollPosition(
         this.element,
@@ -462,7 +458,6 @@ class GeneralRender extends EventEmitter {
         doc
       );
     }
-    console.log("scroll to anchor done");
     await this.record();
     this.trigger("rendered");
   }
@@ -764,7 +759,6 @@ class GeneralRender extends EventEmitter {
         this.isMobile
       );
     }
-    console.log("scroll to next page done");
     await this.record();
   }
   async slideTo(direction: string) {
