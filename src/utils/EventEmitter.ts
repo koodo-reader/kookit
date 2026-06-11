@@ -131,41 +131,39 @@ export default class {
 
     // Resolve name
     name = this.resolveName(name[0]);
-    setTimeout(() => {
-      if (name.namespace === "base") {
-        // Try to find callback in each namespace
-        for (const namespace in that.callbacks) {
-          if (
-            that.callbacks[namespace] instanceof Object &&
-            that.callbacks[namespace][name.value] instanceof Array &&
-            that.callbacks[namespace][name.value]
-          ) {
-            that.callbacks[namespace][name.value].forEach(function (callback) {
-              result = callback.apply(that, args);
-              if (typeof finalResult === "undefined") {
-                finalResult = result;
-              }
-            });
-          } else if (
-            this.callbacks[name.namespace] instanceof Object &&
-            that.callbacks[name.namespace][name.value]
-          ) {
-            if (name.value === "") {
-              console.warn("wrong name");
-              return this;
+    if (name.namespace === "base") {
+      // Try to find callback in each namespace
+      for (const namespace in that.callbacks) {
+        if (
+          that.callbacks[namespace] instanceof Object &&
+          that.callbacks[namespace][name.value] instanceof Array &&
+          that.callbacks[namespace][name.value]
+        ) {
+          that.callbacks[namespace][name.value].forEach(function (callback) {
+            result = callback.apply(that, args);
+            if (typeof finalResult === "undefined") {
+              finalResult = result;
             }
-            that.callbacks[name.namespace][name.value].forEach(
-              function (callback) {
-                result = callback.apply(that, args);
-
-                if (typeof finalResult === "undefined") finalResult = result;
-              }
-            );
+          });
+        } else if (
+          this.callbacks[name.namespace] instanceof Object &&
+          that.callbacks[name.namespace][name.value]
+        ) {
+          if (name.value === "") {
+            console.warn("wrong name");
+            return this;
           }
-          return finalResult;
+          that.callbacks[name.namespace][name.value].forEach(
+            function (callback) {
+              result = callback.apply(that, args);
+
+              if (typeof finalResult === "undefined") finalResult = result;
+            }
+          );
         }
+        return finalResult;
       }
-    }, 100);
+    }
     // Default namespace
 
     // Specified namespace
