@@ -275,9 +275,23 @@ class BookHelper {
           })
         );
       }, 6000);
+      const throttledScrollText = throttle(async () => {
+        let position = { ...window.rendition.getPosition() };
+        let progress = { ...(await window.rendition.getProgress()) };
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({
+            event: "scroll-text",
+            bookLocation: position,
+            progress,
+          })
+        );
+      }, 3000);
 
       window.rendition.on("page-changed", () => {
         throttledPageChanged();
+      });
+      window.rendition.on("scroll-text", async () => {
+        throttledScrollText();
       });
       window.ReactNativeWebView.postMessage(
         JSON.stringify({

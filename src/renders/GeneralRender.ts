@@ -225,6 +225,19 @@ class GeneralRender extends EventEmitter {
         this.element.scrollTo(0, top);
       }
     }
+    if (this.animation !== "" && this.isMobile !== "yes") {
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    await handleRecord(
+      this.element,
+      this.readerMode,
+      this.flatChapter(this.chapterList),
+      this.chapterDocList,
+      this.tempLocation,
+      doc,
+      null
+    );
+    this.trigger("scroll-text");
   }
   async goToPage(targetPage: number) {
     if (this.readerMode === "scroll") {
