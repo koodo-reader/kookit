@@ -57,9 +57,7 @@ export const makeHtmlBook = (
 };
 
 const getTitleElement = (Element) => {
-  return Array.from(
-    Element.querySelectorAll("h1,h2,h3,h4,h5,h6,title")
-  ) as HTMLElement[];
+  return Array.from(Element.querySelectorAll("h1,title")) as HTMLElement[];
 };
 
 const getChapterDoc = (bookStr: string) => {
@@ -92,7 +90,7 @@ const getHFromStr = (str: string): string => {
   const tempDoc = new DOMParser().parseFromString(str, "text/html");
 
   // Find first heading tag
-  const headingTag = tempDoc.querySelector("h1, h2, h3, h4, h5, h6");
+  const headingTag = tempDoc.querySelector("h1");
 
   // Return content if found, otherwise empty string
   return headingTag ? headingTag.textContent?.trim() || "" : "";

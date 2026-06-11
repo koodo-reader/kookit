@@ -15,6 +15,22 @@ export const colors = ["#FEF3CD", "#FBFACC", "#CEFACD", "#CDE9FA"];
 export const lines = ["#FF0000", "#000080", "#0000FF", "#2EFF2E"];
 export const pdfColors = ["#fac106", "#ebe702", "#0be603", "#0493e6"];
 
+const hexToRgba = (hexColor: string, alpha: number): string => {
+  const hex = hexColor.replace("#", "");
+  const isShort = hex.length === 3;
+  const normalized = isShort
+    ? hex
+        .split("")
+        .map((ch) => ch + ch)
+        .join("")
+    : hex;
+  if (normalized.length !== 6) return hexColor;
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
 const TOOLTIP_ID = "kookit-note-tooltip";
 
 type TooltipAnchorRect = {
@@ -520,7 +536,7 @@ export const highlightRange = (
   const isColorHighlight = colorCode.indexOf("color") > -1;
   const colorIdx = colorCode.split("-")[1];
   const highlightStyle = isColorHighlight
-    ? "background-color: " + colors[colorIdx]
+    ? "background-color: " + hexToRgba(colors[colorIdx], 0.8)
     : "border-bottom: 2px solid " + lines[colorIdx];
 
   const wrappedSpans: HTMLElement[] = [];
@@ -936,6 +952,30 @@ export const applyWordDefinitions = (
       "mouseleave",
       () => {
         hideWordTooltip(doc);
+      },
+      true
+    );
+    doc.body.addEventListener(
+      "touchend",
+      (e: TouchEvent) => {
+        const target = (e.target as HTMLElement)?.closest?.(
+          ".kookit-word-def"
+        ) as HTMLElement | null;
+        if (target) {
+          const fullDef = target.getAttribute("data-def-full") || "";
+          showWordTooltip(fullDef, target, doc);
+          e?.preventDefault();
+          e?.stopPropagation();
+        } else {
+          let tooltip = doc.getElementById(
+            WORD_TOOLTIP_ID
+          ) as HTMLElement | null;
+          if (tooltip) {
+            hideWordTooltip(doc);
+            e?.preventDefault();
+            e?.stopPropagation();
+          }
+        }
       },
       true
     );

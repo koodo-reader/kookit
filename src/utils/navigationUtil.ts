@@ -11,7 +11,14 @@ import Chapter from "../model/chapter";
 import Chinese from "../libs/zh-convert";
 import _ from "underscore";
 import { cleanText } from "../libs/textProcessor";
-import { getBlockElement, isParentBlock } from "./common";
+import {
+  getBlockElement,
+  getPageWidth,
+  getStylePxNumber,
+  getViewportSize,
+  isParentBlock,
+  mergeStyleStrings,
+} from "./common";
 
 declare var window: any;
 
@@ -340,19 +347,54 @@ export const handleRenderChapter = async (
     false
   );
   let bodyAttrs = getBodyAttributes(chapterText);
-  //get viewport width from chapterText
-
+  const viewport = getViewportSize(chapterText);
   doc.body.innerHTML = chapterText;
-  if (bodyAttrs["style"]) {
-    doc.body.setAttribute("style", doc.body.getAttribute("style") || "");
-  } else if (bodyAttrs["class"]) {
+  // Apply body attrs without duplicating style on re-render
+  if (bodyAttrs["class"]) {
     doc.body.setAttribute("class", bodyAttrs["class"]);
-  } else if (bodyAttrs["id"]) {
-    doc.body.setAttribute("id", bodyAttrs["id"]);
-  } else if (!bodyAttrs["class"]) {
+  } else {
     doc.body.removeAttribute("class");
-  } else if (!bodyAttrs["id"]) {
+  }
+  if (bodyAttrs["id"]) {
+    doc.body.setAttribute("id", bodyAttrs["id"]);
+  } else {
     doc.body.removeAttribute("id");
+  }
+  const baseStyle = doc.body.getAttribute("style") || "";
+  const incomingStyle = (bodyAttrs as any)["style"] || "";
+  const mergedStyle = mergeStyleStrings(baseStyle, incomingStyle);
+
+  // If chapter specifies a fixed viewport size, scale down to fit both page width
+  // and iframe height so the whole page is visible (e.g. pdf2html fixed layout).
+  const chapterFixedWidth =
+    viewport?.width || getStylePxNumber(incomingStyle, "width");
+  const chapterFixedHeight =
+    viewport?.height || getStylePxNumber(incomingStyle, "height");
+  if (chapterFixedWidth && chapterFixedHeight) {
+    const pageWidth = getPageWidth(element, readerMode);
+    const iframeHeight = iframe?.getBoundingClientRect().height;
+    const availableHeight =
+      iframeHeight > 0 ? iframeHeight : element.clientHeight;
+    if (pageWidth > 0 && availableHeight > 0) {
+      const widthRatio = pageWidth / chapterFixedWidth;
+      const heightRatio = availableHeight / chapterFixedHeight;
+      const scaleValue = Math.min(1, widthRatio, heightRatio);
+      const scaledStyle = mergeStyleStrings(
+        mergedStyle,
+        `transform: scale(${scaleValue}); transform-origin: left top;`
+      );
+      doc.body.setAttribute("style", scaledStyle);
+      doc.body.setAttribute("data-kookit-fixed-scale", "true");
+    } else {
+      doc.body.setAttribute("style", mergedStyle);
+      doc.body.removeAttribute("data-kookit-fixed-scale");
+    }
+  } else if (mergedStyle) {
+    doc.body.setAttribute("style", mergedStyle);
+    doc.body.removeAttribute("data-kookit-fixed-scale");
+  } else {
+    doc.body.removeAttribute("style");
+    doc.body.removeAttribute("data-kookit-fixed-scale");
   }
   await handleCssLink(doc);
   await handlePlainText(doc);
@@ -406,6 +448,7 @@ export function getBodyAttributes(htmlStr: string) {
 
   return attributes;
 }
+
 export const handleCssLink = async (doc) => {
   let linkList = Array.from(doc.getElementsByTagName("link"));
   if (linkList.length === 0) {
@@ -793,7 +836,8 @@ export const handleNextChapter = async (
 export const getAudioText = (
   element: HTMLElement,
   readerMode: string,
-  doc: Document
+  doc: Document,
+  isBackground: boolean
 ) => {
   let nodeList = getBlockElement(doc.body).filter(
     (item) => !isParentBlock(item)
@@ -822,15 +866,206 @@ export const getAudioText = (
         item.textContent !== "img" && !item.textContent?.startsWith("img")
     )
     .map((item) => item.textContent);
+  if (isBackground) {
+    return audioText.filter((s) => s);
+  }
   let firstSliceIndex = 0;
   let visibleText = getVisibleText(element, readerMode, doc);
   if (visibleText && visibleText.length > 0) {
-    let firstVisibleText = visibleText[0];
-    firstSliceIndex = audioText.indexOf(firstVisibleText);
+    let trimmedVisibleText = visibleText.map((s) => s.trim());
+    firstSliceIndex = audioText.findIndex((item) => {
+      return item && trimmedVisibleText.includes(item.trim());
+    });
   }
 
   return audioText.slice(firstSliceIndex).filter((s) => s);
 };
+// Android WebView may return empty getClientRects() for quotes; treat as visible when adjacent char is visible
+const ZERO_WIDTH_QUOTE_CHARS = /["'\u201d\u2019」』]/;
+
+const getTextSentences = (text: string, lang?: string) => {
+  if (typeof (Intl as any).Segmenter === "undefined") {
+    return [{ start: 0, end: text.length }];
+  }
+  const segmenter = new (Intl as any).Segmenter(lang, {
+    granularity: "sentence",
+  });
+  const segments = segmenter.segment(text);
+  return Array.from(segments)
+    .map((s: any) => ({
+      start: s.index as number,
+      end: (s.index as number) + (s.segment as string).length,
+    }))
+    .filter(
+      (sentence) => text.slice(sentence.start, sentence.end).trim() !== ""
+    );
+};
+
+const snapRangeToSentences = (text: string, start: number, end: number) => {
+  const lang = detectLocalLanguage(text);
+  const sentences = getTextSentences(text, lang);
+  if (sentences.length === 0) {
+    return { start, end };
+  }
+  const overlapping = sentences.filter((s) => s.end > start && s.start < end);
+  if (overlapping.length === 0) {
+    return { start, end };
+  }
+  return {
+    start: overlapping[0].start,
+    end: overlapping[overlapping.length - 1].end,
+  };
+};
+
+const isTextVisibleInViewport = (
+  rect: DOMRect | ClientRect,
+  element: HTMLElement
+) => {
+  return (
+    rect.width > 0 &&
+    rect.height > 0 &&
+    rect.bottom > 0 &&
+    rect.top < element.clientHeight &&
+    rect.right > 0 &&
+    rect.left < element.clientWidth
+  );
+};
+
+const isNodeVisibleInViewport = (element: HTMLElement, el: HTMLElement) => {
+  const computedStyle = getComputedStyle(el);
+  if (
+    computedStyle.display === "none" ||
+    computedStyle.visibility === "hidden" ||
+    computedStyle.opacity === "0"
+  ) {
+    return false;
+  }
+  const rect = el.getBoundingClientRect();
+  return isTextVisibleInViewport(rect, element);
+};
+
+const isNodePartiallyVisibleInViewport = (
+  element: HTMLElement,
+  el: HTMLElement
+) => {
+  if (!isNodeVisibleInViewport(element, el)) {
+    return false;
+  }
+  const rect = el.getBoundingClientRect();
+  return (
+    rect.top < 0 ||
+    rect.left < 0 ||
+    rect.bottom > element.clientHeight ||
+    rect.right > element.clientWidth
+  );
+};
+
+const getVisibleCharRange = (element: HTMLElement, root: HTMLElement) => {
+  const text = root.textContent || "";
+  if (!text.trim()) {
+    return null;
+  }
+
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let currentNode = walker.nextNode();
+  let offset = 0;
+  let start = -1;
+  let end = -1;
+
+  while (currentNode) {
+    const content = currentNode.textContent || "";
+    if (content.length > 0) {
+      const nodeRange = document.createRange();
+      nodeRange.selectNodeContents(currentNode);
+      const nodeRects = Array.from(nodeRange.getClientRects());
+      const nodeMayBeVisible = nodeRects.some((rect) =>
+        isTextVisibleInViewport(rect, element)
+      );
+
+      if (nodeMayBeVisible) {
+        let prevCharVisible = false;
+        for (let i = 0; i < content.length; i++) {
+          const charRange = document.createRange();
+          charRange.setStart(currentNode, i);
+          charRange.setEnd(currentNode, i + 1);
+          const charRects = Array.from(charRange.getClientRects());
+          let visible = charRects.some((rect) =>
+            isTextVisibleInViewport(rect, element)
+          );
+          if (
+            !visible &&
+            prevCharVisible &&
+            ZERO_WIDTH_QUOTE_CHARS.test(content[i])
+          ) {
+            visible = true;
+          }
+
+          if (visible) {
+            if (start === -1) {
+              start = offset + i;
+            }
+            end = offset + i + 1;
+          }
+          prevCharVisible = visible;
+        }
+      }
+    }
+
+    offset += content.length;
+    currentNode = walker.nextNode();
+  }
+
+  if (start === -1 || end === -1) {
+    return null;
+  }
+
+  return { start, end, text };
+};
+export const detectLocalLanguage = (text: string): string => {
+  const chinesePattern = /[\u4e00-\u9fff\u3000-\u303f\uf900-\ufaff]/g;
+  const japanesePattern = /[\u3040-\u309f\u30a0-\u30ff]/g;
+  const koreanPattern = /[\uac00-\ud7af\u1100-\u11ff]/g;
+
+  const chineseCount = (text.match(chinesePattern) || []).length;
+  const japaneseCount = (text.match(japanesePattern) || []).length;
+  const koreanCount = (text.match(koreanPattern) || []).length;
+
+  const cjkTotal = chineseCount + japaneseCount + koreanCount;
+  if (cjkTotal / text.length <= 0.3) return "en";
+
+  if (chineseCount >= japaneseCount && chineseCount >= koreanCount) return "zh";
+  if (japaneseCount >= chineseCount && japaneseCount >= koreanCount)
+    return "ja";
+  return "ko";
+};
+const getNodeVisibleText = (element: HTMLElement, item: HTMLElement) => {
+  const text = item.textContent || "";
+  if (!text.trim()) {
+    return text;
+  }
+
+  if (!isNodePartiallyVisibleInViewport(element, item)) {
+    return text;
+  }
+
+  const visibleRange = getVisibleCharRange(element, item);
+  if (!visibleRange) {
+    return text;
+  }
+
+  const { start, end } = snapRangeToSentences(
+    text,
+    visibleRange.start,
+    visibleRange.end
+  );
+
+  if (end <= start) {
+    return text.substring(visibleRange.start, visibleRange.end);
+  }
+
+  return text.substring(start, end);
+};
+
 export const getVisibleText = (
   element: HTMLElement,
   readerMode: string,
@@ -842,7 +1077,7 @@ export const getVisibleText = (
 
   let visibleNode = nodeList.filter(
     (s) =>
-      isScrolledIntoView(element, s as HTMLElement, readerMode) &&
+      isNodeVisibleInViewport(element, s as HTMLElement) &&
       ((s as HTMLElement).textContent || "").trim()
   );
   visibleNode = visibleNode.filter((s) => {
@@ -868,7 +1103,7 @@ export const getVisibleText = (
       (item) =>
         item.textContent !== "img" && !item.textContent?.startsWith("img")
     )
-    .map((item) => item.textContent)
+    .map((item) => getNodeVisibleText(element, item as HTMLElement))
     .filter((s) => s);
 };
 export const handleHighlightSearchNode = (
@@ -947,6 +1182,7 @@ export const handleHighlightSearchNode = (
             const highlightSpan = doc.createElement("span");
             highlightSpan.setAttribute("style", style);
             highlightSpan.setAttribute("data-highlight", "true");
+            highlightSpan.setAttribute("class", "kookit-highlight-text");
             highlightSpan.textContent = match.originalText;
             fragment.appendChild(highlightSpan);
 
@@ -1007,11 +1243,7 @@ export const handleHighlightAudioNode = (
   if (!text.trim()) return;
 
   // Get block elements and find those containing the target text
-  let nodeList = getBlockElement(doc.body).filter(
-    (s) =>
-      isScrolledIntoView(element, s as HTMLElement, readerMode) &&
-      ((s as HTMLElement).textContent || "").trim()
-  );
+  let nodeList = getBlockElement(doc.body);
   let nodes = nodeList.filter((node) => {
     const content = (node as HTMLElement).textContent || "";
     return content.trim() && content.indexOf(text) > -1;
@@ -1035,7 +1267,7 @@ export const handleHighlightAudioNode = (
           highlightSpan.setAttribute("style", style);
           highlightSpan.setAttribute("data-highlight", "true");
           highlightSpan.textContent = text;
-
+          highlightSpan.setAttribute("class", "kookit-highlight-text");
           // Replace the original text node with three new nodes
           const fragment = doc.createDocumentFragment();
           if (before) fragment.appendChild(doc.createTextNode(before));

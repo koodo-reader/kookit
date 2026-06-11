@@ -3,6 +3,7 @@ import ChapterDoc from "../model/chapterDoc";
 import {
   convertStyleNum,
   getSelectedElement,
+  handleOneChapterDoc,
   progressInfo,
 } from "../utils/layoutUtil";
 import {
@@ -36,7 +37,11 @@ import rangy from "rangy/lib/rangy-core.js";
 import "rangy/lib/rangy-textrange";
 
 import { getPDFSearchResult } from "../utils/pdfUtil";
-import { addAndroidTouchEvent, addAppleTouchEvent } from "../utils/touchUtil";
+import {
+  addAndroidTouchEvent,
+  addAppleTouchEvent,
+  slideAnimateTo,
+} from "../utils/touchUtil";
 import { getBlockElement, isParentBlock } from "../utils/common";
 declare var window: any;
 class GeneralRender extends EventEmitter {
@@ -45,6 +50,7 @@ class GeneralRender extends EventEmitter {
   animation: string;
   convertChinese: string | undefined;
   isIndent: string | undefined;
+  bookLayout: string | undefined;
   isHyphenation: string | undefined;
   isDarkMode: string | undefined;
   textOrientation: string | undefined;
@@ -87,6 +93,7 @@ class GeneralRender extends EventEmitter {
     textOrientation?: string;
     isAllowScript?: string;
     fullTranslationMode?: string;
+    bookLayout?: string;
   }) {
     super();
     this.readerMode = config.readerMode;
@@ -114,6 +121,8 @@ class GeneralRender extends EventEmitter {
     window.transMap = this.transMap;
     this.fullTranslationMode = config.fullTranslationMode || "no";
     window.fullTranslationMode = this.fullTranslationMode;
+    this.bookLayout = config.bookLayout || "";
+    window.bookLayout = this.bookLayout;
 
     //手机版环境已经有严格的安全限制，无需额外限制，PDF中无法执行代码，强行开启则无法渲染图书
     this.isAllowScript =
@@ -181,7 +190,7 @@ class GeneralRender extends EventEmitter {
       gap: gap,
     };
   }
-  scrollToText(text: string) {
+  async scrollToText(text: string) {
     let doc = this.getDocument();
     if (!doc) return;
     let nodeList = getBlockElement(doc.body).filter(
@@ -216,6 +225,19 @@ class GeneralRender extends EventEmitter {
         this.element.scrollTo(0, top);
       }
     }
+    if (this.animation !== "" && this.isMobile !== "yes") {
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    await handleRecord(
+      this.element,
+      this.readerMode,
+      this.flatChapter(this.chapterList),
+      this.chapterDocList,
+      this.tempLocation,
+      doc,
+      null
+    );
+    this.trigger("scroll-text");
   }
   async goToPage(targetPage: number) {
     if (this.readerMode === "scroll") {
@@ -629,14 +651,6 @@ class GeneralRender extends EventEmitter {
       if (this.tempLocation.chapterDocIndex === "0") {
         return;
       }
-      if (
-        this.animation === "mimical" &&
-        this.readerMode !== "scroll" &&
-        this.isMobile === "yes"
-      ) {
-        //sleep 1s prevent animation stuck
-        await new Promise((r) => setTimeout(r, 500));
-      }
       await handlePrevChapter(
         this.element,
         this.flatChapter(this.chapterList),
@@ -705,14 +719,6 @@ class GeneralRender extends EventEmitter {
       ) < 20 &&
         this.readerMode === "scroll")
     ) {
-      if (
-        this.animation === "mimical" &&
-        this.readerMode !== "scroll" &&
-        this.isMobile === "yes"
-      ) {
-        //sleep 1s prevent animation stuck
-        await new Promise((r) => setTimeout(r, 500));
-      }
       // if the last page
       await handleNextChapter(
         this.element,
@@ -768,6 +774,13 @@ class GeneralRender extends EventEmitter {
     }
     await this.record();
   }
+  async slideTo(direction: string) {
+    let doc = this.getDocument();
+    if (!doc) return;
+    let section = Math.floor(this.element.clientWidth / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+    slideAnimateTo(direction, this.format, doc, doc, this.element, this, gap);
+  }
   async prevChapter() {
     let doc = this.getDocument();
     let iframe = this.getIframe();
@@ -810,8 +823,42 @@ class GeneralRender extends EventEmitter {
   async audioText() {
     let doc = this.getDocument();
     if (!doc) return [];
-    let audioTexts = await getAudioText(this.element, this.readerMode, doc);
+    let audioTexts = await getAudioText(
+      this.element,
+      this.readerMode,
+      doc,
+      false
+    );
     return audioTexts;
+  }
+  async getRestAudioText(count: number) {
+    const currentIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
+    const result: { chapterDocIndex: number; audioText: string[] }[] = [];
+    const startIndex = currentIndex + 1;
+    const endIndex = Math.min(startIndex + count, this.chapterDocList.length);
+
+    for (let i = startIndex; i < endIndex; i++) {
+      const chapterText = await handleOneChapterDoc(
+        this.chapterDocList[i].text,
+        true
+      );
+      if (!chapterText) continue;
+      const chapterDoc = new DOMParser().parseFromString(
+        chapterText,
+        "text/html"
+      );
+      const audioText = getAudioText(
+        this.element,
+        this.readerMode,
+        chapterDoc,
+        true
+      );
+      result.push({
+        chapterDocIndex: i,
+        audioText: audioText.filter((s): s is string => !!s),
+      });
+    }
+    return result;
   }
   async chapterText() {
     let doc = this.getDocument();
@@ -969,7 +1016,7 @@ class GeneralRender extends EventEmitter {
     } as any;
   }
   async record() {
-    if (this.animation !== "") {
+    if (this.animation !== "" && this.isMobile !== "yes") {
       await new Promise((r) => setTimeout(r, 1000));
     }
     let doc = this.getDocument();
@@ -1522,7 +1569,6 @@ class GeneralRender extends EventEmitter {
   ) {
     let doc = this.getDocument();
     if (!doc) return;
-    // console.log(results, "results");
     // Clear previous definitions before re-applying
     clearWordDefinitions(doc);
     // Build a flat list of audio nodes to match against result.text

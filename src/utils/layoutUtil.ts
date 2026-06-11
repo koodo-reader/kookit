@@ -1,6 +1,6 @@
 import Chinese from "../libs/zh-convert";
 import { processDocumentBody } from "./bionicUtil";
-import { isElectron } from "./common";
+import { getStylePxNumber, isElectron } from "./common";
 import { getBlockElement, isParentBlock } from "./common";
 declare var window: any;
 export const isVerticalLayout = (): boolean => {
@@ -39,8 +39,10 @@ export const handleIframeHeight = async (
       }, 10);
     }),
   ]);
-  await handleImageSize(element, readerMode, format, doc);
-  handleTextStyle(doc);
+  if (!doc.body.getAttribute("data-kookit-fixed-scale")) {
+    await handleImageSize(element, readerMode, format, doc);
+  }
+  await handleTextStyle(doc);
   if (readerMode !== "scroll") {
     iframe.height = element.clientHeight + "px";
     if (readerMode === "double") {
@@ -71,7 +73,6 @@ export const handleIframeHeight = async (
     iframe.height = doc.body.scrollHeight + "px";
     iframe.height = doc.body.scrollHeight + 300 + "px";
   }
-  // await new Promise((r) => setTimeout(r, 1));
 };
 
 export const handleOneChapterDoc = async (item, isSearch: boolean) => {
@@ -224,10 +225,6 @@ export const progressInfo = (
   doc: Document,
   element: any
 ) => {
-  //TODO 是否有必要保留延时
-  // if (parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") === 1) {
-  //   await new Promise((r) => setTimeout(r, 1000));
-  // }
   const vertical = isVerticalLayout() && readerMode !== "scroll";
   if (vertical) {
     let section = Math.floor(element.clientHeight / 12);
@@ -284,7 +281,23 @@ export const progressInfo = (
           ) + 1,
   };
 };
-export const tranformText = (doc: Document) => {
+export const transformText = async (doc: Document) => {
+  if (window.bookLayout) {
+    const cssPath = () =>
+      `${isElectron() ? "." : ""}/lib/${window.bookLayout}-css/${window.bookLayout}.min.css`;
+
+    const fetchText = async (url) => await (await fetch(url)).text();
+    const textCSS = async () => await fetchText(cssPath());
+
+    const style = document.createElement("style");
+    style.id = "kookit-book-layout-style";
+    style.textContent = await textCSS();
+    doc.head.appendChild(style);
+    //attach class to body for book layout specific adjustments if not exist
+    if (!doc.body.classList.contains(window.bookLayout)) {
+      doc.body.classList.add(window.bookLayout);
+    }
+  }
   if (window.convertChinese === "Simplified To Traditional") {
     doc
       .querySelectorAll(
@@ -356,8 +369,8 @@ export const tranformText = (doc: Document) => {
     processDocumentBody(doc);
   }
 };
-export const handleTextStyle = (doc: Document) => {
-  tranformText(doc);
+export const handleTextStyle = async (doc: Document) => {
+  await transformText(doc);
 };
 export const getImageMeta = async (url) => {
   const img = new Image();
@@ -411,23 +424,52 @@ export const handleImageSize = async (
     grandTagName: string;
     existingStyle: string;
   };
+  const getContentWidth = (el: Element | null | undefined): number => {
+    if (!el) return 0;
+    const style = getComputedStyle(el);
+    return (
+      Math.min(el.clientWidth, pageWidth) -
+      parseFloat(style.paddingLeft) -
+      parseFloat(style.paddingRight)
+    );
+  };
+  const getContentHeight = (el: Element | null | undefined): number => {
+    if (!el) return 0;
+    const style = getComputedStyle(el);
+    return (
+      Math.min(el.clientHeight, elementClientHeight) -
+      parseFloat(style.paddingTop) -
+      parseFloat(style.paddingBottom)
+    );
+  };
 
   const measures: ImageMeasure[] = imgs.map((item) => {
     const parentItem = item.parentElement;
     const grandItem = parentItem?.parentElement;
-    const width =
-      item.tagName === "image" ? item._naturalWidth : item.naturalWidth;
-    const height =
-      item.tagName === "image" ? item._naturalHeight : item.naturalHeight;
+    let width = item.getAttribute("width");
+    let height = item.getAttribute("height");
+    if (!width && item.getAttribute("style")) {
+      width = getStylePxNumber(item.getAttribute("style") as string, "width");
+    }
+    if (!height && item.getAttribute("style")) {
+      height = getStylePxNumber(item.getAttribute("style") as string, "height");
+    }
+    if (!width) {
+      width = item.tagName === "image" ? item._naturalWidth : item.naturalWidth;
+    }
+    if (!height) {
+      height =
+        item.tagName === "image" ? item._naturalHeight : item.naturalHeight;
+    }
     return {
       item,
       width: width || 0,
       height: height || 0,
       parentOffsetWidth: parentItem?.offsetWidth || 0,
-      parentClientWidth: parentItem?.clientWidth || 0,
-      parentClientHeight: parentItem?.clientHeight || 0,
-      grandClientWidth: grandItem?.clientWidth || 0,
-      grandClientHeight: grandItem?.clientHeight || 0,
+      parentClientWidth: getContentWidth(parentItem),
+      parentClientHeight: getContentHeight(parentItem),
+      grandClientWidth: getContentWidth(grandItem),
+      grandClientHeight: getContentHeight(grandItem),
       grandTagName: grandItem?.tagName || "",
       existingStyle: item.getAttribute("style") || "",
     };
@@ -501,14 +543,14 @@ export const handleImageSize = async (
       maxWidth = Math.min(
         readerMode === "scroll" || readerMode === "single"
           ? elementClientWidth
-          : (elementClientWidth - gap) / 2,
+          : pageWidth,
         maxWidth
       );
     } else {
       maxWidth =
         readerMode === "scroll" || readerMode === "single"
           ? elementClientWidth
-          : (elementClientWidth - gap) / 2;
+          : pageWidth;
     }
 
     if (width && height) {

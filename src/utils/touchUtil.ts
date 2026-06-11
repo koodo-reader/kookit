@@ -3,7 +3,7 @@ import rangy from "rangy/lib/rangy-core.js";
 declare var window: any;
 let selectionTimeout: any = null;
 let isDragging = false;
-async function slideAnimateTo(
+export const slideAnimateTo = (
   direction: string,
   format: string,
   doc: any,
@@ -11,7 +11,7 @@ async function slideAnimateTo(
   element: any,
   render: any,
   gap: number
-) {
+) => {
   let pageWidth = element.clientWidth + gap;
   let tempDoc = format === "PDF" ? outerDoc : doc;
 
@@ -113,7 +113,7 @@ async function slideAnimateTo(
   }
 
   window.scrollAnimationId = requestAnimationFrame(animateScroll);
-}
+};
 async function blobUrlToBase64(blobUrl) {
   try {
     // 1. 获取Blob数据
@@ -227,8 +227,11 @@ const getSelectionSentence = (doc: any): string => {
         : container;
     let fullText = (el as Element)?.textContent || "";
     let selectedText = sel.toString().trim();
-    // Split on sentence-ending punctuation to find the sentence
-    let sentences = fullText.split(/(?<=[.!?。！？])\s*/);
+    // Split after sentence-ending punctuation (avoid lookbehind for old WebViews)
+    let sentences =
+      fullText
+        .match(/[^.!?。！？]*[.!?。！？]?/g)
+        ?.filter((s) => s.length > 0) ?? [];
     for (let s of sentences) {
       if (s.includes(selectedText)) {
         return s.trim();
@@ -280,7 +283,12 @@ export const addAndroidTouchEvent = (
     const timeDiff = touchEndTime - touchStartTime;
     const distX = touchEndX - touchStartX;
     const distY = touchEndY - touchStartY;
-    if (isDragging && animation === "mimical" && readerMode !== "scroll") {
+    // 墨水屏模式下的animation为none，需要关闭动画
+    if (
+      isDragging &&
+      (animation === "mimical" || animation === "none") &&
+      readerMode !== "scroll"
+    ) {
       isDragging = false;
       render.mouseUpHandler(event);
       if (
@@ -743,7 +751,11 @@ export const addAppleTouchEvent = (
     const timeDiff = touchEndTime - touchStartTime;
     const distX = touchEndX - touchStartX;
     const distY = touchEndY - touchStartY;
-    if (isDragging && animation === "mimical" && readerMode !== "scroll") {
+    if (
+      isDragging &&
+      (animation === "mimical" || animation === "none") &&
+      readerMode !== "scroll"
+    ) {
       isDragging = false;
       render.mouseUpHandler(event);
       if (
