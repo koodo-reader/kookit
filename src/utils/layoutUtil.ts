@@ -73,7 +73,6 @@ export const handleIframeHeight = async (
     iframe.height = doc.body.scrollHeight + "px";
     iframe.height = doc.body.scrollHeight + 300 + "px";
   }
-  // await new Promise((r) => setTimeout(r, 1));
 };
 
 export const handleOneChapterDoc = async (item, isSearch: boolean) => {
@@ -226,10 +225,6 @@ export const progressInfo = (
   doc: Document,
   element: any
 ) => {
-  //TODO 是否有必要保留延时
-  // if (parseInt(doc.body.scrollWidth / doc.body.clientWidth + "") === 1) {
-  //   await new Promise((r) => setTimeout(r, 1000));
-  // }
   const vertical = isVerticalLayout() && readerMode !== "scroll";
   if (vertical) {
     let section = Math.floor(element.clientHeight / 12);

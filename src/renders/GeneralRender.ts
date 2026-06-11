@@ -225,7 +225,6 @@ class GeneralRender extends EventEmitter {
         this.element.scrollTo(0, top);
       }
     }
-    await this.record();
   }
   async goToPage(targetPage: number) {
     if (this.readerMode === "scroll") {
