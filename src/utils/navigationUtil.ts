@@ -360,7 +360,17 @@ export const handleRenderChapter = async (
   } else {
     doc.body.removeAttribute("id");
   }
-  const baseStyle = doc.body.getAttribute("style") || "";
+
+  let baseStyle = doc.body.getAttribute("style") || "";
+  // Remove transform and transform-origin from baseStyle to avoid stale values
+  if (baseStyle) {
+    baseStyle = baseStyle
+      .split(";")
+      .map((s) => s.trim())
+      .filter((s) => s && !/^transform(-origin)?\s*:/i.test(s))
+      .join("; ");
+    if (baseStyle) baseStyle += ";";
+  }
   const incomingStyle = (bodyAttrs as any)["style"] || "";
   const mergedStyle = mergeStyleStrings(baseStyle, incomingStyle);
 
@@ -375,7 +385,11 @@ export const handleRenderChapter = async (
     const iframeHeight = iframe?.getBoundingClientRect().height;
     const availableHeight =
       iframeHeight > 0 ? iframeHeight : element.clientHeight;
-    if (pageWidth > 0 && availableHeight > 0) {
+    if (
+      pageWidth > 0 &&
+      availableHeight > 0 &&
+      getStylePxNumber(mergedStyle, "width") !== element.clientWidth
+    ) {
       const widthRatio = pageWidth / chapterFixedWidth;
       const heightRatio = availableHeight / chapterFixedHeight;
       const scaleValue = Math.min(1, widthRatio, heightRatio);
