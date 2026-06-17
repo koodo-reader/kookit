@@ -388,6 +388,7 @@ export const handleRenderChapter = async (
     if (
       pageWidth > 0 &&
       availableHeight > 0 &&
+      getStylePxNumber(mergedStyle, "width") &&
       getStylePxNumber(mergedStyle, "width") !== element.clientWidth
     ) {
       const widthRatio = pageWidth / chapterFixedWidth;
