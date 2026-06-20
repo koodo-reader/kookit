@@ -298,6 +298,37 @@ export const transformText = async (doc: Document) => {
       doc.body.classList.add(window.bookLayout);
     }
   }
+  if (window.codeHighlighter) {
+    const fetchText = async (url) => await (await fetch(url)).text();
+    const cssPath = () =>
+      `${isElectron() ? "." : ""}/lib/highlight-js/default.min.css`;
+
+    const textCSS = async () => await fetchText(cssPath());
+    const scriptPath = () =>
+      `${isElectron() ? "." : ""}/lib/highlight-js/highlight.min.js`;
+    const textJS = async () => await fetchText(scriptPath());
+    const codePath = () =>
+      `${isElectron() ? "." : ""}/lib/highlight-js/languages/${window.codeHighlighter}.min.js`;
+    const textCode = async () => await fetchText(codePath());
+    const script = document.createElement("script");
+    script.textContent = await textJS();
+    doc.head.appendChild(script);
+    const codeScript = document.createElement("script");
+    codeScript.textContent = await textCode();
+    doc.head.appendChild(codeScript);
+    const style = document.createElement("style");
+    style.id = "kookit-code-highlighter-style";
+    style.textContent = await textCSS();
+    doc.head.appendChild(style);
+    let codeElements = doc.querySelectorAll("code");
+    codeElements.forEach((code) => {
+      code.classList.add("language-" + window.codeHighlighter);
+    });
+    // Initialize the syntax highlighting
+    const initScript = document.createElement("script");
+    initScript.textContent = "hljs.highlightAll();";
+    doc.head.appendChild(initScript);
+  }
   if (window.convertChinese === "Simplified To Traditional") {
     doc
       .querySelectorAll(
