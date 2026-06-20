@@ -72,8 +72,22 @@ class StyleHelper {
       `h1, h2, h3, h4, h5, h6, title{${this.getCustomCss(ConfigService, true)}}`
     );
 
-    // Code formatting
-    cssRules.push("code,pre{white-space: pre-wrap;}");
+    // Code formatting — allow wrapping and column fragmentation
+    cssRules.push(
+      "code,pre{" +
+        "white-space:pre-wrap !important;" +
+        "word-wrap:break-word;" +
+        "word-break:break-word;" +
+        "overflow-wrap:anywhere;" +
+        "overflow:visible !important;" +
+        "overflow-x:visible !important;" +
+        "overflow-y:visible !important;" +
+        "max-height:none !important;" +
+        "break-inside:auto !important;" +
+        "page-break-inside:auto !important;" +
+        "-webkit-column-break-inside:auto !important;" +
+        "}"
+    );
 
     // // Blockquote styles
     // cssRules.push(
