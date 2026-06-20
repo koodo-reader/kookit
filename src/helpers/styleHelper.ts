@@ -80,15 +80,18 @@ class StyleHelper {
     //   "blockquote{border-left: 4px solid #ccc; padding-left: 1em; margin: 1em 0; color: #666;}"
     // );
 
-    // Table styles
+    // Table styles — force tables to fit within the reader width
     cssRules.push(
-      "table{width:100%;border-collapse:collapse;margin:20px 0;line-height:1.6;border: 1px solid #ddd;}td, th{word-break: break-word;overflow-wrap: anywhere;}"
+      "table{width:100% !important;max-width:100% !important;table-layout:fixed !important;box-sizing:border-box;border-collapse:collapse;margin:20px 0;line-height:1.6;border:1px solid #ddd;}"
     );
     cssRules.push(
-      "thead th{font-weight:bold;padding:14px 12px;text-align:left;white-space:nowrap;border-bottom: 2px solid #ccc; background-color: rgba(0,0,0,0.05);}"
+      "td,th{word-break:break-word;overflow-wrap:anywhere;max-width:0;min-width:0;overflow:hidden;box-sizing:border-box;}"
     );
     cssRules.push(
-      "td,th{padding:12px 14px;vertical-align:top;text-align:left;border: 2px solid #e0e0e0;}"
+      "thead th{font-weight:bold;padding:14px 12px;text-align:left;white-space:normal;border-bottom:2px solid #ccc;background-color:rgba(0,0,0,0.05);}"
+    );
+    cssRules.push(
+      "td,th{padding:12px 14px;vertical-align:top;text-align:left;border:2px solid #e0e0e0;}"
     );
 
     // Ruby text font size
