@@ -82,7 +82,7 @@ class StyleHelper {
 
     // Table styles
     cssRules.push(
-      "table{width:100%;border-collapse:collapse;margin:20px 0;line-height:1.6;border: 1px solid #ddd;}"
+      "table{width:100%;border-collapse:collapse;margin:20px 0;line-height:1.6;border: 1px solid #ddd;}td, th{word-break: break-word;overflow-wrap: anywhere;}"
     );
     cssRules.push(
       "thead th{font-weight:bold;padding:14px 12px;text-align:left;white-space:nowrap;border-bottom: 2px solid #ccc; background-color: rgba(0,0,0,0.05);}"
