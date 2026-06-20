@@ -44,6 +44,16 @@ import {
 } from "../utils/touchUtil";
 import { getBlockElement, isParentBlock } from "../utils/common";
 declare var window: any;
+export interface TextRule {
+  id: string;
+  type: "replace" | "delete";
+  pattern: string;
+  replacement?: string;
+  matchType: "regex" | "plain";
+  scope: "all" | "book";
+  bookKey?: string;
+  bookName?: string;
+}
 class GeneralRender extends EventEmitter {
   readerMode: string;
   format: string;
@@ -51,6 +61,7 @@ class GeneralRender extends EventEmitter {
   convertChinese: string | undefined;
   isIndent: string | undefined;
   bookLayout: string | undefined;
+  textRules: TextRule[];
   codeHighlighter: string | undefined;
   isHyphenation: string | undefined;
   isDarkMode: string | undefined;
@@ -95,6 +106,7 @@ class GeneralRender extends EventEmitter {
     isAllowScript?: string;
     fullTranslationMode?: string;
     bookLayout?: string;
+    textRules?: TextRule[];
     codeHighlighter?: string;
   }) {
     super();
@@ -127,6 +139,8 @@ class GeneralRender extends EventEmitter {
     window.bookLayout = this.bookLayout;
     this.codeHighlighter = config.codeHighlighter || "";
     window.codeHighlighter = this.codeHighlighter;
+    this.textRules = config.textRules || [];
+    window.textRules = this.textRules;
 
     //手机版环境已经有严格的安全限制，无需额外限制，PDF中无法执行代码，强行开启则无法渲染图书
     this.isAllowScript =
