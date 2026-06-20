@@ -26,13 +26,13 @@ class StyleHelper {
         "margin-left:2px;" +
         "}"
     );
-    // Text rule styles — collapse original text to zero width, show replacement via ::after
-    // (no extra text nodes, keeps rangy character offsets stable)
+    // Collapse matched text to zero width (inline flow preserved for rangy offsets).
+    // Replace shows substitution via ::after; delete has no ::after.
     const textRuleFontSize = ConfigService.getReaderConfig("fontSize") || 18;
     const textRuleLineHeight = ConfigService.getReaderConfig("lineHeight") || "1.25";
     const textRuleLetterSpacing = ConfigService.getReaderConfig("letterSpacing");
     cssRules.push(
-      ".kookit-text-rule-replace{" +
+      ".kookit-text-rule-replace,.kookit-text-rule-delete{" +
         "font-size:0 !important;" +
         "line-height:0 !important;" +
         "letter-spacing:0 !important;" +
@@ -52,7 +52,6 @@ class StyleHelper {
         "color:inherit;" +
         "}"
     );
-    cssRules.push(".kookit-text-rule-delete{display:none;}");
     cssRules.push(
       ".kookit-note-icon{line-height:1;font-size:14px;cursor:pointer;}"
     );
