@@ -91,9 +91,6 @@ class StyleHelper {
       "td,th{padding:12px 14px;vertical-align:top;text-align:left;border: 2px solid #e0e0e0;}"
     );
 
-    // Paragraph margin reset
-    cssRules.push("div,p{margin-block: 0;margin-inline: 0;display: block;}");
-
     // Ruby text font size
     cssRules.push("rt span{font-size: unset !important;}");
 
@@ -283,8 +280,6 @@ class StyleHelper {
 
     cssRules.push("max-width: 100%");
     cssRules.push("overflow: visible");
-    cssRules.push("margin-top: 0");
-    cssRules.push("margin-bottom: 0");
 
     return cssRules.join("; ") + ";";
   }
