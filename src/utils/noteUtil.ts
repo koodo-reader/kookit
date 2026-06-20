@@ -838,6 +838,8 @@ export const applyWordDefinitions = (
             tag === "RUBY" ||
             parent.classList.contains("kookit-note") ||
             parent.classList.contains("kookit-word-def") ||
+            parent.classList.contains("kookit-text-rule-replace") ||
+            parent.classList.contains("kookit-text-rule-delete") ||
             parent.classList.contains("kookit-note-tooltip") ||
             parent.classList.contains("kookit-word-tooltip")
           ) {

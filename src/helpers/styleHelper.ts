@@ -26,6 +26,33 @@ class StyleHelper {
         "margin-left:2px;" +
         "}"
     );
+    // Text rule styles — collapse original text to zero width, show replacement via ::after
+    // (no extra text nodes, keeps rangy character offsets stable)
+    const textRuleFontSize = ConfigService.getReaderConfig("fontSize") || 18;
+    const textRuleLineHeight = ConfigService.getReaderConfig("lineHeight") || "1.25";
+    const textRuleLetterSpacing = ConfigService.getReaderConfig("letterSpacing");
+    cssRules.push(
+      ".kookit-text-rule-replace{" +
+        "font-size:0 !important;" +
+        "line-height:0 !important;" +
+        "letter-spacing:0 !important;" +
+        "word-spacing:0 !important;" +
+        "display:inline;" +
+        "vertical-align:baseline;" +
+        "}"
+    );
+    cssRules.push(
+      ".kookit-text-rule-replace::after{" +
+        "content:attr(data-kookit-replacement);" +
+        `font-size:${textRuleFontSize}px !important;` +
+        `line-height:${textRuleLineHeight} !important;` +
+        (textRuleLetterSpacing
+          ? `letter-spacing:${textRuleLetterSpacing}px !important;`
+          : "") +
+        "color:inherit;" +
+        "}"
+    );
+    cssRules.push(".kookit-text-rule-delete{display:none;}");
     cssRules.push(
       ".kookit-note-icon{line-height:1;font-size:14px;cursor:pointer;}"
     );
@@ -64,7 +91,7 @@ class StyleHelper {
 
     // Content elements with custom styles
     cssRules.push(
-      `a, article, cite, div, li, p, span:not(.kookit-note):not(.kookit-note-icon):not(.kookit-highlight-text):not(.kookit-note-tooltip):not(.kookit-word-def):not(.kookit-word-tooltip), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
+      `a, article, cite, div, li, p, span:not(.kookit-note):not(.kookit-note-icon):not(.kookit-highlight-text):not(.kookit-note-tooltip):not(.kookit-word-def):not(.kookit-word-tooltip):not(.kookit-text-rule-replace):not(.kookit-text-rule-delete), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
     );
 
     // Title elements with custom styles

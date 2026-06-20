@@ -2,6 +2,7 @@ import Chinese from "../libs/zh-convert";
 import { processDocumentBody } from "./bionicUtil";
 import { getStylePxNumber, isElectron } from "./common";
 import { getBlockElement, isParentBlock } from "./common";
+import { applyTextRules } from "./textRuleUtil";
 declare var window: any;
 export const isVerticalLayout = (): boolean => {
   return window.textOrientation === "vertical";
@@ -415,36 +416,7 @@ export const transformText = async (doc: Document) => {
     await applyCodeHighlighting(doc, window.codeHighlighter);
   }
   if (window.textRules && window.textRules.length > 0) {
-    window.textRules.forEach((rule) => {
-      if (rule.scope === "all" || rule.scope === "book") {
-        const elements = doc.querySelectorAll(
-          "h1,h2,h3,h4,h5,h6,p,div,ul,dl,ol,pre,li,dt,dd,blockquote,address,kookitmarker"
-        );
-        elements.forEach((element) => {
-          if (rule.matchType === "regex") {
-            const regex = new RegExp(rule.pattern, "g");
-            if (rule.type === "replace") {
-              element.innerHTML = element.innerHTML.replace(
-                regex,
-                rule.replacement || ""
-              );
-            } else if (rule.type === "delete") {
-              element.innerHTML = element.innerHTML.replace(regex, "");
-            }
-          } else {
-            if (rule.type === "replace") {
-              element.innerHTML = element.innerHTML
-                .split(rule.pattern)
-                .join(rule.replacement || "");
-            } else if (rule.type === "delete") {
-              element.innerHTML = element.innerHTML
-                .split(rule.pattern)
-                .join("");
-            }
-          }
-        });
-      }
-    });
+    applyTextRules(doc, window.textRules);
   }
 };
 export const handleTextStyle = async (doc: Document) => {
