@@ -281,6 +281,49 @@ export const progressInfo = (
           ) + 1,
   };
 };
+const fetchHighlightAsset = async (path: string) => {
+  const url = `${isElectron() ? "." : ""}/lib/highlight-js/${path}`;
+  return await (await fetch(url)).text();
+};
+
+const runHighlightScript = (source: string) => {
+  const script = document.createElement("script");
+  script.textContent = source;
+  document.head.appendChild(script);
+};
+
+const ensureHighlightJs = async (language: string) => {
+  if (!window.hljs) {
+    runHighlightScript(await fetchHighlightAsset("highlight.min.js"));
+  }
+  if (window.kookitHljsLanguage !== language) {
+    runHighlightScript(
+      await fetchHighlightAsset(`languages/${language}.min.js`)
+    );
+    window.kookitHljsLanguage = language;
+  }
+};
+
+const getCodeHighlightTargets = (doc: Document) => {
+  return Array.from(doc.querySelectorAll("code")) as HTMLElement[];
+};
+
+const applyCodeHighlighting = async (doc: Document, language: string) => {
+  await ensureHighlightJs(language);
+  if (!doc.head.querySelector("#kookit-code-highlighter-style")) {
+    const style = document.createElement("style");
+    style.id = "kookit-code-highlighter-style";
+    style.textContent = await fetchHighlightAsset("default.min.css");
+    doc.head.appendChild(style);
+  }
+  const langClass = "language-" + language;
+  getCodeHighlightTargets(doc).forEach((element) => {
+    element.classList.add(langClass);
+    delete element.dataset.highlighted;
+    window.hljs.highlightElement(element);
+  });
+};
+
 export const transformText = async (doc: Document) => {
   if (window.bookLayout) {
     const cssPath = () =>
@@ -297,37 +340,6 @@ export const transformText = async (doc: Document) => {
     if (!doc.body.classList.contains(window.bookLayout)) {
       doc.body.classList.add(window.bookLayout);
     }
-  }
-  if (window.codeHighlighter) {
-    const fetchText = async (url) => await (await fetch(url)).text();
-    const cssPath = () =>
-      `${isElectron() ? "." : ""}/lib/highlight-js/default.min.css`;
-
-    const textCSS = async () => await fetchText(cssPath());
-    const scriptPath = () =>
-      `${isElectron() ? "." : ""}/lib/highlight-js/highlight.min.js`;
-    const textJS = async () => await fetchText(scriptPath());
-    const codePath = () =>
-      `${isElectron() ? "." : ""}/lib/highlight-js/languages/${window.codeHighlighter}.min.js`;
-    const textCode = async () => await fetchText(codePath());
-    const script = document.createElement("script");
-    script.textContent = await textJS();
-    doc.head.appendChild(script);
-    const codeScript = document.createElement("script");
-    codeScript.textContent = await textCode();
-    doc.head.appendChild(codeScript);
-    const style = document.createElement("style");
-    style.id = "kookit-code-highlighter-style";
-    style.textContent = await textCSS();
-    doc.head.appendChild(style);
-    let codeElements = doc.querySelectorAll("code");
-    codeElements.forEach((code) => {
-      code.classList.add("language-" + window.codeHighlighter);
-    });
-    // Initialize the syntax highlighting
-    const initScript = document.createElement("script");
-    initScript.textContent = "hljs.highlightAll();";
-    doc.head.appendChild(initScript);
   }
   if (window.convertChinese === "Simplified To Traditional") {
     doc
@@ -398,6 +410,9 @@ export const transformText = async (doc: Document) => {
   }
   if (window.isBionic === "yes") {
     processDocumentBody(doc);
+  }
+  if (window.codeHighlighter) {
+    await applyCodeHighlighting(doc, window.codeHighlighter);
   }
 };
 export const handleTextStyle = async (doc: Document) => {
