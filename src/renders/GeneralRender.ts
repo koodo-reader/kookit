@@ -1431,7 +1431,19 @@ class GeneralRender extends EventEmitter {
         return { handled: true };
       }
     }
-    if (href && this.resolveChapter(href)) {
+    if (
+      href &&
+      href.indexOf("../") === -1 &&
+      (href.indexOf("http") === 0 || href.indexOf("mailto") === 0) &&
+      href.indexOf("OEBPF") === -1 &&
+      href.indexOf("OEBPS") === -1 &&
+      href.indexOf("footnote") === -1 &&
+      href.indexOf("blob") === -1 &&
+      href.indexOf("data:application") === -1
+    ) {
+      // openExternalUrl(href);
+      return { handled: true, href: href, external: true };
+    } else if (href && this.resolveChapter(href)) {
       let chapterInfo = this.resolveChapter(href);
       if (!chapterInfo) return { handled: false };
       await this.goToChapter(
@@ -1505,18 +1517,6 @@ class GeneralRender extends EventEmitter {
         chapterInfo.label
       );
       return { handled: true };
-    } else if (
-      href &&
-      href.indexOf("../") === -1 &&
-      (href.indexOf("http") === 0 || href.indexOf("mailto") === 0) &&
-      href.indexOf("OEBPF") === -1 &&
-      href.indexOf("OEBPS") === -1 &&
-      href.indexOf("footnote") === -1 &&
-      href.indexOf("blob") === -1 &&
-      href.indexOf("data:application") === -1
-    ) {
-      // openExternalUrl(href);
-      return { handled: true, href: href, external: true };
     }
     return { handled: false };
   }
