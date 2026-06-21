@@ -23,6 +23,7 @@ declare var window: any;
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
   isStartFromEven: string = "no";
+  isKeepPDFBackground: string = "no";
   password: string = "";
   pdfScale: number = 0;
   scale: number = 1;
@@ -37,6 +38,7 @@ class PdfRender extends GeneralRender {
     super({ ...config, convertChinese: "Default", format: "PDF" });
     this.pdfBuffer = pdfBuffer;
     this.isStartFromEven = config.isStartFromEven || "no";
+    this.isKeepPDFBackground = config.isKeepPDFBackground || "no";
     this.password = config.password || "";
     this.scale = config.scale || 1;
     this.backgroundColor = config.backgroundColor || "#ffffff";
@@ -1047,7 +1049,8 @@ class PdfRender extends GeneralRender {
       subDoc,
       scale,
       this.isMobile,
-      this
+      this,
+      this.isKeepPDFBackground
     );
 
     let docLayer: any = subDoc.querySelector("#koodoPDFLayer");

@@ -50,7 +50,15 @@ const textLayerBuilderCSS = async () =>
 const annotationLayerBuilderCSS = async () =>
   await fetchText(pdfjsPath("annotation_layer_builder.css"));
 
-const render = async (page, pdf, doc, zoom, isMobile, viewer) => {
+const render = async (
+  page,
+  pdf,
+  doc,
+  zoom,
+  isMobile,
+  viewer,
+  isKeepPDFBackground
+) => {
   try {
     let devicePixelRatio =
       window.devicePixelRatio * (isMobile === "yes" ? (1 / zoom) * 1.5 : 1);
@@ -71,11 +79,18 @@ const render = async (page, pdf, doc, zoom, isMobile, viewer) => {
     canvas.width = viewport.width;
     const canvasContext = canvas.getContext("2d");
     try {
-      await page.render({
-        canvasContext,
-        viewport,
-        background: "rgba(0,0,0,0)",
-      }).promise;
+      if (isKeepPDFBackground === "yes") {
+        await page.render({
+          canvasContext,
+          viewport,
+        }).promise;
+      } else {
+        await page.render({
+          canvasContext,
+          viewport,
+          background: "rgba(0,0,0,0)",
+        }).promise;
+      }
     } catch (error) {
       console.error(error);
     }
@@ -449,8 +464,16 @@ export const makePDF = async (file, password) => {
       let page = await pdf.getPage(i + 1);
       page.cleanup();
     },
-    render: async (doc, scale, isMobile, viewer) => {
-      await render(await pdf.getPage(i + 1), pdf, doc, scale, isMobile, viewer);
+    render: async (doc, scale, isMobile, viewer, isKeepPDFBackground) => {
+      await render(
+        await pdf.getPage(i + 1),
+        pdf,
+        doc,
+        scale,
+        isMobile,
+        viewer,
+        isKeepPDFBackground
+      );
     },
     getTextContent: async () => {
       const page = await pdf.getPage(i + 1);

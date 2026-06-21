@@ -29,8 +29,10 @@ class StyleHelper {
     // Collapse matched text to zero width (inline flow preserved for rangy offsets).
     // Replace shows substitution via ::after; delete has no ::after.
     const textRuleFontSize = ConfigService.getReaderConfig("fontSize") || 18;
-    const textRuleLineHeight = ConfigService.getReaderConfig("lineHeight") || "1.25";
-    const textRuleLetterSpacing = ConfigService.getReaderConfig("letterSpacing");
+    const textRuleLineHeight =
+      ConfigService.getReaderConfig("lineHeight") || "1.25";
+    const textRuleLetterSpacing =
+      ConfigService.getReaderConfig("letterSpacing");
     cssRules.push(
       ".kookit-text-rule-replace,.kookit-text-rule-delete{" +
         "font-size:0 !important;" +
@@ -145,6 +147,9 @@ class StyleHelper {
       cssRules.push("a:hover{color: #004080 !important;}");
       cssRules.push("a:visited{color: #6600cc !important;}");
     }
+    if (ConfigService.getReaderConfig("isOverwriteBackground") === "yes") {
+      cssRules.push("body,html{background-color: transparent !important;}");
+    }
 
     // Conditional h1 font size for merged words
     if (ConfigService.getReaderConfig("isMergeWord") === "yes") {
@@ -222,6 +227,9 @@ class StyleHelper {
     const appSkin = ConfigService.getReaderConfig("appSkin");
     const isOSNight = ConfigService.getReaderConfig("isOSNight");
     const isOverwriteText = ConfigService.getReaderConfig("isOverwriteText");
+    const isOverwriteBackground = ConfigService.getReaderConfig(
+      "isOverwriteBackground"
+    );
 
     let colorValue = "";
     let colorImportant = "";
@@ -247,6 +255,9 @@ class StyleHelper {
 
     if (colorValue) {
       cssRules.push(`color: ${colorValue} ${colorImportant}`.trim());
+    }
+    if (isOverwriteBackground === "yes") {
+      cssRules.push("background-color: transparent !important");
     }
 
     // Letter spacing - only if exists
