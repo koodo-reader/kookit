@@ -57,7 +57,7 @@ export interface TextRule {
 class GeneralRender extends EventEmitter {
   readerMode: string;
   format: string;
-  animation: string;
+  animation: string = "none";
   convertChinese: string | undefined;
   isIndent: string | undefined;
   bookLayout: string | undefined;
@@ -113,7 +113,7 @@ class GeneralRender extends EventEmitter {
   }) {
     super();
     this.readerMode = config.readerMode;
-    this.animation = config.animation;
+    this.animation = config.animation || "none";
     this.format = config.format;
     this.convertChinese = config.convertChinese;
     window.convertChinese = config.convertChinese;
@@ -1038,7 +1038,7 @@ class GeneralRender extends EventEmitter {
     } as any;
   }
   async record() {
-    if (this.animation === "mimical" && this.isMobile !== "yes") {
+    if (this.animation !== "none" && this.isMobile !== "yes") {
       await new Promise((r) => setTimeout(r, 1000));
     }
     let doc = this.getDocument();
