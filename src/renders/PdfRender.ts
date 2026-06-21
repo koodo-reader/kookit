@@ -395,7 +395,7 @@ class PdfRender extends GeneralRender {
     );
     rangy.init();
     await this.recordByChapter(parseInt(chapterDocIndex));
-    // this.addPageAnimation();
+    this.addPageAnimation(this.backgroundColor);
   }
   async prev(platform?: string) {
     let doc = this.getDocument();
@@ -528,7 +528,7 @@ class PdfRender extends GeneralRender {
     return (await this.visibleText()).join(" ");
   }
   async record(): Promise<void> {
-    if (this.animation !== "") {
+    if (this.animation === "mimical" && this.isMobile !== "yes") {
       await new Promise((r) => setTimeout(r, 1000));
     }
     let doc = this.getDocument();
@@ -536,7 +536,7 @@ class PdfRender extends GeneralRender {
     await this.handlePDFRecord(doc);
   }
   async recordByChapter(chapterDocIndex: number): Promise<void> {
-    if (this.animation !== "") {
+    if (this.animation === "mimical" && this.isMobile !== "yes") {
       await new Promise((r) => setTimeout(r, 1000));
     }
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {

@@ -66,6 +66,7 @@ class GeneralRender extends EventEmitter {
   isHyphenation: string | undefined;
   isDarkMode: string | undefined;
   textOrientation: string | undefined;
+  backgroundColor: string;
   book: any;
   tempLocation: any;
   chapterList: Chapter[];
@@ -101,6 +102,7 @@ class GeneralRender extends EventEmitter {
     isHyphenation?: string;
     isDarkMode?: string;
     isMobile?: string;
+    backgroundColor?: string;
     isBionic?: string;
     textOrientation?: string;
     isAllowScript?: string;
@@ -121,6 +123,7 @@ class GeneralRender extends EventEmitter {
     window.isHyphenation = this.isHyphenation;
     this.isDarkMode = config.isDarkMode;
     this.isMobile = config.isMobile;
+    this.backgroundColor = config.backgroundColor || "";
     this.textOrientation = config.textOrientation;
     window.textOrientation = config.textOrientation;
     this.chapterList = [];
@@ -491,6 +494,7 @@ class GeneralRender extends EventEmitter {
     }
     await this.record();
     this.trigger("rendered");
+    this.addPageAnimation();
   }
   async goToPosition(bookLocationStr: string) {
     let doc = this.getDocument();
@@ -563,7 +567,7 @@ class GeneralRender extends EventEmitter {
     rangy.init();
     await this.record();
     this.trigger("rendered");
-    // this.addPageAnimation();
+    this.addPageAnimation();
   }
   getDocument(): Document | null {
     let pageArea = document.getElementById("page-area");
@@ -1034,7 +1038,7 @@ class GeneralRender extends EventEmitter {
     } as any;
   }
   async record() {
-    if (this.animation !== "" && this.isMobile !== "yes") {
+    if (this.animation === "mimical" && this.isMobile !== "yes") {
       await new Promise((r) => setTimeout(r, 1000));
     }
     let doc = this.getDocument();
@@ -1184,23 +1188,22 @@ class GeneralRender extends EventEmitter {
     );
   }
 
-  addPageAnimation = (backgroundColor: string) => {
-    if (this.animation === "mimical") {
-      let progressInfo = this.getProgress();
-      if (!progressInfo) return;
-      const pageAnimation = addPageAnimation(
-        progressInfo.totalPage,
-        this.isDarkMode,
-        backgroundColor
-      );
-      if (pageAnimation) {
-        this.flipToNextPage = pageAnimation.flipToNextPage;
-        this.flipToPrevPage = pageAnimation.flipToPrevPage;
-        this.mouseDownHandler = pageAnimation.mouseDownHandler;
-        this.mouseUpHandler = pageAnimation.mouseUpHandler;
-        this.mouseMoveHandler = pageAnimation.mouseMoveHandler;
-      }
-    }
+  addPageAnimation = (backgroundColor?: string) => {
+    if (this.animation !== "mimical") return;
+    const progress = this.getProgress();
+    if (!progress?.totalPage) return;
+    const pageAnimation = addPageAnimation(
+      progress.totalPage,
+      this.isDarkMode,
+      backgroundColor || this.backgroundColor,
+      Math.max(0, Math.floor(progress.currentPage || 1) - 1)
+    );
+    if (!pageAnimation) return;
+    this.flipToNextPage = pageAnimation.flipToNextPage;
+    this.flipToPrevPage = pageAnimation.flipToPrevPage;
+    this.mouseDownHandler = pageAnimation.mouseDownHandler;
+    this.mouseUpHandler = pageAnimation.mouseUpHandler;
+    this.mouseMoveHandler = pageAnimation.mouseMoveHandler;
   };
   async displayFontBase64(
     fontName: string,

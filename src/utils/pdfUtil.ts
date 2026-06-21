@@ -1,5 +1,6 @@
 import ChapterDoc from "../model/chapterDoc";
 import { convertStyleNum } from "./layoutUtil";
+import { playMimicalFlip } from "./navigationUtil";
 import _ from "underscore";
 
 export const getPdfScale = async (
@@ -287,21 +288,8 @@ export const handleIOSScrollPage = async (
   let section = Math.floor(doc.body.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   const width = doc.body.clientWidth;
-  if (animation === "mimical" && isMobile !== "yes") {
-    let bookDiv = document.getElementById("book");
-    if (bookDiv) {
-      bookDiv.style.display = "block";
-      if (delta > 0) {
-        flipToPrevPage();
-      } else if (delta < 0) {
-        flipToNextPage();
-      }
-      setTimeout(() => {
-        if (!bookDiv) return {};
-        bookDiv.style.display = "none";
-      }, 1000);
-    }
-  }
+  playMimicalFlip(animation, isMobile, delta, flipToNextPage, flipToPrevPage);
+
   if (delta > 0) {
     // previous page
     if (readerMode === "single") {

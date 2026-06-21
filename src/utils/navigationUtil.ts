@@ -78,6 +78,25 @@ export const resolveXPath = (xpath: string, doc: Document): Element | null => {
   }
 };
 
+export const playMimicalFlip = (
+  animation: string,
+  isMobile: string | undefined,
+  delta: number,
+  flipToNextPage: () => void,
+  flipToPrevPage: () => void
+) => {
+  if (animation !== "mimical" || isMobile === "yes") return false;
+  const bookDiv = document.getElementById("book");
+  if (!bookDiv) return false;
+  bookDiv.style.display = "block";
+  if (delta > 0) flipToPrevPage();
+  else if (delta < 0) flipToNextPage();
+  setTimeout(() => {
+    bookDiv.style.display = "none";
+  }, 1000);
+  return true;
+};
+
 export const handleScrollPage = async (
   element: HTMLElement,
   animation: string,
@@ -88,23 +107,7 @@ export const handleScrollPage = async (
   isMobile: string | undefined
 ) => {
   const vertical = isVerticalLayout();
-
-  if (animation === "mimical" && isMobile !== "yes") {
-    let bookDiv = document.getElementById("book");
-    if (bookDiv) {
-      bookDiv.style.display = "block";
-      if (delta > 0) {
-        flipToPrevPage();
-      } else if (delta < 0) {
-        flipToNextPage();
-      }
-      setTimeout(() => {
-        if (!bookDiv) return {};
-        bookDiv.style.display = "none";
-      }, 1000);
-    }
-  }
-
+  playMimicalFlip(animation, isMobile, delta, flipToNextPage, flipToPrevPage);
   if (vertical) {
     let section = Math.floor(element.clientHeight / 12);
     let gap = section % 2 === 0 ? section : section - 1;
