@@ -1035,23 +1035,20 @@ class PdfRender extends GeneralRender {
   applyPdfCrop(subIframe: any, subDoc: Document) {
     if (this.readerMode === "scroll") {
       subDoc.body.style.overflow = "hidden";
-      if (this.pdfCrop.left > 0 || this.pdfCrop.right > 0) {
-        function applyCrop(left, right) {
-          const visibleWidth = 100 - left - right;
-          const scale = 100 / visibleWidth;
+      const visibleWidth = 100 - this.pdfCrop.left - this.pdfCrop.right;
+      const scale = 100 / visibleWidth;
 
-          // 经验补偿系数，根据你的 PDF 微调（通常 0.6~0.9）
-          const compensation = 1;
-          const tx = (right - left) * (scale / 2) * compensation;
+      // 经验补偿系数，根据你的 PDF 微调（通常 0.6~0.9）
+      const compensation = 1;
+      const tx =
+        (this.pdfCrop.right - this.pdfCrop.left) * (scale / 2) * compensation;
 
-          subIframe.style.transformOrigin = "50% 50%";
-          subIframe.style.transform = `translateX(${tx}%) scale(${scale}) translateZ(0)`;
-        }
-        applyCrop(this.pdfCrop.left, this.pdfCrop.right);
-      }
+      subIframe.style.transformOrigin = "50% 50%";
+      subIframe.style.transform = `translateX(${tx}%) scale(${scale}) translateZ(0)`;
 
       if (this.pdfCrop.top > 0) {
-        subDoc.body.style.marginTop = "-" + (this.pdfCrop.top + 2) + "%";
+        subDoc.body.style.position = "relative";
+        subDoc.body.style.bottom = this.pdfCrop.top + 2 + "%";
       }
     }
   }
@@ -1104,7 +1101,14 @@ class PdfRender extends GeneralRender {
       docLayer.style.filter =
         "sepia(30%) hue-rotate(60deg) saturate(120%) brightness(95%)";
     }
-    this.applyPdfCrop(subIframe, subDoc);
+    if (
+      this.pdfCrop.top > 0 ||
+      this.pdfCrop.left > 0 ||
+      this.pdfCrop.right > 0
+    ) {
+      this.applyPdfCrop(subIframe, subDoc);
+    }
+
     if (this.readerMode === "single" || this.readerMode === "double") {
       let additionalHeight =
         this.element.clientHeight / 2 -
