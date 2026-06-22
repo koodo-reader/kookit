@@ -1153,7 +1153,11 @@ class PdfRender extends GeneralRender {
     if (this.pdfScale && this.pdfScale > 0) {
       return this.pdfScale;
     }
-    let doc = this.getSubDocument(this.templateChapterDocIndex);
+
+    let doc = this.getDocument();
+    if (this.readerMode === "scroll") {
+      doc = this.getSubDocument(this.templateChapterDocIndex);
+    }
     if (!doc) return 1;
     let { width, height } =
       await this.chapterDocList[
