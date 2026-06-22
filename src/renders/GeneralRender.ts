@@ -1,6 +1,7 @@
 import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
 import {
+  collectChapterImageUrls,
   convertStyleNum,
   getSelectedElement,
   handleOneChapterDoc,
@@ -886,6 +887,11 @@ class GeneralRender extends EventEmitter {
     let doc = this.getDocument();
     if (!doc) return "";
     return doc.body.textContent || "";
+  }
+  getImageList(): string[] {
+    const doc = this.getDocument();
+    if (!doc || this.format === "PDF") return [];
+    return collectChapterImageUrls(doc.body);
   }
   autoScroll(rate: number, isStart: string) {
     let doc = this.getDocument();

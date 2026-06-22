@@ -94,6 +94,36 @@ export const handleOneChapterDoc = async (item, isSearch: boolean) => {
 export const getImageElement = (Element) => {
   return Array.from(Element.querySelectorAll("img, image")) as HTMLElement[];
 };
+export const getImageUrl = (el: Element): string | null => {
+  return (
+    el.getAttribute("src") ||
+    el.getAttribute("href") ||
+    el.getAttribute("xlink:href") ||
+    null
+  );
+};
+export const collectChapterImageUrls = (root: Element): string[] => {
+  const urls: string[] = [];
+  const nodes = root.querySelectorAll("img, svg, image");
+
+  for (const el of nodes) {
+    const tag = el.tagName.toLowerCase();
+    if (tag === "img") {
+      const url = getImageUrl(el);
+      if (url) urls.push(url);
+    } else if (tag === "svg") {
+      el.querySelectorAll("image").forEach((img) => {
+        if (img.closest("svg") !== el) return;
+        const url = getImageUrl(img);
+        if (url) urls.push(url);
+      });
+    } else if (tag === "image" && !el.closest("svg")) {
+      const url = getImageUrl(el);
+      if (url) urls.push(url);
+    }
+  }
+  return urls;
+};
 export const handlePrecacheAssets = async (bookStr, item) => {
   let chapterDoc = new DOMParser().parseFromString(bookStr, "text/html") as any;
   if (item && item.loadAsset) {
