@@ -1031,6 +1031,22 @@ class PdfRender extends GeneralRender {
 
     textLayer.style.setProperty("--kookit-pdf-text-line-height", lineHeightKey);
   }
+  applyPdfCrop(subIframe: any, subDoc: Document) {
+    if (this.readerMode === "scroll") {
+      subDoc.body.style.overflow = "hidden";
+      if (this.pdfCrop.left > 0 || this.pdfCrop.right > 0) {
+        subIframe.style.transform = `scale(${100 / (100 - this.pdfCrop.left - this.pdfCrop.right)}) translateZ(0)`;
+        subIframe.style.transformOrigin = `${(this.pdfCrop.left - this.pdfCrop.right) * 2 + 50}% ${50}%`;
+      }
+
+      if (this.pdfCrop.bottom > 0) {
+        subIframe.style.height = 100 - this.pdfCrop.bottom + "%";
+      }
+      if (this.pdfCrop.top > 0) {
+        subIframe.style.top = "-" + this.pdfCrop.top + "%";
+      }
+    }
+  }
   async handleRenderPDFChapter(chapterDocIndex: number, doc: Document) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
@@ -1080,6 +1096,7 @@ class PdfRender extends GeneralRender {
       docLayer.style.filter =
         "sepia(30%) hue-rotate(60deg) saturate(120%) brightness(95%)";
     }
+    this.applyPdfCrop(subIframe, subDoc);
     if (this.readerMode === "single" || this.readerMode === "double") {
       let additionalHeight =
         this.element.clientHeight / 2 -
