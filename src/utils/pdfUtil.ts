@@ -41,7 +41,8 @@ export const createPDFContainer = async (
   element: HTMLElement,
   chapterDocList: ChapterDoc[],
   viewport: any,
-  readerMode: string
+  readerMode: string,
+  pdfCrop: { top: number; bottom: number; left: number; right: number }
 ) => {
   const fragment = document.createDocumentFragment();
   for (let index = 0; index < chapterDocList.length; index++) {
@@ -61,7 +62,11 @@ export const createPDFContainer = async (
       let scrollViewport = await chapterDocList[index].text.getDimension();
       const aspectRatio =
         scrollViewport?.width / scrollViewport?.height || 0.75; // Default to 3:4 if viewport unknown
-      iframeContainer.style.paddingTop = `${(1 / aspectRatio) * 100 + 5}%`;
+      const cropRatio = (100 - pdfCrop.bottom - pdfCrop.top) / 100;
+
+      iframeContainer.style.paddingTop = `${(1 / aspectRatio) * cropRatio * 100}%`;
+      iframeContainer.style.marginBottom = `2%`;
+      iframeContainer.style.overflow = "hidden";
     }
 
     if (readerMode === "double") {

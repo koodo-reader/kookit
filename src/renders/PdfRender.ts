@@ -108,7 +108,8 @@ class PdfRender extends GeneralRender {
         doc.body || (doc.documentElement as HTMLElement),
         this.chapterDocList,
         viewport,
-        this.readerMode
+        this.readerMode,
+        this.pdfCrop
       );
       let scrollTimeout: any = null;
       if (this.readerMode === "scroll") {
@@ -1035,15 +1036,22 @@ class PdfRender extends GeneralRender {
     if (this.readerMode === "scroll") {
       subDoc.body.style.overflow = "hidden";
       if (this.pdfCrop.left > 0 || this.pdfCrop.right > 0) {
-        subIframe.style.transform = `scale(${100 / (100 - this.pdfCrop.left - this.pdfCrop.right)}) translateZ(0)`;
-        subIframe.style.transformOrigin = `${(this.pdfCrop.left - this.pdfCrop.right) * 2 + 50}% ${50}%`;
+        function applyCrop(left, right) {
+          const visibleWidth = 100 - left - right;
+          const scale = 100 / visibleWidth;
+
+          // 经验补偿系数，根据你的 PDF 微调（通常 0.6~0.9）
+          const compensation = 1;
+          const tx = (right - left) * (scale / 2) * compensation;
+
+          subIframe.style.transformOrigin = "50% 50%";
+          subIframe.style.transform = `translateX(${tx}%) scale(${scale}) translateZ(0)`;
+        }
+        applyCrop(this.pdfCrop.left, this.pdfCrop.right);
       }
 
-      if (this.pdfCrop.bottom > 0) {
-        subIframe.style.height = 100 - this.pdfCrop.bottom + "%";
-      }
       if (this.pdfCrop.top > 0) {
-        subIframe.style.top = "-" + this.pdfCrop.top + "%";
+        subDoc.body.style.marginTop = "-" + (this.pdfCrop.top + 2) + "%";
       }
     }
   }
