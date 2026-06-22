@@ -24,6 +24,12 @@ class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
   isStartFromEven: string = "no";
   isKeepPDFBackground: string = "no";
+  pdfCrop: { top: number; bottom: number; left: number; right: number } = {
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+  };
   password: string = "";
   pdfScale: number = 0;
   scale: number = 1;
@@ -38,6 +44,7 @@ class PdfRender extends GeneralRender {
     super({ ...config, convertChinese: "Default", format: "PDF" });
     this.pdfBuffer = pdfBuffer;
     this.isStartFromEven = config.isStartFromEven || "no";
+    this.pdfCrop = config.pdfCrop || { top: 0, bottom: 0, left: 0, right: 0 };
     this.isKeepPDFBackground = config.isKeepPDFBackground || "no";
     this.password = config.password || "";
     this.scale = config.scale || 1;
@@ -1129,7 +1136,7 @@ class PdfRender extends GeneralRender {
     if (this.pdfScale && this.pdfScale > 0) {
       return this.pdfScale;
     }
-    let doc = this.getDocument();
+    let doc = this.getSubDocument(this.templateChapterDocIndex);
     if (!doc) return 1;
     let { width, height } =
       await this.chapterDocList[
@@ -1146,6 +1153,7 @@ class PdfRender extends GeneralRender {
     }
     let scale = Math.min(viewWidth / width, viewHeight / height);
     if (this.readerMode === "scroll") {
+      viewWidth = viewWidth - 10;
       scale = viewWidth / width;
     }
     this.pdfScale = scale;
