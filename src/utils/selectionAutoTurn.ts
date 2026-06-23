@@ -1,34 +1,31 @@
-// Corner/edge-dwell auto page-turn during text selection (#1354 pattern from Readest).
-// When the user drags a selection handle to the screen edge and holds for
-// AUTO_TURN_DWELL_MS, turn one page so native Selection can extend across columns.
+// Corner-dwell auto page-turn during text selection (#1354 pattern from Readest).
+// The selection handle must rest in a screen corner for AUTO_TURN_DWELL_MS before
+// the page turns, so merely passing the corner mid-drag does not flip the page.
 
 const AUTO_TURN_DWELL_MS = 500;
-const AUTO_TURN_EDGE_FRACTION = 0.15;
+// Quarter-ellipse radius around each corner (fraction of width/height). Kept tight
+// so normal selections ending in the lower-right of the page do not auto-turn.
+const AUTO_TURN_CORNER_FRACTION = 0.15;
 
-type Edge = "br" | "tl";
+type Corner = "br" | "tl";
 
-// Right/left edge strips (full height). Maps to next/prev page turns.
-const edgeAt = (x: number, _y: number, w: number, h: number): Edge | null => {
+const cornerOf = (x: number, y: number, w: number, h: number): Corner | null => {
   if (w <= 0 || h <= 0) return null;
-  const strip = w * AUTO_TURN_EDGE_FRACTION;
-  if (x >= w - strip) return "br";
-  if (x <= strip) return "tl";
+  const rx = w * AUTO_TURN_CORNER_FRACTION;
+  const ry = h * AUTO_TURN_CORNER_FRACTION;
+  const inEllipse = (dx: number, dy: number) =>
+    (dx / rx) ** 2 + (dy / ry) ** 2 <= 1;
+  if (inEllipse(w - x, h - y)) return "br";
+  if (inEllipse(x, y)) return "tl";
   return null;
 };
 
-// Caret can jump into the next off-screen column while dragging at the edge.
-const caretEdgeAt = (
-  x: number,
-  y: number,
-  w: number,
-  h: number
-): Edge | null => {
+// Map a viewport point to a corner zone, if any. Ignore off-screen caret positions
+// (e.g. focus jumping into the next column while dragging at the corner).
+const cornerAt = (x: number, y: number, w: number, h: number): Corner | null => {
   if (w <= 0 || h <= 0) return null;
-  if (y < -h * 0.1 || y > h * 1.1) return null;
-  const strip = w * AUTO_TURN_EDGE_FRACTION;
-  if (x >= w - strip || x > w) return "br";
-  if (x <= strip || x < 0) return "tl";
-  return null;
+  if (x < 0 || x > w || y < 0 || y > h) return null;
+  return cornerOf(x, y, w, h);
 };
 
 const focusCaretPos = (
@@ -104,14 +101,14 @@ export const createSelectionAutoTurn = (
   }
 
   let autoTurnTimer: ReturnType<typeof setTimeout> | null = null;
-  let engagedEdge: Edge | null = null;
+  let engagedCorner: Corner | null = null;
   let isAutoTurning = false;
   let pinnedScrollLeft: number | null = null;
   let pinnedScrollTop: number | null = null;
   let pointerPos: { x: number; y: number } | null = null;
   let isTextSelected = false;
   let outerTouchCleanup: (() => void) | null = null;
-  // After an auto-turn, ignore caret-based edge signals until selection ends.
+  // After an auto-turn, ignore caret-based corner signals until selection ends.
   // Otherwise the selection focus/end rect on the new page can immediately
   // trigger a turn in the opposite direction.
   let pointerOnlyUntilClear = false;
@@ -136,33 +133,33 @@ export const createSelectionAutoTurn = (
     };
   };
 
-  const pointerEdgeNow = (): Edge | null => {
+  const pointerCornerNow = (): Corner | null => {
     const p = pointerPos;
     if (!p) return null;
     const { w, h } = viewportSize();
-    return edgeAt(p.x, p.y, w, h);
+    return cornerAt(p.x, p.y, w, h);
   };
 
-  const caretEdgeNow = (): Edge | null => {
+  const caretCornerNow = (): Corner | null => {
     const sel = doc.getSelection();
     if (!sel || !isValidSelection(sel)) return null;
     const pos = focusCaretPos(doc, sel);
     if (!pos) return null;
     const { w, h } = viewportSize();
-    return caretEdgeAt(pos.x, pos.y, w, h);
+    return cornerAt(pos.x, pos.y, w, h);
   };
 
-  const activeEdgeNow = (): Edge | null => {
-    const pointerEdge = pointerEdgeNow();
-    if (pointerEdge) return pointerEdge;
+  const activeCornerNow = (): Corner | null => {
+    const pointerCorner = pointerCornerNow();
+    if (pointerCorner) return pointerCorner;
     if (pointerOnlyUntilClear) return null;
-    return caretEdgeNow();
+    return caretCornerNow();
   };
 
-  const inEdge = (e: Edge): boolean => activeEdgeNow() === e;
+  const inCorner = (c: Corner): boolean => activeCornerNow() === c;
 
   const cancelAutoTurn = () => {
-    engagedEdge = null;
+    engagedCorner = null;
     if (autoTurnTimer) {
       clearTimeout(autoTurnTimer);
       autoTurnTimer = null;
@@ -185,7 +182,7 @@ export const createSelectionAutoTurn = (
       const touch = event.touches[0];
       if (!touch) return;
       pointerPos = { x: touch.clientX, y: touch.clientY };
-      noteEdge(pointerEdgeNow());
+      noteCorner(pointerCornerNow());
     };
 
     const onOuterTouch = (event: TouchEvent) => {
@@ -194,7 +191,7 @@ export const createSelectionAutoTurn = (
       if (!touch) return;
       const coords = toIframeCoords(touch.clientX, touch.clientY);
       pointerPos = coords;
-      noteEdge(pointerEdgeNow());
+      noteCorner(pointerCornerNow());
     };
 
     const onPointer = (event: PointerEvent) => {
@@ -204,7 +201,7 @@ export const createSelectionAutoTurn = (
           ? { x: event.clientX, y: event.clientY }
           : toIframeCoords(event.clientX, event.clientY);
       pointerPos = coords;
-      noteEdge(pointerEdgeNow());
+      noteCorner(pointerCornerNow());
     };
 
     iframeWin?.addEventListener("touchmove", onIframeTouch, {
@@ -243,36 +240,36 @@ export const createSelectionAutoTurn = (
     };
   };
 
-  const armDwell = (edge: Edge) => {
+  const armDwell = (corner: Corner) => {
     if (autoTurnTimer) return;
     autoTurnTimer = setTimeout(() => {
       autoTurnTimer = null;
       const sel = doc.getSelection();
-      if (isAutoTurning || !sel || !isValidSelection(sel) || !inEdge(edge)) {
+      if (isAutoTurning || !sel || !isValidSelection(sel) || !inCorner(corner)) {
         return;
       }
 
       isAutoTurning = true;
-      const turning = edge === "br" ? render.next() : render.prev();
+      const turning = corner === "br" ? render.next() : render.prev();
       Promise.resolve(turning).finally(() => {
         pinnedScrollLeft = doc.body.scrollLeft;
         pinnedScrollTop = doc.body.scrollTop;
         isAutoTurning = false;
-        engagedEdge = edge;
+        engagedCorner = corner;
         pointerOnlyUntilClear = true;
       });
     }, AUTO_TURN_DWELL_MS);
   };
 
-  const noteEdge = (edge: Edge | null) => {
+  const noteCorner = (corner: Corner | null) => {
     if (isAutoTurning) return;
-    if (edge) {
-      if (engagedEdge !== edge) {
-        engagedEdge = edge;
-        armDwell(edge);
+    if (corner) {
+      if (engagedCorner !== corner) {
+        engagedCorner = corner;
+        armDwell(corner);
       }
-    } else if (engagedEdge && !inEdge(engagedEdge)) {
-      engagedEdge = null;
+    } else if (engagedCorner && !inCorner(engagedCorner)) {
+      engagedCorner = null;
       if (autoTurnTimer) {
         clearTimeout(autoTurnTimer);
         autoTurnTimer = null;
@@ -286,6 +283,7 @@ export const createSelectionAutoTurn = (
     pointerPos = null;
     isTextSelected = false;
     pointerOnlyUntilClear = false;
+    cancelAutoTurn();
     attachOuterTouch();
   };
 
@@ -301,7 +299,7 @@ export const createSelectionAutoTurn = (
         attachOuterTouch();
       }
       if (!pointerOnlyUntilClear) {
-        noteEdge(caretEdgeNow());
+        noteCorner(caretCornerNow());
       }
     } else {
       onSelectionCleared();
@@ -310,7 +308,7 @@ export const createSelectionAutoTurn = (
 
   const onTouchMove = (clientX: number, clientY: number) => {
     pointerPos = { x: clientX, y: clientY };
-    noteEdge(pointerEdgeNow());
+    noteCorner(pointerCornerNow());
   };
 
   const onSelectionCleared = () => {
