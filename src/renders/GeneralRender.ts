@@ -64,7 +64,7 @@ class GeneralRender extends EventEmitter {
   isIndent: string | undefined;
   bookLayout: string | undefined;
   textRules: TextRule[];
-  codeHighlighter: string | undefined;
+  codeHighlight: string | undefined;
   isHyphenation: string | undefined;
   isDarkMode: string | undefined;
   textOrientation: string | undefined;
@@ -111,7 +111,7 @@ class GeneralRender extends EventEmitter {
     fullTranslationMode?: string;
     bookLayout?: string;
     textRules?: TextRule[];
-    codeHighlighter?: string;
+    codeHighlight?: string;
   }) {
     super();
     this.readerMode = config.readerMode;
@@ -142,8 +142,8 @@ class GeneralRender extends EventEmitter {
     window.fullTranslationMode = this.fullTranslationMode;
     this.bookLayout = config.bookLayout || "";
     window.bookLayout = this.bookLayout;
-    this.codeHighlighter = config.codeHighlighter || "";
-    window.codeHighlighter = this.codeHighlighter;
+    this.codeHighlight = config.codeHighlight || "";
+    window.codeHighlight = this.codeHighlight;
     this.textRules = config.textRules || [];
     window.textRules = this.textRules;
 

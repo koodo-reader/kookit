@@ -442,8 +442,8 @@ export const transformText = async (doc: Document) => {
   if (window.isBionic === "yes") {
     processDocumentBody(doc);
   }
-  if (window.codeHighlighter) {
-    await applyCodeHighlighting(doc, window.codeHighlighter);
+  if (window.codeHighlight) {
+    await applyCodeHighlighting(doc, window.codeHighlight);
   }
   if (window.textRules && window.textRules.length > 0) {
     applyTextRules(doc, window.textRules);
