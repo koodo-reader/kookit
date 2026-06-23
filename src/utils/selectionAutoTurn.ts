@@ -17,7 +17,12 @@ const edgeAt = (x: number, _y: number, w: number, h: number): Edge | null => {
 };
 
 // Caret can jump into the next off-screen column while dragging at the edge.
-const caretEdgeAt = (x: number, y: number, w: number, h: number): Edge | null => {
+const caretEdgeAt = (
+  x: number,
+  y: number,
+  w: number,
+  h: number
+): Edge | null => {
   if (w <= 0 || h <= 0) return null;
   if (y < -h * 0.1 || y > h * 1.1) return null;
   const strip = w * AUTO_TURN_EDGE_FRACTION;
@@ -45,7 +50,12 @@ const focusCaretPos = (
   } catch {
     return null;
   }
-  if (rect.width === 0 && rect.height === 0 && rect.left === 0 && rect.top === 0) {
+  if (
+    rect.width === 0 &&
+    rect.height === 0 &&
+    rect.left === 0 &&
+    rect.top === 0
+  ) {
     return null;
   }
   return {
@@ -101,6 +111,10 @@ export const createSelectionAutoTurn = (
   let pointerPos: { x: number; y: number } | null = null;
   let isTextSelected = false;
   let outerTouchCleanup: (() => void) | null = null;
+  // After an auto-turn, ignore caret-based edge signals until selection ends.
+  // Otherwise the selection focus/end rect on the new page can immediately
+  // trigger a turn in the opposite direction.
+  let pointerOnlyUntilClear = false;
 
   const viewportSize = (): { w: number; h: number } => {
     const w =
@@ -129,37 +143,23 @@ export const createSelectionAutoTurn = (
     return edgeAt(p.x, p.y, w, h);
   };
 
-  const selectionEndEdgeNow = (): Edge | null => {
-    const sel = doc.getSelection();
-    if (!sel || !isValidSelection(sel)) return null;
-    const { w, h } = viewportSize();
-    try {
-      const range = sel.getRangeAt(0);
-      const rects = range.getClientRects();
-      if (rects.length > 0) {
-        const last = rects[rects.length - 1];
-        return caretEdgeAt(last.right, (last.top + last.bottom) / 2, w, h);
-      }
-    } catch {
-      // ignore
-    }
-    return null;
-  };
-
   const caretEdgeNow = (): Edge | null => {
     const sel = doc.getSelection();
     if (!sel || !isValidSelection(sel)) return null;
     const pos = focusCaretPos(doc, sel);
+    if (!pos) return null;
     const { w, h } = viewportSize();
-    if (pos) {
-      const edge = caretEdgeAt(pos.x, pos.y, w, h);
-      if (edge) return edge;
-    }
-    return selectionEndEdgeNow();
+    return caretEdgeAt(pos.x, pos.y, w, h);
   };
 
-  const inEdge = (e: Edge): boolean =>
-    pointerEdgeNow() === e || caretEdgeNow() === e;
+  const activeEdgeNow = (): Edge | null => {
+    const pointerEdge = pointerEdgeNow();
+    if (pointerEdge) return pointerEdge;
+    if (pointerOnlyUntilClear) return null;
+    return caretEdgeNow();
+  };
+
+  const inEdge = (e: Edge): boolean => activeEdgeNow() === e;
 
   const cancelAutoTurn = () => {
     engagedEdge = null;
@@ -248,12 +248,7 @@ export const createSelectionAutoTurn = (
     autoTurnTimer = setTimeout(() => {
       autoTurnTimer = null;
       const sel = doc.getSelection();
-      if (
-        isAutoTurning ||
-        !sel ||
-        !isValidSelection(sel) ||
-        !inEdge(edge)
-      ) {
+      if (isAutoTurning || !sel || !isValidSelection(sel) || !inEdge(edge)) {
         return;
       }
 
@@ -263,6 +258,8 @@ export const createSelectionAutoTurn = (
         pinnedScrollLeft = doc.body.scrollLeft;
         pinnedScrollTop = doc.body.scrollTop;
         isAutoTurning = false;
+        engagedEdge = edge;
+        pointerOnlyUntilClear = true;
       });
     }, AUTO_TURN_DWELL_MS);
   };
@@ -288,6 +285,7 @@ export const createSelectionAutoTurn = (
     pinnedScrollTop = doc.body.scrollTop;
     pointerPos = null;
     isTextSelected = false;
+    pointerOnlyUntilClear = false;
     attachOuterTouch();
   };
 
@@ -302,7 +300,9 @@ export const createSelectionAutoTurn = (
       if (!outerTouchCleanup) {
         attachOuterTouch();
       }
-      noteEdge(caretEdgeNow());
+      if (!pointerOnlyUntilClear) {
+        noteEdge(caretEdgeNow());
+      }
     } else {
       onSelectionCleared();
     }
@@ -315,6 +315,7 @@ export const createSelectionAutoTurn = (
 
   const onSelectionCleared = () => {
     isTextSelected = false;
+    pointerOnlyUntilClear = false;
     cancelAutoTurn();
     detachOuterTouch();
     pinnedScrollLeft = null;
