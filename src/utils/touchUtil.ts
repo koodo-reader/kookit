@@ -114,16 +114,16 @@ export const slideAnimateTo = (
 
   window.scrollAnimationId = requestAnimationFrame(animateScroll);
 };
-async function blobUrlToBase64(blobUrl) {
+export async function blobUrlToBase64(blobUrl: string): Promise<string> {
   try {
     // 1. 获取Blob数据
     const response = await fetch(blobUrl);
     const blob = await response.blob();
 
     // 2. 将Blob转换为Base64
-    const base64 = await new Promise((resolve, reject) => {
+    const base64: string = await new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result); // 成功时返回Base64字符串
+      reader.onloadend = () => resolve(reader.result as string); // 成功时返回Base64字符串
       reader.onerror = reject; // 失败时拒绝Promise
       reader.readAsDataURL(blob); // 开始读取
     });

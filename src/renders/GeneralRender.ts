@@ -41,6 +41,7 @@ import { getPDFSearchResult } from "../utils/pdfUtil";
 import {
   addAndroidTouchEvent,
   addAppleTouchEvent,
+  blobUrlToBase64,
   slideAnimateTo,
 } from "../utils/touchUtil";
 import { getBlockElement, isParentBlock } from "../utils/common";
@@ -888,10 +889,23 @@ class GeneralRender extends EventEmitter {
     if (!doc) return "";
     return doc.body.textContent || "";
   }
-  getImageList(): string[] {
+  getImageList(): string[] | Promise<string[]> {
     const doc = this.getDocument();
     if (!doc || this.format === "PDF") return [];
-    return collectChapterImageUrls(doc.body);
+    const urls = collectChapterImageUrls(doc.body);
+    if (this.isMobile !== "yes") {
+      return urls;
+    }
+    return Promise.all(
+      urls.map(async (url) => {
+        if (!url.startsWith("blob:")) return url;
+        try {
+          return await blobUrlToBase64(url);
+        } catch {
+          return url;
+        }
+      })
+    );
   }
   autoScroll(rate: number, isStart: string) {
     let doc = this.getDocument();
