@@ -85,98 +85,98 @@ export default [
       "chardet",
     ],
   },
-  {
-    input: "src/index.ts",
-    output: [
-      {
-        name: "Kookit",
-        file: getMobileOutputPath("kookit.min.txt"),
-        format: "umd",
-      },
-    ],
-    plugins: [
-      resolve({ browser: true }),
-      commonjs({
-        include: [/node_modules/],
-      }),
-      json(),
-      typescript({ tsconfig: "./tsconfig.json" }),
-      babel({
-        babelHelpers: "bundled",
-        presets: [
-          [
-            "@babel/preset-env",
-            {
-              targets: {
-                browsers: [
-                  "iOS >= 11",
-                  "Android >= 5",
-                  "last 2 versions",
-                  "> 1%",
-                ],
-              },
-              useBuiltIns: "usage",
-              corejs: 3,
-            },
-          ],
-        ],
-        exclude: "node_modules/**",
-        extensions: [".js", ".ts"],
-      }),
-      terser({
-        format: {
-          comments: false, // 移除所有注释
-        },
-      }), // 压缩代码
-    ],
+  // {
+  //   input: "src/index.ts",
+  //   output: [
+  //     {
+  //       name: "Kookit",
+  //       file: getMobileOutputPath("kookit.min.txt"),
+  //       format: "umd",
+  //     },
+  //   ],
+  //   plugins: [
+  //     resolve({ browser: true }),
+  //     commonjs({
+  //       include: [/node_modules/],
+  //     }),
+  //     json(),
+  //     typescript({ tsconfig: "./tsconfig.json" }),
+  //     babel({
+  //       babelHelpers: "bundled",
+  //       presets: [
+  //         [
+  //           "@babel/preset-env",
+  //           {
+  //             targets: {
+  //               browsers: [
+  //                 "iOS >= 11",
+  //                 "Android >= 5",
+  //                 "last 2 versions",
+  //                 "> 1%",
+  //               ],
+  //             },
+  //             useBuiltIns: "usage",
+  //             corejs: 3,
+  //           },
+  //         ],
+  //       ],
+  //       exclude: "node_modules/**",
+  //       extensions: [".js", ".ts"],
+  //     }),
+  //     terser({
+  //       format: {
+  //         comments: false, // 移除所有注释
+  //       },
+  //     }), // 压缩代码
+  //   ],
 
-    external: [],
-    onwarn: (warning, warn) => {
-      // 忽略循环依赖警告
-      if (warning.code === "CIRCULAR_DEPENDENCY") {
-        return;
-      }
-      if (warning.code === "EVAL") {
-        return;
-      }
-      warn(warning);
-    },
-  },
-  {
-    input: "src/mobile.ts",
-    output: [
-      {
-        name: "Kookit",
-        file: getMobileOutputPath("kookit-mobile.min.js"),
-        format: "es",
-      },
-    ],
-    plugins: [
-      resolve({ browser: true }),
-      commonjs({
-        include: [/node_modules/],
-        ignoreGlobal: true,
-      }),
-      json(),
-      typescript({ tsconfig: "./tsconfig.json" }),
-      terser({
-        format: {
-          comments: false, // 移除所有注释
-        },
-      }), // 压缩代码
-    ],
-    external: [],
-    onwarn: (warning, warn) => {
-      // 忽略循环依赖警告
-      if (warning.code === "CIRCULAR_DEPENDENCY") {
-        return;
-      }
-      if (warning.code === "EVAL") {
-        return;
-      }
-      warn(warning);
-    },
-  },
+  //   external: [],
+  //   onwarn: (warning, warn) => {
+  //     // 忽略循环依赖警告
+  //     if (warning.code === "CIRCULAR_DEPENDENCY") {
+  //       return;
+  //     }
+  //     if (warning.code === "EVAL") {
+  //       return;
+  //     }
+  //     warn(warning);
+  //   },
+  // },
+  // {
+  //   input: "src/mobile.ts",
+  //   output: [
+  //     {
+  //       name: "Kookit",
+  //       file: getMobileOutputPath("kookit-mobile.min.js"),
+  //       format: "es",
+  //     },
+  //   ],
+  //   plugins: [
+  //     resolve({ browser: true }),
+  //     commonjs({
+  //       include: [/node_modules/],
+  //       ignoreGlobal: true,
+  //     }),
+  //     json(),
+  //     typescript({ tsconfig: "./tsconfig.json" }),
+  //     terser({
+  //       format: {
+  //         comments: false, // 移除所有注释
+  //       },
+  //     }), // 压缩代码
+  //   ],
+  //   external: [],
+  //   onwarn: (warning, warn) => {
+  //     // 忽略循环依赖警告
+  //     if (warning.code === "CIRCULAR_DEPENDENCY") {
+  //       return;
+  //     }
+  //     if (warning.code === "EVAL") {
+  //       return;
+  //     }
+  //     warn(warning);
+  //   },
+  // },
   // {
   //   input: "src/mobile.ts",
   //   output: [{

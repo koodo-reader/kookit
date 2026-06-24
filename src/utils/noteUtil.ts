@@ -15,6 +15,43 @@ export const colors = ["#FEF3CD", "#FBFACC", "#CEFACD", "#CDE9FA"];
 export const lines = ["#FF0000", "#000080", "#0000FF", "#2EFF2E"];
 export const pdfColors = ["#fac106", "#ebe702", "#0be603", "#0493e6"];
 
+export function buildHighlightStyleForType(colorCode: string | number): string {
+  console.log("buildHighlightStyleForType", colorCode);
+  let styleType: string = "background";
+  let color: string = "#FEF3CD";
+  console.log(
+    "colorCode",
+    colorCode,
+    typeof colorCode,
+    typeof colorCode === "number"
+  );
+  if (typeof colorCode === "number") {
+    if (colorCode >= 0 && colorCode < classes.length) {
+      const isBackground = classes[colorCode].indexOf("color") > -1;
+      const colorIdx = classes[colorCode].split("-")[1];
+      styleType = isBackground ? "background" : "underline";
+      color = isBackground ? hexToRgba(colors[colorIdx], 0.8) : lines[colorIdx];
+      console.log("styleType", styleType, "color", color);
+    }
+  } else {
+    styleType = colorCode.split("-")[0];
+    color = colorCode.split("-")[1];
+  }
+
+  switch (styleType) {
+    case "background":
+      return `background: ${hexToRgba(color, 0.8)};`;
+    case "underline":
+      return `border-bottom: 2px solid ${color};`;
+    case "strikethrough":
+      return `text-decoration: line-through; text-decoration-color: ${color};`;
+    case "border":
+      return `box-shadow: inset 0 0 0 2px ${color};`;
+    default:
+      return `background: ${color};`;
+  }
+}
+
 const hexToRgba = (hexColor: string, alpha: number): string => {
   const hex = hexColor.replace("#", "");
   const isShort = hex.length === 3;
@@ -166,7 +203,7 @@ const hideNoteTooltip = (doc: Document) => {
 export const showNoteHighlightBatch = (
   notes: Array<{
     range: any;
-    colorIndex: number;
+    colorCode: string;
     noteKey: string;
     isNote: boolean;
     noteContent: string;
@@ -195,7 +232,7 @@ export const showNoteHighlightBatch = (
       const nativeRange = selection.getRangeAt(0).nativeRange.cloneRange();
       resolved.push({
         nativeRange,
-        colorCode: classes[item.colorIndex],
+        colorCode: item.colorCode,
         noteKey: item.noteKey,
         isNote: item.isNote,
         noteContent: item.noteContent,
@@ -230,7 +267,7 @@ export const showNoteHighlightBatch = (
 
 export const showNoteHighlight = (
   range: any,
-  colorIndex: number,
+  colorCode: string,
   noteKey: string,
   handleNoteClick: any,
   doc: Document,
@@ -239,7 +276,6 @@ export const showNoteHighlight = (
   isMobile: boolean,
   noteContent: string = ""
 ) => {
-  let colorCode = classes[colorIndex];
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
   let temp = range;
   temp = [temp];
@@ -271,7 +307,7 @@ export const showNoteHighlight = (
 };
 export const showPDFHighlight = (
   selected: any,
-  colorIndex: number,
+  colorCode: string | number,
   noteKey: string,
   handleNoteClick: any,
   page: any,
@@ -281,7 +317,6 @@ export const showPDFHighlight = (
   isMobile: boolean,
   noteContent: string = ""
 ) => {
-  let colorCode = classes[colorIndex];
   let pageElement: any = doc.querySelector(".noteLayer");
   let docLayer = doc.querySelector("#koodoPDFLayer");
   var viewport = page.getViewport({ scale: scale });
@@ -358,13 +393,8 @@ export const showPDFHighlight = (
     newNode?.setAttribute(
       "style",
       "position: absolute;" +
-        (colorCode.indexOf("color") > -1
-          ? "background-color: "
-          : "border-bottom: ") +
-        (colorCode.indexOf("color") > -1
-          ? pdfColors[colorCode.split("-")[1]]
-          : `2px solid ${lines[colorCode.split("-")[1]]}`) +
-        "; left:" +
+        buildHighlightStyleForType(colorCode) +
+        " left:" +
         (rect.left + parseFloat(getComputedStyle(docLayer).marginLeft)) +
         "px; top:" +
         rect.top +
@@ -373,9 +403,7 @@ export const showPDFHighlight = (
         rect.width +
         "px; height:" +
         rect.height +
-        "px; z-index: 1; cursor: pointer; opacity: " +
-        (colorCode.indexOf("color") > -1 ? 0.3 : 1) +
-        "; "
+        "px; z-index: 1; cursor: pointer;"
     );
     newNode?.setAttribute("data-key", noteKey);
     newNode?.setAttribute("class", "kookit-note");
@@ -532,13 +560,6 @@ export const highlightRange = (
     textNodes.push(nativeRange.commonAncestorContainer as Text);
   }
 
-  // Build the inline style for the highlight
-  const isColorHighlight = colorCode.indexOf("color") > -1;
-  const colorIdx = colorCode.split("-")[1];
-  const highlightStyle = isColorHighlight
-    ? "background-color: " + hexToRgba(colors[colorIdx], 0.8)
-    : "border-bottom: 2px solid " + lines[colorIdx];
-
   const wrappedSpans: HTMLElement[] = [];
   // Track existing kookit-note parent spans already promoted to outer wrappers
   // so we don't double-wrap them when multiple text nodes share the same parent.
@@ -601,7 +622,7 @@ export const highlightRange = (
         }
 
         const span = doc.createElement("span");
-        span.setAttribute("style", highlightStyle);
+        span.setAttribute("style", buildHighlightStyleForType(colorCode));
         span.setAttribute("class", "kookit-note");
         span.setAttribute("data-key", noteKey);
         if (isNote && noteContent) {
@@ -640,7 +661,7 @@ export const highlightRange = (
 
     // Create the wrapper span
     const span = doc.createElement("span");
-    span.setAttribute("style", highlightStyle);
+    span.setAttribute("style", buildHighlightStyleForType(colorCode));
     span.setAttribute("class", "kookit-note");
     span.setAttribute("data-key", noteKey);
     if (isNote && noteContent) {

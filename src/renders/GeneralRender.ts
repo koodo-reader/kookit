@@ -1145,7 +1145,7 @@ class GeneralRender extends EventEmitter {
     // from shifting character offsets for later ones.
     const batchItems = notes.map((item) => ({
       range: JSON.parse(item.range),
-      colorIndex: item.color,
+      colorCode: item.color,
       noteKey: item.key,
       isNote: item.notes !== "",
       noteContent: item.notes || "",
