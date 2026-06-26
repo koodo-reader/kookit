@@ -192,8 +192,10 @@ class StyleHelper {
     }
 
     // Line height - has default value
-    const lineHeight = ConfigService.getReaderConfig("lineHeight") || "1.25";
-    cssRules.push(`line-height: ${lineHeight}`);
+    const lineHeight = ConfigService.getReaderConfig("lineHeight");
+    if (lineHeight) {
+      cssRules.push(`line-height: ${lineHeight} !important`);
+    }
 
     // Font family - only if exists
     const fontFamily = ConfigService.getReaderConfig("fontFamily");
@@ -333,7 +335,7 @@ class StyleHelper {
     cssRules.push("word-wrap: break-word ");
 
     cssRules.push("max-width: 100%");
-    cssRules.push("overflow: visible");
+    cssRules.push("overflow: visible !important");
 
     return cssRules.join("; ") + ";";
   }

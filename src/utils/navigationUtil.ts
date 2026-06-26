@@ -267,6 +267,15 @@ export const isElementFootnote = (element: HTMLElement) => {
     ) {
       return true;
     }
+    if (
+      textContent === "*" ||
+      textContent === "†" ||
+      textContent === "‡" ||
+      textContent === "※" ||
+      textContent === "§"
+    ) {
+      return true;
+    }
   }
 
   return false;
