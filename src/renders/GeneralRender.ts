@@ -1576,7 +1576,7 @@ class GeneralRender extends EventEmitter {
       const sourceText = sourcetexts[index];
       if (this.transMap[sourceText]) {
         this.transMap[sourceText].text = targetTexts[index];
-        let elements = doc.querySelectorAll("#" + this.transMap[sourceText].id);
+        let elements = doc.querySelectorAll("#" + CSS.escape(this.transMap[sourceText].id));
         for (let i = 0; i < elements.length; i++) {
           const element = elements[i];
           if (element) {
