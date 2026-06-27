@@ -112,7 +112,7 @@ const getTitlefromText = (bookDoc) => {
     return (
       item.childNodes.length === 1 &&
       item.childNodes[0].nodeType === Node.TEXT_NODE &&
-      isTitle(cleanText(item.textContent))
+      isTitle(item.textContent)
     );
   });
   let h1TitleElements: any = [];

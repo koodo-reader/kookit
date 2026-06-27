@@ -104,8 +104,7 @@ export const txtToHtml = (
     const relevantLines = lines.slice(startIndex, endIndex); // Process only the relevant slice
     // Identify potential titles within the relevant slice
     const titlesInSlice = relevantLines.filter((item) => {
-      const cleaned = cleanText(item); // Clean once
-      return cleaned && isTitle(cleaned, parserRegex);
+      return item && isTitle(item, parserRegex);
     });
     if (titlesInSlice.length <= 1) {
       // Fallback to processing the entire file if no titles found in slice
@@ -157,9 +156,8 @@ export const txtToHtml = (
   } else {
     // --- Loop for Full File (if not large or no bookLocation) ---
     for (const item of lines) {
-      const cleanedItem = cleanText(item); // Clean once per line
-      if (cleanedItem && isTitle(cleanedItem, parserRegex)) {
-        htmlParts.push(`<h1>${cleanedItem}</h1>`); // Push to array
+      if (item && isTitle(item, parserRegex)) {
+        htmlParts.push(`<h1>${item}</h1>`); // Push to array
       } else {
         if (item.trim() === "") {
           htmlParts.push(`<p class="hide">${item}</p>`); // Push line break for empty lines
@@ -195,6 +193,7 @@ export const isTitle = (line: any, parserRegex: string = "") => {
   if (parserRegex) {
     return new RegExp(parserRegex).test(line);
   }
+  line = cleanText(line); // Clean once per line
   return (
     line &&
     line.length < 40 &&
