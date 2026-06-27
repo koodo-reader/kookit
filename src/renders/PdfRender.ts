@@ -35,6 +35,7 @@ class PdfRender extends GeneralRender {
   scale: number = 1;
   backgroundColor: string;
   isScannedPDF: string;
+  enablePDFSelectionOptimization: string = "no";
   scrollPDFInterval: any = null;
   templateChapterDocIndex: number = 0;
   platform: string;
@@ -51,6 +52,8 @@ class PdfRender extends GeneralRender {
     this.backgroundColor = config.backgroundColor || "#ffffff";
     this.isScannedPDF = config.isScannedPDF || "no";
     this.platform = config.platform || "web";
+    this.enablePDFSelectionOptimization =
+      config.enablePDFSelectionOptimization || "no";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -1129,7 +1132,10 @@ class PdfRender extends GeneralRender {
     }
     docLayer.style.visibility = "visible";
     window.chapterDocIndex = chapterDocIndex;
-    if (this.platform === "android") {
+    if (
+      this.platform === "android" &&
+      this.enablePDFSelectionOptimization === "yes"
+    ) {
       this.applyPDFTextLayerLineHeight(subDoc);
     }
     this.trigger("rendered");
