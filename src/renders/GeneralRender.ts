@@ -1570,13 +1570,13 @@ class GeneralRender extends EventEmitter {
   handleBatchTransResult(sourcetexts: string[], targetTexts: string[]) {
     let doc = this.getDocument();
     if (!doc) return;
-    console.log("handleBatchTransResult", sourcetexts, targetTexts);
-    console.log("transMap", this.transMap);
     for (let index = 0; index < sourcetexts.length; index++) {
       const sourceText = sourcetexts[index];
       if (this.transMap[sourceText]) {
         this.transMap[sourceText].text = targetTexts[index];
-        let elements = doc.querySelectorAll("#" + CSS.escape(this.transMap[sourceText].id));
+        let elements = doc.querySelectorAll(
+          "#" + CSS.escape(this.transMap[sourceText].id)
+        );
         for (let i = 0; i < elements.length; i++) {
           const element = elements[i];
           if (element) {
