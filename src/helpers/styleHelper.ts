@@ -138,6 +138,9 @@ class StyleHelper {
 
     // Ruby text font size
     cssRules.push("rt span{font-size: unset !important;}");
+    // Ruby annotations should not be selected together with the base text,
+    // but can still be selected on their own in most browsers
+    cssRules.push("rt{-webkit-user-select:none;user-select:none;}");
 
     // Conditional link styles
     if (ConfigService.getReaderConfig("isOverwriteLink") === "yes") {
