@@ -248,7 +248,7 @@ class GeneralRender extends EventEmitter {
         this.element.scrollTo(0, top);
       }
     }
-    if (this.animation !== "" && this.isMobile !== "yes") {
+    if (this.animation !== "none" && this.isMobile !== "yes") {
       await new Promise((r) => setTimeout(r, 1000));
     }
     await handleRecord(
