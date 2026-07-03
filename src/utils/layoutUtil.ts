@@ -730,7 +730,7 @@ export const handleLayout = (
   let style = doc.createElement("style");
   style.id = "default-style";
   style.textContent =
-    "p,empty-line{display: inherit;margin-block-start: inherit;margin-block-end: inherit;margin-inline-start: inherit;margin-inline-end: inherit;}body{margin: 0px}";
+    "body{margin: 0px}";
   doc.head.appendChild(style);
   const vertical = isVerticalLayout();
   if (readerMode === "scroll") {

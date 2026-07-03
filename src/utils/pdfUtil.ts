@@ -102,7 +102,7 @@ export const createPDFIframe = (chapterDocIndex: number, doc: Document) => {
   let style = document.createElement("style");
   style.id = "default-style";
   style.textContent =
-    "p,empty-line{display: inherit;margin-block-start: inherit;margin-block-end: inherit;margin-inline-start: inherit;margin-inline-end: inherit;}body{margin: 0px}";
+    "body{margin: 0px}";
 
   // Append iframe to container, then container to parent
   iframeContainer.appendChild(iframe);
