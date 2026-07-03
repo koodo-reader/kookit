@@ -337,7 +337,6 @@ class StyleHelper {
     // Fixed styles that are always applied
     cssRules.push("word-wrap: break-word ");
 
-    cssRules.push("max-width: 100%");
     cssRules.push("overflow: visible !important");
 
     return cssRules.join("; ") + ";";
