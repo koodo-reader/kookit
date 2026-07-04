@@ -26,6 +26,34 @@ class StyleHelper {
         "margin-left:2px;" +
         "}"
     );
+    // Collapse matched text to zero width (inline flow preserved for rangy offsets).
+    // Replace shows substitution via ::after; delete has no ::after.
+    const textRuleFontSize = ConfigService.getReaderConfig("fontSize") || 18;
+    const textRuleLineHeight =
+      ConfigService.getReaderConfig("lineHeight") || "1.25";
+    const textRuleLetterSpacing =
+      ConfigService.getReaderConfig("letterSpacing");
+    cssRules.push(
+      ".kookit-text-rule-replace,.kookit-text-rule-delete{" +
+        "font-size:0 !important;" +
+        "line-height:0 !important;" +
+        "letter-spacing:0 !important;" +
+        "word-spacing:0 !important;" +
+        "display:inline;" +
+        "vertical-align:baseline;" +
+        "}"
+    );
+    cssRules.push(
+      ".kookit-text-rule-replace::after{" +
+        "content:attr(data-kookit-replacement);" +
+        `font-size:${textRuleFontSize}px !important;` +
+        `line-height:${textRuleLineHeight} !important;` +
+        (textRuleLetterSpacing
+          ? `letter-spacing:${textRuleLetterSpacing}px !important;`
+          : "") +
+        "color:inherit;" +
+        "}"
+    );
     cssRules.push(
       ".kookit-note-icon{line-height:1;font-size:14px;cursor:pointer;}"
     );
@@ -54,7 +82,7 @@ class StyleHelper {
 
     // Body and html base styles
     cssRules.push(
-      "body,html{margin: 0px !important; padding: 0px !important; font-size: 18px; background-color: transparent !important;}"
+      "body,html,svg{margin: 0px !important; padding: 0px !important; font-size: 18px; background-color: transparent !important;}"
     );
 
     // Force horizontal writing mode - only if vertical writing is not enabled
@@ -64,7 +92,7 @@ class StyleHelper {
 
     // Content elements with custom styles
     cssRules.push(
-      `a, article, cite, div, li, p, span:not(.kookit-note):not(.kookit-note-icon):not(.kookit-highlight-text):not(.kookit-note-tooltip):not(.kookit-word-def):not(.kookit-word-tooltip), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
+      `a, article, cite, div, li, p, span:not(.kookit-note):not(.kookit-note-icon):not(.kookit-highlight-text):not(.kookit-note-tooltip):not(.kookit-word-def):not(.kookit-word-tooltip):not(.kookit-text-rule-replace):not(.kookit-text-rule-delete):not([class*="hljs"]), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
     );
 
     // Title elements with custom styles
@@ -72,30 +100,47 @@ class StyleHelper {
       `h1, h2, h3, h4, h5, h6, title{${this.getCustomCss(ConfigService, true)}}`
     );
 
-    // Code formatting
-    cssRules.push("code,pre{white-space: pre-wrap;}");
+    // Code formatting — allow wrapping and column fragmentation
+    cssRules.push(
+      "code,pre{" +
+        "white-space:pre-wrap !important;" +
+        "word-wrap:break-word;" +
+        "word-break:break-word;" +
+        "overflow-wrap:anywhere;" +
+        "overflow:visible !important;" +
+        "overflow-x:visible !important;" +
+        "overflow-y:visible !important;" +
+        "max-height:none !important;" +
+        "break-inside:auto !important;" +
+        "page-break-inside:auto !important;" +
+        "-webkit-column-break-inside:auto !important;" +
+        "}"
+    );
 
     // // Blockquote styles
     // cssRules.push(
     //   "blockquote{border-left: 4px solid #ccc; padding-left: 1em; margin: 1em 0; color: #666;}"
     // );
 
-    // Table styles
+    // Table styles — force tables to fit within the reader width
     cssRules.push(
-      "table{width:100%;border-collapse:collapse;margin:20px 0;line-height:1.6;border: 1px solid #ddd;}"
+      "table{width:100% !important;max-width:100% !important;table-layout:fixed !important;box-sizing:border-box;border-collapse:collapse;margin:20px 0;line-height:1.6;border:1px solid #ddd;}"
     );
     cssRules.push(
-      "thead th{font-weight:bold;padding:14px 12px;text-align:left;white-space:nowrap;border-bottom: 2px solid #ccc; background-color: rgba(0,0,0,0.05);}"
+      "td,th{word-break:break-word;overflow-wrap:anywhere;max-width:0;min-width:0;overflow:hidden;box-sizing:border-box;}"
     );
     cssRules.push(
-      "td,th{padding:12px 14px;vertical-align:top;text-align:left;border: 2px solid #e0e0e0;}"
+      "thead th{font-weight:bold;padding:14px 12px;text-align:left;white-space:normal;border-bottom:2px solid #ccc;background-color:rgba(0,0,0,0.05);}"
     );
-
-    // Paragraph margin reset
-    cssRules.push("div,p{margin-block: 0;margin-inline: 0;display: block;}");
+    cssRules.push(
+      "td,th{padding:12px 14px;vertical-align:top;text-align:left;border:2px solid #e0e0e0;}"
+    );
 
     // Ruby text font size
     cssRules.push("rt span{font-size: unset !important;}");
+    // Ruby annotations should not be selected together with the base text,
+    // but can still be selected on their own in most browsers
+    cssRules.push("rt{-webkit-user-select:none;user-select:none;}");
 
     // Conditional link styles
     if (ConfigService.getReaderConfig("isOverwriteLink") === "yes") {
@@ -104,6 +149,9 @@ class StyleHelper {
       );
       cssRules.push("a:hover{color: #004080 !important;}");
       cssRules.push("a:visited{color: #6600cc !important;}");
+    }
+    if (ConfigService.getReaderConfig("isOverwriteBackground") === "yes") {
+      cssRules.push("body,html{background-color: transparent !important;}");
     }
 
     // Conditional h1 font size for merged words
@@ -117,7 +165,7 @@ class StyleHelper {
 
     // Hide aside elements
     cssRules.push(
-      `aside[epub\\:type="footnote"],aside[epub\\:type="note"],aside[epub\\:type="endnote"],aside[epub\\:type="rearnote"],.hide{position: absolute; left: -9999px; top: -9999px;}`
+      `aside[epub\\:type="footnote"],aside[epub\\:type="note"],aside[epub\\:type="endnote"],aside[epub\\:type="rearnote"],.hide{font-size:0px !important;}`
     );
     cssRules.push(
       `aside[type="sidebar"],aside[epub\\:type="sidebar"]{ margin: 1.5em 0; padding: 1.2em 1.4em; background-color: #c7eafc; break-inside: avoid; page-break-inside: avoid; }`
@@ -147,8 +195,10 @@ class StyleHelper {
     }
 
     // Line height - has default value
-    const lineHeight = ConfigService.getReaderConfig("lineHeight") || "1.25";
-    cssRules.push(`line-height: ${lineHeight}`);
+    const lineHeight = ConfigService.getReaderConfig("lineHeight");
+    if (lineHeight) {
+      cssRules.push(`line-height: ${lineHeight} !important`);
+    }
 
     // Font family - only if exists
     const fontFamily = ConfigService.getReaderConfig("fontFamily");
@@ -182,6 +232,9 @@ class StyleHelper {
     const appSkin = ConfigService.getReaderConfig("appSkin");
     const isOSNight = ConfigService.getReaderConfig("isOSNight");
     const isOverwriteText = ConfigService.getReaderConfig("isOverwriteText");
+    const isOverwriteBackground = ConfigService.getReaderConfig(
+      "isOverwriteBackground"
+    );
 
     let colorValue = "";
     let colorImportant = "";
@@ -207,6 +260,9 @@ class StyleHelper {
 
     if (colorValue) {
       cssRules.push(`color: ${colorValue} ${colorImportant}`.trim());
+    }
+    if (isOverwriteBackground === "yes") {
+      cssRules.push("background-color: transparent !important");
     }
 
     // Letter spacing - only if exists
@@ -281,10 +337,7 @@ class StyleHelper {
     // Fixed styles that are always applied
     cssRules.push("word-wrap: break-word ");
 
-    cssRules.push("max-width: 100%");
-    cssRules.push("overflow: visible");
-    cssRules.push("margin-top: 0");
-    cssRules.push("margin-bottom: 0");
+    cssRules.push("overflow: visible !important");
 
     return cssRules.join("; ") + ";";
   }

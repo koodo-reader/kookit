@@ -2,6 +2,7 @@ import Chinese from "../libs/zh-convert";
 import { processDocumentBody } from "./bionicUtil";
 import { getStylePxNumber, isElectron } from "./common";
 import { getBlockElement, isParentBlock } from "./common";
+import { applyTextRules } from "./textRuleUtil";
 declare var window: any;
 export const isVerticalLayout = (): boolean => {
   return window.textOrientation === "vertical";
@@ -92,6 +93,36 @@ export const handleOneChapterDoc = async (item, isSearch: boolean) => {
 };
 export const getImageElement = (Element) => {
   return Array.from(Element.querySelectorAll("img, image")) as HTMLElement[];
+};
+export const getImageUrl = (el: Element): string | null => {
+  return (
+    el.getAttribute("src") ||
+    el.getAttribute("href") ||
+    el.getAttribute("xlink:href") ||
+    null
+  );
+};
+export const collectChapterImageUrls = (root: Element): string[] => {
+  const urls: string[] = [];
+  const nodes = root.querySelectorAll("img, svg, image");
+
+  for (const el of nodes) {
+    const tag = el.tagName.toLowerCase();
+    if (tag === "img") {
+      const url = getImageUrl(el);
+      if (url) urls.push(url);
+    } else if (tag === "svg") {
+      el.querySelectorAll("image").forEach((img) => {
+        if (img.closest("svg") !== el) return;
+        const url = getImageUrl(img);
+        if (url) urls.push(url);
+      });
+    } else if (tag === "image" && !el.closest("svg")) {
+      const url = getImageUrl(el);
+      if (url) urls.push(url);
+    }
+  }
+  return urls;
 };
 export const handlePrecacheAssets = async (bookStr, item) => {
   let chapterDoc = new DOMParser().parseFromString(bookStr, "text/html") as any;
@@ -281,6 +312,49 @@ export const progressInfo = (
           ) + 1,
   };
 };
+const fetchHighlightAsset = async (path: string) => {
+  const url = `${isElectron() ? "." : ""}/lib/highlight-js/${path}`;
+  return await (await fetch(url)).text();
+};
+
+const runHighlightScript = (source: string) => {
+  const script = document.createElement("script");
+  script.textContent = source;
+  document.head.appendChild(script);
+};
+
+const ensureHighlightJs = async (language: string) => {
+  if (!window.hljs) {
+    runHighlightScript(await fetchHighlightAsset("highlight.min.js"));
+  }
+  if (window.kookitHljsLanguage !== language) {
+    runHighlightScript(
+      await fetchHighlightAsset(`languages/${language}.min.js`)
+    );
+    window.kookitHljsLanguage = language;
+  }
+};
+
+const getCodeHighlightTargets = (doc: Document) => {
+  return Array.from(doc.querySelectorAll("code")) as HTMLElement[];
+};
+
+const applyCodeHighlighting = async (doc: Document, language: string) => {
+  await ensureHighlightJs(language);
+  if (!doc.head.querySelector("#kookit-code-highlighter-style")) {
+    const style = document.createElement("style");
+    style.id = "kookit-code-highlighter-style";
+    style.textContent = await fetchHighlightAsset("default.min.css");
+    doc.head.appendChild(style);
+  }
+  const langClass = "language-" + language;
+  getCodeHighlightTargets(doc).forEach((element) => {
+    element.classList.add(langClass);
+    delete element.dataset.highlighted;
+    window.hljs.highlightElement(element);
+  });
+};
+
 export const transformText = async (doc: Document) => {
   if (window.bookLayout) {
     const cssPath = () =>
@@ -367,6 +441,12 @@ export const transformText = async (doc: Document) => {
   }
   if (window.isBionic === "yes") {
     processDocumentBody(doc);
+  }
+  if (window.codeHighlight) {
+    await applyCodeHighlighting(doc, window.codeHighlight);
+  }
+  if (window.textRules && window.textRules.length > 0) {
+    applyTextRules(doc, window.textRules);
   }
 };
 export const handleTextStyle = async (doc: Document) => {
@@ -649,8 +729,7 @@ export const handleLayout = (
 ) => {
   let style = doc.createElement("style");
   style.id = "default-style";
-  style.textContent =
-    "p,empty-line{display: inherit;margin-block-start: inherit;margin-block-end: inherit;margin-inline-start: inherit;margin-inline-end: inherit;}body{margin: 0px}";
+  style.textContent = "body{margin: 0px}";
   doc.head.appendChild(style);
   const vertical = isVerticalLayout();
   if (readerMode === "scroll") {

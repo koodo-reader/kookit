@@ -1,5 +1,6 @@
 import ChapterDoc from "../model/chapterDoc";
 import { convertStyleNum } from "./layoutUtil";
+import { playMimicalFlip } from "./navigationUtil";
 import _ from "underscore";
 
 export const getPdfScale = async (
@@ -40,7 +41,8 @@ export const createPDFContainer = async (
   element: HTMLElement,
   chapterDocList: ChapterDoc[],
   viewport: any,
-  readerMode: string
+  readerMode: string,
+  pdfCrop: { top: number; bottom: number; left: number; right: number }
 ) => {
   const fragment = document.createDocumentFragment();
   for (let index = 0; index < chapterDocList.length; index++) {
@@ -60,7 +62,11 @@ export const createPDFContainer = async (
       let scrollViewport = await chapterDocList[index].text.getDimension();
       const aspectRatio =
         scrollViewport?.width / scrollViewport?.height || 0.75; // Default to 3:4 if viewport unknown
-      iframeContainer.style.paddingTop = `${(1 / aspectRatio) * 100 + 5}%`;
+      const cropRatio = (100 - pdfCrop.bottom - pdfCrop.top) / 100;
+
+      iframeContainer.style.paddingTop = `${(1 / aspectRatio) * cropRatio * 100}%`;
+      iframeContainer.style.marginBottom = `2%`;
+      iframeContainer.style.overflow = "hidden";
     }
 
     if (readerMode === "double") {
@@ -96,7 +102,7 @@ export const createPDFIframe = (chapterDocIndex: number, doc: Document) => {
   let style = document.createElement("style");
   style.id = "default-style";
   style.textContent =
-    "p,empty-line{display: inherit;margin-block-start: inherit;margin-block-end: inherit;margin-inline-start: inherit;margin-inline-end: inherit;}body{margin: 0px}";
+    "body{margin: 0px}";
 
   // Append iframe to container, then container to parent
   iframeContainer.appendChild(iframe);
@@ -287,21 +293,8 @@ export const handleIOSScrollPage = async (
   let section = Math.floor(doc.body.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   const width = doc.body.clientWidth;
-  if (animation === "mimical" && isMobile !== "yes") {
-    let bookDiv = document.getElementById("book");
-    if (bookDiv) {
-      bookDiv.style.display = "block";
-      if (delta > 0) {
-        flipToPrevPage();
-      } else if (delta < 0) {
-        flipToNextPage();
-      }
-      setTimeout(() => {
-        if (!bookDiv) return {};
-        bookDiv.style.display = "none";
-      }, 1000);
-    }
-  }
+  playMimicalFlip(animation, isMobile, delta, flipToNextPage, flipToPrevPage);
+
   if (delta > 0) {
     // previous page
     if (readerMode === "single") {

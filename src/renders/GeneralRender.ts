@@ -1,6 +1,7 @@
 import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
 import {
+  collectChapterImageUrls,
   convertStyleNum,
   getSelectedElement,
   handleOneChapterDoc,
@@ -40,20 +41,34 @@ import { getPDFSearchResult } from "../utils/pdfUtil";
 import {
   addAndroidTouchEvent,
   addAppleTouchEvent,
+  blobUrlToBase64,
   slideAnimateTo,
 } from "../utils/touchUtil";
 import { getBlockElement, isParentBlock } from "../utils/common";
 declare var window: any;
+export interface TextRule {
+  id: string;
+  type: "replace" | "delete";
+  pattern: string;
+  replacement?: string;
+  matchType: "regex" | "plain";
+  scope: "all" | "book";
+  bookKey?: string;
+  bookName?: string;
+}
 class GeneralRender extends EventEmitter {
   readerMode: string;
   format: string;
-  animation: string;
+  animation: string = "none";
   convertChinese: string | undefined;
   isIndent: string | undefined;
   bookLayout: string | undefined;
+  textRules: TextRule[];
+  codeHighlight: string | undefined;
   isHyphenation: string | undefined;
   isDarkMode: string | undefined;
   textOrientation: string | undefined;
+  backgroundColor: string;
   book: any;
   tempLocation: any;
   chapterList: Chapter[];
@@ -89,15 +104,18 @@ class GeneralRender extends EventEmitter {
     isHyphenation?: string;
     isDarkMode?: string;
     isMobile?: string;
+    backgroundColor?: string;
     isBionic?: string;
     textOrientation?: string;
     isAllowScript?: string;
     fullTranslationMode?: string;
     bookLayout?: string;
+    textRules?: TextRule[];
+    codeHighlight?: string;
   }) {
     super();
     this.readerMode = config.readerMode;
-    this.animation = config.animation;
+    this.animation = config.animation || "none";
     this.format = config.format;
     this.convertChinese = config.convertChinese;
     window.convertChinese = config.convertChinese;
@@ -107,6 +125,7 @@ class GeneralRender extends EventEmitter {
     window.isHyphenation = this.isHyphenation;
     this.isDarkMode = config.isDarkMode;
     this.isMobile = config.isMobile;
+    this.backgroundColor = config.backgroundColor || "";
     this.textOrientation = config.textOrientation;
     window.textOrientation = config.textOrientation;
     this.chapterList = [];
@@ -123,6 +142,10 @@ class GeneralRender extends EventEmitter {
     window.fullTranslationMode = this.fullTranslationMode;
     this.bookLayout = config.bookLayout || "";
     window.bookLayout = this.bookLayout;
+    this.codeHighlight = config.codeHighlight || "";
+    window.codeHighlight = this.codeHighlight;
+    this.textRules = config.textRules || [];
+    window.textRules = this.textRules;
 
     //手机版环境已经有严格的安全限制，无需额外限制，PDF中无法执行代码，强行开启则无法渲染图书
     this.isAllowScript =
@@ -225,7 +248,7 @@ class GeneralRender extends EventEmitter {
         this.element.scrollTo(0, top);
       }
     }
-    if (this.animation !== "" && this.isMobile !== "yes") {
+    if (this.animation !== "none" && this.isMobile !== "yes") {
       await new Promise((r) => setTimeout(r, 1000));
     }
     await handleRecord(
@@ -473,6 +496,7 @@ class GeneralRender extends EventEmitter {
     }
     await this.record();
     this.trigger("rendered");
+    this.addPageAnimation();
   }
   async goToPosition(bookLocationStr: string) {
     let doc = this.getDocument();
@@ -545,7 +569,7 @@ class GeneralRender extends EventEmitter {
     rangy.init();
     await this.record();
     this.trigger("rendered");
-    // this.addPageAnimation();
+    this.addPageAnimation();
   }
   getDocument(): Document | null {
     let pageArea = document.getElementById("page-area");
@@ -865,6 +889,24 @@ class GeneralRender extends EventEmitter {
     if (!doc) return "";
     return doc.body.textContent || "";
   }
+  getImageList(): string[] | Promise<string[]> {
+    const doc = this.getDocument();
+    if (!doc || this.format === "PDF") return [];
+    const urls = collectChapterImageUrls(doc.body);
+    if (this.isMobile !== "yes") {
+      return urls;
+    }
+    return Promise.all(
+      urls.map(async (url) => {
+        if (!url.startsWith("blob:")) return url;
+        try {
+          return await blobUrlToBase64(url);
+        } catch {
+          return url;
+        }
+      })
+    );
+  }
   autoScroll(rate: number, isStart: string) {
     let doc = this.getDocument();
     if (!doc) return;
@@ -1016,7 +1058,7 @@ class GeneralRender extends EventEmitter {
     } as any;
   }
   async record() {
-    if (this.animation !== "" && this.isMobile !== "yes") {
+    if (this.animation !== "none" && this.isMobile !== "yes") {
       await new Promise((r) => setTimeout(r, 1000));
     }
     let doc = this.getDocument();
@@ -1103,7 +1145,7 @@ class GeneralRender extends EventEmitter {
     // from shifting character offsets for later ones.
     const batchItems = notes.map((item) => ({
       range: JSON.parse(item.range),
-      colorIndex: item.color,
+      colorCode: item.color,
       noteKey: item.key,
       isNote: item.notes !== "",
       noteContent: item.notes || "",
@@ -1166,23 +1208,22 @@ class GeneralRender extends EventEmitter {
     );
   }
 
-  addPageAnimation = (backgroundColor: string) => {
-    if (this.animation === "mimical") {
-      let progressInfo = this.getProgress();
-      if (!progressInfo) return;
-      const pageAnimation = addPageAnimation(
-        progressInfo.totalPage,
-        this.isDarkMode,
-        backgroundColor
-      );
-      if (pageAnimation) {
-        this.flipToNextPage = pageAnimation.flipToNextPage;
-        this.flipToPrevPage = pageAnimation.flipToPrevPage;
-        this.mouseDownHandler = pageAnimation.mouseDownHandler;
-        this.mouseUpHandler = pageAnimation.mouseUpHandler;
-        this.mouseMoveHandler = pageAnimation.mouseMoveHandler;
-      }
-    }
+  addPageAnimation = (backgroundColor?: string) => {
+    if (this.animation !== "mimical") return;
+    const progress = this.getProgress();
+    if (!progress?.totalPage) return;
+    const pageAnimation = addPageAnimation(
+      progress.totalPage,
+      this.isDarkMode,
+      backgroundColor || this.backgroundColor,
+      Math.max(0, Math.floor(progress.currentPage || 1) - 1)
+    );
+    if (!pageAnimation) return;
+    this.flipToNextPage = pageAnimation.flipToNextPage;
+    this.flipToPrevPage = pageAnimation.flipToPrevPage;
+    this.mouseDownHandler = pageAnimation.mouseDownHandler;
+    this.mouseUpHandler = pageAnimation.mouseUpHandler;
+    this.mouseMoveHandler = pageAnimation.mouseMoveHandler;
   };
   async displayFontBase64(
     fontName: string,
@@ -1413,7 +1454,19 @@ class GeneralRender extends EventEmitter {
         return { handled: true };
       }
     }
-    if (href && this.resolveChapter(href)) {
+    if (
+      href &&
+      href.indexOf("../") === -1 &&
+      (href.indexOf("http") === 0 || href.indexOf("mailto") === 0) &&
+      href.indexOf("OEBPF") === -1 &&
+      href.indexOf("OEBPS") === -1 &&
+      href.indexOf("footnote") === -1 &&
+      href.indexOf("blob") === -1 &&
+      href.indexOf("data:application") === -1
+    ) {
+      // openExternalUrl(href);
+      return { handled: true, href: href, external: true };
+    } else if (href && this.resolveChapter(href)) {
       let chapterInfo = this.resolveChapter(href);
       if (!chapterInfo) return { handled: false };
       await this.goToChapter(
@@ -1487,18 +1540,6 @@ class GeneralRender extends EventEmitter {
         chapterInfo.label
       );
       return { handled: true };
-    } else if (
-      href &&
-      href.indexOf("../") === -1 &&
-      (href.indexOf("http") === 0 || href.indexOf("mailto") === 0) &&
-      href.indexOf("OEBPF") === -1 &&
-      href.indexOf("OEBPS") === -1 &&
-      href.indexOf("footnote") === -1 &&
-      href.indexOf("blob") === -1 &&
-      href.indexOf("data:application") === -1
-    ) {
-      // openExternalUrl(href);
-      return { handled: true, href: href, external: true };
     }
     return { handled: false };
   }
@@ -1533,7 +1574,9 @@ class GeneralRender extends EventEmitter {
       const sourceText = sourcetexts[index];
       if (this.transMap[sourceText]) {
         this.transMap[sourceText].text = targetTexts[index];
-        let elements = doc.querySelectorAll("#" + this.transMap[sourceText].id);
+        let elements = doc.querySelectorAll(
+          "#" + CSS.escape(this.transMap[sourceText].id)
+        );
         for (let i = 0; i < elements.length; i++) {
           const element = elements[i];
           if (element) {

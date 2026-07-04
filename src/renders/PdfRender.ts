@@ -23,11 +23,19 @@ declare var window: any;
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
   isStartFromEven: string = "no";
+  isKeepPDFBackground: string = "no";
+  pdfCrop: { top: number; bottom: number; left: number; right: number } = {
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+  };
   password: string = "";
   pdfScale: number = 0;
   scale: number = 1;
   backgroundColor: string;
   isScannedPDF: string;
+  enablePDFSelectionOptimization: string = "no";
   scrollPDFInterval: any = null;
   templateChapterDocIndex: number = 0;
   platform: string;
@@ -37,11 +45,15 @@ class PdfRender extends GeneralRender {
     super({ ...config, convertChinese: "Default", format: "PDF" });
     this.pdfBuffer = pdfBuffer;
     this.isStartFromEven = config.isStartFromEven || "no";
+    this.pdfCrop = config.pdfCrop || { top: 0, bottom: 0, left: 0, right: 0 };
+    this.isKeepPDFBackground = config.isKeepPDFBackground || "no";
     this.password = config.password || "";
     this.scale = config.scale || 1;
     this.backgroundColor = config.backgroundColor || "#ffffff";
     this.isScannedPDF = config.isScannedPDF || "no";
     this.platform = config.platform || "web";
+    this.enablePDFSelectionOptimization =
+      config.enablePDFSelectionOptimization || "no";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -99,7 +111,8 @@ class PdfRender extends GeneralRender {
         doc.body || (doc.documentElement as HTMLElement),
         this.chapterDocList,
         viewport,
-        this.readerMode
+        this.readerMode,
+        this.pdfCrop
       );
       let scrollTimeout: any = null;
       if (this.readerMode === "scroll") {
@@ -375,15 +388,8 @@ class PdfRender extends GeneralRender {
     }
     await this.renderPdfPage(parseInt(chapterDocIndex), doc);
     if (this.readerMode === "scroll") {
-      let subIframe = this.getSubIframe(
-        chapterDocIndex !== undefined
-          ? chapterDocIndex
-          : parseInt(this.tempLocation.chapterDocIndex)
-      );
-      if (!subIframe) return;
-      let iframeHeight =
-        subIframe.parentElement?.getBoundingClientRect().height || 0;
-      iframe.style.height = iframeHeight * this.chapterDocList.length + "px";
+      iframe.height = doc.body.scrollHeight + "px";
+      iframe.height = doc.body.scrollHeight + 300 + "px";
     }
 
     await handleScrollPDFPosition(
@@ -393,7 +399,7 @@ class PdfRender extends GeneralRender {
     );
     rangy.init();
     await this.recordByChapter(parseInt(chapterDocIndex));
-    // this.addPageAnimation();
+    this.addPageAnimation(this.backgroundColor);
   }
   async prev(platform?: string) {
     let doc = this.getDocument();
@@ -526,7 +532,7 @@ class PdfRender extends GeneralRender {
     return (await this.visibleText()).join(" ");
   }
   async record(): Promise<void> {
-    if (this.animation !== "") {
+    if (this.animation !== "none" && this.isMobile !== "yes") {
       await new Promise((r) => setTimeout(r, 1000));
     }
     let doc = this.getDocument();
@@ -534,7 +540,7 @@ class PdfRender extends GeneralRender {
     await this.handlePDFRecord(doc);
   }
   async recordByChapter(chapterDocIndex: number): Promise<void> {
-    if (this.animation !== "") {
+    if (this.animation !== "none" && this.isMobile !== "yes") {
       await new Promise((r) => setTimeout(r, 1000));
     }
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
@@ -1022,6 +1028,26 @@ class PdfRender extends GeneralRender {
 
     textLayer.style.setProperty("--kookit-pdf-text-line-height", lineHeightKey);
   }
+  applyPdfCrop(subIframe: any, subDoc: Document) {
+    if (this.readerMode === "scroll") {
+      subDoc.body.style.overflow = "hidden";
+      const visibleWidth = 100 - this.pdfCrop.left - this.pdfCrop.right;
+      const scale = 100 / visibleWidth;
+
+      // 经验补偿系数，根据你的 PDF 微调（通常 0.6~0.9）
+      const compensation = 1;
+      const tx =
+        (this.pdfCrop.right - this.pdfCrop.left) * (scale / 2) * compensation;
+
+      subIframe.style.transformOrigin = "50% 50%";
+      subIframe.style.transform = `translateX(${tx}%) scale(${scale}) translateZ(0)`;
+
+      if (this.pdfCrop.top > 0) {
+        subDoc.body.style.position = "relative";
+        subDoc.body.style.bottom = this.pdfCrop.top + 2 + "%";
+      }
+    }
+  }
   async handleRenderPDFChapter(chapterDocIndex: number, doc: Document) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
@@ -1047,7 +1073,8 @@ class PdfRender extends GeneralRender {
       subDoc,
       scale,
       this.isMobile,
-      this
+      this,
+      this.isKeepPDFBackground
     );
 
     let docLayer: any = subDoc.querySelector("#koodoPDFLayer");
@@ -1070,6 +1097,14 @@ class PdfRender extends GeneralRender {
       docLayer.style.filter =
         "sepia(30%) hue-rotate(60deg) saturate(120%) brightness(95%)";
     }
+    if (
+      this.pdfCrop.top > 0 ||
+      this.pdfCrop.left > 0 ||
+      this.pdfCrop.right > 0
+    ) {
+      this.applyPdfCrop(subIframe, subDoc);
+    }
+
     if (this.readerMode === "single" || this.readerMode === "double") {
       let additionalHeight =
         this.element.clientHeight / 2 -
@@ -1090,7 +1125,10 @@ class PdfRender extends GeneralRender {
     }
     docLayer.style.visibility = "visible";
     window.chapterDocIndex = chapterDocIndex;
-    if (this.platform === "android") {
+    if (
+      this.platform === "android" &&
+      this.enablePDFSelectionOptimization === "yes"
+    ) {
       this.applyPDFTextLayerLineHeight(subDoc);
     }
     this.trigger("rendered");
@@ -1126,7 +1164,11 @@ class PdfRender extends GeneralRender {
     if (this.pdfScale && this.pdfScale > 0) {
       return this.pdfScale;
     }
+
     let doc = this.getDocument();
+    if (this.readerMode === "scroll") {
+      doc = this.getSubDocument(this.templateChapterDocIndex);
+    }
     if (!doc) return 1;
     let { width, height } =
       await this.chapterDocList[
@@ -1143,6 +1185,7 @@ class PdfRender extends GeneralRender {
     }
     let scale = Math.min(viewWidth / width, viewHeight / height);
     if (this.readerMode === "scroll") {
+      viewWidth = viewWidth - 10;
       scale = viewWidth / width;
     }
     this.pdfScale = scale;

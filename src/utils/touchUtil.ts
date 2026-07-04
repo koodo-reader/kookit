@@ -1,4 +1,5 @@
 import rangy from "rangy/lib/rangy-core.js";
+import { createSelectionAutoTurn } from "./selectionAutoTurn";
 
 declare var window: any;
 let selectionTimeout: any = null;
@@ -114,16 +115,16 @@ export const slideAnimateTo = (
 
   window.scrollAnimationId = requestAnimationFrame(animateScroll);
 };
-async function blobUrlToBase64(blobUrl) {
+export async function blobUrlToBase64(blobUrl: string): Promise<string> {
   try {
     // 1. 获取Blob数据
     const response = await fetch(blobUrl);
     const blob = await response.blob();
 
     // 2. 将Blob转换为Base64
-    const base64 = await new Promise((resolve, reject) => {
+    const base64: string = await new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result); // 成功时返回Base64字符串
+      reader.onloadend = () => resolve(reader.result as string); // 成功时返回Base64字符串
       reader.onerror = reject; // 失败时拒绝Promise
       reader.readAsDataURL(blob); // 开始读取
     });
@@ -266,6 +267,15 @@ export const addAndroidTouchEvent = (
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
   let pageWidth = element.clientWidth + gap;
+  const selectionAutoTurn = createSelectionAutoTurn({
+    element,
+    iframe,
+    doc,
+    render,
+    readerMode,
+    format,
+    enableScrollPin: true,
+  });
   let onTouchEnd = function (event) {
     window.isSwiping = false;
 
@@ -346,6 +356,9 @@ export const addAndroidTouchEvent = (
         })
       );
       return;
+    }
+    if (!selectedText) {
+      selectionAutoTurn?.onSelectionCleared();
     }
     if (timeDiff > timeThreshold) {
       const target: any = event.target;
@@ -434,6 +447,13 @@ export const addAndroidTouchEvent = (
   let lastTouchX = 0;
 
   let onTouchMove = function (event) {
+    const selectedText = iWin.getSelection().toString().trim();
+    if (selectedText) {
+      const touch = event.touches[0];
+      selectionAutoTurn?.onTouchMove(touch.clientX, touch.clientY);
+      return;
+    }
+
     // Skip handling if not dragging yet and still determining direction
     if (!isDragging && Math.abs(event.touches[0].screenX - touchStartX) <= 10) {
       return;
@@ -499,6 +519,14 @@ export const addAndroidTouchEvent = (
   doc.addEventListener("touchend", onTouchEnd, false);
   doc.addEventListener("touchstart", onTouchStart, false);
   doc.addEventListener("touchmove", onTouchMove, false);
+  doc.addEventListener(
+    "pointermove",
+    (event) => {
+      if (!iWin.getSelection().toString().trim()) return;
+      selectionAutoTurn?.onTouchMove(event.clientX, event.clientY);
+    },
+    { passive: true }
+  );
   // Add this with the other event listeners
   doc.addEventListener(
     "click",
@@ -647,10 +675,11 @@ export const addAndroidTouchEvent = (
       offsetLeft = getScreenLeftOffset();
       offsetTop = getScreenTopOffset();
       if (readerMode === "scroll") return;
-      scrollLeft = doc.body.scrollLeft;
-      scrollTop = doc.body.scrollTop;
-
-      //prevent doc.body from scrolling
+      selectionAutoTurn?.onSelectStart();
+      if (format === "PDF") {
+        scrollLeft = doc.body.scrollLeft;
+        scrollTop = doc.body.scrollTop;
+      }
     },
     false
   );
@@ -673,16 +702,20 @@ export const addAndroidTouchEvent = (
           selectionMenuTimer = null;
         }, 1000);
       }
-      //检查选择文字是否为空
       const selectedText = iWin.getSelection().toString().trim();
       if (!selectedText) {
+        selectionAutoTurn?.onSelectionCleared();
         return;
       }
-      if (scrollLeft > 0) {
-        doc.body.scrollLeft = scrollLeft;
-      }
-      if (scrollTop > 0) {
-        doc.body.scrollTop = scrollTop;
+      if (selectionAutoTurn) {
+        selectionAutoTurn.onSelectionChange();
+      } else {
+        if (scrollLeft > 0) {
+          doc.body.scrollLeft = scrollLeft;
+        }
+        if (scrollTop > 0) {
+          doc.body.scrollTop = scrollTop;
+        }
       }
       selectionCount++;
 
@@ -701,15 +734,18 @@ export const addAndroidTouchEvent = (
     },
     false
   );
-  //fix page scroll when selecting text
   doc.addEventListener("scroll", () => {
     if (readerMode === "single" || readerMode === "double") {
-      const selectedText = iWin.getSelection().toString().trim();
-      if (selectedText && scrollLeft > 0) {
-        doc.body.scrollLeft = scrollLeft;
-      }
-      if (selectedText && scrollTop > 0) {
-        doc.body.scrollTop = scrollTop;
+      if (selectionAutoTurn) {
+        selectionAutoTurn.applyScrollPin();
+      } else {
+        const selectedText = iWin.getSelection().toString().trim();
+        if (selectedText && scrollLeft > 0) {
+          doc.body.scrollLeft = scrollLeft;
+        }
+        if (selectedText && scrollTop > 0) {
+          doc.body.scrollTop = scrollTop;
+        }
       }
     }
   });
@@ -736,6 +772,15 @@ export const addAppleTouchEvent = (
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
   let section = Math.floor(element.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
+  const selectionAutoTurn = createSelectionAutoTurn({
+    element,
+    iframe,
+    doc,
+    render,
+    readerMode,
+    format,
+    enableScrollPin: false,
+  });
   let onTouchEnd = async function (event) {
     window.isSwiping = false;
     let now = new Date().getTime();
@@ -848,6 +893,9 @@ export const addAppleTouchEvent = (
       );
       return;
     }
+    if (!selectedText) {
+      selectionAutoTurn?.onSelectionCleared();
+    }
     if (timeDiff > timeThreshold) {
       const target: any = event.target;
       if (!target) return;
@@ -953,11 +1001,14 @@ export const addAppleTouchEvent = (
   let onTouchMove = function (event) {
     const selectedText = iWin.getSelection().toString().trim();
 
+    if (selectedText) {
+      const touch = event.touches[0];
+      selectionAutoTurn?.onTouchMove(touch.clientX, touch.clientY);
+      return;
+    }
+
     // Skip handling if not dragging yet and still determining direction
-    if (
-      (!isDragging && Math.abs(event.touches[0].screenX - touchStartX) <= 10) ||
-      selectedText
-    ) {
+    if (!isDragging && Math.abs(event.touches[0].screenX - touchStartX) <= 10) {
       return;
     }
     if (window.visualViewport.scale > 1 && format === "PDF") {
@@ -1022,6 +1073,14 @@ export const addAppleTouchEvent = (
   doc.addEventListener("touchend", onTouchEnd, { passive: false });
   doc.addEventListener("touchstart", onTouchStart, { passive: false });
   doc.addEventListener("touchmove", onTouchMove, { passive: false });
+  doc.addEventListener(
+    "pointermove",
+    (event) => {
+      if (!iWin.getSelection().toString().trim()) return;
+      selectionAutoTurn?.onTouchMove(event.clientX, event.clientY);
+    },
+    { passive: true }
+  );
   // Add this with the other event listeners
   doc.addEventListener(
     "click",
@@ -1036,16 +1095,25 @@ export const addAppleTouchEvent = (
     event.stopPropagation();
     return false;
   };
+  doc.addEventListener(
+    "selectstart",
+    () => {
+      if (readerMode === "scroll") return;
+      selectionAutoTurn?.onSelectStart();
+    },
+    false
+  );
   let lastSelectionChangeTime = 0;
   const SELECTION_THROTTLE_DELAY = 3000; // 3秒
   doc.addEventListener(
     "selectionchange",
     (event) => {
-      //检查选择文字是否为空
       const selectedText = iWin.getSelection().toString().trim();
       if (!selectedText) {
+        selectionAutoTurn?.onSelectionCleared();
         return;
       }
+      selectionAutoTurn?.onSelectionChange();
       const now = Date.now();
 
       // 检查是否超过3秒间隔

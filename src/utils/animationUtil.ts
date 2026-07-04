@@ -61,13 +61,21 @@ function createBookElement(sectionCount) {
   style.innerHTML = css;
   document.head.appendChild(style);
 }
+
+let flipRenderTimer: ReturnType<typeof setInterval> | null = null;
+
 export const addPageAnimation = (
   totalPage: number,
   isDarkMode,
-  backgroundColor: string
+  backgroundColor: string,
+  pageIndex = 0
 ) => {
-  // Example usage: create a book element with 3 sections
-  createBookElement(totalPage + 1);
+  if (flipRenderTimer) {
+    clearInterval(flipRenderTimer);
+    flipRenderTimer = null;
+  }
+
+  createBookElement(Math.max(1, Math.floor(totalPage) + 1));
   var WINDOW_WIDTH = window.innerWidth;
   var WINDOW_HEIGHT = window.innerHeight;
 
@@ -128,32 +136,22 @@ export const addPageAnimation = (
   canvas.style.left = -CANVAS_PADDING + "px";
 
   // Render the page flip 60 times a second
-  setInterval(render, 1800 / 60);
-
-  document.addEventListener("mousemove", mouseMoveHandler, false);
-  document.addEventListener("mousedown", mouseDownHandler, false);
-  document.addEventListener("mouseup", mouseUpHandler, false);
+  flipRenderTimer = setInterval(render, 1800 / 60);
 
   book.addEventListener("touchmove", mouseMoveHandler, false);
   book.addEventListener("touchstart", mouseDownHandler, false);
   book.addEventListener("touchend", mouseUpHandler, false);
 
   function mouseMoveHandler(event) {
-    if (!book) return;
-    // Offset mouse position so that the top of the spine is 0,0
-    // mouse.x = event.clientX - book.offsetLeft - BOOK_WIDTH / 2;
-    // mouse.y = event.clientY - book.offsetTop;
-
+    if (!book || !event.touches?.[0]) return;
     const touch = event.touches[0];
-    const touchCurrentX = touch.screenX;
-    const touchCurrentY = touch.screenY;
-    mouse.x = touchCurrentX - book.offsetLeft - BOOK_WIDTH / 2;
-    mouse.y = touchCurrentY - book.offsetTop;
+    mouse.x = touch.screenX - book.offsetLeft - BOOK_WIDTH / 2;
+    mouse.y = touch.screenY - book.offsetTop;
   }
 
   function mouseDownHandler(event) {
-    const touch = event.touches[0];
-    // flips[page].dragging = true;
+    const touch = event.touches?.[0];
+    if (!touch) return;
     touchStartX = touch.screenX;
     if (touch.screenX < window.screen.width / 2 && pageNum - 1 >= 0) {
       flips[pageNum - 1].dragging = true;
@@ -169,7 +167,8 @@ export const addPageAnimation = (
   }
 
   function mouseUpHandler(event) {
-    const touch = event.changedTouches[0];
+    const touch = event.changedTouches?.[0];
+    if (!touch) return;
     touchEndX = touch.screenX;
     for (var i = 0; i < flips.length; i++) {
       // If this flip was being dragged we animate to its destination
@@ -356,19 +355,44 @@ export const addPageAnimation = (
 
     context.restore();
   }
+
+  function resetFlips() {
+    for (var i = 0; i < flips.length; i++) {
+      var flip = flips[i];
+      flip.dragging = false;
+      if (i < pageNum) {
+        flip.progress = -1;
+        flip.target = -1;
+        flip.page.style.width = "0px";
+      } else {
+        flip.progress = 1;
+        flip.target = 1;
+        flip.page.style.width = PAGE_WIDTH + "px";
+      }
+    }
+  }
+
   return {
     flipToNextPage: () => {
+      if (!flips.length || pageNum >= flips.length) return;
       if (pageNum + 1 < flips.length) {
         flips[pageNum].target = -1;
         pageNum = Math.min(pageNum + 1, flips.length);
       }
     },
     flipToPrevPage: () => {
-      if (pageNum - 1 >= 0) {
+      if (!flips.length || pageNum <= 0) return;
+      if (pageNum - 1 >= 0 && flips[pageNum - 1]) {
         flips[pageNum - 1].target = 1;
         pageNum = Math.max(pageNum - 1, 0);
       }
     },
+    setPageNum: (n: number) => {
+      if (!flips.length) return;
+      pageNum = Math.max(0, Math.min(n, flips.length - 1));
+      resetFlips();
+    },
+    resetFlips,
     mouseDownHandler,
     mouseUpHandler,
     mouseMoveHandler,

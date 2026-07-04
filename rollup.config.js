@@ -14,41 +14,6 @@ const getMobileOutputPath = (filename) => {
   return path.join(basePath, "assets", "lib", filename);
 };
 export default [
-  //browser-friendly UMD build
-  // {
-  //   input: "src/index.ts",
-  //   output: {
-  //     name: "Kookit",
-  //     file: pkg.browser,
-  //     format: "umd",
-  //   },
-  //   plugins: [
-  //     resolve(),
-  //     commonjs({
-  //       include: [/node_modules/],
-  //     }),
-  //     json(),
-  //     typescript({ tsconfig: "./tsconfig.json" }),
-  //     // uglify(),
-  //   ],
-  // },
-  // {
-  //   input: "src/index.ts",
-  //   output: [{
-  //     name: "Kookit",
-  //     file: getDesktopOutputPath("kookit.js"),
-  //     format: "es",
-  //   }],
-  //   plugins: [
-  //     resolve({ browser: true }),
-  //     commonjs({
-  //       include: [/node_modules/],
-  //     }),
-  //     json(),
-  //     typescript({ tsconfig: "./tsconfig.json" }),
-  //   ],
-  //   external: ['mammoth', 'jszip', 'underscore', 'marked', 'mhtml2html', 'js-untar', 'fflate', 'rangy/lib/rangy-core.js', 'rangy/lib/rangy-textrange', 'chardet'],
-  // },
   {
     input: "src/index.ts",
     output: [
@@ -177,28 +142,6 @@ export default [
       warn(warning);
     },
   },
-  // {
-  //   input: "src/mobile.ts",
-  //   output: [{
-  //     name: "Kookit",
-  //     file: getMobileOutputPath("kookit-mobile.min.txt"),
-  //     format: "umd",
-  //   }],
-  //   plugins: [
-  //     resolve({ browser: true }),
-  //     commonjs({
-  //       include: [/node_modules/],
-  //     }),
-  //     json(),
-  //     typescript({ tsconfig: "./tsconfig.json" }),
-  //     terser({
-  //       format: {
-  //         comments: false,
-  //       },
-  //     }),
-  //   ],
-  //   external: [],
-  // },
 
   // CommonJS (for Node) and ES module (for bundlers) build.
   // (We could have three entries in the configuration array
