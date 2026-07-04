@@ -729,8 +729,7 @@ export const handleLayout = (
 ) => {
   let style = doc.createElement("style");
   style.id = "default-style";
-  style.textContent =
-    "body{margin: 0px}";
+  style.textContent = "body{margin: 0px}";
   doc.head.appendChild(style);
   const vertical = isVerticalLayout();
   if (readerMode === "scroll") {

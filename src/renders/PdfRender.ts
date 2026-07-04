@@ -388,15 +388,8 @@ class PdfRender extends GeneralRender {
     }
     await this.renderPdfPage(parseInt(chapterDocIndex), doc);
     if (this.readerMode === "scroll") {
-      let subIframe = this.getSubIframe(
-        chapterDocIndex !== undefined
-          ? chapterDocIndex
-          : parseInt(this.tempLocation.chapterDocIndex)
-      );
-      if (!subIframe) return;
-      let iframeHeight =
-        subIframe.parentElement?.getBoundingClientRect().height || 0;
-      iframe.style.height = iframeHeight * this.chapterDocList.length + "px";
+      iframe.height = doc.body.scrollHeight + "px";
+      iframe.height = doc.body.scrollHeight + 300 + "px";
     }
 
     await handleScrollPDFPosition(
