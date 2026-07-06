@@ -889,10 +889,31 @@ class GeneralRender extends EventEmitter {
     if (!doc) return "";
     return doc.body.textContent || "";
   }
-  getImageList(): string[] | Promise<string[]> {
-    const doc = this.getDocument();
-    if (!doc || this.format === "PDF") return [];
-    const urls = collectChapterImageUrls(doc.body);
+  async getImageList(chapterDocIndex?: number): Promise<string[]> {
+    if (this.format === "PDF") return [];
+    let urls: string[];
+    if (chapterDocIndex === undefined || chapterDocIndex === null) {
+      const doc = this.getDocument();
+      if (!doc) return [];
+      urls = collectChapterImageUrls(doc.body);
+    } else {
+      if (
+        chapterDocIndex < 0 ||
+        chapterDocIndex > this.chapterDocList.length - 1
+      ) {
+        return [];
+      }
+      const chapterText = await handleOneChapterDoc(
+        this.chapterDocList[chapterDocIndex].text,
+        false
+      );
+      if (!chapterText) return [];
+      const chapterDoc = new DOMParser().parseFromString(
+        chapterText,
+        "text/html"
+      );
+      urls = collectChapterImageUrls(chapterDoc.body);
+    }
     if (this.isMobile !== "yes") {
       return urls;
     }
