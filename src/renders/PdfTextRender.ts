@@ -108,7 +108,10 @@ class PdfTextRender extends GeneralRender {
       let doc = this.getDocument();
       if (!doc) return;
       handleLayout(element, this.readerMode, doc);
-      if (this.ocrEngine === "official-ai-ocr" && this.ocrLang === "accurate") {
+      if (
+        this.ocrEngine === "mineru-official-agent" ||
+        (this.ocrEngine === "official-ai-ocr" && this.ocrLang === "accurate")
+      ) {
         const srcDoc = await window.PDFLib.PDFDocument.load(this.pdfBuffer);
         this.pdfDoc = srcDoc;
       }
@@ -151,6 +154,7 @@ class PdfTextRender extends GeneralRender {
 
         if (
           this.ocrEngine !== "official-ai-ocr" &&
+          this.ocrEngine !== "mineru-official-agent" &&
           this.ocrEngine !== "external-engine"
         ) {
           // 非 official-ai-ocr 引擎需等待当前章节处理完成后再处理下一个
@@ -274,10 +278,13 @@ class PdfTextRender extends GeneralRender {
         let result: any;
         if (this.ocrEngine === "external-engine") {
           textContent = await this.worker.recognize(chapterDocIndex, "");
-        } else if (this.ocrEngine === "mineru-official-agent") {
         } else {
           // official-ai-ocr
-          if (this.ocrLang === "accurate") {
+          if (
+            this.ocrEngine === "mineru-official-agent" ||
+            (this.ocrEngine === "official-ai-ocr" &&
+              this.ocrLang === "accurate")
+          ) {
             let fileBlob = await this.extractPages(chapterDocIndex + 1); // 页码从1开始
             let file = new File([fileBlob], chapterDocIndex + ".pdf", {
               type: "application/pdf",
@@ -299,10 +306,46 @@ class PdfTextRender extends GeneralRender {
           showOCRProgress(1);
           this.isFinishOCR = true;
         }
-        if (this.ocrLang === "accurate") {
+        if (
+          this.ocrEngine === "official-ai-ocr" &&
+          this.ocrLang === "accurate"
+        ) {
           const src = URL.createObjectURL(
             new Blob([textContent], { type: "text/html" })
           );
+          return src;
+        } else if (this.ocrEngine === "mineru-official-agent") {
+          const src = URL.createObjectURL(
+            new Blob(
+              [
+                `
+                <!DOCTYPE html>
+                <html lang="en">
+                <meta charset="utf-8">
+                <style>
+                html, body {
+                    margin: 0;
+                    padding: 20px;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                }
+                p {
+                    margin: 0.8em 0;
+                    text-align: justify;
+                }
+                .bold {
+                    font-weight: bold;
+                }
+                .paragraph {
+                    margin-bottom: 1em;
+                }
+                </style>
+                <div>${textContent}</div>
+              `,
+              ],
+              { type: "text/html" }
+            )
+          );
+          console.log("mineru-official-agent OCR result src:", src);
           return src;
         }
       } finally {
@@ -609,7 +652,11 @@ class PdfTextRender extends GeneralRender {
           showOCRProgress(1);
         }
       }
-      if (this.isScannedPDF === "yes" && this.ocrEngine === "official-ai-ocr") {
+      if (
+        this.isScannedPDF === "yes" &&
+        (this.ocrEngine === "official-ai-ocr" ||
+          this.ocrEngine === "mineru-official-agent")
+      ) {
         this.worker = this.externalWorker;
       }
     } catch (error) {
