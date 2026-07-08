@@ -210,7 +210,10 @@ class PdfTextRender extends GeneralRender {
   };
   async getTextByOCR(chapterDoc, chapterDocIndex: number) {
     let textContent = "";
-    if (this.ocrEngine === "external-engine") {
+    if (
+      this.ocrEngine === "external-engine" ||
+      this.ocrEngine === "official-ai-ocr"
+    ) {
       // 模拟进度条变化
       let progressInterval: any = null;
       if (this.shouldShowProgress) {
@@ -230,49 +233,21 @@ class PdfTextRender extends GeneralRender {
       }
 
       try {
-        textContent = await this.worker.recognize(chapterDocIndex, "");
+        let result: any;
+        if (this.ocrEngine === "external-engine") {
+          textContent = await this.worker.recognize(chapterDocIndex, "");
+        } else {
+          // official-ai-ocr
+          result = await this.worker.recognize([], "auto");
+          textContent =
+            result && result.data && result.data.text ? result.data.text : "";
+        }
 
         // 完成后立即将进度设为1
         if (this.shouldShowProgress) {
           if (progressInterval) clearInterval(progressInterval);
           showOCRProgress(1);
           this.isFinishOCR = true;
-        }
-      } finally {
-        if (this.shouldShowProgress && progressInterval) {
-          clearInterval(progressInterval);
-        }
-      }
-    } else if (this.ocrEngine === "official-ai-ocr") {
-      // 模拟进度条变化
-      let progressInterval: any = null;
-      if (this.shouldShowProgress) {
-        let progress = 0;
-        const duration = 5000; // 5秒
-        const intervalTime = 100; // 每100ms更新一次
-        const increment = 0.9 / (duration / intervalTime); // 最多到0.9
-
-        progressInterval = setInterval(() => {
-          progress += increment;
-          if (progress >= 0.9) {
-            progress = 0.9;
-            clearInterval(progressInterval);
-          }
-          showOCRProgress(progress);
-        }, intervalTime);
-      }
-
-      try {
-        const result = await this.worker.recognize([], "auto");
-        // 完成后立即将进度设为1
-        if (this.shouldShowProgress) {
-          showOCRProgress(1);
-          this.isFinishOCR = true;
-        }
-        if (result && result.data && result.data.text) {
-          return result.data.text;
-        } else {
-          return "";
         }
       } finally {
         if (this.shouldShowProgress && progressInterval) {
