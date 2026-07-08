@@ -24,6 +24,7 @@ class PdfTextRender extends GeneralRender {
   shouldShowProgress: boolean = false; // 控制是否显示进度
   externalWorker: any;
   pdfPageCount: number = 0;
+  pdfDoc: any;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, format: "PDFTEXT" });
     this.pdfBuffer = pdfBuffer;
@@ -107,6 +108,10 @@ class PdfTextRender extends GeneralRender {
       let doc = this.getDocument();
       if (!doc) return;
       handleLayout(element, this.readerMode, doc);
+      if (this.ocrEngine === "official-ai-ocr" && this.ocrLang === "accurate") {
+        const srcDoc = await window.PDFLib.PDFDocument.load(this.pdfBuffer);
+        this.pdfDoc = srcDoc;
+      }
       resolve();
     });
   }
@@ -191,7 +196,7 @@ class PdfTextRender extends GeneralRender {
     return () => clearInterval(timer);
   }
 
-  performImageOCR = async (imageUrl) => {
+  performBuiltInOCR = async (imageUrl) => {
     try {
       if (this.ocrEngine === "tesseract") {
         const result = await this.worker.recognize(imageUrl);
@@ -208,11 +213,44 @@ class PdfTextRender extends GeneralRender {
       throw error;
     }
   };
+  extractPages = async (pages) => {
+    // 1. 加载原始 PDF
+    const srcDoc = this.pdfDoc;
+
+    // 2. 创建新的 PDF 文档
+    const newDoc = await window.PDFLib.PDFDocument.create();
+
+    // 统一转为数组（支持单个页码或数组）
+    const pageNumbers = Array.isArray(pages) ? pages : [pages];
+
+    // pdf-lib 使用 0-based index，所以要 -1
+    const pageIndices = pageNumbers
+      .map((p) => p - 1) // 转为 0-based
+      .filter((i) => i >= 0 && i < srcDoc.getPageCount()); // 过滤无效页码
+
+    if (pageIndices.length === 0) {
+      throw new Error("没有找到有效的页码");
+    }
+
+    // 3. 复制指定页面
+    const copiedPages = await newDoc.copyPages(srcDoc, pageIndices);
+
+    // 4. 将复制的页面添加到新文档
+    copiedPages.forEach((page) => {
+      newDoc.addPage(page);
+    });
+
+    // 5. 保存为 Uint8Array
+    const newPdfBytes = await newDoc.save();
+    const blob = new Blob([newPdfBytes], { type: "application/pdf" });
+    return blob;
+  };
   async getTextByOCR(chapterDoc, chapterDocIndex: number) {
     let textContent = "";
     if (
       this.ocrEngine === "external-engine" ||
-      this.ocrEngine === "official-ai-ocr"
+      this.ocrEngine === "official-ai-ocr" ||
+      this.ocrEngine === "mineru-official-agent"
     ) {
       // 模拟进度条变化
       let progressInterval: any = null;
@@ -236,18 +274,36 @@ class PdfTextRender extends GeneralRender {
         let result: any;
         if (this.ocrEngine === "external-engine") {
           textContent = await this.worker.recognize(chapterDocIndex, "");
+        } else if (this.ocrEngine === "mineru-official-agent") {
         } else {
           // official-ai-ocr
-          result = await this.worker.recognize([], "auto");
-          textContent =
-            result && result.data && result.data.text ? result.data.text : "";
+          if (this.ocrLang === "accurate") {
+            let fileBlob = await this.extractPages(chapterDocIndex + 1); // 页码从1开始
+            let file = new File([fileBlob], chapterDocIndex + ".pdf", {
+              type: "application/pdf",
+            });
+            result = await this.worker.recognize(file);
+            textContent =
+              result && result.data && result.data.text ? result.data.text : "";
+          } else {
+            let page = await chapterDoc.text.getPage();
+            let { imageURL } = await convertPageToImage(page);
+            result = await this.worker.recognize(imageURL);
+            textContent =
+              result && result.data && result.data.text ? result.data.text : "";
+          }
         }
-
         // 完成后立即将进度设为1
         if (this.shouldShowProgress) {
           if (progressInterval) clearInterval(progressInterval);
           showOCRProgress(1);
           this.isFinishOCR = true;
+        }
+        if (this.ocrLang === "accurate") {
+          const src = URL.createObjectURL(
+            new Blob([textContent], { type: "text/html" })
+          );
+          return src;
         }
       } finally {
         if (this.shouldShowProgress && progressInterval) {
@@ -257,7 +313,7 @@ class PdfTextRender extends GeneralRender {
     } else {
       let page = await chapterDoc.text.getPage();
       let { imageURL } = await convertPageToImage(page);
-      textContent = await this.performImageOCR(imageURL);
+      textContent = await this.performBuiltInOCR(imageURL);
     }
 
     let paraList = textContent.split("\n").filter((para) => para.trim() !== "");
