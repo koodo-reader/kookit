@@ -191,7 +191,7 @@ class PdfTextRender extends GeneralRender {
     return () => clearInterval(timer);
   }
 
-  performOCR = async (imageUrl) => {
+  performImageOCR = async (imageUrl) => {
     try {
       if (this.ocrEngine === "tesseract") {
         const result = await this.worker.recognize(imageUrl);
@@ -200,42 +200,6 @@ class PdfTextRender extends GeneralRender {
       } else if (this.ocrEngine === "paddle") {
         const result = await this.worker.ocr(imageUrl);
         return result.parragraphs.map((p) => p.text).join("\n");
-      } else if (this.ocrEngine === "official-ai-ocr") {
-        // 模拟进度条变化
-        let progressInterval: any = null;
-        if (this.shouldShowProgress) {
-          let progress = 0;
-          const duration = 5000; // 5秒
-          const intervalTime = 100; // 每100ms更新一次
-          const increment = 0.9 / (duration / intervalTime); // 最多到0.9
-
-          progressInterval = setInterval(() => {
-            progress += increment;
-            if (progress >= 0.9) {
-              progress = 0.9;
-              clearInterval(progressInterval);
-            }
-            showOCRProgress(progress);
-          }, intervalTime);
-        }
-
-        try {
-          const result = await this.worker.recognize(imageUrl, "auto");
-          // 完成后立即将进度设为1
-          if (this.shouldShowProgress) {
-            showOCRProgress(1);
-            this.isFinishOCR = true;
-          }
-          if (result && result.data && result.data.text) {
-            return result.data.text;
-          } else {
-            return "";
-          }
-        } finally {
-          if (this.shouldShowProgress && progressInterval) {
-            clearInterval(progressInterval);
-          }
-        }
       } else {
         throw new Error(`Unsupported OCR engine: ${this.ocrEngine}`);
       }
@@ -279,10 +243,46 @@ class PdfTextRender extends GeneralRender {
           clearInterval(progressInterval);
         }
       }
+    } else if (this.ocrEngine === "official-ai-ocr") {
+      // 模拟进度条变化
+      let progressInterval: any = null;
+      if (this.shouldShowProgress) {
+        let progress = 0;
+        const duration = 5000; // 5秒
+        const intervalTime = 100; // 每100ms更新一次
+        const increment = 0.9 / (duration / intervalTime); // 最多到0.9
+
+        progressInterval = setInterval(() => {
+          progress += increment;
+          if (progress >= 0.9) {
+            progress = 0.9;
+            clearInterval(progressInterval);
+          }
+          showOCRProgress(progress);
+        }, intervalTime);
+      }
+
+      try {
+        const result = await this.worker.recognize([], "auto");
+        // 完成后立即将进度设为1
+        if (this.shouldShowProgress) {
+          showOCRProgress(1);
+          this.isFinishOCR = true;
+        }
+        if (result && result.data && result.data.text) {
+          return result.data.text;
+        } else {
+          return "";
+        }
+      } finally {
+        if (this.shouldShowProgress && progressInterval) {
+          clearInterval(progressInterval);
+        }
+      }
     } else {
       let page = await chapterDoc.text.getPage();
       let { imageURL } = await convertPageToImage(page);
-      textContent = await this.performOCR(imageURL);
+      textContent = await this.performImageOCR(imageURL);
     }
 
     let paraList = textContent.split("\n").filter((para) => para.trim() !== "");
