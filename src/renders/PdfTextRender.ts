@@ -209,6 +209,11 @@ class PdfTextRender extends GeneralRender {
       } else if (this.ocrEngine === "paddle") {
         const result = await this.worker.ocr(imageUrl);
         return result.parragraphs.map((p) => p.text).join("\n");
+      } else if (this.ocrEngine === "system-ocr") {
+        const result = await this.worker.recognize(imageUrl);
+        console.log("System OCR result:", result);
+        // await this.worker.terminate();
+        return result + "\n";
       } else {
         throw new Error(`Unsupported OCR engine: ${this.ocrEngine}`);
       }
@@ -360,7 +365,7 @@ class PdfTextRender extends GeneralRender {
     }
 
     let paraList = textContent.split("\n").filter((para) => para.trim() !== "");
-
+    console.log(`Chapter ${chapterDocIndex} OCR result:`, paraList);
     const src = URL.createObjectURL(
       new Blob(
         [
@@ -655,6 +660,7 @@ class PdfTextRender extends GeneralRender {
       if (
         this.isScannedPDF === "yes" &&
         (this.ocrEngine === "official-ai-ocr" ||
+          this.ocrEngine === "system-ocr" ||
           this.ocrEngine === "mineru-official-agent")
       ) {
         this.worker = this.externalWorker;
