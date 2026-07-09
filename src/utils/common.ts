@@ -130,3 +130,20 @@ export function getPageWidth(element: HTMLElement, readerMode: string): number {
   const scale = readerMode === "double" ? 2 : 1;
   return (element.clientWidth - gap) / scale;
 }
+export const detectLocalLanguage = (text: string): string => {
+  const chinesePattern = /[\u4e00-\u9fff\u3000-\u303f\uf900-\ufaff]/g;
+  const japanesePattern = /[\u3040-\u309f\u30a0-\u30ff]/g;
+  const koreanPattern = /[\uac00-\ud7af\u1100-\u11ff]/g;
+
+  const chineseCount = (text.match(chinesePattern) || []).length;
+  const japaneseCount = (text.match(japanesePattern) || []).length;
+  const koreanCount = (text.match(koreanPattern) || []).length;
+
+  const cjkTotal = chineseCount + japaneseCount + koreanCount;
+  if (cjkTotal / text.length <= 0.3) return "en";
+
+  if (chineseCount >= japaneseCount && chineseCount >= koreanCount) return "zh";
+  if (japaneseCount >= chineseCount && japaneseCount >= koreanCount)
+    return "ja";
+  return "ko";
+};

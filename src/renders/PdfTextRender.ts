@@ -5,7 +5,7 @@ import { getCache } from "../libs/cache.js";
 import { isPDF, makePDF } from "../libs/pdf";
 import { convertPageToImage, showOCRProgress } from "../utils/pdfUtil";
 import { ocrCache } from "../utils/ocrCacheUtil";
-import { isElectron } from "../utils/common";
+import { detectLocalLanguage, isElectron } from "../utils/common";
 const fetchText = async (url) => await (await fetch(url)).text();
 declare var window: any;
 class PdfTextRender extends GeneralRender {
@@ -85,22 +85,15 @@ class PdfTextRender extends GeneralRender {
         chapterDoc.text.load = async () => {
           if (this.cache[index]) {
             // 即使缓存存在，也要检查后续章节
-            if (this.isScannedPDF === "yes") {
-              this.preProcessNextChapters(index);
-            }
+            this.preProcessNextChapters(index);
             return this.cache[index];
           }
 
           let src = "";
-          if (this.isScannedPDF === "yes") {
-            // 优先处理当前章节
-            src = await this.processCurrentChapter(index);
-            // 异步处理后续章节
-            this.preProcessNextChapters(index);
-          } else {
-            src = await this.getTextFromDoc(chapterDoc);
-            this.cache[index] = src;
-          }
+          // 优先处理当前章节
+          src = await this.processCurrentChapter(index);
+          // 异步处理后续章节
+          this.preProcessNextChapters(index);
           return src;
         };
       }
@@ -205,7 +198,37 @@ class PdfTextRender extends GeneralRender {
       if (this.ocrEngine === "tesseract") {
         const result = await this.worker.recognize(imageUrl);
         // await this.worker.terminate();
-        return result.data.text;
+        let textContent = result.data.text || "";
+        let locale = detectLocalLanguage(textContent);
+        if (locale !== "en") {
+          // 去除中文文字间多余的空格（OCR 常见问题）
+          textContent = textContent
+            .split("\n")
+            .map((line) => {
+              const tokens = line.split(" ").filter((t) => t !== "");
+              let out = "";
+              for (let i = 0; i < tokens.length; i++) {
+                if (i === 0) {
+                  out = tokens[i];
+                  continue;
+                }
+                const prev = tokens[i - 1];
+                const curr = tokens[i];
+                const prevEndsCJK =
+                  /[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef\u3040-\u30ff\uac00-\ud7af\u1100-\u11ff\u3130-\u318f]$/.test(
+                    prev
+                  );
+                const currStartsCJK =
+                  /^[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef\u3040-\u30ff\uac00-\ud7af\u1100-\u11ff\u3130-\u318f]/.test(
+                    curr
+                  );
+                out += prevEndsCJK || currStartsCJK ? curr : " " + curr;
+              }
+              return out;
+            })
+            .join("\n");
+        }
+        return textContent;
       } else if (this.ocrEngine === "paddle") {
         const result = await this.worker.ocr(imageUrl);
         return result.parragraphs.map((p) => p.text).join("\n");
@@ -256,6 +279,9 @@ class PdfTextRender extends GeneralRender {
   };
   async getTextByOCR(chapterDoc, chapterDocIndex: number) {
     let textContent = "";
+    if (this.ocrEngine === "system-ocr" && this.isScannedPDF !== "yes") {
+      return await this.getTextFromDoc(chapterDoc);
+    }
     if (
       this.ocrEngine === "external-engine" ||
       this.ocrEngine === "official-ai-ocr" ||
@@ -542,10 +568,7 @@ class PdfTextRender extends GeneralRender {
   async parse() {
     try {
       // 安装 fetch 拦截器以自动缓存所有 OCR 相关资源
-      if (this.isScannedPDF === "yes") {
-        ocrCache.installGlobalFetchInterceptor();
-      }
-
+      ocrCache.installGlobalFetchInterceptor();
       let blob = new Blob([this.pdfBuffer]);
       let file = new File([blob], "book", {
         lastModified: new Date().getTime(),
@@ -554,7 +577,7 @@ class PdfTextRender extends GeneralRender {
 
       this.book = await makePDF(file, this.password);
 
-      if (this.isScannedPDF === "yes" && this.ocrEngine === "tesseract") {
+      if (this.ocrEngine === "tesseract") {
         // 获取 worker 脚本
         let workerScript = await fetchText(
           `${isElectron() ? "." : ""}/lib/tesseractjs/worker.min.js`
@@ -595,7 +618,7 @@ class PdfTextRender extends GeneralRender {
           showOCRProgress(1);
         }
       }
-      if (this.isScannedPDF === "yes" && this.ocrEngine === "paddle") {
+      if (this.ocrEngine === "paddle") {
         // 启动模拟进度条（下载字典和 ONNX 模型期间）
         const stopInitProgress = this.startFakeProgress(0.85, 60000);
         try {
@@ -658,10 +681,9 @@ class PdfTextRender extends GeneralRender {
         }
       }
       if (
-        this.isScannedPDF === "yes" &&
-        (this.ocrEngine === "official-ai-ocr" ||
-          this.ocrEngine === "system-ocr" ||
-          this.ocrEngine === "mineru-official-agent")
+        this.ocrEngine === "official-ai-ocr" ||
+        this.ocrEngine === "system-ocr" ||
+        this.ocrEngine === "mineru-official-agent"
       ) {
         this.worker = this.externalWorker;
       }
