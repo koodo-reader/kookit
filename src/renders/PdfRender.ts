@@ -41,6 +41,7 @@ class PdfRender extends GeneralRender {
   platform: string;
   pdfTextLineHeightRecord: Record<string, number> = {};
   pdfTextLineHeightFixed: number | null = null;
+  fabricCanvasMap: any = new Map();
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, convertChinese: "Default", format: "PDF" });
     this.pdfBuffer = pdfBuffer;
@@ -1131,7 +1132,38 @@ class PdfRender extends GeneralRender {
     ) {
       this.applyPDFTextLayerLineHeight(subDoc);
     }
+    if (this.platform === "web") {
+      let canvasEle = subDoc.querySelector("#fabric");
+      if (canvasEle) {
+        const canvas = new window.fabric.Canvas(canvasEle, {
+          isDrawingMode: true,
+          selection: true,
+          backgroundColor: "transparent",
+        });
+        this.fabricCanvasMap.set(chapterDocIndex, canvas);
+      }
+    }
     this.trigger("rendered");
+  }
+  handleAddAnnotation(chapterDocIndex: number, type: string, config: any) {
+    let canvas = this.fabricCanvasMap.get(chapterDocIndex);
+    if (!canvas) {
+      return;
+    }
+    if (type === "rectangle") {
+      const rect = new window.fabric.Rect(config);
+      canvas.add(rect);
+    } else if (type === "circle") {
+      const circle = new window.fabric.Circle(config);
+      canvas.add(circle);
+    } else if (type === "line") {
+      const line = new window.fabric.Line(config);
+      canvas.add(line);
+    } else if (type === "text") {
+      const text = new window.fabric.Textbox(config.text, config);
+      canvas.add(text);
+    }
+    canvas.renderAll();
   }
   async handleUnloadPDFChapter(chapterDocIndex: number, doc: Document) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
@@ -1143,6 +1175,7 @@ class PdfRender extends GeneralRender {
       return;
     }
     await this.chapterDocList[chapterDocIndex].text.unload();
+    this.fabricCanvasMap.delete(chapterDocIndex);
     subDoc.body.innerHTML = "";
   }
   async renderPdfPage(chapterDocIndex: number, doc: Document) {

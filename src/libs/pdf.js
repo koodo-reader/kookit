@@ -289,6 +289,24 @@ const renderPage = async (page, getImageBlob) => {
         transform: translateZ(0);
         -webkit-transform: translateZ(0);
     }
+    .canvas-container {
+        position: absolute !important;
+        z-index: 3;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        pointer-events: auto;
+    }
+    .fabric {
+        position: absolute !important;
+        z-index: 3;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        pointer-events: auto;
+    }
 
     /* 只有注释元素本身可点击 */
     .annotationLayer > * {
@@ -326,6 +344,7 @@ const renderPage = async (page, getImageBlob) => {
     <div class="koodoPDFLayer" id="koodoPDFLayer">
         <div id="canvas"></div>
         <div class="textLayer" id="textLayer"></div>
+        <canvas class="fabric" id="fabric"></canvas>
         <div class="annotationLayer" id="annotationLayer"></div>
     </div>
 `,
