@@ -1089,13 +1089,13 @@ class PdfRender extends GeneralRender {
   }
   applyAnnotationConfig(config: any) {
     if (config.brushColor) {
-      this.brushColor = config.brushColor;
+      this.setBrushColor(config.brushColor);
     }
     if (config.brushWidth) {
-      this.brushWidth = config.brushWidth;
+      this.setBrushWidth(config.brushWidth);
     }
     if (config.isDrawing) {
-      this.isDrawing = config.isDrawing;
+      this.setIsDrawing(config.isDrawing);
     }
   }
   async handleRenderPDFChapter(chapterDocIndex: number, doc: Document) {
@@ -1217,6 +1217,10 @@ class PdfRender extends GeneralRender {
           this.trigger("annotation-changed", [chapterDocIndex] as any);
         });
         canvas.on("object:removed", () => {
+          if (this.fabricHistoryLock.has(chapterDocIndex)) return;
+          this.trigger("annotation-changed", [chapterDocIndex] as any);
+        });
+        canvas.on("object:modified", () => {
           if (this.fabricHistoryLock.has(chapterDocIndex)) return;
           this.trigger("annotation-changed", [chapterDocIndex] as any);
         });
