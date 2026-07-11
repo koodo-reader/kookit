@@ -82,7 +82,7 @@ class StyleHelper {
 
     // Body and html base styles
     cssRules.push(
-      "body,html,svg{margin: 0px !important; padding: 0px !important; font-size: 18px; background-color: transparent !important;}"
+      "body,html,svg{margin: 0px !important; padding: 0px !important; font-size: 18px; background-color: transparent !important;background-size: contain !important; background-position: top left !important;}"
     );
 
     // Force horizontal writing mode - only if vertical writing is not enabled
@@ -332,7 +332,10 @@ class StyleHelper {
     cssRules.push(`padding-bottom: ${paraSpacing}px `);
 
     // Fixed styles that are always applied
-    cssRules.push("word-wrap: break-word ");
+    cssRules.push("word-wrap: break-word");
+
+    cssRules.push("margin-top: 0 !important");
+    cssRules.push("margin-bottom: 0 !important");
 
     cssRules.push("overflow: visible !important");
 
