@@ -48,7 +48,7 @@ class PdfRender extends GeneralRender {
     new Map();
   brushColor: string = "#ff0000";
   brushWidth: number = 2;
-  isDrawing: string = "yes";
+  isDrawing: string = "no";
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, convertChinese: "Default", format: "PDF" });
     this.pdfBuffer = pdfBuffer;
@@ -62,9 +62,6 @@ class PdfRender extends GeneralRender {
     this.platform = config.platform || "web";
     this.enablePDFSelectionOptimization =
       config.enablePDFSelectionOptimization || "no";
-    this.brushColor = config.brushColor || "#ff0000";
-    this.brushWidth = config.brushWidth || 2;
-    this.isDrawing = config.isDrawing || "yes";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -1088,6 +1085,17 @@ class PdfRender extends GeneralRender {
         subDoc.body.style.position = "relative";
         subDoc.body.style.bottom = this.pdfCrop.top + 2 + "%";
       }
+    }
+  }
+  applyAnnotationConfig(config: any) {
+    if (config.brushColor) {
+      this.brushColor = config.brushColor;
+    }
+    if (config.brushWidth) {
+      this.brushWidth = config.brushWidth;
+    }
+    if (config.isDrawing) {
+      this.isDrawing = config.isDrawing;
     }
   }
   async handleRenderPDFChapter(chapterDocIndex: number, doc: Document) {
