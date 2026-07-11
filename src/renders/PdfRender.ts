@@ -792,6 +792,11 @@ class PdfRender extends GeneralRender {
     for (let index = 0; index < notes.length; index++) {
       const item = notes[index];
       let selected = JSON.parse(item.range);
+      if (item.color === "annotation") {
+        // fabric canvas 批注：selected 即 getAnnotationData 返回的 toJSON 数据
+        await this.restoreAnnotation(item.chapterIndex, selected);
+        continue;
+      }
       var pageIndex = parseInt(selected.page + "");
       if (pageIndex !== chapterIndex) {
         continue;
@@ -820,6 +825,32 @@ class PdfRender extends GeneralRender {
       }
       if (!iWin || !iWin.getSelection()) return;
       iWin.getSelection()?.empty();
+    }
+  }
+  async restoreAnnotation(chapterDocIndex: number, data: any) {
+    if (this.platform !== "web") return;
+    const canvas = this.fabricCanvasMap.get(chapterDocIndex);
+    if (!canvas || !canvas.loadFromJSON) return;
+    // 恢复时 fabric 会触发 object:added/removed，用 lock 阻止入历史栈和 trigger
+    this.fabricHistoryLock.add(chapterDocIndex);
+    // loadFromJSON 内部会用 fabric.document，先切换到该页 iframe
+    this.activateFabricDocument(chapterDocIndex);
+    try {
+      await new Promise<void>((resolve) => {
+        canvas.loadFromJSON(data, () => {
+          canvas.requestRenderAll();
+          resolve();
+        });
+      });
+      // 恢复后的对象作为初始状态，清空历史栈避免撤销删掉恢复的批注
+      this.fabricHistoryMap.set(
+        chapterDocIndex,
+        canvas.getObjects ? canvas.getObjects().slice() : []
+      );
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      this.fabricHistoryLock.delete(chapterDocIndex);
     }
   }
   removeOneNote(key: string, chapterDocIndex?: number) {
@@ -1175,6 +1206,11 @@ class PdfRender extends GeneralRender {
         canvas.on("object:added", (opt: any) => {
           if (this.fabricHistoryLock.has(chapterDocIndex)) return;
           this.pushFabricHistory(chapterDocIndex, opt.target);
+          this.trigger("annotation-changed", [chapterDocIndex] as any);
+        });
+        canvas.on("object:removed", () => {
+          if (this.fabricHistoryLock.has(chapterDocIndex)) return;
+          this.trigger("annotation-changed", [chapterDocIndex] as any);
         });
         // 捕获阶段纠正 fabric 运行环境：用户点击 canvas 前，确保 fabric 把
         // mousemove/mouseup 监听器绑到当前 iframe 的 document，而非被其他页面切走。
@@ -1289,6 +1325,13 @@ class PdfRender extends GeneralRender {
       canvas.requestRenderAll();
     });
   }
+  getAnnotationData(chapterDocIndex: number): any {
+    const canvas = this.fabricCanvasMap.get(chapterDocIndex);
+    if (!canvas) return null;
+    return canvas.toJSON
+      ? canvas.toJSON(["selectable", "_kookitLogged"])
+      : null;
+  }
   async handleUnloadPDFChapter(chapterDocIndex: number, doc: Document) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
@@ -1309,7 +1352,11 @@ class PdfRender extends GeneralRender {
     const syncListener = this.fabricSyncListenerMap.get(chapterDocIndex);
     if (syncListener) {
       try {
-        syncListener.doc.removeEventListener("mousedown", syncListener.fn, true);
+        syncListener.doc.removeEventListener(
+          "mousedown",
+          syncListener.fn,
+          true
+        );
         syncListener.doc.removeEventListener(
           "touchstart",
           syncListener.fn,
