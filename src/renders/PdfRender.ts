@@ -62,6 +62,9 @@ class PdfRender extends GeneralRender {
     this.platform = config.platform || "web";
     this.enablePDFSelectionOptimization =
       config.enablePDFSelectionOptimization || "no";
+    this.brushColor = config.brushColor || "#ff0000";
+    this.brushWidth = config.brushWidth || 2;
+    this.isDrawing = config.isDrawing || "no";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
