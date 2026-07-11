@@ -835,12 +835,42 @@ class PdfRender extends GeneralRender {
     this.fabricHistoryLock.add(chapterDocIndex);
     // loadFromJSON 内部会用 fabric.document，先切换到该页 iframe
     this.activateFabricDocument(chapterDocIndex);
+    // 画布尺寸变化时按比例缩放批注，保持与 PDF 内容的相对位置/大小不变。
+    const oldW = data._canvasWidth;
+    const oldH = data._canvasHeight;
+    const newW = canvas.getWidth();
+    const newH = canvas.getHeight();
+    const ratioX = newW / oldW;
+    const ratioY = newH / oldH;
+    const needScale = ratioX !== 1 || ratioY !== 1;
+    const reviver = needScale
+      ? (jsonObj: any, fabricObj: any) => {
+          if (!fabricObj) return;
+          if (typeof jsonObj.left === "number") {
+            fabricObj.set("left", jsonObj.left * ratioX);
+          }
+          if (typeof jsonObj.top === "number") {
+            fabricObj.set("top", jsonObj.top * ratioY);
+          }
+          if (typeof jsonObj.scaleX === "number") {
+            fabricObj.set("scaleX", jsonObj.scaleX * ratioX);
+          }
+          if (typeof jsonObj.scaleY === "number") {
+            fabricObj.set("scaleY", jsonObj.scaleY * ratioY);
+          }
+          fabricObj.setCoords && fabricObj.setCoords();
+        }
+      : undefined;
     try {
       await new Promise<void>((resolve) => {
-        canvas.loadFromJSON(data, () => {
-          canvas.requestRenderAll();
-          resolve();
-        });
+        canvas.loadFromJSON(
+          data,
+          () => {
+            canvas.requestRenderAll();
+            resolve();
+          },
+          reviver
+        );
       });
       // 恢复后的对象作为初始状态，清空历史栈避免撤销删掉恢复的批注
       this.fabricHistoryMap.set(
@@ -1184,7 +1214,7 @@ class PdfRender extends GeneralRender {
     ) {
       this.applyPDFTextLayerLineHeight(subDoc);
     }
-    if (this.platform === "web") {
+    if (this.platform === "web" && this.isScannedPDF === "yes") {
       let canvasEle = subDoc.querySelector("#fabric");
       if (canvasEle) {
         // fabric 在主 document 加载，fabric.document/fabric.window 默认指向主窗口。
@@ -1342,10 +1372,12 @@ class PdfRender extends GeneralRender {
   }
   getAnnotationData(chapterDocIndex: number): any {
     const canvas = this.fabricCanvasMap.get(chapterDocIndex);
-    if (!canvas) return null;
-    return canvas.toJSON
-      ? canvas.toJSON(["selectable", "_kookitLogged"])
-      : null;
+    if (!canvas || !canvas.toJSON) return null;
+    const data = canvas.toJSON(["selectable", "_kookitLogged"]);
+    // 记录画布尺寸，恢复时按新旧尺寸比例缩放，保证批注与 PDF 内容相对位置不变
+    data._canvasWidth = canvas.getWidth();
+    data._canvasHeight = canvas.getHeight();
+    return data;
   }
   async handleUnloadPDFChapter(chapterDocIndex: number, doc: Document) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
