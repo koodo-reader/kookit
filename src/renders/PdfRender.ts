@@ -42,6 +42,13 @@ class PdfRender extends GeneralRender {
   pdfTextLineHeightRecord: Record<string, number> = {};
   pdfTextLineHeightFixed: number | null = null;
   fabricCanvasMap: any = new Map();
+  fabricHistoryMap: Map<number, any[]> = new Map();
+  fabricHistoryLock: Set<number> = new Set();
+  fabricSyncListenerMap: Map<number, { doc: Document; fn: () => void }> =
+    new Map();
+  brushColor: string = "#ff0000";
+  brushWidth: number = 2;
+  isDrawing: string = "yes";
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, convertChinese: "Default", format: "PDF" });
     this.pdfBuffer = pdfBuffer;
@@ -55,6 +62,9 @@ class PdfRender extends GeneralRender {
     this.platform = config.platform || "web";
     this.enablePDFSelectionOptimization =
       config.enablePDFSelectionOptimization || "no";
+    this.brushColor = config.brushColor || "#ff0000";
+    this.brushWidth = config.brushWidth || 2;
+    this.isDrawing = config.isDrawing || "yes";
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -1135,35 +1145,149 @@ class PdfRender extends GeneralRender {
     if (this.platform === "web") {
       let canvasEle = subDoc.querySelector("#fabric");
       if (canvasEle) {
-        const canvas = new window.fabric.Canvas(canvasEle, {
-          isDrawingMode: true,
+        // fabric 在主 document 加载，fabric.document/fabric.window 默认指向主窗口。
+        // canvas 嵌在 iframe 中，必须让 fabric 的节点与事件监听绑定到该 iframe，
+        // 否则 mousedown 后 fabric 会把 mousemove/mouseup 绑到主 document，
+        // 导致鼠标移出 canvas 后绘图状态不被重置、拖动无法延伸。
+        const subWin = subDoc.defaultView;
+        const fabricLib = window.fabric;
+        if (subWin) {
+          fabricLib.document = subDoc;
+          fabricLib.window = subWin;
+        }
+        const canvas = new fabricLib.Canvas(canvasEle, {
+          isDrawingMode: this.isDrawing === "yes",
           selection: true,
           backgroundColor: "transparent",
         });
+        // canvas 元素无显式 width/height 属性，fabric 默认取 300x150 作为绘图缓冲区，
+        // 与 PDF 页面显示尺寸不匹配，导致绘制位置错乱。按 docLayer 实际尺寸重设。
+        const layerRect = docLayer.getBoundingClientRect();
+        if (layerRect.width > 0 && layerRect.height > 0) {
+          canvas.setDimensions({
+            width: Math.round(layerRect.width),
+            height: Math.round(layerRect.height),
+          });
+        }
+        this.applyFabricBrush(canvas);
         this.fabricCanvasMap.set(chapterDocIndex, canvas);
+        this.fabricHistoryMap.set(chapterDocIndex, []);
+        canvas.on("object:added", (opt: any) => {
+          if (this.fabricHistoryLock.has(chapterDocIndex)) return;
+          this.pushFabricHistory(chapterDocIndex, opt.target);
+        });
+        // 捕获阶段纠正 fabric 运行环境：用户点击 canvas 前，确保 fabric 把
+        // mousemove/mouseup 监听器绑到当前 iframe 的 document，而非被其他页面切走。
+        const syncFabricEnv = () => {
+          if (subWin && fabricLib) {
+            fabricLib.document = subDoc;
+            fabricLib.window = subWin;
+          }
+        };
+        subDoc.addEventListener("mousedown", syncFabricEnv, true);
+        subDoc.addEventListener("touchstart", syncFabricEnv, true);
+        this.fabricSyncListenerMap.set(chapterDocIndex, {
+          doc: subDoc,
+          fn: syncFabricEnv,
+        });
+        this.attachFabricKeyListeners(chapterDocIndex, subDoc);
       }
     }
     this.trigger("rendered");
   }
-  handleAddAnnotation(chapterDocIndex: number, type: string, config: any) {
-    let canvas = this.fabricCanvasMap.get(chapterDocIndex);
-    if (!canvas) {
+  applyFabricBrush(canvas: any) {
+    if (!canvas) return;
+    if (canvas.freeDrawingBrush) {
+      canvas.freeDrawingBrush.color = this.brushColor;
+      canvas.freeDrawingBrush.width = this.brushWidth;
+    }
+    canvas.isDrawingMode = this.isDrawing === "yes";
+    if (this.isDrawing === "yes") {
+      canvas.selection = false;
+      canvas.defaultCursor = "crosshair";
+      canvas.hoverCursor = "crosshair";
+    } else {
+      canvas.selection = true;
+      canvas.defaultCursor = "default";
+      canvas.hoverCursor = "move";
+    }
+  }
+  pushFabricHistory(chapterDocIndex: number, obj: any) {
+    if (!obj) return;
+    let history = this.fabricHistoryMap.get(chapterDocIndex);
+    if (!history) {
+      history = [];
+      this.fabricHistoryMap.set(chapterDocIndex, history);
+    }
+    history.push(obj);
+  }
+  attachFabricKeyListeners(chapterDocIndex: number, subDoc: Document) {
+    subDoc.addEventListener("keydown", (e: KeyboardEvent) => {
+      const canvas = this.fabricCanvasMap.get(chapterDocIndex);
+      if (!canvas) return;
+      if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) {
+        e.preventDefault();
+        this.undoFabric(chapterDocIndex);
+        return;
+      }
+      if (e.key === "Backspace" || e.key === "Delete") {
+        const active = canvas.getActiveObjects();
+        if (active && active.length > 0) {
+          e.preventDefault();
+          this.fabricHistoryLock.add(chapterDocIndex);
+          active.forEach((obj: any) => {
+            canvas.remove(obj);
+            const history = this.fabricHistoryMap.get(chapterDocIndex);
+            if (history) {
+              const idx = history.lastIndexOf(obj);
+              if (idx >= 0) history.splice(idx, 1);
+            }
+          });
+          canvas.discardActiveObject();
+          canvas.requestRenderAll();
+          this.fabricHistoryLock.delete(chapterDocIndex);
+        }
+      }
+    });
+  }
+  undoFabric(chapterDocIndex: number) {
+    const canvas = this.fabricCanvasMap.get(chapterDocIndex);
+    if (!canvas) return;
+    const history = this.fabricHistoryMap.get(chapterDocIndex);
+    if (!history || history.length === 0) {
       return;
     }
-    if (type === "rectangle") {
-      const rect = new window.fabric.Rect(config);
-      canvas.add(rect);
-    } else if (type === "circle") {
-      const circle = new window.fabric.Circle(config);
-      canvas.add(circle);
-    } else if (type === "line") {
-      const line = new window.fabric.Line(config);
-      canvas.add(line);
-    } else if (type === "text") {
-      const text = new window.fabric.Textbox(config.text, config);
-      canvas.add(text);
+    const last = history.pop();
+    if (last) {
+      this.fabricHistoryLock.add(chapterDocIndex);
+      canvas.remove(last);
+      canvas.discardActiveObject();
+      canvas.requestRenderAll();
+      this.fabricHistoryLock.delete(chapterDocIndex);
     }
-    canvas.renderAll();
+  }
+  setBrushColor(color: string) {
+    this.brushColor = color;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      if (canvas.freeDrawingBrush) {
+        canvas.freeDrawingBrush.color = color;
+      }
+    });
+  }
+  setBrushWidth(width: number) {
+    this.brushWidth = width;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      if (canvas.freeDrawingBrush) {
+        canvas.freeDrawingBrush.width = width;
+      }
+    });
+  }
+  setIsDrawing(isDrawing: string) {
+    this.isDrawing = isDrawing;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
   }
   async handleUnloadPDFChapter(chapterDocIndex: number, doc: Document) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
@@ -1174,8 +1298,32 @@ class PdfRender extends GeneralRender {
     if (subDoc.body.innerHTML === "") {
       return;
     }
+    const canvas = this.fabricCanvasMap.get(chapterDocIndex);
+    if (canvas && canvas.dispose) {
+      try {
+        canvas.dispose();
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+    const syncListener = this.fabricSyncListenerMap.get(chapterDocIndex);
+    if (syncListener) {
+      try {
+        syncListener.doc.removeEventListener("mousedown", syncListener.fn, true);
+        syncListener.doc.removeEventListener(
+          "touchstart",
+          syncListener.fn,
+          true
+        );
+      } catch (e) {
+        console.warn(e);
+      }
+      this.fabricSyncListenerMap.delete(chapterDocIndex);
+    }
     await this.chapterDocList[chapterDocIndex].text.unload();
     this.fabricCanvasMap.delete(chapterDocIndex);
+    this.fabricHistoryMap.delete(chapterDocIndex);
+    this.fabricHistoryLock.delete(chapterDocIndex);
     subDoc.body.innerHTML = "";
   }
   async renderPdfPage(chapterDocIndex: number, doc: Document) {
@@ -1192,6 +1340,20 @@ class PdfRender extends GeneralRender {
     }
     this.handleRenderPDFChapter(chapterDocIndex + 2, doc);
     this.handleRenderPDFChapter(chapterDocIndex + 3, doc);
+    // 预渲染会把 fabric.document 切到后续页，恢复为当前页 iframe，
+    // 保证用户在当前页绘制时 fabric 的 mousemove/mouseup 监听器挂在正确 document 上
+    this.activateFabricDocument(chapterDocIndex);
+  }
+  activateFabricDocument(chapterDocIndex: number) {
+    if (this.platform !== "web") return;
+    const subDoc = this.getSubDocument(chapterDocIndex);
+    if (!subDoc) return;
+    const subWin = subDoc.defaultView;
+    const fabricLib = window.fabric;
+    if (subWin && fabricLib) {
+      fabricLib.document = subDoc;
+      fabricLib.window = subWin;
+    }
   }
   getPdfScale = async () => {
     if (this.pdfScale && this.pdfScale > 0) {
