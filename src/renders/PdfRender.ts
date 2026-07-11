@@ -1217,6 +1217,7 @@ class PdfRender extends GeneralRender {
     if (this.platform === "web" && this.isScannedPDF === "yes") {
       let canvasEle = subDoc.querySelector("#fabric");
       if (canvasEle) {
+        canvasEle.style.display = "block";
         // fabric 在主 document 加载，fabric.document/fabric.window 默认指向主窗口。
         // canvas 嵌在 iframe 中，必须让 fabric 的节点与事件监听绑定到该 iframe，
         // 否则 mousedown 后 fabric 会把 mousemove/mouseup 绑到主 document，
@@ -1245,6 +1246,8 @@ class PdfRender extends GeneralRender {
         this.fabricCanvasMap.set(chapterDocIndex, canvas);
         this.fabricHistoryMap.set(chapterDocIndex, []);
         canvas.on("object:added", (opt: any) => {
+          // 锁用于 restoreAnnotation 的 loadFromJSON：恢复是加载数据而非用户修改，
+          // 不入历史栈、也不触发 annotation-changed。用户主动的增删改不加锁，正常触发。
           if (this.fabricHistoryLock.has(chapterDocIndex)) return;
           this.pushFabricHistory(chapterDocIndex, opt.target);
           this.trigger("annotation-changed", [chapterDocIndex] as any);
@@ -1315,7 +1318,6 @@ class PdfRender extends GeneralRender {
         const active = canvas.getActiveObjects();
         if (active && active.length > 0) {
           e.preventDefault();
-          this.fabricHistoryLock.add(chapterDocIndex);
           active.forEach((obj: any) => {
             canvas.remove(obj);
             const history = this.fabricHistoryMap.get(chapterDocIndex);
@@ -1326,7 +1328,6 @@ class PdfRender extends GeneralRender {
           });
           canvas.discardActiveObject();
           canvas.requestRenderAll();
-          this.fabricHistoryLock.delete(chapterDocIndex);
         }
       }
     });
@@ -1340,11 +1341,9 @@ class PdfRender extends GeneralRender {
     }
     const last = history.pop();
     if (last) {
-      this.fabricHistoryLock.add(chapterDocIndex);
       canvas.remove(last);
       canvas.discardActiveObject();
       canvas.requestRenderAll();
-      this.fabricHistoryLock.delete(chapterDocIndex);
     }
   }
   setBrushColor(color: string) {

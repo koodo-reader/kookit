@@ -306,6 +306,7 @@ const renderPage = async (page, getImageBlob) => {
         width: 100% !important;
         height: 100% !important;
         pointer-events: auto;
+        display: none;
     }
 
     /* 只有注释元素本身可点击 */
