@@ -318,7 +318,7 @@ class PdfRender extends GeneralRender {
       );
     }
   }
-  getPageSize() {
+  getPageSize(pageIndex?: number) {
     let doc = this.getDocument();
     if (!doc) return;
     let scale = this.readerMode === "double" ? 2 : 1;
@@ -327,11 +327,20 @@ class PdfRender extends GeneralRender {
 
     let subIframe = doc.querySelectorAll("iframe")[0];
     let iframeHeight = subIframe?.getBoundingClientRect().height;
+
+    let offsetTop = 0;
+    if (pageIndex !== undefined) {
+      let subContainer = doc.querySelector("#pdf-container-" + pageIndex);
+      if (subContainer) {
+        offsetTop = subContainer.getBoundingClientRect().top;
+      }
+    }
     return {
       width: doc.body.clientWidth,
       height: this.element.clientHeight,
       left: this.element.offsetLeft,
       top: this.element.offsetTop,
+      offsetTop: offsetTop,
       scrollTop: this.element.scrollTop,
       scrollLeft: this.element.scrollWidth / 2 - this.element.clientWidth / 2,
       sectionWidth: (doc.body.clientWidth - gap) / scale,
