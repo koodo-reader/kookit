@@ -1216,7 +1216,6 @@ class PdfRender extends GeneralRender {
       }px)`;
     }
     docLayer.style.visibility = "visible";
-    window.chapterDocIndex = chapterDocIndex;
     if (
       this.platform === "android" &&
       this.enablePDFSelectionOptimization === "yes"
@@ -1286,7 +1285,7 @@ class PdfRender extends GeneralRender {
         this.attachFabricKeyListeners(chapterDocIndex, subDoc);
       }
     }
-    this.trigger("rendered");
+    this.trigger("rendered", [chapterDocIndex] as any);
   }
   applyFabricBrush(canvas: any) {
     if (!canvas) return;
