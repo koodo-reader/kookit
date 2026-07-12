@@ -234,7 +234,6 @@ class PdfTextRender extends GeneralRender {
         return result.parragraphs.map((p) => p.text).join("\n");
       } else if (this.ocrEngine === "system-ocr") {
         const result = await this.worker.recognize(imageUrl);
-        console.log("System OCR result:", result);
         // await this.worker.terminate();
         return result + "\n";
       } else {
@@ -376,7 +375,6 @@ class PdfTextRender extends GeneralRender {
               { type: "text/html" }
             )
           );
-          console.log("mineru-official-agent OCR result src:", src);
           return src;
         }
       } finally {
@@ -391,7 +389,6 @@ class PdfTextRender extends GeneralRender {
     }
 
     let paraList = textContent.split("\n").filter((para) => para.trim() !== "");
-    console.log(`Chapter ${chapterDocIndex} OCR result:`, paraList);
     const src = URL.createObjectURL(
       new Blob(
         [
