@@ -1,5 +1,6 @@
 import rangy from "rangy/lib/rangy-core.js";
 import "rangy/lib/rangy-textrange";
+import { isVerticalLayout } from "./layoutUtil";
 declare var window: any;
 export const classes = [
   "color-0",
@@ -15,16 +16,17 @@ export const colors = ["#FEF3CD", "#FBFACC", "#CEFACD", "#CDE9FA"];
 export const lines = ["#FF0000", "#000080", "#0000FF", "#2EFF2E"];
 export const pdfColors = ["#fac106", "#ebe702", "#0be603", "#0493e6"];
 
-export function buildHighlightStyleForType(
+export const buildHighlightStyleForType = (
   colorCode: string | number,
-  forPDFOverlay: boolean = false
-): string {
+  forPDFOverlay: boolean,
+  isVertical?: boolean
+): string => {
   let styleType: string = "background";
   let rawColor: string = "#FEF3CD";
   if (typeof colorCode === "number") {
     if (colorCode >= 0 && colorCode < classes.length) {
       const isBackground = classes[colorCode].indexOf("color") > -1;
-      const colorIdx = classes[colorCode].split("-")[1];
+      const colorIdx = parseInt(classes[colorCode].split("-")[1]);
       styleType = isBackground ? "background" : "underline";
       rawColor = isBackground ? colors[colorIdx] : lines[colorIdx];
     }
@@ -32,7 +34,6 @@ export function buildHighlightStyleForType(
     styleType = colorCode.split("-")[0];
     rawColor = colorCode.split("-")[1];
   }
-  // color is the processed value used for non-overlay cases
   const color =
     styleType === "background" ? hexToRgba(rawColor, 0.8) : rawColor;
 
@@ -43,29 +44,46 @@ export function buildHighlightStyleForType(
         // covering it — the same visual effect as a physical highlighter pen.
         // Fully opaque color is intentional: mix-blend-mode: multiply handles
         // the visual blending; alpha transparency is not needed and would fight it.
-        return `background: ${rawColor}; mix-blend-mode: multiply;`;
+        return `background: ${color}; mix-blend-mode: multiply;`;
       }
       return `background: ${color};`;
     case "underline":
+      // In vertical writing mode, border-bottom stays on the physical bottom;
+      // the underline should run along the inline-end (right) edge instead.
+      if (isVertical) {
+        return `border-right: 2px solid ${color};`;
+      }
       return `border-bottom: 2px solid ${color};`;
     case "strikethrough":
       if (forPDFOverlay) {
-        // text-decoration doesn't render on empty divs; simulate with a gradient line through the middle
+        // text-decoration doesn't render on empty divs; simulate with a gradient
+        // line through the middle. Vertical: rotate the gradient axis so the line
+        // runs vertically through the middle.
+        if (isVertical) {
+          return `background: linear-gradient(to right, transparent calc(50% - 1px), ${color} calc(50% - 1px), ${color} calc(50% + 1px), transparent calc(50% + 1px));`;
+        }
         return `background: linear-gradient(transparent calc(50% - 1px), ${color} calc(50% - 1px), ${color} calc(50% + 1px), transparent calc(50% + 1px));`;
       }
       return `text-decoration: line-through; text-decoration-color: ${color};`;
     case "wavy":
       if (forPDFOverlay) {
-        // text-decoration doesn't render on empty divs; simulate with a repeating SVG wavy line at the bottom
+        // text-decoration doesn't render on empty divs; simulate with a repeating
+        // SVG wavy line. Horizontal: wavy line at the bottom edge; vertical: wavy
+        // line along the right edge, repeated vertically.
         const encodedColor = rawColor.replace("#", "%23");
+        if (isVertical) {
+          const svgWavyVertical = `url("data:image/svg+xml,%3Csvg xmlns='http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='3' height='6'%3E%3Cpath d='M2 0 Q0 1.5 2 3 Q4 4.5 2 6' fill='none' stroke='${encodedColor}' stroke-width='1.5'%2F%3E%3C%2Fsvg%3E")`;
+          return `background-image: ${svgWavyVertical}; background-repeat: repeat-y; background-position: right; background-size: 3px 6px;`;
+        }
         const svgWavy = `url("data:image/svg+xml,%3Csvg xmlns='http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='6' height='3'%3E%3Cpath d='M0 2 Q1.5 0 3 2 Q4.5 4 6 2' fill='none' stroke='${encodedColor}' stroke-width='1.5'%2F%3E%3C%2Fsvg%3E")`;
         return `background-image: ${svgWavy}; background-repeat: repeat-x; background-position: bottom; background-size: 6px 3px;`;
       }
+      // Native text-decoration follows writing-mode automatically; no vertical override needed.
       return `text-decoration-line: underline; text-decoration-style: wavy; text-decoration-color: ${color}; text-decoration-thickness: 2px; text-decoration-skip-ink: none;`;
     default:
       return `background: ${color};`;
   }
-}
+};
 
 const hexToRgba = (hexColor: string, alpha: number): string => {
   const hex = hexColor.replace("#", "");
@@ -408,7 +426,7 @@ export const showPDFHighlight = (
     newNode?.setAttribute(
       "style",
       "position: absolute;" +
-        buildHighlightStyleForType(colorCode, true) +
+        buildHighlightStyleForType(colorCode, true, isVerticalLayout()) +
         " left:" +
         (rect.left + parseFloat(getComputedStyle(docLayer).marginLeft)) +
         "px; top:" +
@@ -637,7 +655,10 @@ export const highlightRange = (
         }
 
         const span = doc.createElement("span");
-        span.setAttribute("style", buildHighlightStyleForType(colorCode));
+        span.setAttribute(
+          "style",
+          buildHighlightStyleForType(colorCode, false, isVerticalLayout())
+        );
         span.setAttribute("class", "kookit-note");
         span.setAttribute("data-key", noteKey);
         if (isNote && noteContent) {
@@ -676,7 +697,10 @@ export const highlightRange = (
 
     // Create the wrapper span
     const span = doc.createElement("span");
-    span.setAttribute("style", buildHighlightStyleForType(colorCode));
+    span.setAttribute(
+      "style",
+      buildHighlightStyleForType(colorCode, false, isVerticalLayout())
+    );
     span.setAttribute("class", "kookit-note");
     span.setAttribute("data-key", noteKey);
     if (isNote && noteContent) {
