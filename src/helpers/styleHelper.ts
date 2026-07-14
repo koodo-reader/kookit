@@ -329,7 +329,7 @@ class StyleHelper {
 
     // Padding bottom - has default value of 0
     const paraSpacing = ConfigService.getReaderConfig("paraSpacing");
-    if (paraSpacing) {
+    if (paraSpacing !== undefined && paraSpacing !== null) {
       cssRules.push(`margin-top: ${paraSpacing}px !important`);
       cssRules.push(`margin-bottom: ${paraSpacing}px !important`);
     }
