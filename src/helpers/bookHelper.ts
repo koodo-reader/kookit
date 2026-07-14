@@ -246,15 +246,11 @@ class BookHelper {
         await window.rendition.renderTo(element);
       }
 
-      window.rendition.on("rendered", async () => {
+      window.rendition.on("rendered", async (chapterDocIndex: number) => {
         let position = { ...window.rendition.getPosition() };
         let progress = { ...(await window.rendition.getProgress()) };
-        if (
-          config.format === "PDF" &&
-          config.platform === "android" &&
-          window.chapterDocIndex
-        ) {
-          position.chapterDocIndex = window.chapterDocIndex + "";
+        if (config.format === "PDF" && config.platform === "android") {
+          position.chapterDocIndex = chapterDocIndex + "";
         }
         window.ReactNativeWebView.postMessage(
           JSON.stringify({

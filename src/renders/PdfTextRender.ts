@@ -5,7 +5,7 @@ import { getCache } from "../libs/cache.js";
 import { isPDF, makePDF } from "../libs/pdf";
 import { convertPageToImage, showOCRProgress } from "../utils/pdfUtil";
 import { ocrCache } from "../utils/ocrCacheUtil";
-import { isElectron } from "../utils/common";
+import { detectLocalLanguage, isElectron } from "../utils/common";
 const fetchText = async (url) => await (await fetch(url)).text();
 declare var window: any;
 class PdfTextRender extends GeneralRender {
@@ -24,6 +24,7 @@ class PdfTextRender extends GeneralRender {
   shouldShowProgress: boolean = false; // 控制是否显示进度
   externalWorker: any;
   pdfPageCount: number = 0;
+  pdfDoc: any;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, format: "PDFTEXT" });
     this.pdfBuffer = pdfBuffer;
@@ -84,22 +85,15 @@ class PdfTextRender extends GeneralRender {
         chapterDoc.text.load = async () => {
           if (this.cache[index]) {
             // 即使缓存存在，也要检查后续章节
-            if (this.isScannedPDF === "yes") {
-              this.preProcessNextChapters(index);
-            }
+            this.preProcessNextChapters(index);
             return this.cache[index];
           }
 
           let src = "";
-          if (this.isScannedPDF === "yes") {
-            // 优先处理当前章节
-            src = await this.processCurrentChapter(index);
-            // 异步处理后续章节
-            this.preProcessNextChapters(index);
-          } else {
-            src = await this.getTextFromDoc(chapterDoc);
-            this.cache[index] = src;
-          }
+          // 优先处理当前章节
+          src = await this.processCurrentChapter(index);
+          // 异步处理后续章节
+          this.preProcessNextChapters(index);
           return src;
         };
       }
@@ -107,6 +101,10 @@ class PdfTextRender extends GeneralRender {
       let doc = this.getDocument();
       if (!doc) return;
       handleLayout(element, this.readerMode, doc);
+      if (this.ocrEngine === "official-ai-ocr" && this.ocrLang === "accurate") {
+        const srcDoc = await window.PDFLib.PDFDocument.load(this.pdfBuffer);
+        this.pdfDoc = srcDoc;
+      }
       resolve();
     });
   }
@@ -191,51 +189,49 @@ class PdfTextRender extends GeneralRender {
     return () => clearInterval(timer);
   }
 
-  performOCR = async (imageUrl) => {
+  performBuiltInOCR = async (imageUrl) => {
     try {
       if (this.ocrEngine === "tesseract") {
         const result = await this.worker.recognize(imageUrl);
         // await this.worker.terminate();
-        return result.data.text;
+        let textContent = result.data.text || "";
+        let locale = detectLocalLanguage(textContent);
+        if (locale !== "en") {
+          // 去除中文文字间多余的空格（OCR 常见问题）
+          textContent = textContent
+            .split("\n")
+            .map((line) => {
+              const tokens = line.split(" ").filter((t) => t !== "");
+              let out = "";
+              for (let i = 0; i < tokens.length; i++) {
+                if (i === 0) {
+                  out = tokens[i];
+                  continue;
+                }
+                const prev = tokens[i - 1];
+                const curr = tokens[i];
+                const prevEndsCJK =
+                  /[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef\u3040-\u30ff\uac00-\ud7af\u1100-\u11ff\u3130-\u318f]$/.test(
+                    prev
+                  );
+                const currStartsCJK =
+                  /^[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef\u3040-\u30ff\uac00-\ud7af\u1100-\u11ff\u3130-\u318f]/.test(
+                    curr
+                  );
+                out += prevEndsCJK || currStartsCJK ? curr : " " + curr;
+              }
+              return out;
+            })
+            .join("\n");
+        }
+        return textContent;
       } else if (this.ocrEngine === "paddle") {
         const result = await this.worker.ocr(imageUrl);
         return result.parragraphs.map((p) => p.text).join("\n");
-      } else if (this.ocrEngine === "official-ai-ocr") {
-        // 模拟进度条变化
-        let progressInterval: any = null;
-        if (this.shouldShowProgress) {
-          let progress = 0;
-          const duration = 5000; // 5秒
-          const intervalTime = 100; // 每100ms更新一次
-          const increment = 0.9 / (duration / intervalTime); // 最多到0.9
-
-          progressInterval = setInterval(() => {
-            progress += increment;
-            if (progress >= 0.9) {
-              progress = 0.9;
-              clearInterval(progressInterval);
-            }
-            showOCRProgress(progress);
-          }, intervalTime);
-        }
-
-        try {
-          const result = await this.worker.recognize(imageUrl, "auto");
-          // 完成后立即将进度设为1
-          if (this.shouldShowProgress) {
-            showOCRProgress(1);
-            this.isFinishOCR = true;
-          }
-          if (result && result.data && result.data.text) {
-            return result.data.text;
-          } else {
-            return "";
-          }
-        } finally {
-          if (this.shouldShowProgress && progressInterval) {
-            clearInterval(progressInterval);
-          }
-        }
+      } else if (this.ocrEngine === "system-ocr") {
+        const result = await this.worker.recognize(imageUrl);
+        // await this.worker.terminate();
+        return result + "\n";
       } else {
         throw new Error(`Unsupported OCR engine: ${this.ocrEngine}`);
       }
@@ -244,9 +240,47 @@ class PdfTextRender extends GeneralRender {
       throw error;
     }
   };
+  extractPages = async (pages) => {
+    // 1. 加载原始 PDF
+    const srcDoc = this.pdfDoc;
+
+    // 2. 创建新的 PDF 文档
+    const newDoc = await window.PDFLib.PDFDocument.create();
+
+    // 统一转为数组（支持单个页码或数组）
+    const pageNumbers = Array.isArray(pages) ? pages : [pages];
+
+    // pdf-lib 使用 0-based index，所以要 -1
+    const pageIndices = pageNumbers
+      .map((p) => p - 1) // 转为 0-based
+      .filter((i) => i >= 0 && i < srcDoc.getPageCount()); // 过滤无效页码
+
+    if (pageIndices.length === 0) {
+      throw new Error("没有找到有效的页码");
+    }
+
+    // 3. 复制指定页面
+    const copiedPages = await newDoc.copyPages(srcDoc, pageIndices);
+
+    // 4. 将复制的页面添加到新文档
+    copiedPages.forEach((page) => {
+      newDoc.addPage(page);
+    });
+
+    // 5. 保存为 Uint8Array
+    const newPdfBytes = await newDoc.save();
+    const blob = new Blob([newPdfBytes], { type: "application/pdf" });
+    return blob;
+  };
   async getTextByOCR(chapterDoc, chapterDocIndex: number) {
     let textContent = "";
-    if (this.ocrEngine === "external-engine") {
+    if (this.ocrEngine === "system-ocr" && this.isScannedPDF !== "yes") {
+      return await this.getTextFromDoc(chapterDoc);
+    }
+    if (
+      this.ocrEngine === "external-engine" ||
+      this.ocrEngine === "official-ai-ocr"
+    ) {
       // 模拟进度条变化
       let progressInterval: any = null;
       if (this.shouldShowProgress) {
@@ -266,13 +300,44 @@ class PdfTextRender extends GeneralRender {
       }
 
       try {
-        textContent = await this.worker.recognize(chapterDocIndex, "");
-
+        let result: any;
+        if (this.ocrEngine === "external-engine") {
+          textContent = await this.worker.recognize(chapterDocIndex, "");
+        } else {
+          // official-ai-ocr
+          if (
+            this.ocrEngine === "official-ai-ocr" &&
+            this.ocrLang === "accurate"
+          ) {
+            let fileBlob = await this.extractPages(chapterDocIndex + 1); // 页码从1开始
+            let file = new File([fileBlob], chapterDocIndex + ".pdf", {
+              type: "application/pdf",
+            });
+            result = await this.worker.recognize(file);
+            textContent =
+              result && result.data && result.data.text ? result.data.text : "";
+          } else {
+            let page = await chapterDoc.text.getPage();
+            let { imageURL } = await convertPageToImage(page);
+            result = await this.worker.recognize(imageURL);
+            textContent =
+              result && result.data && result.data.text ? result.data.text : "";
+          }
+        }
         // 完成后立即将进度设为1
         if (this.shouldShowProgress) {
           if (progressInterval) clearInterval(progressInterval);
           showOCRProgress(1);
           this.isFinishOCR = true;
+        }
+        if (
+          this.ocrEngine === "official-ai-ocr" &&
+          this.ocrLang === "accurate"
+        ) {
+          const src = URL.createObjectURL(
+            new Blob([textContent], { type: "text/html" })
+          );
+          return src;
         }
       } finally {
         if (this.shouldShowProgress && progressInterval) {
@@ -282,11 +347,10 @@ class PdfTextRender extends GeneralRender {
     } else {
       let page = await chapterDoc.text.getPage();
       let { imageURL } = await convertPageToImage(page);
-      textContent = await this.performOCR(imageURL);
+      textContent = await this.performBuiltInOCR(imageURL);
     }
 
     let paraList = textContent.split("\n").filter((para) => para.trim() !== "");
-
     const src = URL.createObjectURL(
       new Blob(
         [
@@ -463,10 +527,7 @@ class PdfTextRender extends GeneralRender {
   async parse() {
     try {
       // 安装 fetch 拦截器以自动缓存所有 OCR 相关资源
-      if (this.isScannedPDF === "yes") {
-        ocrCache.installGlobalFetchInterceptor();
-      }
-
+      ocrCache.installGlobalFetchInterceptor();
       let blob = new Blob([this.pdfBuffer]);
       let file = new File([blob], "book", {
         lastModified: new Date().getTime(),
@@ -475,7 +536,7 @@ class PdfTextRender extends GeneralRender {
 
       this.book = await makePDF(file, this.password);
 
-      if (this.isScannedPDF === "yes" && this.ocrEngine === "tesseract") {
+      if (this.ocrEngine === "tesseract") {
         // 获取 worker 脚本
         let workerScript = await fetchText(
           `${isElectron() ? "." : ""}/lib/tesseractjs/worker.min.js`
@@ -516,7 +577,7 @@ class PdfTextRender extends GeneralRender {
           showOCRProgress(1);
         }
       }
-      if (this.isScannedPDF === "yes" && this.ocrEngine === "paddle") {
+      if (this.ocrEngine === "paddle") {
         // 启动模拟进度条（下载字典和 ONNX 模型期间）
         const stopInitProgress = this.startFakeProgress(0.85, 60000);
         try {
@@ -578,7 +639,10 @@ class PdfTextRender extends GeneralRender {
           showOCRProgress(1);
         }
       }
-      if (this.isScannedPDF === "yes" && this.ocrEngine === "official-ai-ocr") {
+      if (
+        this.ocrEngine === "official-ai-ocr" ||
+        this.ocrEngine === "system-ocr"
+      ) {
         this.worker = this.externalWorker;
       }
     } catch (error) {

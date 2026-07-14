@@ -946,8 +946,24 @@ const snapRangeToSentences = (text: string, start: number, end: number) => {
 
 const isTextVisibleInViewport = (
   rect: DOMRect | ClientRect,
-  element: HTMLElement
+  element: HTMLElement,
+  readerMode?: string
 ) => {
+  // scroll 模式下，实际滚动的是外层容器（element.scrollTop），iframe 被拉伸到
+  // 整篇内容高度且自身不滚动，因此 getBoundingClientRect() 返回的坐标是相对于
+  // iframe 静态坐标系的，需要用 element.scrollTop 做偏移补偿，
+  // 与 isScrolledIntoView 的 scroll 分支保持一致
+  if (readerMode === "scroll") {
+    const scrollTop = element.scrollTop;
+    return (
+      rect.width > 0 &&
+      rect.height > 0 &&
+      rect.bottom > scrollTop &&
+      rect.top < scrollTop + element.clientHeight &&
+      rect.right > 0 &&
+      rect.left < element.clientWidth
+    );
+  }
   return (
     rect.width > 0 &&
     rect.height > 0 &&
@@ -958,7 +974,11 @@ const isTextVisibleInViewport = (
   );
 };
 
-const isNodeVisibleInViewport = (element: HTMLElement, el: HTMLElement) => {
+const isNodeVisibleInViewport = (
+  element: HTMLElement,
+  el: HTMLElement,
+  readerMode?: string
+) => {
   const computedStyle = getComputedStyle(el);
   if (
     computedStyle.display === "none" ||
@@ -968,17 +988,27 @@ const isNodeVisibleInViewport = (element: HTMLElement, el: HTMLElement) => {
     return false;
   }
   const rect = el.getBoundingClientRect();
-  return isTextVisibleInViewport(rect, element);
+  return isTextVisibleInViewport(rect, element, readerMode);
 };
 
 const isNodePartiallyVisibleInViewport = (
   element: HTMLElement,
-  el: HTMLElement
+  el: HTMLElement,
+  readerMode?: string
 ) => {
-  if (!isNodeVisibleInViewport(element, el)) {
+  if (!isNodeVisibleInViewport(element, el, readerMode)) {
     return false;
   }
   const rect = el.getBoundingClientRect();
+  if (readerMode === "scroll") {
+    const scrollTop = element.scrollTop;
+    return (
+      rect.top < scrollTop ||
+      rect.left < 0 ||
+      rect.bottom > scrollTop + element.clientHeight ||
+      rect.right > element.clientWidth
+    );
+  }
   return (
     rect.top < 0 ||
     rect.left < 0 ||
@@ -987,7 +1017,11 @@ const isNodePartiallyVisibleInViewport = (
   );
 };
 
-const getVisibleCharRange = (element: HTMLElement, root: HTMLElement) => {
+const getVisibleCharRange = (
+  element: HTMLElement,
+  root: HTMLElement,
+  readerMode?: string
+) => {
   const text = root.textContent || "";
   if (!text.trim()) {
     return null;
@@ -1006,7 +1040,7 @@ const getVisibleCharRange = (element: HTMLElement, root: HTMLElement) => {
       nodeRange.selectNodeContents(currentNode);
       const nodeRects = Array.from(nodeRange.getClientRects());
       const nodeMayBeVisible = nodeRects.some((rect) =>
-        isTextVisibleInViewport(rect, element)
+        isTextVisibleInViewport(rect, element, readerMode)
       );
 
       if (nodeMayBeVisible) {
@@ -1017,7 +1051,7 @@ const getVisibleCharRange = (element: HTMLElement, root: HTMLElement) => {
           charRange.setEnd(currentNode, i + 1);
           const charRects = Array.from(charRange.getClientRects());
           let visible = charRects.some((rect) =>
-            isTextVisibleInViewport(rect, element)
+            isTextVisibleInViewport(rect, element, readerMode)
           );
           if (
             !visible &&
@@ -1065,17 +1099,21 @@ export const detectLocalLanguage = (text: string): string => {
     return "ja";
   return "ko";
 };
-const getNodeVisibleText = (element: HTMLElement, item: HTMLElement) => {
+const getNodeVisibleText = (
+  element: HTMLElement,
+  item: HTMLElement,
+  readerMode?: string
+) => {
   const text = item.textContent || "";
   if (!text.trim()) {
     return text;
   }
 
-  if (!isNodePartiallyVisibleInViewport(element, item)) {
+  if (!isNodePartiallyVisibleInViewport(element, item, readerMode)) {
     return text;
   }
 
-  const visibleRange = getVisibleCharRange(element, item);
+  const visibleRange = getVisibleCharRange(element, item, readerMode);
   if (!visibleRange) {
     return text;
   }
@@ -1104,7 +1142,7 @@ export const getVisibleText = (
 
   let visibleNode = nodeList.filter(
     (s) =>
-      isNodeVisibleInViewport(element, s as HTMLElement) &&
+      isNodeVisibleInViewport(element, s as HTMLElement, readerMode) &&
       ((s as HTMLElement).textContent || "").trim()
   );
   visibleNode = visibleNode.filter((s) => {
@@ -1130,7 +1168,7 @@ export const getVisibleText = (
       (item) =>
         item.textContent !== "img" && !item.textContent?.startsWith("img")
     )
-    .map((item) => getNodeVisibleText(element, item as HTMLElement))
+    .map((item) => getNodeVisibleText(element, item as HTMLElement, readerMode))
     .filter((s) => s);
 };
 export const handleHighlightSearchNode = (
