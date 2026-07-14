@@ -186,11 +186,14 @@ export const handleHighlightPDFNode = (
     `span[data-highlight="true"]`
   );
   existingHighlights.forEach((highlight) => {
-    // Remove only background style from the element
+    // Remove all highlight-related properties so any style type (background,
+    // underline, strikethrough, wavy) is cleared, not just background.
     const style = highlight.getAttribute("style") || "";
-    // Remove background or background-color properties using regex
     const newStyle = style
-      .replace(/background(?:-color)?\s*:[^;]+;?/gi, "")
+      .replace(/background(?:-image|-repeat|-position|-size|-color)?\s*:[^;]+;?/gi, "")
+      .replace(/mix-blend-mode\s*:[^;]+;?/gi, "")
+      .replace(/border-(?:bottom|right)\s*:[^;]+;?/gi, "")
+      .replace(/text-decoration(?:-line|-style|-color|-thickness|-skip-ink)?\s*:[^;]+;?/gi, "")
       .trim();
     if (newStyle) {
       highlight.setAttribute("style", newStyle);
