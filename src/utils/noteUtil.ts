@@ -50,7 +50,7 @@ export const buildHighlightStyleForType = (
     case "underline":
       // In vertical writing mode, border-bottom stays on the physical bottom;
       // the underline should run along the inline-end (right) edge instead.
-      if (isVertical) {
+      if (isVertical && !forPDFOverlay) {
         return `border-right: 2px solid ${color};`;
       }
       return `border-bottom: 2px solid ${color};`;
@@ -59,24 +59,25 @@ export const buildHighlightStyleForType = (
         // text-decoration doesn't render on empty divs; simulate with a gradient
         // line through the middle. Vertical: rotate the gradient axis so the line
         // runs vertically through the middle.
-        if (isVertical) {
-          return `background: linear-gradient(to right, transparent calc(50% - 1px), ${color} calc(50% - 1px), ${color} calc(50% + 1px), transparent calc(50% + 1px));`;
-        }
         return `background: linear-gradient(transparent calc(50% - 1px), ${color} calc(50% - 1px), ${color} calc(50% + 1px), transparent calc(50% + 1px));`;
+      }
+      if (isVertical) {
+        return `background: linear-gradient(to right, transparent calc(50% - 1px), ${color} calc(50% - 1px), ${color} calc(50% + 1px), transparent calc(50% + 1px));`;
       }
       return `text-decoration: line-through; text-decoration-color: ${color};`;
     case "wavy":
+      const encodedColor = rawColor.replace("#", "%23");
       if (forPDFOverlay) {
         // text-decoration doesn't render on empty divs; simulate with a repeating
         // SVG wavy line. Horizontal: wavy line at the bottom edge; vertical: wavy
         // line along the right edge, repeated vertically.
-        const encodedColor = rawColor.replace("#", "%23");
-        if (isVertical) {
-          const svgWavyVertical = `url("data:image/svg+xml,%3Csvg xmlns='http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='3' height='6'%3E%3Cpath d='M2 0 Q0 1.5 2 3 Q4 4.5 2 6' fill='none' stroke='${encodedColor}' stroke-width='1.5'%2F%3E%3C%2Fsvg%3E")`;
-          return `background-image: ${svgWavyVertical}; background-repeat: repeat-y; background-position: right; background-size: 3px 6px;`;
-        }
+
         const svgWavy = `url("data:image/svg+xml,%3Csvg xmlns='http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='6' height='3'%3E%3Cpath d='M0 2 Q1.5 0 3 2 Q4.5 4 6 2' fill='none' stroke='${encodedColor}' stroke-width='1.5'%2F%3E%3C%2Fsvg%3E")`;
         return `background-image: ${svgWavy}; background-repeat: repeat-x; background-position: bottom; background-size: 6px 3px;`;
+      }
+      if (isVertical) {
+        const svgWavyVertical = `url("data:image/svg+xml,%3Csvg xmlns='http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='3' height='6'%3E%3Cpath d='M2 0 Q0 1.5 2 3 Q4 4.5 2 6' fill='none' stroke='${encodedColor}' stroke-width='1.5'%2F%3E%3C%2Fsvg%3E")`;
+        return `background-image: ${svgWavyVertical}; background-repeat: repeat-y; background-position: right; background-size: 3px 6px;`;
       }
       // Native text-decoration follows writing-mode automatically; no vertical override needed.
       return `text-decoration-line: underline; text-decoration-style: wavy; text-decoration-color: ${color}; text-decoration-thickness: 2px; text-decoration-skip-ink: none;`;
