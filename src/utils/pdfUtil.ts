@@ -2,6 +2,7 @@ import ChapterDoc from "../model/chapterDoc";
 import { convertStyleNum } from "./layoutUtil";
 import { playMimicalFlip } from "./navigationUtil";
 import _ from "underscore";
+declare var window: any;
 
 export const getPdfScale = async (
   element: HTMLElement,
@@ -30,7 +31,7 @@ export const handlePDFLayout = (
   let scale = readerMode === "double" ? 2 : 1;
   let section = Math.floor(doc.body.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  doc.body.setAttribute(
+  doc[window.platform === "ios" ? "body" : "documentElement"].setAttribute(
     "style",
     `${readerMode === "double" ? "position: absolute;" : ""}height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action: manipulation; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
       (doc.body.clientWidth - gap) / scale
@@ -190,10 +191,16 @@ export const handleHighlightPDFNode = (
     // underline, strikethrough, wavy) is cleared, not just background.
     const style = highlight.getAttribute("style") || "";
     const newStyle = style
-      .replace(/background(?:-image|-repeat|-position|-size|-color)?\s*:[^;]+;?/gi, "")
+      .replace(
+        /background(?:-image|-repeat|-position|-size|-color)?\s*:[^;]+;?/gi,
+        ""
+      )
       .replace(/mix-blend-mode\s*:[^;]+;?/gi, "")
       .replace(/border-(?:bottom|right)\s*:[^;]+;?/gi, "")
-      .replace(/text-decoration(?:-line|-style|-color|-thickness|-skip-ink)?\s*:[^;]+;?/gi, "")
+      .replace(
+        /text-decoration(?:-line|-style|-color|-thickness|-skip-ink)?\s*:[^;]+;?/gi,
+        ""
+      )
       .trim();
     if (newStyle) {
       highlight.setAttribute("style", newStyle);

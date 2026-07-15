@@ -328,14 +328,17 @@ class StyleHelper {
     }
 
     // Padding bottom - has default value of 0
-    const paraSpacing = ConfigService.getReaderConfig("paraSpacing") || 0;
-    cssRules.push(`padding-bottom: ${paraSpacing}px `);
+    const paraSpacing = ConfigService.getReaderConfig("paraSpacing");
+    if (paraSpacing !== undefined && paraSpacing !== null) {
+      cssRules.push(`margin-top: ${paraSpacing}px !important`);
+      cssRules.push(`margin-bottom: ${paraSpacing}px !important`);
+    }
 
     // Fixed styles that are always applied
     cssRules.push("word-wrap: break-word");
 
-    cssRules.push("margin-top: 0 !important");
-    cssRules.push("margin-bottom: 0 !important");
+    cssRules.push("margin-top: 1em");
+    cssRules.push("margin-bottom: 1em");
 
     cssRules.push("overflow: visible !important");
 

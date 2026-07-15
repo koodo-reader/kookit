@@ -82,6 +82,7 @@ class GeneralRender extends EventEmitter {
   mouseMoveHandler: (event: TouchEvent) => void;
   isMobile: string | undefined;
   isBionic: string = "no";
+  platform: string = "web";
   isAllowScript: string = "no";
   touchEventSet: any;
   scrollTimer: any;
@@ -110,6 +111,7 @@ class GeneralRender extends EventEmitter {
     isAllowScript?: string;
     fullTranslationMode?: string;
     bookLayout?: string;
+    platform?: string;
     textRules?: TextRule[];
     codeHighlight?: string;
   }) {
@@ -135,6 +137,8 @@ class GeneralRender extends EventEmitter {
     this.element = "";
     this.tempLocation = {};
     this.isBionic = config.isBionic || "no";
+    this.platform = config.platform || "web";
+    window.platform = this.platform;
     window.isBionic = this.isBionic;
     this.transMap = {};
     window.transMap = this.transMap;
