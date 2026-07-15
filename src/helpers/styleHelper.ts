@@ -327,15 +327,12 @@ class StyleHelper {
       cssRules.push("text-decoration: underline !important");
     }
 
-    cssRules.push("padding-top: 0 !important");
-    cssRules.push("padding-bottom: 1em !important");
-    cssRules.push("margin-top: 0 !important");
-    cssRules.push("margin-bottom: 0 !important");
-
     // Padding bottom - has default value of 0
     const paraSpacing = ConfigService.getReaderConfig("paraSpacing");
-    if (paraSpacing !== undefined && paraSpacing !== null) {
+    if (paraSpacing) {
       cssRules.push(`padding-bottom: ${paraSpacing}px !important`);
+      cssRules.push(`margin-bottom: 0px !important`);
+      cssRules.push(`margin-top: 0px !important`);
     }
 
     // Fixed styles that are always applied
