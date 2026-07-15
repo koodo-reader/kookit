@@ -739,7 +739,7 @@ export const handleLayout = (
   if (vertical) {
     let section = Math.floor(element.clientHeight / 12);
     let gap = section % 2 === 0 ? section : section - 1;
-    doc.documentElement.setAttribute(
+    doc[window.platform === "ios" ? "body" : "documentElement"].setAttribute(
       "style",
       `writing-mode: vertical-rl; text-orientation: mixed; height: ${
         element.clientHeight + "px"
@@ -750,7 +750,7 @@ export const handleLayout = (
   } else {
     let section = Math.floor(element.clientWidth / 12);
     let gap = section % 2 === 0 ? section : section - 1;
-    doc.documentElement.setAttribute(
+    doc[window.platform === "ios" ? "body" : "documentElement"].setAttribute(
       "style",
       `width: ${
         element.clientWidth + "px"

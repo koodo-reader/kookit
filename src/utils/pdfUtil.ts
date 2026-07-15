@@ -2,6 +2,7 @@ import ChapterDoc from "../model/chapterDoc";
 import { convertStyleNum } from "./layoutUtil";
 import { playMimicalFlip } from "./navigationUtil";
 import _ from "underscore";
+declare var window: any;
 
 export const getPdfScale = async (
   element: HTMLElement,
@@ -30,7 +31,7 @@ export const handlePDFLayout = (
   let scale = readerMode === "double" ? 2 : 1;
   let section = Math.floor(doc.body.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  doc.documentElement.setAttribute(
+  doc[window.platform === "ios" ? "body" : "documentElement"].setAttribute(
     "style",
     `${readerMode === "double" ? "position: absolute;" : ""}height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action: manipulation; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
       (doc.body.clientWidth - gap) / scale
