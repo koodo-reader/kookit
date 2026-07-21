@@ -1,4 +1,4 @@
-import { buildHighlightStyleForType } from "./noteUtil";
+import { buildHighlightStyleForType } from "./common";
 
 export interface TextRule {
   id: string;
