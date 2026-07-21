@@ -55,6 +55,9 @@ class PdfRender extends GeneralRender {
   shapeType: string = "rect";
   shapeColor: string = "#ff0000";
   shapeWidth: number = 2;
+  textSize: number = 24;
+  textFont: string = "sans-serif";
+  textColor: string = "#ff0000";
   isDrawing: string = "no";
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, convertChinese: "Default", format: "PDF" });
@@ -78,7 +81,16 @@ class PdfRender extends GeneralRender {
     this.shapeType = config.shapeType || "rect";
     this.shapeColor = config.shapeColor || "#ff0000";
     this.shapeWidth = config.shapeWidth || 2;
+    this.textSize = config.textSize != null ? config.textSize : 24;
+    this.textFont = config.textFont || "sans-serif";
+    this.textColor = config.textColor || "#ff0000";
     this.isDrawing = config.isDrawing || "no";
+    console.log(
+      "PdfRender initialized with config:",
+      this.textFont,
+      this.textColor,
+      this.isDrawing
+    );
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -882,8 +894,17 @@ class PdfRender extends GeneralRender {
             fabricObj.set("scaleY", jsonObj.scaleY * ratioY);
           }
           fabricObj.setCoords && fabricObj.setCoords();
+          // 恢复出的 IText 也要挂监听，保证双击编辑后点空白是结束而非新建
+          if (fabricObj.isType && fabricObj.isType("i-text")) {
+            this.attachITextListeners(canvas, fabricObj);
+          }
         }
-      : undefined;
+      : (jsonObj: any, fabricObj: any) => {
+          if (!fabricObj) return;
+          if (fabricObj.isType && fabricObj.isType("i-text")) {
+            this.attachITextListeners(canvas, fabricObj);
+          }
+        };
     try {
       await new Promise<void>((resolve) => {
         canvas.loadFromJSON(
@@ -1171,6 +1192,15 @@ class PdfRender extends GeneralRender {
     if (config.shapeWidth) {
       this.setShapeWidth(config.shapeWidth);
     }
+    if (config.textSize != null) {
+      this.setTextSize(config.textSize);
+    }
+    if (config.textFont) {
+      this.setTextFont(config.textFont);
+    }
+    if (config.textColor) {
+      this.setTextColor(config.textColor);
+    }
     if (config.isDrawing) {
       this.setIsDrawing(config.isDrawing);
     }
@@ -1319,6 +1349,7 @@ class PdfRender extends GeneralRender {
         });
         this.attachFabricKeyListeners(chapterDocIndex, subDoc);
         this.attachShapeDrawListeners(chapterDocIndex, canvas);
+        this.attachTextCreateListeners(chapterDocIndex, canvas);
       }
     }
     this.trigger("rendered", [chapterDocIndex] as any);
@@ -1326,9 +1357,10 @@ class PdfRender extends GeneralRender {
   applyFabricBrush(canvas: any) {
     if (!canvas) return;
     const drawing = this.isDrawing === "yes";
-    // shape 用自定义拖拽绘制几何图形，不走 freeDrawingBrush
+    // shape 用自定义拖拽绘制几何图形，text 用 mouse:down 创建 IText，都不走 freeDrawingBrush
     const isShape = this.annotationStyle === "shape";
-    if (canvas.freeDrawingBrush && !isShape) {
+    const isText = this.annotationStyle === "text";
+    if (canvas.freeDrawingBrush && !isShape && !isText) {
       if (this.annotationStyle === "highlighter") {
         canvas.freeDrawingBrush.color = this.toRgba(
           this.highlighterColor,
@@ -1342,11 +1374,18 @@ class PdfRender extends GeneralRender {
         canvas.freeDrawingBrush.width = this.brushWidth;
       }
     }
-    canvas.isDrawingMode = drawing && !isShape;
+    canvas.isDrawingMode = drawing && !isShape && !isText;
     if (drawing) {
-      canvas.selection = false;
-      canvas.defaultCursor = "crosshair";
-      canvas.hoverCursor = "crosshair";
+      if (isText) {
+        // text 模式保留 selection，以便双击已有文字进入编辑
+        canvas.selection = true;
+        canvas.defaultCursor = "text";
+        canvas.hoverCursor = "text";
+      } else {
+        canvas.selection = false;
+        canvas.defaultCursor = "crosshair";
+        canvas.hoverCursor = "crosshair";
+      }
     } else {
       canvas.selection = true;
       canvas.defaultCursor = "default";
@@ -1410,17 +1449,14 @@ class PdfRender extends GeneralRender {
           selectable: true,
         });
       case "arrow":
-        return new fabricLib.Path(
-          this.buildArrowPath(x1, y1, x2, y2, width),
-          {
-            stroke: color,
-            strokeWidth: width,
-            strokeLineCap: "round",
-            strokeLineJoin: "round",
-            fill: color,
-            selectable: true,
-          }
-        );
+        return new fabricLib.Path(this.buildArrowPath(x1, y1, x2, y2, width), {
+          stroke: color,
+          strokeWidth: width,
+          strokeLineCap: "round",
+          strokeLineJoin: "round",
+          fill: color,
+          selectable: true,
+        });
       default:
         return null;
     }
@@ -1511,6 +1547,75 @@ class PdfRender extends GeneralRender {
       activeShape = null;
     });
   }
+  attachTextCreateListeners(chapterDocIndex: number, canvas: any) {
+    if (!canvas) return;
+    canvas.on("mouse:down", (o: any) => {
+      if (this.annotationStyle !== "text" || this.isDrawing !== "yes") return;
+      // 消费上一次 editing:exited 留下的标志：fabric 在 fire mouse:down 之前会先
+      // 对空白点击调用当前 IText 的 exitEditing，该回调设置此标志表示"本次点击已结束上一个输入"
+      const justExited = canvas._kookitJustExitedText === true;
+      canvas._kookitJustExitedText = false;
+      // 点中已有对象时交给 fabric 默认的选中/双击编辑流程
+      const target = canvas.findTarget(o.e);
+      if (target) return;
+      // 本次 mousedown 已触发上一个 IText 退出编辑：视为"结束输入"，不新建
+      if (justExited) return;
+      // 兜底：另一种 fabric 时序下 exitEditing 尚未发生，手动退出并清标志
+      const active = canvas.getActiveObject();
+      if (active && (active as any).isEditing) {
+        (active as any).exitEditing();
+        canvas._kookitJustExitedText = false;
+        return;
+      }
+      const pointer = canvas.getPointer(o.e);
+      const fabricLib = window.fabric;
+      if (!fabricLib || !fabricLib.IText) return;
+      const text = new fabricLib.IText("", {
+        left: pointer.x,
+        top: pointer.y,
+        fontSize: this.textSize,
+        fontFamily: this.textFont,
+        fill: this.textColor,
+        editable: true,
+        selectable: true,
+      });
+      // canvas.add 触发 object:added，已自动入历史栈并 trigger annotation-changed
+      canvas.add(text);
+      canvas.setActiveObject(text);
+      text.enterEditing();
+      text.hiddenTextarea?.focus();
+      // hiddenTextarea 在 iframe 内，主 document 抢焦点会导致键盘输入不进；
+      // focus 后若焦点没落到 textarea，再切到子 window 重 focus 一次
+      const subWin =
+        canvas.getElement && canvas.getElement().ownerDocument
+          ? canvas.getElement().ownerDocument.defaultView
+          : null;
+      if (subWin && document.activeElement !== text.hiddenTextarea) {
+        try {
+          subWin.focus();
+        } catch (e) {}
+        text.hiddenTextarea?.focus();
+      }
+      this.attachITextListeners(canvas, text);
+    });
+  }
+  attachITextListeners(canvas: any, text: any) {
+    if (!canvas || !text || text._kookitListenersAttached) return;
+    text._kookitListenersAttached = true;
+    // 输入过程与退出编辑时重算尺寸并刷新，确保文字框随内容自适应而非固定尺寸
+    const finalizeText = () => {
+      try {
+        text.setCoords();
+      } catch (e) {}
+      canvas.requestRenderAll();
+    };
+    text.on("text:changed", finalizeText);
+    // 退出编辑时置标志，使紧随其后的 mouse:down 跳过新建，仅完成输入
+    text.on("editing:exited", () => {
+      canvas._kookitJustExitedText = true;
+      finalizeText();
+    });
+  }
   toRgba(color: string, alpha: number) {
     if (typeof color !== "string" || !color) {
       return `rgba(255,255,0,${alpha})`;
@@ -1560,6 +1665,9 @@ class PdfRender extends GeneralRender {
         return;
       }
       if (e.key === "Backspace" || e.key === "Delete") {
+        // IText 处于编辑态时，删除键应删字符而非整框，交还给 IText 自身处理
+        const activeObj = canvas.getActiveObject();
+        if (activeObj && (activeObj as any).isEditing) return;
         const active = canvas.getActiveObjects();
         if (active && active.length > 0) {
           e.preventDefault();
@@ -1649,6 +1757,27 @@ class PdfRender extends GeneralRender {
   }
   setShapeWidth(width: number) {
     this.shapeWidth = width;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setTextSize(size: number) {
+    this.textSize = size;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setTextFont(font: string) {
+    this.textFont = font;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setTextColor(color: string) {
+    this.textColor = color;
     this.fabricCanvasMap.forEach((canvas: any) => {
       this.applyFabricBrush(canvas);
       canvas.requestRenderAll();
