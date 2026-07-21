@@ -1417,7 +1417,7 @@ class PdfRender extends GeneralRender {
             strokeWidth: width,
             strokeLineCap: "round",
             strokeLineJoin: "round",
-            fill: "transparent",
+            fill: color,
             selectable: true,
           }
         );
@@ -1456,10 +1456,10 @@ class PdfRender extends GeneralRender {
     return [
       ["M", x1, y1],
       ["L", baseX, baseY],
-      ["M", x2, y2],
-      ["L", w1X, w1Y],
-      ["M", x2, y2],
+      ["M", w1X, w1Y],
+      ["L", x2, y2],
       ["L", w2X, w2Y],
+      ["Z"],
     ];
   }
   attachShapeDrawListeners(chapterDocIndex: number, canvas: any) {
