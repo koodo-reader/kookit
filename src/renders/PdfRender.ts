@@ -52,6 +52,9 @@ class PdfRender extends GeneralRender {
   highlighterColor: string = "#ffff00";
   highlighterWidth: number = 24;
   highlighterOpacity: number = 0.4;
+  shapeType: string = "rect";
+  shapeColor: string = "#ff0000";
+  shapeWidth: number = 2;
   isDrawing: string = "no";
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, convertChinese: "Default", format: "PDF" });
@@ -72,6 +75,9 @@ class PdfRender extends GeneralRender {
     this.highlighterWidth = config.highlighterWidth || 24;
     this.highlighterOpacity =
       config.highlighterOpacity != null ? config.highlighterOpacity : 0.4;
+    this.shapeType = config.shapeType || "rect";
+    this.shapeColor = config.shapeColor || "#ff0000";
+    this.shapeWidth = config.shapeWidth || 2;
     this.isDrawing = config.isDrawing || "no";
   }
   renderTo(element: HTMLElement) {
@@ -1156,6 +1162,15 @@ class PdfRender extends GeneralRender {
     if (config.highlighterOpacity != null) {
       this.setHighlighterOpacity(config.highlighterOpacity);
     }
+    if (config.shapeType) {
+      this.setShapeType(config.shapeType);
+    }
+    if (config.shapeColor) {
+      this.setShapeColor(config.shapeColor);
+    }
+    if (config.shapeWidth) {
+      this.setShapeWidth(config.shapeWidth);
+    }
     if (config.isDrawing) {
       this.setIsDrawing(config.isDrawing);
     }
@@ -1303,13 +1318,17 @@ class PdfRender extends GeneralRender {
           fn: syncFabricEnv,
         });
         this.attachFabricKeyListeners(chapterDocIndex, subDoc);
+        this.attachShapeDrawListeners(chapterDocIndex, canvas);
       }
     }
     this.trigger("rendered", [chapterDocIndex] as any);
   }
   applyFabricBrush(canvas: any) {
     if (!canvas) return;
-    if (canvas.freeDrawingBrush) {
+    const drawing = this.isDrawing === "yes";
+    // shape 用自定义拖拽绘制几何图形，不走 freeDrawingBrush
+    const isShape = this.annotationStyle === "shape";
+    if (canvas.freeDrawingBrush && !isShape) {
       if (this.annotationStyle === "highlighter") {
         canvas.freeDrawingBrush.color = this.toRgba(
           this.highlighterColor,
@@ -1323,8 +1342,8 @@ class PdfRender extends GeneralRender {
         canvas.freeDrawingBrush.width = this.brushWidth;
       }
     }
-    canvas.isDrawingMode = this.isDrawing === "yes";
-    if (this.isDrawing === "yes") {
+    canvas.isDrawingMode = drawing && !isShape;
+    if (drawing) {
       canvas.selection = false;
       canvas.defaultCursor = "crosshair";
       canvas.hoverCursor = "crosshair";
@@ -1333,6 +1352,164 @@ class PdfRender extends GeneralRender {
       canvas.defaultCursor = "default";
       canvas.hoverCursor = "move";
     }
+  }
+  createShapeObject(x1: number, y1: number, x2: number, y2: number): any {
+    const fabricLib = window.fabric;
+    if (!fabricLib) return null;
+    const color = this.shapeColor;
+    const width = this.shapeWidth;
+    const common: any = {
+      stroke: color,
+      strokeWidth: width,
+      strokeLineCap: "round",
+      strokeLineJoin: "round",
+      fill: "transparent",
+      selectable: true,
+    };
+    const minX = Math.min(x1, x2);
+    const minY = Math.min(y1, y2);
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+    switch (this.shapeType) {
+      case "rect":
+        return new fabricLib.Rect({
+          ...common,
+          left: minX,
+          top: minY,
+          width: absDx,
+          height: absDy,
+        });
+      case "circle": {
+        const radius = Math.hypot(dx, dy) / 2;
+        return new fabricLib.Circle({
+          ...common,
+          left: x1,
+          top: y1,
+          radius,
+          originX: "center",
+          originY: "center",
+        });
+      }
+      case "ellipse":
+        return new fabricLib.Ellipse({
+          ...common,
+          left: (x1 + x2) / 2,
+          top: (y1 + y2) / 2,
+          rx: absDx / 2,
+          ry: absDy / 2,
+          originX: "center",
+          originY: "center",
+        });
+      case "line":
+        return new fabricLib.Line([x1, y1, x2, y2], {
+          stroke: color,
+          strokeWidth: width,
+          strokeLineCap: "round",
+          selectable: true,
+        });
+      case "arrow":
+        return new fabricLib.Path(
+          this.buildArrowPath(x1, y1, x2, y2, width),
+          {
+            stroke: color,
+            strokeWidth: width,
+            strokeLineCap: "round",
+            strokeLineJoin: "round",
+            fill: "transparent",
+            selectable: true,
+          }
+        );
+      default:
+        return null;
+    }
+  }
+  buildArrowPath(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    width: number
+  ): any[] {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) {
+      return [
+        ["M", x1, y1],
+        ["L", x2, y2],
+      ];
+    }
+    const ux = dx / len;
+    const uy = dy / len;
+    const head = Math.max(width * 3, 8);
+    const wing = head * 0.5;
+    const px = -uy;
+    const py = ux;
+    const baseX = x2 - ux * head;
+    const baseY = y2 - uy * head;
+    const w1X = baseX + px * wing;
+    const w1Y = baseY + py * wing;
+    const w2X = baseX - px * wing;
+    const w2Y = baseY - py * wing;
+    return [
+      ["M", x1, y1],
+      ["L", baseX, baseY],
+      ["M", x2, y2],
+      ["L", w1X, w1Y],
+      ["M", x2, y2],
+      ["L", w2X, w2Y],
+    ];
+  }
+  attachShapeDrawListeners(chapterDocIndex: number, canvas: any) {
+    if (!canvas) return;
+    let isDown = false;
+    let origX = 0;
+    let origY = 0;
+    let lastX = 0;
+    let lastY = 0;
+    let activeShape: any = null;
+    canvas.on("mouse:down", (o: any) => {
+      if (this.annotationStyle !== "shape" || this.isDrawing !== "yes") return;
+      isDown = true;
+      const pointer = canvas.getPointer(o.e);
+      origX = pointer.x;
+      origY = pointer.y;
+      lastX = origX;
+      lastY = origY;
+      // 拖拽预览阶段产生的 add/remove 不入历史、不触发 annotation-changed
+      this.fabricHistoryLock.add(chapterDocIndex);
+      activeShape = this.createShapeObject(origX, origY, origX, origY);
+      if (activeShape) canvas.add(activeShape);
+    });
+    canvas.on("mouse:move", (o: any) => {
+      if (!isDown || !activeShape) return;
+      const pointer = canvas.getPointer(o.e);
+      lastX = pointer.x;
+      lastY = pointer.y;
+      const next = this.createShapeObject(origX, origY, lastX, lastY);
+      if (next) {
+        canvas.remove(activeShape);
+        activeShape = next;
+        canvas.add(activeShape);
+        canvas.requestRenderAll();
+      }
+    });
+    canvas.on("mouse:up", () => {
+      if (!isDown) return;
+      isDown = false;
+      this.fabricHistoryLock.delete(chapterDocIndex);
+      const moved = Math.hypot(lastX - origX, lastY - origY) >= 2;
+      if (activeShape && moved) {
+        this.pushFabricHistory(chapterDocIndex, activeShape);
+        this.trigger("annotation-changed", [chapterDocIndex] as any);
+      } else if (activeShape) {
+        canvas.remove(activeShape);
+        canvas.requestRenderAll();
+      }
+      activeShape = null;
+    });
   }
   toRgba(color: string, alpha: number) {
     if (typeof color !== "string" || !color) {
@@ -1451,6 +1628,27 @@ class PdfRender extends GeneralRender {
   }
   setHighlighterWidth(width: number) {
     this.highlighterWidth = width;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setShapeType(shapeType: string) {
+    this.shapeType = shapeType;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setShapeColor(color: string) {
+    this.shapeColor = color;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setShapeWidth(width: number) {
+    this.shapeWidth = width;
     this.fabricCanvasMap.forEach((canvas: any) => {
       this.applyFabricBrush(canvas);
       canvas.requestRenderAll();
