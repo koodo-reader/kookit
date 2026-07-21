@@ -46,8 +46,12 @@ class PdfRender extends GeneralRender {
   fabricHistoryLock: Set<number> = new Set();
   fabricSyncListenerMap: Map<number, { doc: Document; fn: () => void }> =
     new Map();
+  annotationStyle: string = "brush";
   brushColor: string = "#ff0000";
   brushWidth: number = 2;
+  highlighterColor: string = "#ffff00";
+  highlighterWidth: number = 24;
+  highlighterOpacity: number = 0.4;
   isDrawing: string = "no";
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, convertChinese: "Default", format: "PDF" });
@@ -64,6 +68,10 @@ class PdfRender extends GeneralRender {
       config.enablePDFSelectionOptimization || "no";
     this.brushColor = config.brushColor || "#ff0000";
     this.brushWidth = config.brushWidth || 2;
+    this.highlighterColor = config.highlighterColor || "#ffff00";
+    this.highlighterWidth = config.highlighterWidth || 24;
+    this.highlighterOpacity =
+      config.highlighterOpacity != null ? config.highlighterOpacity : 0.4;
     this.isDrawing = config.isDrawing || "no";
   }
   renderTo(element: HTMLElement) {
@@ -1130,11 +1138,23 @@ class PdfRender extends GeneralRender {
     }
   }
   applyAnnotationConfig(config: any) {
+    if (config.annotationStyle) {
+      this.setAnnotationStyle(config.annotationStyle);
+    }
     if (config.brushColor) {
       this.setBrushColor(config.brushColor);
     }
     if (config.brushWidth) {
       this.setBrushWidth(config.brushWidth);
+    }
+    if (config.highlighterColor) {
+      this.setHighlighterColor(config.highlighterColor);
+    }
+    if (config.highlighterWidth) {
+      this.setHighlighterWidth(config.highlighterWidth);
+    }
+    if (config.highlighterOpacity != null) {
+      this.setHighlighterOpacity(config.highlighterOpacity);
     }
     if (config.isDrawing) {
       this.setIsDrawing(config.isDrawing);
@@ -1290,8 +1310,18 @@ class PdfRender extends GeneralRender {
   applyFabricBrush(canvas: any) {
     if (!canvas) return;
     if (canvas.freeDrawingBrush) {
-      canvas.freeDrawingBrush.color = this.brushColor;
-      canvas.freeDrawingBrush.width = this.brushWidth;
+      if (this.annotationStyle === "highlighter") {
+        canvas.freeDrawingBrush.color = this.toRgba(
+          this.highlighterColor,
+          this.highlighterOpacity
+        );
+        canvas.freeDrawingBrush.width = this.highlighterWidth;
+        canvas.freeDrawingBrush.strokeLineCap = "round";
+        canvas.freeDrawingBrush.strokeLineJoin = "round";
+      } else {
+        canvas.freeDrawingBrush.color = this.brushColor;
+        canvas.freeDrawingBrush.width = this.brushWidth;
+      }
     }
     canvas.isDrawingMode = this.isDrawing === "yes";
     if (this.isDrawing === "yes") {
@@ -1303,6 +1333,36 @@ class PdfRender extends GeneralRender {
       canvas.defaultCursor = "default";
       canvas.hoverCursor = "move";
     }
+  }
+  toRgba(color: string, alpha: number) {
+    if (typeof color !== "string" || !color) {
+      return `rgba(255,255,0,${alpha})`;
+    }
+    const trim = color.trim();
+    const rgbaMatch = trim.match(
+      /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/i
+    );
+    if (rgbaMatch) {
+      const r = Math.round(parseFloat(rgbaMatch[1]));
+      const g = Math.round(parseFloat(rgbaMatch[2]));
+      const b = Math.round(parseFloat(rgbaMatch[3]));
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+    const hexMatch = trim.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (hexMatch) {
+      let hex = hexMatch[1];
+      if (hex.length === 3) {
+        hex = hex
+          .split("")
+          .map((c) => c + c)
+          .join("");
+      }
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+    return `rgba(255,255,0,${alpha})`;
   }
   pushFabricHistory(chapterDocIndex: number, obj: any) {
     if (!obj) return;
@@ -1357,17 +1417,43 @@ class PdfRender extends GeneralRender {
   setBrushColor(color: string) {
     this.brushColor = color;
     this.fabricCanvasMap.forEach((canvas: any) => {
-      if (canvas.freeDrawingBrush) {
-        canvas.freeDrawingBrush.color = color;
-      }
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setHighlighterColor(color: string) {
+    this.highlighterColor = color;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setHighlighterOpacity(opacity: number) {
+    this.highlighterOpacity = opacity;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setAnnotationStyle(style: string) {
+    this.annotationStyle = style;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
     });
   }
   setBrushWidth(width: number) {
     this.brushWidth = width;
     this.fabricCanvasMap.forEach((canvas: any) => {
-      if (canvas.freeDrawingBrush) {
-        canvas.freeDrawingBrush.width = width;
-      }
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setHighlighterWidth(width: number) {
+    this.highlighterWidth = width;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
     });
   }
   setIsDrawing(isDrawing: string) {
