@@ -1,4 +1,3 @@
-declare var window: any;
 class StyleHelper {
   // get default css for iframe
   static getDefaultCss(ConfigService: any, bookKey: string = "") {
@@ -42,6 +41,10 @@ class StyleHelper {
         "display:inline;" +
         "vertical-align:baseline;" +
         "}"
+    );
+    // Highlight rule uses inline styles set directly on each span
+    cssRules.push(
+      ".kookit-text-rule-highlight{" + "line-height:inherit;" + "}"
     );
     cssRules.push(
       ".kookit-text-rule-replace::after{" +
