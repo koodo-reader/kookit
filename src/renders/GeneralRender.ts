@@ -1605,7 +1605,8 @@ class GeneralRender extends EventEmitter {
   }
   handleBatchTransResult(sourcetexts: string[], targetTexts: string[]) {
     let doc = this.getDocument();
-    if (!doc) return;
+    let iframe = this.getIframe();
+    if (!doc || !iframe) return;
     for (let index = 0; index < sourcetexts.length; index++) {
       const sourceText = sourcetexts[index];
       if (this.transMap[sourceText]) {
@@ -1640,6 +1641,10 @@ class GeneralRender extends EventEmitter {
         }
       }
     }
+    if (this.readerMode === "scroll") {
+      iframe.height = doc.body.scrollHeight + "px";
+      iframe.height = doc.body.scrollHeight + 300 + "px";
+    }
   }
   handleWordDefinitionResult(
     results: { text: string; words: any[] }[],
@@ -1647,7 +1652,8 @@ class GeneralRender extends EventEmitter {
     locale: string
   ) {
     let doc = this.getDocument();
-    if (!doc) return;
+    let iframe = this.getIframe();
+    if (!doc || !iframe) return;
     // Clear previous definitions before re-applying
     clearWordDefinitions(doc);
     // Build a flat list of audio nodes to match against result.text
@@ -1683,6 +1689,10 @@ class GeneralRender extends EventEmitter {
         locale,
         targetNode as Element
       );
+    }
+    if (this.readerMode === "scroll") {
+      iframe.height = doc.body.scrollHeight + "px";
+      iframe.height = doc.body.scrollHeight + 300 + "px";
     }
   }
   clearWordDefinitionResult() {
