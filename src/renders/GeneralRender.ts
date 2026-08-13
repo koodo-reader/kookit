@@ -23,6 +23,7 @@ import {
   isElementFootnote,
   processHtml,
   resolveXPath,
+  isContentFootnote,
 } from "../utils/navigationUtil";
 import EventEmitter from "../utils/EventEmitter";
 import { CFI } from "../libs/cfi";
@@ -1577,7 +1578,17 @@ class GeneralRender extends EventEmitter {
         content += next.textContent;
         next = next.nextSibling;
       }
-      if (content.trim() && content.trim().length <= 3000) {
+      if (!content.trim() || isContentFootnote(content)) {
+        next = node.parentNode;
+        while (
+          next &&
+          (isContentFootnote(content) || !content.trim()) &&
+          next.tagName !== "BODY"
+        ) {
+          next = next.parentNode;
+        }
+        node = next;
+      } else if (content.trim() && content.trim().length <= 3000) {
         node = document.createElement("div");
         node.innerHTML = content;
       }
