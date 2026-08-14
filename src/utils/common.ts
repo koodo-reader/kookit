@@ -59,7 +59,7 @@ export const buildHighlightStyleForType = (
       if (isVertical) {
         return `background: linear-gradient(to right, transparent calc(50% - 1px), ${color} calc(50% - 1px), ${color} calc(50% + 1px), transparent calc(50% + 1px));`;
       }
-      return `text-decoration: line-through; text-decoration-color: ${color};`;
+      return `text-decoration: line-through; text-decoration-color: ${color}; text-decoration-thickness: 2px; text-decoration-skip-ink: none;`;
     case "wavy":
       const encodedColor = rawColor.replace("#", "%23");
       if (forPDFOverlay) {
