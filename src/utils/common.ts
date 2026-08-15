@@ -43,6 +43,12 @@ export const buildHighlightStyleForType = (
       }
       return `background: ${color};`;
     case "underline":
+      if (forPDFOverlay) {
+        if (isVertical) {
+          return `border-right: 2px solid ${color};`;
+        }
+        return `border-bottom: 2px solid ${color};`;
+      }
       return `text-decoration: underline; text-decoration-color: ${color}; text-decoration-thickness: 2px; text-decoration-skip-ink: none;`;
     case "strikethrough":
       if (forPDFOverlay) {
