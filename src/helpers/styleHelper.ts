@@ -127,7 +127,7 @@ class StyleHelper {
 
     // Table styles — force tables to fit within the reader width
     cssRules.push(
-      "table{width:100% !important;max-width:100% !important;table-layout:fixed !important;box-sizing:border-box;border-collapse:collapse;margin:20px 0;line-height:1.6;}"
+      "table{width:100% !important;max-width:100% !important;table-layout:fixed !important;box-sizing:border-box;border-collapse:collapse;margin:20px 0;line-height:1.6;margin-left:0 !important;margin-right:0 !important;}"
     );
     cssRules.push(
       "td,th{word-break:break-word;overflow-wrap:anywhere;overflow:hidden;box-sizing:border-box;}"
