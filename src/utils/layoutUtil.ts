@@ -739,7 +739,7 @@ export const handleLayout = (
   if (vertical) {
     let section = Math.floor(element.clientHeight / 12);
     let gap = section % 2 === 0 ? section : section - 1;
-    doc.body.setAttribute(
+    doc.documentElement.setAttribute(
       "style",
       `writing-mode: vertical-rl; text-orientation: mixed; height: ${
         element.clientHeight + "px"
@@ -751,7 +751,7 @@ export const handleLayout = (
     let section = Math.floor(element.clientWidth / 12);
     let gap = section % 2 === 0 ? section : section - 1;
     //ios 特殊处理否则平滑翻页有问题
-    doc.body.setAttribute(
+    doc.documentElement.setAttribute(
       "style",
       `width: ${
         element.clientWidth + "px"

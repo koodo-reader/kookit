@@ -333,9 +333,8 @@ class StyleHelper {
     // Padding bottom - has default value of 0
     const paraSpacing = ConfigService.getReaderConfig("paraSpacing");
     if (paraSpacing) {
-      cssRules.push(`padding-bottom: ${paraSpacing}px !important`);
-      cssRules.push(`margin-bottom: 0px !important`);
-      cssRules.push(`margin-top: 0px !important`);
+      cssRules.push(`margin-bottom: ${paraSpacing}px !important`);
+      cssRules.push(`margin-top: ${paraSpacing}px !important`);
     }
 
     // Fixed styles that are always applied
