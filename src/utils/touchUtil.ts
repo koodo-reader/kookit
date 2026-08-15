@@ -4,6 +4,35 @@ import { createSelectionAutoTurn } from "./selectionAutoTurn";
 declare var window: any;
 let selectionTimeout: any = null;
 let isDragging = false;
+let lastPinchZoomTime = 0;
+let pinchZoomed = false;
+
+// 双指缩放 PDF 结束后发送 pinch-zoom 消息，Android/iOS 共用
+export const onPinchZoomEnd = function (event: any, render: any) {
+  if (!pinchZoomed) return;
+  pinchZoomed = false;
+  if (window.visualViewport.scale <= 1.01) return;
+  // Debounce: 与上次发送间隔不足 1 秒则跳过
+  let now = Date.now();
+  if (now - lastPinchZoomTime < 1000) return;
+  lastPinchZoomTime = now;
+  let target: any = event.target;
+  let ownerDoc = target.ownerDocument;
+  let targetIframe = ownerDoc?.defaultView?.frameElement;
+  let id = targetIframe?.getAttribute("id") || "";
+  let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
+  window.ReactNativeWebView.postMessage(
+    JSON.stringify({
+      event: "pinch-zoom",
+      chapterDocIndex: chapterDocIndex,
+    })
+  );
+  render.handleRenderPDFChapter(
+    chapterDocIndex,
+    true,
+    window.visualViewport.scale
+  );
+};
 export const slideAnimateTo = (
   direction: string,
   format: string,
@@ -285,6 +314,7 @@ export const addAndroidTouchEvent = (
       return;
     }
     lastTouchEnd = now;
+    onPinchZoomEnd(event, render);
     const touch = event.changedTouches[0];
     const touchEndTime = Date.now();
     let touchEndX = touch.screenX;
@@ -437,6 +467,7 @@ export const addAndroidTouchEvent = (
 
     if (event.touches.length > 1) {
       event.preventDefault();
+      pinchZoomed = true;
     }
     const touch = event.touches[0];
 
@@ -789,6 +820,7 @@ export const addAppleTouchEvent = (
       return;
     }
     lastTouchEnd = now;
+    onPinchZoomEnd(event, render);
     const touch = event.changedTouches[0];
     const touchEndTime = Date.now();
     const touchEndX = touch.screenX;
@@ -986,6 +1018,9 @@ export const addAppleTouchEvent = (
     const linkElement = findLinkElement(target);
     if (linkElement) {
       return;
+    }
+    if (event.touches.length > 1) {
+      pinchZoomed = true;
     }
     //// 注释掉解决无法双指缩放pdf的问题
     // if (event.touches.length > 1) {

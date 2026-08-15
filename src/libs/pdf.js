@@ -57,10 +57,12 @@ const render = async (
   zoom,
   isMobile,
   viewer,
-  isKeepPDFBackground
+  isKeepPDFBackground,
+  pixelRatio = 1
 ) => {
   try {
-    const basePixelRatio = window.devicePixelRatio;
+    const basePixelRatio = window.devicePixelRatio * pixelRatio;
+    console.log("basePixelRatio:", window.devicePixelRatio, pixelRatio);
     const rawDpr = basePixelRatio;
     // Cap DPR to avoid iOS WebContent OOM (max 3.1M pixels for mobile)
     const MAX_RENDER_DPR = 2;

@@ -311,7 +311,7 @@ class PdfRender extends GeneralRender {
         doc
       );
       if (isScrollIntoView) {
-        await this.renderPdfPage(chapterDocIndex, doc);
+        await this.renderPdfPage(chapterDocIndex);
       }
     }
   }
@@ -381,7 +381,7 @@ class PdfRender extends GeneralRender {
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
-    await this.renderPdfPage(chapterDocIndex, doc);
+    await this.renderPdfPage(chapterDocIndex);
     await handleScrollPDFPosition(
       parseInt(chapterDocIndex),
       this.readerMode,
@@ -432,7 +432,7 @@ class PdfRender extends GeneralRender {
     if (this.readerMode === "double" && chapterDocIndex % 2 == 1) {
       chapterDocIndex--;
     }
-    await this.renderPdfPage(parseInt(chapterDocIndex), doc);
+    await this.renderPdfPage(parseInt(chapterDocIndex));
     if (this.readerMode === "scroll") {
       iframe.height = doc.body.scrollHeight + "px";
       iframe.height = doc.body.scrollHeight + 300 + "px";
@@ -487,8 +487,7 @@ class PdfRender extends GeneralRender {
 
       await this.renderPdfPage(
         parseInt(this.tempLocation.chapterDocIndex) -
-          (this.readerMode === "double" ? 2 : 1),
-        doc
+          (this.readerMode === "double" ? 2 : 1)
       );
     }
 
@@ -535,8 +534,7 @@ class PdfRender extends GeneralRender {
 
       await this.renderPdfPage(
         parseInt(this.tempLocation.chapterDocIndex) +
-          (this.readerMode === "double" ? 2 : 1),
-        doc
+          (this.readerMode === "double" ? 2 : 1)
       );
     }
 
@@ -1205,18 +1203,24 @@ class PdfRender extends GeneralRender {
       this.setIsDrawing(config.isDrawing);
     }
   }
-  async handleRenderPDFChapter(chapterDocIndex: number, doc: Document) {
+  async handleRenderPDFChapter(
+    chapterDocIndex: number,
+    isReload: boolean = false,
+    pixelRatio: number = 1
+  ) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
     }
 
+    let doc = this.getDocument();
+    if (!doc) return;
     let subIframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
     if (!subIframe) {
       subIframe = createPDFIframe(chapterDocIndex, doc);
     }
     let subDoc = subIframe?.contentDocument;
     if (!subDoc) return;
-    if (subDoc.body.innerHTML) {
+    if (subDoc.body.innerHTML && !isReload) {
       return;
     }
     subDoc.body.innerHTML = "";
@@ -1231,7 +1235,8 @@ class PdfRender extends GeneralRender {
       scale,
       this.isMobile,
       this,
-      this.isKeepPDFBackground
+      this.isKeepPDFBackground,
+      pixelRatio
     );
 
     let docLayer: any = subDoc.querySelector("#koodoPDFLayer");
@@ -1799,7 +1804,7 @@ class PdfRender extends GeneralRender {
     data._canvasHeight = canvas.getHeight();
     return data;
   }
-  async handleUnloadPDFChapter(chapterDocIndex: number, doc: Document) {
+  async handleUnloadPDFChapter(chapterDocIndex: number) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
     }
@@ -1840,20 +1845,20 @@ class PdfRender extends GeneralRender {
     this.fabricHistoryLock.delete(chapterDocIndex);
     subDoc.body.innerHTML = "";
   }
-  async renderPdfPage(chapterDocIndex: number, doc: Document) {
+  async renderPdfPage(chapterDocIndex: number) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
     } else if (chapterDocIndex > 3) {
-      await this.handleUnloadPDFChapter(chapterDocIndex - 4, doc);
+      await this.handleUnloadPDFChapter(chapterDocIndex - 4);
     }
-    await this.handleRenderPDFChapter(chapterDocIndex, doc);
-    this.handleRenderPDFChapter(chapterDocIndex + 1, doc);
+    await this.handleRenderPDFChapter(chapterDocIndex);
+    this.handleRenderPDFChapter(chapterDocIndex + 1);
     if (this.platform === "ios") {
       //ios 性能太差，先不预渲染后续章节了
       return;
     }
-    this.handleRenderPDFChapter(chapterDocIndex + 2, doc);
-    this.handleRenderPDFChapter(chapterDocIndex + 3, doc);
+    this.handleRenderPDFChapter(chapterDocIndex + 2);
+    this.handleRenderPDFChapter(chapterDocIndex + 3);
     // 预渲染会把 fabric.document 切到后续页，恢复为当前页 iframe，
     // 保证用户在当前页绘制时 fabric 的 mousemove/mouseup 监听器挂在正确 document 上
     this.activateFabricDocument(chapterDocIndex);
