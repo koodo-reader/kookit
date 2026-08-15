@@ -61,8 +61,7 @@ const render = async (
 ) => {
   try {
     const basePixelRatio = window.devicePixelRatio;
-    const mobileFactor = isMobile === "yes" ? 1.5 : 1;
-    const rawDpr = basePixelRatio * mobileFactor;
+    const rawDpr = basePixelRatio;
     // Cap DPR to avoid iOS WebContent OOM (max 3.1M pixels for mobile)
     const MAX_RENDER_DPR = 2;
     const MAX_CANVAS_PIXELS = 2048 * 1536;
