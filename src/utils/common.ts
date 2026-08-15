@@ -43,12 +43,7 @@ export const buildHighlightStyleForType = (
       }
       return `background: ${color};`;
     case "underline":
-      // In vertical writing mode, border-bottom stays on the physical bottom;
-      // the underline should run along the inline-end (right) edge instead.
-      if (isVertical && !forPDFOverlay) {
-        return `border-right: 2px solid ${color};`;
-      }
-      return `border-bottom: 2px solid ${color};`;
+      return `text-decoration: underline; text-decoration-color: ${color}; text-decoration-thickness: 2px; text-decoration-skip-ink: none;`;
     case "strikethrough":
       if (forPDFOverlay) {
         // text-decoration doesn't render on empty divs; simulate with a gradient
