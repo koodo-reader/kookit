@@ -69,11 +69,14 @@ const render = async (
     const cappedDpr = Math.min(rawDpr, MAX_RENDER_DPR);
     let devicePixelRatio = cappedDpr;
 
-    const initialViewport = page.getViewport({ scale: zoom * devicePixelRatio });
+    const initialViewport = page.getViewport({
+      scale: zoom * devicePixelRatio,
+    });
     const totalPixels = initialViewport.width * initialViewport.height;
     // If canvas area exceeds budget, reduce dpr proportionally
     if (totalPixels > MAX_CANVAS_PIXELS) {
-      devicePixelRatio = devicePixelRatio * Math.sqrt(MAX_CANVAS_PIXELS / totalPixels);
+      devicePixelRatio =
+        devicePixelRatio * Math.sqrt(MAX_CANVAS_PIXELS / totalPixels);
     }
 
     const scale = zoom * devicePixelRatio;
@@ -84,8 +87,8 @@ const render = async (
     docLayer.style.transformOrigin = "top left";
     docLayer.style.setProperty("--scale-factor", scale);
     const viewport = page.getViewport({ scale });
-    docLayer.style.width = `${viewport.width / devicePixelRatio}px`;
-    docLayer.style.height = `${viewport.height / devicePixelRatio}px`;
+    docLayer.style.width = `${viewport.width}px`;
+    docLayer.style.height = `${viewport.height}px`;
 
     // the canvas must be in the `PDFDocument`'s `ownerDocument`
     // (`globalThis.document` by default); that's where the fonts are loaded
