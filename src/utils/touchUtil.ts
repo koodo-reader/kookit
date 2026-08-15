@@ -25,13 +25,10 @@ export const onPinchZoomEnd = function (event: any, render: any) {
     JSON.stringify({
       event: "pinch-zoom",
       chapterDocIndex: chapterDocIndex,
+      scale: window.visualViewport.scale,
     })
   );
-  render.handleRenderPDFChapter(
-    chapterDocIndex,
-    true,
-    window.visualViewport.scale
-  );
+  render.handleRenderPDFChapter(chapterDocIndex, true);
 };
 export const slideAnimateTo = (
   direction: string,

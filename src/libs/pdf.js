@@ -57,27 +57,29 @@ const render = async (
   zoom,
   isMobile,
   viewer,
-  isKeepPDFBackground,
-  pixelRatio = 1
+  isKeepPDFBackground
 ) => {
   try {
-    const basePixelRatio = window.devicePixelRatio * pixelRatio;
-    console.log("basePixelRatio:", window.devicePixelRatio, pixelRatio);
-    const rawDpr = basePixelRatio;
-    // Cap DPR to avoid iOS WebContent OOM (max 3.1M pixels for mobile)
-    const MAX_RENDER_DPR = 2;
-    const MAX_CANVAS_PIXELS = 2048 * 1536;
-    const cappedDpr = Math.min(rawDpr, MAX_RENDER_DPR);
-    let devicePixelRatio = cappedDpr;
-
-    const initialViewport = page.getViewport({
-      scale: zoom * devicePixelRatio,
-    });
-    const totalPixels = initialViewport.width * initialViewport.height;
-    // If canvas area exceeds budget, reduce dpr proportionally
-    if (totalPixels > MAX_CANVAS_PIXELS) {
-      devicePixelRatio =
-        devicePixelRatio * Math.sqrt(MAX_CANVAS_PIXELS / totalPixels);
+    let pixelRatio = window.visualViewport.scale;
+    let devicePixelRatio = window.devicePixelRatio * pixelRatio;
+    if (window.platform === "ios") {
+      pixelRatio = 1;
+      const basePixelRatio = window.devicePixelRatio * pixelRatio;
+      const rawDpr = basePixelRatio;
+      // Cap DPR to avoid iOS WebContent OOM (max 3.1M pixels for mobile)
+      const MAX_RENDER_DPR = 2;
+      const MAX_CANVAS_PIXELS = 2048 * 1536;
+      const cappedDpr = Math.min(rawDpr, MAX_RENDER_DPR);
+      devicePixelRatio = cappedDpr;
+      const initialViewport = page.getViewport({
+        scale: zoom * devicePixelRatio,
+      });
+      const totalPixels = initialViewport.width * initialViewport.height;
+      // If canvas area exceeds budget, reduce dpr proportionally
+      if (totalPixels > MAX_CANVAS_PIXELS) {
+        devicePixelRatio =
+          devicePixelRatio * Math.sqrt(MAX_CANVAS_PIXELS / totalPixels);
+      }
     }
 
     const scale = zoom * devicePixelRatio;

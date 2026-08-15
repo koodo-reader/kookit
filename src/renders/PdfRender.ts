@@ -1205,8 +1205,7 @@ class PdfRender extends GeneralRender {
   }
   async handleRenderPDFChapter(
     chapterDocIndex: number,
-    isReload: boolean = false,
-    pixelRatio: number = 1
+    isReload: boolean = false
   ) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
@@ -1236,7 +1235,6 @@ class PdfRender extends GeneralRender {
       this.isMobile,
       this,
       this.isKeepPDFBackground,
-      pixelRatio
     );
 
     let docLayer: any = subDoc.querySelector("#koodoPDFLayer");
