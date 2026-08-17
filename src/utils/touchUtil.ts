@@ -104,34 +104,26 @@ export const slideAnimateTo = (
   const duration = 250;
 
   const body = tempDoc.body;
+  const docElement = tempDoc.documentElement;
   window.isSwiping = true;
 
-  const children = Array.from(body.children) as HTMLElement[];
-  const allElements = [...children];
+  docElement.style.willChange = "transform";
+  docElement.style.transform = "translateX(0px)";
+  docElement.style.transition = "none";
 
-  for (const el of allElements) {
-    el.style.willChange = "transform";
-    el.style.transform = "translateX(0px)";
-    el.style.transition = "none";
-  }
+  docElement.getBoundingClientRect();
 
-  body.getBoundingClientRect();
-
-  for (const el of allElements) {
-    el.style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
-    el.style.transform = `translateX(${-distance}px)`;
-  }
+  docElement.style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+  docElement.style.transform = `translateX(${-distance}px)`;
 
   let resolved = false;
   const cleanup = () => {
     if (resolved) return;
     resolved = true;
 
-    for (const el of allElements) {
-      el.style.willChange = "";
-      el.style.transform = "";
-      el.style.transition = "";
-    }
+    docElement.style.willChange = "";
+    docElement.style.transform = "";
+    docElement.style.transition = "";
 
     body.scrollLeft = snapX;
 
@@ -150,23 +142,15 @@ export const slideAnimateTo = (
     window.isSwiping = false;
   };
 
-  if (allElements.length > 0) {
-    const first = allElements[0];
-    const onTransitionEnd = (e: TransitionEvent) => {
-      if (e.target === first && e.propertyName === "transform") {
-        first.removeEventListener("transitionend", onTransitionEnd);
-        cleanup();
-      }
-    };
-    first.addEventListener("transitionend", onTransitionEnd);
+  const onTransitionEnd = (e: TransitionEvent) => {
+    if (e.target === docElement && e.propertyName === "transform") {
+      docElement.removeEventListener("transitionend", onTransitionEnd);
+      cleanup();
+    }
+  };
+  docElement.addEventListener("transitionend", onTransitionEnd);
 
-    window.scrollAnimationId = setTimeout(cleanup, duration + 50) as any;
-  } else {
-    body.scrollLeft = snapX;
-    render.record();
-    isDragging = false;
-    window.isSwiping = false;
-  }
+  window.scrollAnimationId = setTimeout(cleanup, duration + 50) as any;
 };
 export async function blobUrlToBase64(blobUrl: string): Promise<string> {
   try {
