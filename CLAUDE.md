@@ -17,6 +17,10 @@ yarn clean        # 清理 build/dist/docs 目录
 
 无测试框架，无 CI/CD。
 
+## 重要规则
+
+**禁止主动提交代码**：任何情况下不得使用 `git commit`、`git push` 等命令提交或推送代码。用户必须自行执行 git 操作。
+
 ## 架构概览
 
 **kookit** 是 [Koodo Reader](https://github.com/koodo-reader/koodo-reader) 的电子书渲染引擎库，同时支持 Electron 桌面端（`src/index.ts`）和 React Native 移动端（`src/mobile.ts`）。
