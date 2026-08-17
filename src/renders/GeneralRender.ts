@@ -3,6 +3,8 @@ import ChapterDoc from "../model/chapterDoc";
 import {
   collectChapterImageUrls,
   convertStyleNum,
+  getActualOffsetLeft,
+  getActualOffsetTop,
   getSelectedElement,
   handleOneChapterDoc,
   progressInfo,
@@ -195,8 +197,8 @@ class GeneralRender extends EventEmitter {
       return {
         width: this.element.clientWidth,
         height: this.element.clientHeight,
-        left: this.element.offsetLeft,
-        top: this.element.offsetTop,
+        left: getActualOffsetLeft(this.element, this.element.parentElement!),
+        top: getActualOffsetTop(this.element, this.element.parentElement!),
         scrollTop: this.element.scrollTop,
         scrollLeft: this.element.scrollWidth / 2 - this.element.clientWidth / 2,
         sectionWidth: this.element.clientWidth,
@@ -209,8 +211,8 @@ class GeneralRender extends EventEmitter {
     return {
       width: this.element.clientWidth,
       height: this.element.clientHeight,
-      left: this.element.offsetLeft,
-      top: this.element.offsetTop,
+      left: getActualOffsetLeft(this.element, this.element.parentElement!),
+      top: getActualOffsetTop(this.element, this.element.parentElement!),
       scrollTop: this.element.scrollTop,
       scrollLeft: this.element.scrollWidth / 2 - this.element.clientWidth / 2,
       sectionWidth: (this.element.clientWidth - gap) / scale,
@@ -230,14 +232,14 @@ class GeneralRender extends EventEmitter {
     if (audioNodes.length > 0) {
       let targetNode: any = audioNodes[0];
       let left = targetNode
-        ? convertStyleNum(targetNode.offsetLeft) -
+        ? getActualOffsetLeft(targetNode, doc.body) -
           convertStyleNum(
             targetNode.marginLeft ||
               parseFloat(getComputedStyle(targetNode).marginLeft)
           )
         : 0;
       let top = targetNode
-        ? convertStyleNum(targetNode.offsetTop) -
+        ? getActualOffsetTop(targetNode, doc.body) -
           convertStyleNum(
             targetNode.marginTop ||
               parseFloat(getComputedStyle(targetNode).marginTop)
@@ -604,14 +606,14 @@ class GeneralRender extends EventEmitter {
     }
     let targetNode = getCloestBlock(node, this.element, this.readerMode);
     let left = targetNode
-      ? convertStyleNum(targetNode.offsetLeft) -
+      ? getActualOffsetLeft(targetNode, doc.body) -
         convertStyleNum(
           targetNode.marginLeft ||
             parseFloat(getComputedStyle(targetNode).marginLeft)
         )
       : 0;
     let top = targetNode
-      ? convertStyleNum(targetNode.offsetTop) -
+      ? getActualOffsetTop(targetNode, doc.body) -
         convertStyleNum(
           targetNode.marginTop ||
             parseFloat(getComputedStyle(targetNode).marginTop)

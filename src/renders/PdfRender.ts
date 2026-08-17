@@ -1,4 +1,4 @@
-import { createIframe, getSelectedElement } from "../utils/layoutUtil.js";
+import { createIframe, getActualOffsetLeft, getActualOffsetTop, getSelectedElement } from "../utils/layoutUtil.js";
 import GeneralParser from "../utils/generalParser.js";
 import { isPDF, makePDF } from "../libs/pdf.js";
 import GeneralRender from "./GeneralRender.js";
@@ -364,8 +364,8 @@ class PdfRender extends GeneralRender {
     return {
       width: doc.body.clientWidth,
       height: this.element.clientHeight,
-      left: this.element.offsetLeft,
-      top: this.element.offsetTop,
+      left: getActualOffsetLeft(this.element, this.element.parentElement!),
+      top: getActualOffsetTop(this.element, this.element.parentElement!),
       offsetTop: offsetTop,
       scrollTop: this.element.scrollTop,
       scrollLeft: this.element.scrollWidth / 2 - this.element.clientWidth / 2,

@@ -1,5 +1,5 @@
 import ChapterDoc from "../model/chapterDoc";
-import { convertStyleNum } from "./layoutUtil";
+import { convertStyleNum, getActualOffsetLeft } from "./layoutUtil";
 import { playMimicalFlip } from "./navigationUtil";
 import _ from "underscore";
 declare var window: any;
@@ -121,7 +121,7 @@ export const handleScrollPDFPosition = async (
 
   if (readerMode !== "scroll") {
     let left = targetNode
-      ? convertStyleNum(targetNode.offsetLeft) -
+      ? getActualOffsetLeft(targetNode, doc.body) -
         convertStyleNum(
           targetNode.marginLeft ||
             parseFloat(getComputedStyle(targetNode).marginLeft)

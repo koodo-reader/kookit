@@ -14,6 +14,23 @@ export const convertStyleNum = (value: number) => {
 export const convertComputedNum = (value: string) => {
   return parseFloat(value.substring(0, value.length - 2));
 };
+// 修复ios上的offsetTop和offsetLeft不准确的问题，使用getBoundingClientRect()来计算元素相对于容器的实际偏移量
+export const getActualOffsetLeft = (
+  child: HTMLElement,
+  container: HTMLElement
+): number => {
+  const childRect = child.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  return childRect.left - containerRect.left + container.scrollLeft;
+};
+export const getActualOffsetTop = (
+  child: HTMLElement,
+  container: HTMLElement
+): number => {
+  const childRect = child.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  return childRect.top - containerRect.top + container.scrollTop;
+};
 export const handleIframeHeight = async (
   element: HTMLElement,
   readerMode: string,

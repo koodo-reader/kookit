@@ -145,8 +145,9 @@ export const addPageAnimation = (
   function mouseMoveHandler(event) {
     if (!book || !event.touches?.[0]) return;
     const touch = event.touches[0];
-    mouse.x = touch.screenX - book.offsetLeft - BOOK_WIDTH / 2;
-    mouse.y = touch.screenY - book.offsetTop;
+    const bookRect = book.getBoundingClientRect();
+    mouse.x = touch.screenX - bookRect.left - BOOK_WIDTH / 2;
+    mouse.y = touch.screenY - bookRect.top;
   }
 
   function mouseDownHandler(event) {

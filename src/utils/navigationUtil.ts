@@ -2,6 +2,8 @@ import ChapterDoc from "../model/chapterDoc";
 import {
   convertComputedNum,
   convertStyleNum,
+  getActualOffsetLeft,
+  getActualOffsetTop,
   handleIframeHeight,
   handleOneChapterDoc,
   isVerticalLayout,
@@ -579,7 +581,7 @@ export const handleScrollPosition = async (
     targetNode = getCloestBlock(targetNodeList[0], element, readerMode);
     if (vertical) {
       top = targetNode
-        ? convertStyleNum(targetNode.offsetTop) -
+        ? getActualOffsetTop(targetNode, doc.body) -
           convertStyleNum(
             targetNode.marginTop ||
               parseFloat(getComputedStyle(targetNode).marginTop)
@@ -589,7 +591,7 @@ export const handleScrollPosition = async (
           : 0;
     } else {
       left = targetNode
-        ? convertStyleNum(targetNode.offsetLeft) -
+        ? getActualOffsetLeft(targetNode, doc.body) -
           convertStyleNum(
             targetNode.marginLeft ||
               parseFloat(getComputedStyle(targetNode).marginLeft)
@@ -610,7 +612,7 @@ export const handleScrollPosition = async (
     );
     if (vertical) {
       top = targetNode
-        ? convertStyleNum(targetNode.offsetTop) -
+        ? getActualOffsetTop(targetNode, doc.body) -
           convertStyleNum(
             targetNode.marginTop ||
               parseFloat(getComputedStyle(targetNode).marginTop)
@@ -618,7 +620,7 @@ export const handleScrollPosition = async (
         : 0;
     } else {
       left = targetNode
-        ? convertStyleNum(targetNode.offsetLeft) -
+        ? getActualOffsetLeft(targetNode, doc.body) -
           convertStyleNum(
             targetNode.marginLeft ||
               parseFloat(getComputedStyle(targetNode).marginLeft)
@@ -650,7 +652,7 @@ export const getCloestBlock = (
     let section = Math.floor(element.clientHeight / 12);
     let gap = section % 2 === 0 ? section : section - 1;
     let offsetTop =
-      convertStyleNum(targetNode.offsetTop) -
+      getActualOffsetTop(targetNode, element) -
       convertStyleNum(
         (targetNode as any).marginTop ||
           parseFloat(getComputedStyle(targetNode).marginTop)
@@ -671,7 +673,7 @@ export const getCloestBlock = (
     let section = Math.floor(element.clientWidth / 12);
     let gap = section % 2 === 0 ? section : section - 1;
     let offsetLeft =
-      convertStyleNum(targetNode.offsetLeft) -
+      getActualOffsetLeft(targetNode, element) -
       convertStyleNum(
         (targetNode as any).marginLeft ||
           parseFloat(getComputedStyle(targetNode).marginLeft)
@@ -777,8 +779,8 @@ export const isCurrentNodeFarFromParrent = (
     let gap = section % 2 === 0 ? section : section - 1;
     if (
       Math.abs(
-        targetNode.offsetTop -
-          getCloestBlock(targetNode, element, readerMode).offsetTop
+        getActualOffsetTop(targetNode, element) -
+          getActualOffsetTop(getCloestBlock(targetNode, element, readerMode), element)
       ) >
       (element.clientHeight + gap) / 2
     ) {
@@ -791,8 +793,8 @@ export const isCurrentNodeFarFromParrent = (
     let gap = section % 2 === 0 ? section : section - 1;
     if (
       Math.abs(
-        targetNode.offsetLeft -
-          getCloestBlock(targetNode, element, readerMode).offsetLeft
+        getActualOffsetLeft(targetNode, element) -
+          getActualOffsetLeft(getCloestBlock(targetNode, element, readerMode), element)
       ) >
       (element.clientWidth + gap) / 2
     ) {
