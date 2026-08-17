@@ -49,6 +49,7 @@ export const slideAnimateTo = (
   // Clean up any existing animation
   if (window.scrollAnimationId) {
     cancelAnimationFrame(window.scrollAnimationId);
+    window.scrollAnimationId = null;
   }
 
   if (
@@ -93,53 +94,79 @@ export const slideAnimateTo = (
 
   const startLeft = tempDoc.body.scrollLeft;
   const distance = snapX - startLeft;
-  const duration = 250; // 缩短动画时间，减少卡顿感
+
+  // 如果无需滚动，直接返回
+  if (Math.abs(distance) < 0.5) {
+    render.record();
+    return;
+  }
+
+  const duration = 250;
 
   const body = tempDoc.body;
-  const startTime = performance.now();
   window.isSwiping = true;
 
-  // 更激进的硬件加速设置
-  body.style.willChange = "transform";
-  body.style.transform = "translateZ(0)";
-  body.style.backfaceVisibility = "hidden";
+  const children = Array.from(body.children) as HTMLElement[];
+  const allElements = [...children];
 
-  // 使用线性缓动，计算最简单，性能最好
-  const easeOutQuad = (t: number): number => t * (2 - t);
+  for (const el of allElements) {
+    el.style.willChange = "transform";
+    el.style.transform = "translateX(0px)";
+    el.style.transition = "none";
+  }
 
-  // 预先缓存 transform 字符串的前缀，减少字符串拼接
-  const transformPrefix = "translate3d(";
-  const transformSuffix = "px, 0, 0)";
+  body.getBoundingClientRect();
 
-  function animateScroll(currentTime: number) {
-    const elapsed = currentTime - startTime;
-    const progress = elapsed / duration;
+  for (const el of allElements) {
+    el.style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+    el.style.transform = `translateX(${-distance}px)`;
+  }
 
-    if (progress >= 1) {
-      // 动画完成，清理并设置最终位置
-      body.style.transform = "";
-      body.style.willChange = "";
-      body.style.backfaceVisibility = "";
-      body.scrollLeft = snapX;
+  let resolved = false;
+  const cleanup = () => {
+    if (resolved) return;
+    resolved = true;
 
-      render.record();
-      isDragging = false;
-      window.isSwiping = false;
+    for (const el of allElements) {
+      el.style.willChange = "";
+      el.style.transform = "";
+      el.style.transition = "";
+    }
+
+    body.scrollLeft = snapX;
+
+    if (Math.abs(body.scrollLeft - snapX) > 0.5) {
+      requestAnimationFrame(() => {
+        body.scrollLeft = snapX;
+        render.record();
+        isDragging = false;
+        window.isSwiping = false;
+      });
       return;
     }
 
-    // 使用更轻量的缓动函数
-    const easedProgress = easeOutQuad(progress);
-    const currentOffset = startLeft + distance * easedProgress;
-    const translateX = startLeft - currentOffset;
+    render.record();
+    isDragging = false;
+    window.isSwiping = false;
+  };
 
-    // 使用 | 0 进行快速取整，比 Math.round 更快
-    body.style.transform = transformPrefix + (translateX | 0) + transformSuffix;
+  if (allElements.length > 0) {
+    const first = allElements[0];
+    const onTransitionEnd = (e: TransitionEvent) => {
+      if (e.target === first && e.propertyName === "transform") {
+        first.removeEventListener("transitionend", onTransitionEnd);
+        cleanup();
+      }
+    };
+    first.addEventListener("transitionend", onTransitionEnd);
 
-    window.scrollAnimationId = requestAnimationFrame(animateScroll);
+    window.scrollAnimationId = setTimeout(cleanup, duration + 50) as any;
+  } else {
+    body.scrollLeft = snapX;
+    render.record();
+    isDragging = false;
+    window.isSwiping = false;
   }
-
-  window.scrollAnimationId = requestAnimationFrame(animateScroll);
 };
 export async function blobUrlToBase64(blobUrl: string): Promise<string> {
   try {
