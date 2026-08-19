@@ -184,30 +184,45 @@ const getCorrectNodeList = (
   const nodes = Array.from(nodeList);
   if (!text || nodes.length === 0) return [];
 
-  // 构建全局拼接字符串，并记录每个 node 在拼接串中的区间
+  // PDF 渲染时相邻 <p>/<span> 节点的 textContent 直接拼接会丢失空格，
+  // 需要在节点之间补充空格以匹配 getTextFromPDFPage 返回的正常文本。
+  // 对两侧都做归一化（\s+ → 空格）后搜索，并用归一化后的 ranges 定位节点。
+  const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
+  const normalizedText = normalize(text);
+
+  // 先逐节点归一化
+  const normalizedNodes = nodes.map((n) => normalize((n as HTMLElement).textContent || ""));
+
+  // 再拼接并记录区间（相邻节点无空格时补一个）
   let total = "";
   const ranges: { start: number; end: number }[] = [];
 
-  for (const node of nodes) {
-    const t = (node as HTMLElement).textContent || "";
+  for (let i = 0; i < normalizedNodes.length; i++) {
+    const t = normalizedNodes[i];
+    if (!t) {
+      ranges.push({ start: total.length, end: total.length });
+      continue;
+    }
+    if (total.length > 0 && total[total.length - 1] !== " " && t[0] !== " ") {
+      total += " ";
+    }
     const start = total.length;
     total += t;
     ranges.push({ start, end: total.length });
   }
 
-  // 在完整拼接串中定位 text（取第一次出现）
-  const pos = total.indexOf(text);
+  const pos = total.indexOf(normalizedText);
   console.log(
     "getCorrectNodeList pos:",
     pos,
     "\n text:",
-    text,
+    normalizedText,
     "\n total:",
     total
   );
   if (pos === -1) return [];
 
-  const endPos = pos + text.length;
+  const endPos = pos + normalizedText.length;
 
   // 找出所有与 [pos, endPos) 有交集的连续 node
   let startIdx = -1;
@@ -215,7 +230,6 @@ const getCorrectNodeList = (
 
   for (let i = 0; i < ranges.length; i++) {
     const { start, end } = ranges[i];
-    // 区间有重叠
     if (end > pos && start < endPos) {
       if (startIdx === -1) startIdx = i;
       endIdx = i;
