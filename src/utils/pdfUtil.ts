@@ -177,14 +177,53 @@ export const getPDFVisibleText = async (
   }
   return textList;
 };
-const getCorrectNodeList = (nodeList: NodeListOf<Element>, text: string) => {
-  let nodes: any[] = Array.from(nodeList).filter((s: any, index: number) => {
-    return (
-      ((s as HTMLElement).textContent || "").trim() &&
-      text.indexOf((s as HTMLElement).textContent) > -1
-    );
-  });
-  return nodes;
+const getCorrectNodeList = (
+  nodeList: NodeListOf<Element>,
+  text: string
+): Element[] => {
+  const nodes = Array.from(nodeList);
+  if (!text || nodes.length === 0) return [];
+
+  // 构建全局拼接字符串，并记录每个 node 在拼接串中的区间
+  let total = "";
+  const ranges: { start: number; end: number }[] = [];
+
+  for (const node of nodes) {
+    const t = (node as HTMLElement).textContent || "";
+    const start = total.length;
+    total += t;
+    ranges.push({ start, end: total.length });
+  }
+
+  // 在完整拼接串中定位 text（取第一次出现）
+  const pos = total.indexOf(text);
+  console.log(
+    "getCorrectNodeList pos:",
+    pos,
+    "\n text:",
+    text,
+    "\n total:",
+    total
+  );
+  if (pos === -1) return [];
+
+  const endPos = pos + text.length;
+
+  // 找出所有与 [pos, endPos) 有交集的连续 node
+  let startIdx = -1;
+  let endIdx = -1;
+
+  for (let i = 0; i < ranges.length; i++) {
+    const { start, end } = ranges[i];
+    // 区间有重叠
+    if (end > pos && start < endPos) {
+      if (startIdx === -1) startIdx = i;
+      endIdx = i;
+    }
+  }
+
+  if (startIdx === -1) return [];
+  return nodes.slice(startIdx, endIdx + 1);
 };
 export const handleHighlightPDFNode = (
   text: string,
