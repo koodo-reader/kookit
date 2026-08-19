@@ -3,7 +3,11 @@ import GeneralParser from "../utils/generalParser";
 import GeneralRender from "./GeneralRender";
 import { getCache } from "../libs/cache.js";
 import { isPDF, makePDF } from "../libs/pdf";
-import { convertPageToImage, showOCRProgress } from "../utils/pdfUtil";
+import {
+  convertPageToImage,
+  getTextFromPDFPage,
+  showOCRProgress,
+} from "../utils/pdfUtil";
 import { ocrCache } from "../utils/ocrCacheUtil";
 import { detectLocalLanguage, isElectron } from "../utils/common";
 const fetchText = async (url) => await (await fetch(url)).text();
@@ -384,102 +388,11 @@ class PdfTextRender extends GeneralRender {
     return src;
   }
   async getTextFromDoc(chapterDoc) {
-    let textContent = await chapterDoc.text.getTextContent();
-    let paraList: any[] = [];
-
-    if (typeof textContent === "string") {
-      paraList = textContent
-        .split("\n")
-        .filter((line) => line.trim() !== "")
-        .map((line) => ({ text: line, isBold: false }));
-    } else if (
-      textContent &&
-      textContent.items &&
-      Array.isArray(textContent.items)
-    ) {
-      // 先收集所有字体大小，确定基础大小和最大大小
-      // 先收集所有字体大小，确定基础大小和最大大小
-      const fontSizes = textContent.items
-        .filter((item: any) => item.str && item.transform)
-        .map((item: any) => item.transform[3]);
-      let baseFontSize = 10;
-      if (fontSizes.length > 0) {
-        // 计算字体大小的众数（出现频率最高的值）
-        const fontSizeCount = fontSizes.reduce(
-          (acc, size) => {
-            acc[size] = (acc[size] || 0) + 1;
-            return acc;
-          },
-          {} as Record<number, number>
-        );
-
-        baseFontSize = Object.keys(fontSizeCount)
-          .map(Number)
-          .reduce((a, b) => (fontSizeCount[a] > fontSizeCount[b] ? a : b));
-      }
-
-      // const maxFontSize = Math.max(...fontSizes);
-      // const fontSizeRange = maxFontSize - Number(baseFontSize);
-
-      let currentPara: any = {
-        text: "",
-        styles: new Set(),
-        y: 0,
-        tag: "p",
-      };
-      let lastY = 0;
-      textContent.items.forEach((item: any) => {
-        if (item.str) {
-          // 检测段落分隔（基于Y坐标变化）
-          const yDiff = Math.abs(item.transform[5] - lastY);
-          const fontSize = item.transform[3];
-
-          // 根据字体大小确定样式，都用p标签，大字体用bold
-          let tag = "p";
-          let isBold = fontSize > Number(baseFontSize) * this.titleSizeValue;
-
-          // 如果Y坐标变化较大，认为是新段落
-          if (
-            yDiff > item.height * this.paraSpacingValue &&
-            currentPara.text.trim()
-          ) {
-            paraList.push(currentPara);
-            currentPara = {
-              text: "",
-              styles: new Set(),
-              y: item.transform[5],
-              tag: tag,
-              isBold: isBold,
-            };
-          } else if (!currentPara.hasOwnProperty("isBold")) {
-            // 如果当前段落还没有确定样式，使用当前item的样式
-            currentPara.isBold = isBold;
-          }
-
-          // 包装文本
-          const wrappedText = item.str;
-
-          // 换行时用空格连接，而不是分段
-          if (item.hasEOL) {
-            // 如果是用了连接符（如连字符），直接拼接，不加空格
-            if (wrappedText.endsWith("-")) {
-              currentPara.text += wrappedText.slice(0, -1);
-            } else {
-              currentPara.text += wrappedText + " ";
-            }
-          } else {
-            currentPara.text += wrappedText;
-          }
-
-          lastY = item.transform[5];
-        }
-      });
-
-      // 添加最后一个段落
-      if (currentPara.text.trim()) {
-        paraList.push(currentPara);
-      }
-    }
+    let paraList: any[] = await getTextFromPDFPage(
+      chapterDoc,
+      this.titleSizeValue,
+      this.paraSpacingValue
+    );
 
     const src = URL.createObjectURL(
       new Blob(

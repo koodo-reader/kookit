@@ -1,4 +1,9 @@
-import { createIframe, getActualOffsetLeft, getActualOffsetTop, getSelectedElement } from "../utils/layoutUtil.js";
+import {
+  createIframe,
+  getActualOffsetLeft,
+  getActualOffsetTop,
+  getSelectedElement,
+} from "../utils/layoutUtil.js";
 import GeneralParser from "../utils/generalParser.js";
 import { isPDF, makePDF } from "../libs/pdf.js";
 import GeneralRender from "./GeneralRender.js";
@@ -7,6 +12,7 @@ import {
   createPDFContainer,
   createPDFIframe,
   getPDFVisibleText,
+  getTextFromPDFPage,
   handleHighlightPDFNode,
   handleIOSScrollPage,
   handlePDFLayout,
@@ -570,7 +576,11 @@ class PdfRender extends GeneralRender {
     );
   }
   async audioText() {
-    return await this.visibleText();
+    let chapterDocIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
+    let chapterDoc = this.chapterDocList[chapterDocIndex];
+    return (await getTextFromPDFPage(chapterDoc)).map((item) =>
+      item.text.trim()
+    );
   }
   async chapterText() {
     return (await this.visibleText()).join(" ");
@@ -1234,7 +1244,7 @@ class PdfRender extends GeneralRender {
       scale,
       this.isMobile,
       this,
-      this.isKeepPDFBackground,
+      this.isKeepPDFBackground
     );
 
     let docLayer: any = subDoc.querySelector("#koodoPDFLayer");
