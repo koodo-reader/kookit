@@ -300,6 +300,7 @@ class BookHelper {
         JSON.stringify({
           event: "error",
           message: "Parse book failed",
+          error: String(error) ? String(error) : "Unknown error",
         })
       );
     }
@@ -404,6 +405,7 @@ class BookHelper {
         JSON.stringify({
           event: "error",
           message: "Parse book failed",
+          error: String(error) ? String(error) : "Unknown error",
         })
       );
     }
