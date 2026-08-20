@@ -567,12 +567,10 @@ class PdfRender extends GeneralRender {
     );
   }
   async visibleText() {
-    let doc = this.getDocument();
-    if (!doc) return "";
-    return await getPDFVisibleText(
-      parseInt(this.tempLocation.chapterDocIndex || "0"),
-      this.chapterDocList,
-      this.readerMode
+    let chapterDocIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
+    let chapterDoc = this.chapterDocList[chapterDocIndex];
+    return (await getTextFromPDFPage(chapterDoc)).map((item) =>
+      item.text.trim()
     );
   }
   async audioText() {
