@@ -62,7 +62,9 @@ function createBookElement(sectionCount) {
   document.head.appendChild(style);
 }
 
-let flipRenderTimer: ReturnType<typeof setInterval> | null = null;
+let flipRenderTimer: number | null = null;
+let flipAnimFrameId: number | null = null;
+let flipAnimating = false;
 
 export const addPageAnimation = (
   totalPage: number,
@@ -70,10 +72,16 @@ export const addPageAnimation = (
   backgroundColor: string,
   pageIndex = 0
 ) => {
+  // 清理之前的动画
   if (flipRenderTimer) {
     clearInterval(flipRenderTimer);
     flipRenderTimer = null;
   }
+  if (flipAnimFrameId) {
+    cancelAnimationFrame(flipAnimFrameId);
+    flipAnimFrameId = null;
+  }
+  flipAnimating = false;
 
   createBookElement(Math.max(1, Math.floor(totalPage) + 1));
   var WINDOW_WIDTH = window.innerWidth;
@@ -91,6 +99,9 @@ export const addPageAnimation = (
   var PAGE_HEIGHT = WINDOW_HEIGHT;
   var touchStartX = 0;
   var touchEndX = 0;
+
+  // Canvas 降分辨率比例 (0.5 = 半分辨率，减少50%绘制计算量)
+  var CANVAS_SCALE = 0.5;
 
   // Vertical spacing between the top edge of the book and the papers
   var PAGE_Y = (BOOK_HEIGHT - PAGE_HEIGHT) / 2;
@@ -127,16 +138,29 @@ export const addPageAnimation = (
     });
   }
 
-  // Resize the canvas to match the book size
-  canvas.width = BOOK_WIDTH + CANVAS_PADDING * 2;
-  canvas.height = BOOK_HEIGHT + CANVAS_PADDING * 2;
+  // Resize the canvas to match the book size (with scale reduction for GPU performance)
+  canvas.width = (BOOK_WIDTH + CANVAS_PADDING * 2) * CANVAS_SCALE;
+  canvas.height = (BOOK_HEIGHT + CANVAS_PADDING * 2) * CANVAS_SCALE;
+  canvas.style.width = (BOOK_WIDTH + CANVAS_PADDING * 2) + "px";
+  canvas.style.height = (BOOK_HEIGHT + CANVAS_PADDING * 2) + "px";
+
+  // 启用 GPU 加速: will-change 提示浏览器为该 canvas 创建独立合成层
+  canvas.style.willChange = "transform";
+  // 初始 transform 触发 GPU 层提升
+  canvas.style.transform = "translateZ(0)";
 
   // Offset the canvas so that it's padding is evenly spread around the book
   canvas.style.top = -CANVAS_PADDING + "px";
   canvas.style.left = -CANVAS_PADDING + "px";
 
-  // Render the page flip 60 times a second
-  flipRenderTimer = setInterval(render, 1800 / 60);
+  // 使用 requestAnimationFrame 替代 setInterval，与浏览器刷新率同步
+  flipAnimating = true;
+  function animationLoop() {
+    if (!flipAnimating) return;
+    render();
+    flipAnimFrameId = requestAnimationFrame(animationLoop);
+  }
+  flipAnimFrameId = requestAnimationFrame(animationLoop);
 
   book.addEventListener("touchmove", mouseMoveHandler, false);
   book.addEventListener("touchstart", mouseDownHandler, false);
@@ -201,7 +225,10 @@ export const addPageAnimation = (
   }
 
   function render() {
-    context.clearRect(0, 0, canvas.width, canvas.height);
+    // 按缩放比例缩小绘图坐标，减少实际像素绘制量
+    context.save();
+    context.setTransform(CANVAS_SCALE, 0, 0, CANVAS_SCALE, 0, 0);
+    context.clearRect(0, 0, BOOK_WIDTH + CANVAS_PADDING * 2, BOOK_HEIGHT + CANVAS_PADDING * 2);
 
     for (var i = 0; i < flips.length; i++) {
       var flip = flips[i];
@@ -217,6 +244,8 @@ export const addPageAnimation = (
         drawFlip(flip);
       }
     }
+    // 恢复之前的变换状态
+    context.restore();
   }
 
   function drawFlip(flip) {
@@ -394,6 +423,23 @@ export const addPageAnimation = (
       resetFlips();
     },
     resetFlips,
+    cleanup: () => {
+      // 清理动画资源和 GPU 加速标记
+      flipAnimating = false;
+      if (flipAnimFrameId) {
+        cancelAnimationFrame(flipAnimFrameId);
+        flipAnimFrameId = null;
+      }
+      if (flipRenderTimer) {
+        clearInterval(flipRenderTimer);
+        flipRenderTimer = null;
+      }
+      const canvasEl = document.getElementById("pageflip-canvas") as HTMLCanvasElement;
+      if (canvasEl) {
+        canvasEl.style.willChange = "";
+        canvasEl.style.transform = "";
+      }
+    },
     mouseDownHandler,
     mouseUpHandler,
     mouseMoveHandler,
