@@ -121,7 +121,7 @@ export const handleScrollPDFPosition = async (
 
   if (readerMode !== "scroll") {
     let left = targetNode
-      ? getActualOffsetLeft(targetNode, doc.body) -
+      ? getActualOffsetLeft(targetNode) -
         convertStyleNum(
           targetNode.marginLeft ||
             parseFloat(getComputedStyle(targetNode).marginLeft)
@@ -191,7 +191,9 @@ const getCorrectNodeList = (
   const normalizedText = normalize(text);
 
   // 先逐节点归一化
-  const normalizedNodes = nodes.map((n) => normalize((n as HTMLElement).textContent || ""));
+  const normalizedNodes = nodes.map((n) =>
+    normalize((n as HTMLElement).textContent || "")
+  );
 
   // 再拼接并记录区间（相邻节点无空格时补一个）
   let total = "";

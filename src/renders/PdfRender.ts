@@ -364,8 +364,8 @@ class PdfRender extends GeneralRender {
     return {
       width: doc.body.clientWidth,
       height: this.element.clientHeight,
-      left: getActualOffsetLeft(this.element, this.element.parentElement!),
-      top: getActualOffsetTop(this.element, this.element.parentElement!),
+      left: getActualOffsetLeft(this.element),
+      top: getActualOffsetTop(this.element),
       offsetTop: offsetTop,
       scrollTop: this.element.scrollTop,
       scrollLeft: this.element.scrollWidth / 2 - this.element.clientWidth / 2,

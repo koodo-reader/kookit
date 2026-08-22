@@ -15,15 +15,11 @@ export const convertComputedNum = (value: string) => {
   return parseFloat(value.substring(0, value.length - 2));
 };
 // 修复ios上的offsetTop和offsetLeft不准确的问题，使用getBoundingClientRect()来计算元素相对于容器的实际偏移量
-export const getActualOffsetLeft = (
-  child: HTMLElement,
-  container: HTMLElement
-): number => {
+export const getActualOffsetLeft = (child: HTMLElement): number => {
   if (window.platform === "ios" && window.readerMode !== "scroll") {
-    if (child && container) {
+    if (child) {
       const childRect = child.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      return childRect.left - containerRect.left + container.scrollLeft;
+      return Math.abs(childRect.left);
     }
     return 0;
   }
@@ -32,15 +28,11 @@ export const getActualOffsetLeft = (
   }
   return 0;
 };
-export const getActualOffsetTop = (
-  child: HTMLElement,
-  container: HTMLElement
-): number => {
+export const getActualOffsetTop = (child: HTMLElement): number => {
   if (window.platform === "ios" && window.readerMode !== "scroll") {
-    if (child && container) {
+    if (child) {
       const childRect = child.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      return childRect.top - containerRect.top + container.scrollTop;
+      return Math.abs(childRect.top);
     }
     return 0;
   }
