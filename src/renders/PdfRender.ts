@@ -1226,6 +1226,9 @@ class PdfRender extends GeneralRender {
     if (!subIframe) {
       subIframe = createPDFIframe(chapterDocIndex, doc);
     }
+    if (isReload) {
+      await this.handleUnloadPDFChapter(chapterDocIndex);
+    }
     let subDoc = subIframe?.contentDocument;
     if (!subDoc) return;
     if (subDoc.body.innerHTML && !isReload) {
