@@ -8,9 +8,14 @@ let lastPinchZoomTime = 0;
 let pinchZoomed = false;
 
 // 双指缩放 PDF 结束后发送 pinch-zoom 消息，Android/iOS 共用
-export const onPinchZoomEnd = function (event: any, render: any) {
+export const onPinchZoomEnd = function (
+  event: any,
+  render: any,
+  format: string
+) {
   if (!pinchZoomed) return;
   pinchZoomed = false;
+  if (format !== "PDF") return;
   if (window.visualViewport.scale <= 1.01) return;
   // Debounce: 与上次发送间隔不足 1 秒则跳过
   let now = Date.now();
@@ -322,9 +327,7 @@ export const addAndroidTouchEvent = (
       return;
     }
     lastTouchEnd = now;
-    if (format === "PDF") {
-      onPinchZoomEnd(event, render);
-    }
+    onPinchZoomEnd(event, render, format);
     const touch = event.changedTouches[0];
     const touchEndTime = Date.now();
     let touchEndX = touch.screenX;
@@ -830,9 +833,7 @@ export const addAppleTouchEvent = (
       return;
     }
     lastTouchEnd = now;
-    if (format === "PDF") {
-      onPinchZoomEnd(event, render);
-    }
+    onPinchZoomEnd(event, render, format);
     const touch = event.changedTouches[0];
     const touchEndTime = Date.now();
     const touchEndX = touch.screenX;
