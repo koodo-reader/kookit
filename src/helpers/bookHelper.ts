@@ -270,7 +270,7 @@ class BookHelper {
             progress,
           })
         );
-      }, 6000);
+      }, 1000);
       const throttledScrollText = throttle(async () => {
         let position = { ...window.rendition.getPosition() };
         let progress = { ...(await window.rendition.getProgress()) };
