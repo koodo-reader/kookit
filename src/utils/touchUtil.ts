@@ -322,7 +322,9 @@ export const addAndroidTouchEvent = (
       return;
     }
     lastTouchEnd = now;
-    onPinchZoomEnd(event, render);
+    if (format === "PDF") {
+      onPinchZoomEnd(event, render);
+    }
     const touch = event.changedTouches[0];
     const touchEndTime = Date.now();
     let touchEndX = touch.screenX;
@@ -828,7 +830,9 @@ export const addAppleTouchEvent = (
       return;
     }
     lastTouchEnd = now;
-    onPinchZoomEnd(event, render);
+    if (format === "PDF") {
+      onPinchZoomEnd(event, render);
+    }
     const touch = event.changedTouches[0];
     const touchEndTime = Date.now();
     const touchEndX = touch.screenX;
