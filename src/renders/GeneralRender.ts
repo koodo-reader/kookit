@@ -1582,15 +1582,18 @@ class GeneralRender extends EventEmitter {
         next = next.nextSibling;
       }
       if (!content.trim() || isContentFootnote(content)) {
-        next = node.parentNode;
-        while (
-          next &&
-          (isContentFootnote(content) || !content.trim()) &&
-          next.tagName !== "BODY"
-        ) {
-          next = next.parentNode;
+        let candidate = node.parentNode;
+        while (candidate && candidate.tagName !== "BODY") {
+          const candidateText = candidate.textContent || "";
+          if (candidateText.trim() && !isContentFootnote(candidateText)) {
+            break;
+          }
+          candidate = candidate.parentNode;
         }
-        node = next;
+        if (!candidate) {
+          return { handled: false };
+        }
+        node = candidate;
       } else if (content.trim() && content.trim().length <= 3000) {
         node = document.createElement("div");
         node.innerHTML = content;
