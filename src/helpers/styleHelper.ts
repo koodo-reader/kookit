@@ -44,7 +44,7 @@ class StyleHelper {
     );
     // Highlight rule uses inline styles set directly on each span
     cssRules.push(
-      ".kookit-text-rule-highlight{" + "line-height:inherit;" + "}"
+      ".kookit-text-rule-highlight{" + "line-height:inherit !important;" + "}"
     );
     cssRules.push(
       ".kookit-text-rule-replace::after{" +

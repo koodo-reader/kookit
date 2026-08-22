@@ -60,11 +60,11 @@ const render = async (
   isKeepPDFBackground
 ) => {
   try {
-    let pixelRatio = window.visualViewport.scale;
+    let pixelRatio =
+      window.platform === "ios" ? 1 : window.visualViewport?.scale || 1;
     let devicePixelRatio = window.devicePixelRatio * pixelRatio;
     if (window.platform === "ios") {
-      pixelRatio = 1;
-      const basePixelRatio = window.devicePixelRatio * pixelRatio;
+      const basePixelRatio = devicePixelRatio;
       const rawDpr = basePixelRatio;
       // Cap DPR to avoid iOS WebContent OOM (max 3.1M pixels for mobile)
       const MAX_RENDER_DPR = 2;

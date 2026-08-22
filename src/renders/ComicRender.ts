@@ -58,13 +58,13 @@ class ComicRender extends GeneralRender {
         type: blob.type,
       });
       const archiveType = this.detectArchiveType();
-      if (archiveType === "zip") {
+      if (archiveType === "zip" || archiveType === "cbz") {
         const loader: any = await this.makeZipLoader(file);
         this.book = makeComicBook(loader, file, this.readerMode);
-      } else if (archiveType === "tar") {
+      } else if (archiveType === "tar" || archiveType === "cbt") {
         const loader: any = await this.makeTarLoader();
         this.book = makeComicBook(loader, file, this.readerMode);
-      } else if (archiveType === "rar") {
+      } else if (archiveType === "rar" || archiveType === "cbr") {
         this.rpc = await window.RPC.new("./lib/libunrar/worker.js", {
           loaded: function () {
             console.info("loaded");
@@ -76,7 +76,7 @@ class ComicRender extends GeneralRender {
         await new Promise((r) => setTimeout(r, 200));
         const loader: any = await this.makeRarLoader();
         this.book = makeComicBook(loader, file, this.readerMode);
-      } else if (archiveType === "7z") {
+      } else if (archiveType === "7z" || archiveType === "cb7") {
         const loader: any = await this.make7zLoader();
         this.book = makeComicBook(loader, file, this.readerMode);
       }
@@ -128,8 +128,9 @@ class ComicRender extends GeneralRender {
     // tar: 传统 USTAR POSIX 头在偏移 257 处为 "ustar"。也检查其他 tar 变体。
     if (
       this.comicBuffer.byteLength >= 265 &&
-      new TextDecoder("utf8")
-        .decode(new Uint8Array(this.comicBuffer, 257, 5)) === "ustar"
+      new TextDecoder("utf8").decode(
+        new Uint8Array(this.comicBuffer, 257, 5)
+      ) === "ustar"
     ) {
       return "tar";
     }
