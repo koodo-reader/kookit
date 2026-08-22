@@ -563,16 +563,23 @@ class PdfRender extends GeneralRender {
   async visibleText() {
     let chapterDocIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
     let chapterDoc = this.chapterDocList[chapterDocIndex];
-    return (await getTextFromPDFPage(chapterDoc)).map((item) =>
+    let textList = (await getTextFromPDFPage(chapterDoc)).map((item) =>
       item.text.trim()
     );
+    if (this.readerMode === "double") {
+      let nextChapterDocIndex = chapterDocIndex + 1;
+      if (nextChapterDocIndex < this.chapterDocList.length) {
+        let nextChapterDoc = this.chapterDocList[nextChapterDocIndex];
+        let nextTextList = (await getTextFromPDFPage(nextChapterDoc)).map(
+          (item) => item.text.trim()
+        );
+        textList = textList.concat(nextTextList);
+      }
+    }
+    return textList;
   }
   async audioText() {
-    let chapterDocIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
-    let chapterDoc = this.chapterDocList[chapterDocIndex];
-    return (await getTextFromPDFPage(chapterDoc)).map((item) =>
-      item.text.trim()
-    );
+    return await this.visibleText();
   }
   async chapterText() {
     return (await this.visibleText()).join(" ");
