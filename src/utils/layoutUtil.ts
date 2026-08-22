@@ -19,7 +19,7 @@ export const getActualOffsetLeft = (child: HTMLElement): number => {
   if (window.platform === "ios" && window.readerMode !== "scroll") {
     if (child) {
       const childRect = child.getBoundingClientRect();
-      return Math.abs(childRect.left);
+      return childRect.left;
     }
     return 0;
   }
@@ -32,7 +32,7 @@ export const getActualOffsetTop = (child: HTMLElement): number => {
   if (window.platform === "ios" && window.readerMode !== "scroll") {
     if (child) {
       const childRect = child.getBoundingClientRect();
-      return Math.abs(childRect.top);
+      return childRect.top;
     }
     return 0;
   }
