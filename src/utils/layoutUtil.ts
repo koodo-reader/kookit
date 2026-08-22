@@ -19,17 +19,35 @@ export const getActualOffsetLeft = (
   child: HTMLElement,
   container: HTMLElement
 ): number => {
-  const childRect = child.getBoundingClientRect();
-  const containerRect = container.getBoundingClientRect();
-  return childRect.left - containerRect.left + container.scrollLeft;
+  if (window.platform === "ios" && window.readerMode !== "scroll") {
+    if (child && container) {
+      const childRect = child.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      return childRect.left - containerRect.left + container.scrollLeft;
+    }
+    return 0;
+  }
+  if (child) {
+    return child.offsetLeft;
+  }
+  return 0;
 };
 export const getActualOffsetTop = (
   child: HTMLElement,
   container: HTMLElement
 ): number => {
-  const childRect = child.getBoundingClientRect();
-  const containerRect = container.getBoundingClientRect();
-  return childRect.top - containerRect.top + container.scrollTop;
+  if (window.platform === "ios" && window.readerMode !== "scroll") {
+    if (child && container) {
+      const childRect = child.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      return childRect.top - containerRect.top + container.scrollTop;
+    }
+    return 0;
+  }
+  if (child) {
+    return child.offsetTop;
+  }
+  return 0;
 };
 export const handleIframeHeight = async (
   element: HTMLElement,

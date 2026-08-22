@@ -120,6 +120,7 @@ class GeneralRender extends EventEmitter {
   }) {
     super();
     this.readerMode = config.readerMode;
+    window.readerMode = config.readerMode;
     this.animation = config.animation || "none";
     this.format = config.format;
     this.convertChinese = config.convertChinese;

@@ -91,12 +91,6 @@ class PdfRender extends GeneralRender {
     this.textFont = config.textFont || "sans-serif";
     this.textColor = config.textColor || "#ff0000";
     this.isDrawing = config.isDrawing || "no";
-    console.log(
-      "PdfRender initialized with config:",
-      this.textFont,
-      this.textColor,
-      this.isDrawing
-    );
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
