@@ -1573,7 +1573,11 @@ class GeneralRender extends EventEmitter {
     return { handled: false };
   }
   async getFootnoteContent(node: any) {
-    if (isElementFootnote(node) || !node.textContent.trim()) {
+    if (
+      isElementFootnote(node) ||
+      !node.textContent.trim() ||
+      node.tagName === "A"
+    ) {
       //获取当前a标签和下一个a标签之间的内容
       let next = node.nextSibling;
       let content = node.textContent;
@@ -1581,6 +1585,7 @@ class GeneralRender extends EventEmitter {
         content += next.textContent;
         next = next.nextSibling;
       }
+      //如果内容为空或者是脚注内容，则向上查找父节点，直到找到非空且非脚注的内容
       if (!content.trim() || isContentFootnote(content)) {
         let candidate = node.parentNode;
         while (candidate && candidate.tagName !== "BODY") {
