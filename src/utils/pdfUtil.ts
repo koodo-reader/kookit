@@ -1,6 +1,7 @@
 import ChapterDoc from "../model/chapterDoc";
 import { convertStyleNum, getActualOffsetLeft } from "./layoutUtil";
 import { playMimicalFlip } from "./navigationUtil";
+import { detectLocalLanguage } from "./common";
 import _ from "underscore";
 declare var window: any;
 
@@ -520,7 +521,13 @@ export const getTextFromPDFPage = async (
           if (wrappedText.endsWith("-")) {
             currentPara.text += wrappedText.slice(0, -1);
           } else {
-            currentPara.text += wrappedText + " ";
+            // CJK 语言换行时不加空格，其他语言加空格
+            const lang = detectLocalLanguage(wrappedText + currentPara.text);
+            if (lang === "zh" || lang === "ja" || lang === "ko") {
+              currentPara.text += wrappedText;
+            } else {
+              currentPara.text += wrappedText + " ";
+            }
           }
         } else {
           currentPara.text += wrappedText;
