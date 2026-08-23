@@ -774,6 +774,10 @@ export const handleLayout = (
         (element.clientHeight - gap) / scale
       }px;`
     );
+    doc.body.setAttribute(
+      "style",
+      `margin: 0px !important; padding: 0px !important;`
+    );
   } else {
     let section = Math.floor(element.clientWidth / 12);
     let gap = section % 2 === 0 ? section : section - 1;
@@ -785,6 +789,10 @@ export const handleLayout = (
       };height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action:none; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
         (element.clientWidth - gap) / scale
       }px;`
+    );
+    doc.body.setAttribute(
+      "style",
+      `margin: 0px !important; padding: 0px !important;`
     );
   }
 };

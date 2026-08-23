@@ -37,6 +37,10 @@ export const handlePDFLayout = (
       (doc.body.clientWidth - gap) / scale
     }px;`
   );
+  doc.body.setAttribute(
+    "style",
+    `margin: 0px !important; padding: 0px !important;`
+  );
 };
 export const createPDFContainer = async (
   element: HTMLElement,
