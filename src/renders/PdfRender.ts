@@ -581,6 +581,27 @@ class PdfRender extends GeneralRender {
   async audioText() {
     return await this.visibleText();
   }
+  async getRestAudioText(count: number) {
+    const currentIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
+    const result: { chapterDocIndex: number; audioText: string[] }[] = [];
+    const startIndex = currentIndex + 1;
+    const endIndex = Math.min(startIndex + count, this.chapterDocList.length);
+
+    for (let i = startIndex; i < endIndex; i++) {
+      const chapterDoc = this.chapterDocList[i];
+      const textList = (await getTextFromPDFPage(chapterDoc)).map((item) =>
+        item.text.trim()
+      );
+      const filteredText = textList.filter((s): s is string => !!s);
+      if (filteredText.length > 0) {
+        result.push({
+          chapterDocIndex: i,
+          audioText: filteredText,
+        });
+      }
+    }
+    return result;
+  }
   async chapterText() {
     return (await this.visibleText()).join(" ");
   }
@@ -1888,7 +1909,6 @@ class PdfRender extends GeneralRender {
     if (this.pdfScale && this.pdfScale > 0) {
       return this.pdfScale;
     }
-    console.log("getPdfScale", this.templateChapterDocIndex);
     let doc = this.getDocument();
     if (this.readerMode === "scroll") {
       doc = this.getSubDocument(this.templateChapterDocIndex);

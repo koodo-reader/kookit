@@ -271,7 +271,11 @@ class BookHelper {
           })
         );
       }, 1000);
-      const throttledScrollText = throttle(async () => {
+
+      window.rendition.on("page-changed", () => {
+        throttledPageChanged();
+      });
+      window.rendition.on("scroll-text", async () => {
         let position = { ...window.rendition.getPosition() };
         let progress = { ...(await window.rendition.getProgress()) };
         window.ReactNativeWebView.postMessage(
@@ -281,13 +285,6 @@ class BookHelper {
             progress,
           })
         );
-      }, 3000);
-
-      window.rendition.on("page-changed", () => {
-        throttledPageChanged();
-      });
-      window.rendition.on("scroll-text", async () => {
-        throttledScrollText();
       });
       window.ReactNativeWebView.postMessage(
         JSON.stringify({
