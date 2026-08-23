@@ -183,7 +183,7 @@ class PdfRender extends GeneralRender {
 
     // 第一层：采样5个关键位置（首页、1/4、1/2、3/4、末页）
     let keyIndices = [
-      0,
+      1,
       Math.floor(totalPages / 4),
       Math.floor(totalPages / 2),
       Math.floor((totalPages * 3) / 4),
@@ -1888,7 +1888,7 @@ class PdfRender extends GeneralRender {
     if (this.pdfScale && this.pdfScale > 0) {
       return this.pdfScale;
     }
-
+    console.log("getPdfScale", this.templateChapterDocIndex);
     let doc = this.getDocument();
     if (this.readerMode === "scroll") {
       doc = this.getSubDocument(this.templateChapterDocIndex);

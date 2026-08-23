@@ -1509,7 +1509,7 @@ class GeneralRender extends EventEmitter {
       let node = doc.body.querySelector("#" + CSS.escape(id));
       let rect = event.target.getBoundingClientRect();
       let isJump = false;
-      if (!node) {
+      if (!node || event.target === node || node.contains(event.target)) {
         if (href.indexOf("#") !== 0) {
           while (href.startsWith(".")) {
             href = href.substring(1);
