@@ -204,13 +204,18 @@ const getCorrectNodeList = (
   let total = "";
   const ranges: { start: number; end: number }[] = [];
 
+  // 检测是否为 CJK 语言，CJK 语言节点间不需要加空格
+  const lang = detectLocalLanguage(normalizedText);
+  const isCJK = lang === "zh" || lang === "ja" || lang === "ko";
+
   for (let i = 0; i < normalizedNodes.length; i++) {
     const t = normalizedNodes[i];
     if (!t) {
       ranges.push({ start: total.length, end: total.length });
       continue;
     }
-    if (total.length > 0 && total[total.length - 1] !== " " && t[0] !== " ") {
+    // CJK 语言不加空格，其他语言在节点间补空格
+    if (!isCJK && total.length > 0 && total[total.length - 1] !== " " && t[0] !== " ") {
       total += " ";
     }
     const start = total.length;
