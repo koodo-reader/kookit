@@ -40,7 +40,9 @@ export const handlePDFLayout = (
   );
   doc.body.setAttribute(
     "style",
-    `margin: 0px !important; padding: 0px !important;`
+    `margin: 0px !important; padding: 0px !important;column-fill: auto;column-gap: ${gap}px; column-width: ${
+      (doc.body.clientWidth - gap) / scale
+    }px;`
   );
 };
 export const createPDFContainer = async (
@@ -215,7 +217,12 @@ const getCorrectNodeList = (
       continue;
     }
     // CJK 语言不加空格，其他语言在节点间补空格
-    if (!isCJK && total.length > 0 && total[total.length - 1] !== " " && t[0] !== " ") {
+    if (
+      !isCJK &&
+      total.length > 0 &&
+      total[total.length - 1] !== " " &&
+      t[0] !== " "
+    ) {
       total += " ";
     }
     const start = total.length;
