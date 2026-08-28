@@ -833,7 +833,8 @@ export const addAppleTouchEvent = (
       return;
     }
     lastTouchEnd = now;
-    onPinchZoomEnd(event, render, format);
+    // iOS 上极易崩溃，所以注释掉
+    // onPinchZoomEnd(event, render, format);
     const touch = event.changedTouches[0];
     const touchEndTime = Date.now();
     const touchEndX = touch.screenX;
