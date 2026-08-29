@@ -42,6 +42,12 @@ class StyleHelper {
         "vertical-align:baseline;" +
         "}"
     );
+    // Hyphenation breakpoint marker: empty span, SHY rendered via ::after
+    // so no extra character enters the DOM text — rangy offsets stay stable.
+    cssRules.push(
+      ".kookit-hyphen{display:inline;line-height:inherit;}" +
+        ".kookit-hyphen::after{content:'\\00AD';}"
+    );
     // Highlight rule uses inline styles set directly on each span
     cssRules.push(
       ".kookit-text-rule-highlight{" + "line-height:inherit !important;" + "}"
