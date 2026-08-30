@@ -781,7 +781,7 @@ class PdfRender extends GeneralRender {
 
     return iframe;
   }
-  async getHightlightCoords(chapterDocIndex?: number) {
+  async getHighlightCoords(chapterDocIndex?: number) {
     let pageIndex =
       chapterDocIndex !== undefined
         ? chapterDocIndex

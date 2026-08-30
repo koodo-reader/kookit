@@ -647,7 +647,7 @@ export const addAndroidTouchEvent = (
           let targetIframe = target.ownerDocument?.defaultView?.frameElement;
           let id = targetIframe?.getAttribute("id") || "";
           let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
-          charRange = await render.getHightlightCoords(chapterDocIndex);
+          charRange = await render.getHighlightCoords(chapterDocIndex);
           position.chapterDocIndex = chapterDocIndex + "";
           let subContainer = targetIframe.parentElement;
           if (subContainer) {
@@ -659,7 +659,7 @@ export const addAndroidTouchEvent = (
           console.error("Error getting highlight coords:", error);
         }
       } else {
-        charRange = await render.getHightlightCoords();
+        charRange = await render.getHighlightCoords();
       }
       let sentence = getSelectionSentence(doc);
       window.ReactNativeWebView.postMessage(
@@ -918,14 +918,14 @@ export const addAppleTouchEvent = (
         let id = targetIframe?.getAttribute("id") || "";
         let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
         position.chapterDocIndex = chapterDocIndex + "";
-        charRange = await render.getHightlightCoords(chapterDocIndex);
+        charRange = await render.getHighlightCoords(chapterDocIndex);
         let subContainer = targetIframe.parentElement;
         if (subContainer) {
           position.top =
             position.top + parseFloat(subContainer.getBoundingClientRect().top);
         }
       } else {
-        charRange = await render.getHightlightCoords();
+        charRange = await render.getHighlightCoords();
       }
       let sentence = getSelectionSentence(doc);
       window.ReactNativeWebView.postMessage(

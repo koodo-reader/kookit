@@ -1155,7 +1155,7 @@ class GeneralRender extends EventEmitter {
       doc.head.appendChild(defaultStyle);
     }
   }
-  async getHightlightCoords() {
+  async getHighlightCoords() {
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
