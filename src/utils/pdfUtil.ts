@@ -195,7 +195,9 @@ const getCorrectNodeList = (
   // 空格 span 保留，同行内直接拼接即与 getTextFromPDFPage 的结果一致；
   // 只有跨行处（<br> 不产生文本）需要像 hasEOL 一样补一个空格。
   // 用 rect.top 差与行高的比例判断是否同行，上标等同行内的垂直偏移不会被误判。
-  const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
+  // 标点后的空格在两侧统一删除，兼容 TTS 等来源会去掉标点后空格的文本
+  const normalize = (s: string) =>
+    s.replace(/\s+/g, " ").trim().replace(/[,.;:!?] (?=\S)/g, (m) => m[0]);
   const normalizedText = normalize(text);
   if (!normalizedText) return [];
 
@@ -247,13 +249,16 @@ const getCorrectNodeList = (
     ranges.push({ start, end: total.length });
   }
 
-  // 折叠连续空格并去除首尾空格，同时记录归一化串位置到原始串位置的映射
+  // 折叠连续空格、去除首尾空格并删除标点后的空格（与 normalize 规则一致），
+  // 同时记录归一化串位置到原始串位置的映射
   let normalizedTotal = "";
   const posMap: number[] = [];
   let lastWasSpace = true;
   for (let i = 0; i < total.length; i++) {
     if (total[i] === " ") {
       if (lastWasSpace) continue;
+      // 标点后的空格直接删除
+      if (",.;:!?".includes(normalizedTotal.slice(-1))) continue;
       lastWasSpace = true;
     } else {
       lastWasSpace = false;
