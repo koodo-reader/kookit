@@ -191,57 +191,96 @@ const getCorrectNodeList = (
   const nodes = Array.from(nodeList);
   if (!text || nodes.length === 0) return [];
 
-  // PDF 渲染时相邻 <p>/<span> 节点的 textContent 直接拼接会丢失空格，
-  // 需要在节点之间补充空格以匹配 getTextFromPDFPage 返回的正常文本。
-  // 对两侧都做归一化（\s+ → 空格）后搜索，并用归一化后的 ranges 定位节点。
+  // textLayer 中每个 textContent item 对应一个 span，item 间的空格由单独的
+  // 空格 span 保留，同行内直接拼接即与 getTextFromPDFPage 的结果一致；
+  // 只有跨行处（<br> 不产生文本）需要像 hasEOL 一样补一个空格。
+  // 用 rect.top 差与行高的比例判断是否同行，上标等同行内的垂直偏移不会被误判。
   const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
   const normalizedText = normalize(text);
-
-  // 先逐节点归一化
-  const normalizedNodes = nodes.map((n) =>
-    normalize((n as HTMLElement).textContent || "")
-  );
-
-  // 再拼接并记录区间（相邻节点无空格时补一个）
-  let total = "";
-  const ranges: { start: number; end: number }[] = [];
+  if (!normalizedText) return [];
 
   // 检测是否为 CJK 语言，CJK 语言节点间不需要加空格
   const lang = detectLocalLanguage(normalizedText);
   const isCJK = lang === "zh" || lang === "ja" || lang === "ko";
 
-  for (let i = 0; i < normalizedNodes.length; i++) {
-    const t = normalizedNodes[i];
-    if (!t) {
-      ranges.push({ start: total.length, end: total.length });
+  const isSameLine = (prev: Element, cur: Element) => {
+    const prevRect = (prev as HTMLElement).getBoundingClientRect();
+    const curRect = (cur as HTMLElement).getBoundingClientRect();
+    const minH = Math.min(prevRect.height, curRect.height);
+    // 布局不可用时退回旧行为：当作跨行补空格
+    if (minH <= 0) return false;
+    return Math.abs(curRect.top - prevRect.top) <= minH * 0.6;
+  };
+
+  // 拼接节点文本并记录每个节点在总串中的区间；
+  // 纯空白节点（空格 span）保留为单个空格，多余空格随后统一折叠。
+  let total = "";
+  const ranges: { start: number; end: number }[] = [];
+
+  for (let i = 0; i < nodes.length; i++) {
+    const piece = ((nodes[i] as HTMLElement).textContent || "").replace(
+      /\s+/g,
+      " "
+    );
+    if (!piece.trim()) {
+      ranges.push({ start: total.length, end: total.length + 1 });
+      total += " ";
       continue;
     }
-    // CJK 语言不加空格，其他语言在节点间补空格
     if (
-      !isCJK &&
-      total.length > 0 &&
-      total[total.length - 1] !== " " &&
-      t[0] !== " "
+      i > 0 &&
+      !total.endsWith(" ") &&
+      !piece.startsWith(" ") &&
+      !isSameLine(nodes[i - 1], nodes[i])
     ) {
-      total += " ";
+      if (total.endsWith("-")) {
+        // 与 getTextFromPDFPage 的 hasEOL 连字符处理对齐：去掉行尾连字符直接拼接，
+        // 使 "com-" + "pile" 与其产出的 "compile" 一致
+        total = total.slice(0, -1);
+        ranges[ranges.length - 1].end -= 1;
+      } else if (!isCJK) {
+        total += " ";
+      }
     }
     const start = total.length;
-    total += t;
+    total += piece;
     ranges.push({ start, end: total.length });
   }
 
-  const pos = total.indexOf(normalizedText);
+  // 折叠连续空格并去除首尾空格，同时记录归一化串位置到原始串位置的映射
+  let normalizedTotal = "";
+  const posMap: number[] = [];
+  let lastWasSpace = true;
+  for (let i = 0; i < total.length; i++) {
+    if (total[i] === " ") {
+      if (lastWasSpace) continue;
+      lastWasSpace = true;
+    } else {
+      lastWasSpace = false;
+    }
+    normalizedTotal += total[i];
+    posMap.push(i);
+  }
+  if (normalizedTotal.endsWith(" ")) {
+    normalizedTotal = normalizedTotal.slice(0, -1);
+    posMap.pop();
+  }
+
+  const pos = normalizedTotal.indexOf(normalizedText);
   if (pos === -1) return [];
 
   const endPos = pos + normalizedText.length;
+  const rawStart = posMap[pos];
+  const rawEnd =
+    endPos >= posMap.length ? posMap[posMap.length - 1] + 1 : posMap[endPos];
 
-  // 找出所有与 [pos, endPos) 有交集的连续 node
+  // 找出所有与 [rawStart, rawEnd) 有交集的连续 node
   let startIdx = -1;
   let endIdx = -1;
 
   for (let i = 0; i < ranges.length; i++) {
     const { start, end } = ranges[i];
-    if (end > pos && start < endPos) {
+    if (end > rawStart && start < rawEnd) {
       if (startIdx === -1) startIdx = i;
       endIdx = i;
     }
@@ -286,6 +325,7 @@ export const handleHighlightPDFNode = (
   if (!text.trim()) return;
   let nodeList = doc.querySelectorAll("p,span");
   let nodes: any[] = getCorrectNodeList(nodeList, text);
+  console.log("handleHighlightPDFNode nodes", nodeList, nodes, text);
   if (nodes.length > 0) {
     for (let i = 0; i < nodes.length; i++) {
       nodes[i].setAttribute(
