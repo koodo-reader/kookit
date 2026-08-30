@@ -374,7 +374,7 @@ class PdfRender extends GeneralRender {
       gap: gap,
     };
   }
-  async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
+  async goToChapter(chapterDocIndex, _chapterHref, _chapterTitle) {
     if (this.readerMode === "double" && chapterDocIndex % 2 == 1) {
       chapterDocIndex--;
     }

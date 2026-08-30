@@ -197,7 +197,10 @@ const getCorrectNodeList = (
   // 用 rect.top 差与行高的比例判断是否同行，上标等同行内的垂直偏移不会被误判。
   // 标点后的空格在两侧统一删除，兼容 TTS 等来源会去掉标点后空格的文本
   const normalize = (s: string) =>
-    s.replace(/\s+/g, " ").trim().replace(/[,.;:!?] (?=\S)/g, (m) => m[0]);
+    s
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/[,.;:!?] (?=\S)/g, (m) => m[0]);
   const normalizedText = normalize(text);
   if (!normalizedText) return [];
 

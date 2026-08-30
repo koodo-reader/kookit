@@ -18,14 +18,18 @@ export const convertComputedNum = (value: string) => {
 export const getActualOffsetLeft = (child: HTMLElement): number => {
   if (child) {
     const childRect = child.getBoundingClientRect();
-    return childRect.left;
+    return (
+      childRect.left - (child.offsetParent?.getBoundingClientRect().left || 0)
+    );
   }
   return 0;
 };
 export const getActualOffsetTop = (child: HTMLElement): number => {
   if (child) {
     const childRect = child.getBoundingClientRect();
-    return childRect.top;
+    return (
+      childRect.top - (child.offsetParent?.getBoundingClientRect().top || 0)
+    );
   }
   return 0;
 };
