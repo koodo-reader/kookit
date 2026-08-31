@@ -256,7 +256,6 @@ class BookHelper {
           JSON.stringify({
             event: "content-loaded",
             bookLocation: position,
-            chapterDocIndex: chapterDocIndex,
             progress,
           })
         );
