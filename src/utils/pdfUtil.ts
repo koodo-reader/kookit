@@ -333,7 +333,6 @@ export const handleHighlightPDFNode = (
   if (!text.trim()) return;
   let nodeList = doc.querySelectorAll("p,span");
   let nodes: any[] = getCorrectNodeList(nodeList, text);
-  console.log("handleHighlightPDFNode nodes", nodeList, nodes, text);
   if (nodes.length > 0) {
     for (let i = 0; i < nodes.length; i++) {
       nodes[i].setAttribute(
