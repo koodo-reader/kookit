@@ -249,13 +249,14 @@ class BookHelper {
       window.rendition.on("rendered", async (chapterDocIndex: number) => {
         let position = { ...window.rendition.getPosition() };
         let progress = { ...(await window.rendition.getProgress()) };
-        if (config.format === "PDF" && config.platform === "android") {
+        if (config.format === "PDF" && chapterDocIndex) {
           position.chapterDocIndex = chapterDocIndex + "";
         }
         window.ReactNativeWebView.postMessage(
           JSON.stringify({
             event: "content-loaded",
             bookLocation: position,
+            chapterDocIndex: chapterDocIndex,
             progress,
           })
         );
