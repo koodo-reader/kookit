@@ -39,6 +39,8 @@ class PdfRender extends GeneralRender {
   password: string = "";
   pdfScale: number = 0;
   scale: number = 1;
+  paraSpacingValue: number = 1.5; // 段落间距
+  titleSizeValue: number = 1.2; // 标题大小倍数
   backgroundColor: string;
   isScannedPDF: string;
   enablePDFSelectionOptimization: string = "no";
@@ -71,6 +73,8 @@ class PdfRender extends GeneralRender {
     this.isStartFromEven = config.isStartFromEven || "no";
     this.pdfCrop = config.pdfCrop || { top: 0, bottom: 0, left: 0, right: 0 };
     this.isKeepPDFBackground = config.isKeepPDFBackground || "no";
+    this.paraSpacingValue = parseFloat(config.paraSpacingValue) || 1.5; // 支持配置段落间距
+    this.titleSizeValue = parseFloat(config.titleSizeValue) || 1.2; // 支持配置标题大小倍数
     this.password = config.password || "";
     this.scale = config.scale || 1;
     this.backgroundColor = config.backgroundColor || "#ffffff";
@@ -563,16 +567,24 @@ class PdfRender extends GeneralRender {
   async visibleText() {
     let chapterDocIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
     let chapterDoc = this.chapterDocList[chapterDocIndex];
-    let textList = (await getTextFromPDFPage(chapterDoc)).map((item) =>
-      item.text.trim()
-    );
+    let textList = (
+      await getTextFromPDFPage(
+        chapterDoc,
+        this.titleSizeValue,
+        this.paraSpacingValue
+      )
+    ).map((item) => item.text.trim());
     if (this.readerMode === "double") {
       let nextChapterDocIndex = chapterDocIndex + 1;
       if (nextChapterDocIndex < this.chapterDocList.length) {
         let nextChapterDoc = this.chapterDocList[nextChapterDocIndex];
-        let nextTextList = (await getTextFromPDFPage(nextChapterDoc)).map(
-          (item) => item.text.trim()
-        );
+        let nextTextList = (
+          await getTextFromPDFPage(
+            nextChapterDoc,
+            this.titleSizeValue,
+            this.paraSpacingValue
+          )
+        ).map((item) => item.text.trim());
         textList = textList.concat(nextTextList);
       }
     }
@@ -589,9 +601,13 @@ class PdfRender extends GeneralRender {
 
     for (let i = startIndex; i < endIndex; i++) {
       const chapterDoc = this.chapterDocList[i];
-      const textList = (await getTextFromPDFPage(chapterDoc)).map((item) =>
-        item.text.trim()
-      );
+      const textList = (
+        await getTextFromPDFPage(
+          chapterDoc,
+          this.titleSizeValue,
+          this.paraSpacingValue
+        )
+      ).map((item) => item.text.trim());
       const filteredText = textList.filter((s): s is string => !!s);
       if (filteredText.length > 0) {
         result.push({
