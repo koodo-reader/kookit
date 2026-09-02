@@ -1,6 +1,7 @@
 import ChapterDoc from "../model/chapterDoc";
-import { convertStyleNum } from "./layoutUtil";
+import { convertStyleNum, getActualOffsetLeft } from "./layoutUtil";
 import { playMimicalFlip } from "./navigationUtil";
+import { detectLocalLanguage } from "./common";
 import _ from "underscore";
 declare var window: any;
 
@@ -31,9 +32,15 @@ export const handlePDFLayout = (
   let scale = readerMode === "double" ? 2 : 1;
   let section = Math.floor(doc.body.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  doc.body.setAttribute(
+  doc.documentElement.setAttribute(
     "style",
     `${readerMode === "double" ? "position: absolute;" : ""}height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action: manipulation; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
+      (doc.body.clientWidth - gap) / scale
+    }px;`
+  );
+  doc.body.setAttribute(
+    "style",
+    `margin: 0px !important; padding: 0px !important;column-fill: auto;column-gap: ${gap}px; column-width: ${
       (doc.body.clientWidth - gap) / scale
     }px;`
   );
@@ -121,7 +128,7 @@ export const handleScrollPDFPosition = async (
 
   if (readerMode !== "scroll") {
     let left = targetNode
-      ? convertStyleNum(targetNode.offsetLeft) -
+      ? getActualOffsetLeft(targetNode) -
         convertStyleNum(
           targetNode.marginLeft ||
             parseFloat(getComputedStyle(targetNode).marginLeft)
@@ -177,6 +184,119 @@ export const getPDFVisibleText = async (
   }
   return textList;
 };
+const getCorrectNodeList = (
+  nodeList: NodeListOf<Element>,
+  text: string
+): Element[] => {
+  const nodes = Array.from(nodeList);
+  if (!text || nodes.length === 0) return [];
+
+  // textLayer 中每个 textContent item 对应一个 span，item 间的空格由单独的
+  // 空格 span 保留，同行内直接拼接即与 getTextFromPDFPage 的结果一致；
+  // 只有跨行处（<br> 不产生文本）需要像 hasEOL 一样补一个空格。
+  // 用 rect.top 差与行高的比例判断是否同行，上标等同行内的垂直偏移不会被误判。
+  // 标点后的空格在两侧统一删除，兼容 TTS 等来源会去掉标点后空格的文本
+  const normalize = (s: string) =>
+    s
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/[,.;:!?] (?=\S)/g, (m) => m[0]);
+  const normalizedText = normalize(text);
+  if (!normalizedText) return [];
+
+  // 检测是否为 CJK 语言，CJK 语言节点间不需要加空格
+  const lang = detectLocalLanguage(normalizedText);
+  const isCJK = lang === "zh" || lang === "ja" || lang === "ko";
+
+  const isSameLine = (prev: Element, cur: Element) => {
+    const prevRect = (prev as HTMLElement).getBoundingClientRect();
+    const curRect = (cur as HTMLElement).getBoundingClientRect();
+    const minH = Math.min(prevRect.height, curRect.height);
+    // 布局不可用时退回旧行为：当作跨行补空格
+    if (minH <= 0) return false;
+    return Math.abs(curRect.top - prevRect.top) <= minH * 0.6;
+  };
+
+  // 拼接节点文本并记录每个节点在总串中的区间；
+  // 纯空白节点（空格 span）保留为单个空格，多余空格随后统一折叠。
+  let total = "";
+  const ranges: { start: number; end: number }[] = [];
+
+  for (let i = 0; i < nodes.length; i++) {
+    const piece = ((nodes[i] as HTMLElement).textContent || "").replace(
+      /\s+/g,
+      " "
+    );
+    if (!piece.trim()) {
+      ranges.push({ start: total.length, end: total.length + 1 });
+      total += " ";
+      continue;
+    }
+    if (
+      i > 0 &&
+      !total.endsWith(" ") &&
+      !piece.startsWith(" ") &&
+      !isSameLine(nodes[i - 1], nodes[i])
+    ) {
+      if (total.endsWith("-")) {
+        // 与 getTextFromPDFPage 的 hasEOL 连字符处理对齐：去掉行尾连字符直接拼接，
+        // 使 "com-" + "pile" 与其产出的 "compile" 一致
+        total = total.slice(0, -1);
+        ranges[ranges.length - 1].end -= 1;
+      } else if (!isCJK) {
+        total += " ";
+      }
+    }
+    const start = total.length;
+    total += piece;
+    ranges.push({ start, end: total.length });
+  }
+
+  // 折叠连续空格、去除首尾空格并删除标点后的空格（与 normalize 规则一致），
+  // 同时记录归一化串位置到原始串位置的映射
+  let normalizedTotal = "";
+  const posMap: number[] = [];
+  let lastWasSpace = true;
+  for (let i = 0; i < total.length; i++) {
+    if (total[i] === " ") {
+      if (lastWasSpace) continue;
+      // 标点后的空格直接删除
+      if (",.;:!?".includes(normalizedTotal.slice(-1))) continue;
+      lastWasSpace = true;
+    } else {
+      lastWasSpace = false;
+    }
+    normalizedTotal += total[i];
+    posMap.push(i);
+  }
+  if (normalizedTotal.endsWith(" ")) {
+    normalizedTotal = normalizedTotal.slice(0, -1);
+    posMap.pop();
+  }
+
+  const pos = normalizedTotal.indexOf(normalizedText);
+  if (pos === -1) return [];
+
+  const endPos = pos + normalizedText.length;
+  const rawStart = posMap[pos];
+  const rawEnd =
+    endPos >= posMap.length ? posMap[posMap.length - 1] + 1 : posMap[endPos];
+
+  // 找出所有与 [rawStart, rawEnd) 有交集的连续 node
+  let startIdx = -1;
+  let endIdx = -1;
+
+  for (let i = 0; i < ranges.length; i++) {
+    const { start, end } = ranges[i];
+    if (end > rawStart && start < rawEnd) {
+      if (startIdx === -1) startIdx = i;
+      endIdx = i;
+    }
+  }
+
+  if (startIdx === -1) return [];
+  return nodes.slice(startIdx, endIdx + 1);
+};
 export const handleHighlightPDFNode = (
   text: string,
   style: string,
@@ -212,18 +332,15 @@ export const handleHighlightPDFNode = (
 
   if (!text.trim()) return;
   let nodeList = doc.querySelectorAll("p,span");
-  let nodes: any[] = Array.from(nodeList).filter((s: any, index: number) => {
-    return (
-      ((s as HTMLElement).textContent || "").trim() &&
-      (s as HTMLElement).textContent === text
-    );
-  });
+  let nodes: any[] = getCorrectNodeList(nodeList, text);
   if (nodes.length > 0) {
-    nodes[0].setAttribute(
-      "style",
-      (nodes[0].getAttribute("style") || "") + style
-    );
-    nodes[0].setAttribute("data-highlight", "true");
+    for (let i = 0; i < nodes.length; i++) {
+      nodes[i].setAttribute(
+        "style",
+        (nodes[i].getAttribute("style") || "") + style
+      );
+      nodes[i].setAttribute("data-highlight", "true");
+    }
   }
 };
 export const getPDFSearchResult = async (
@@ -379,4 +496,111 @@ export const showOCRProgress = (progress: number) => {
       bar.remove();
     }, 1000);
   }
+};
+export const getTextFromPDFPage = async (
+  chapterDoc: any,
+  titleSizeValue: number = 1.2,
+  paraSpacingValue: number = 1.5
+) => {
+  let textContent = await chapterDoc.text.getTextContent();
+  let paraList: any[] = [];
+
+  if (typeof textContent === "string") {
+    paraList = textContent
+      .split("\n")
+      .filter((line) => line.trim() !== "")
+      .map((line) => ({ text: line, isBold: false }));
+  } else if (
+    textContent &&
+    textContent.items &&
+    Array.isArray(textContent.items)
+  ) {
+    // 先收集所有字体大小，确定基础大小和最大大小
+    // 先收集所有字体大小，确定基础大小和最大大小
+    const fontSizes = textContent.items
+      .filter((item: any) => item.str && item.transform)
+      .map((item: any) => item.transform[3]);
+    let baseFontSize = 10;
+    if (fontSizes.length > 0) {
+      // 计算字体大小的众数（出现频率最高的值）
+      const fontSizeCount = fontSizes.reduce(
+        (acc, size) => {
+          acc[size] = (acc[size] || 0) + 1;
+          return acc;
+        },
+        {} as Record<number, number>
+      );
+
+      baseFontSize = Object.keys(fontSizeCount)
+        .map(Number)
+        .reduce((a, b) => (fontSizeCount[a] > fontSizeCount[b] ? a : b));
+    }
+
+    // const maxFontSize = Math.max(...fontSizes);
+    // const fontSizeRange = maxFontSize - Number(baseFontSize);
+
+    let currentPara: any = {
+      text: "",
+      styles: new Set(),
+      y: 0,
+      tag: "p",
+    };
+    let lastY = 0;
+    textContent.items.forEach((item: any) => {
+      if (item.str) {
+        // 检测段落分隔（基于Y坐标变化）
+        const yDiff = Math.abs(item.transform[5] - lastY);
+        const fontSize = item.transform[3];
+
+        // 根据字体大小确定样式，都用p标签，大字体用bold
+        let tag = "p";
+        let isBold = fontSize > Number(baseFontSize) * titleSizeValue;
+
+        // 如果Y坐标变化较大，认为是新段落
+        if (yDiff > item.height * paraSpacingValue && currentPara.text.trim()) {
+          paraList.push(currentPara);
+          currentPara = {
+            text: "",
+            styles: new Set(),
+            y: item.transform[5],
+            tag: tag,
+            isBold: isBold,
+          };
+        } else if (!currentPara.hasOwnProperty("isBold")) {
+          // 如果当前段落还没有确定样式，使用当前item的样式
+          currentPara.isBold = isBold;
+        }
+
+        // 包装文本
+        const wrappedText = item.str;
+
+        // 换行时用空格连接，而不是分段
+        if (item.hasEOL) {
+          // 如果是用了连接符（如连字符），直接拼接，不加空格
+          if (wrappedText.endsWith("-")) {
+            currentPara.text += wrappedText.slice(0, -1);
+          } else {
+            // CJK 语言换行时不加空格，其他语言加空格
+            const lang = detectLocalLanguage(wrappedText + currentPara.text);
+            if (lang === "zh" || lang === "ja" || lang === "ko") {
+              currentPara.text += wrappedText;
+            } else {
+              currentPara.text += wrappedText + " ";
+            }
+          }
+        } else {
+          currentPara.text += wrappedText;
+        }
+
+        lastY = item.transform[5];
+      }
+    });
+
+    // 添加最后一个段落
+    if (currentPara.text.trim()) {
+      paraList.push(currentPara);
+    }
+  }
+
+  return paraList;
 };

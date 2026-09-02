@@ -4,6 +4,37 @@ import { createSelectionAutoTurn } from "./selectionAutoTurn";
 declare var window: any;
 let selectionTimeout: any = null;
 let isDragging = false;
+let lastPinchZoomTime = 0;
+let pinchZoomed = false;
+
+// 双指缩放 PDF 结束后发送 pinch-zoom 消息，Android/iOS 共用
+export const onPinchZoomEnd = function (
+  event: any,
+  render: any,
+  format: string
+) {
+  if (!pinchZoomed) return;
+  pinchZoomed = false;
+  if (format !== "PDF") return;
+  if (window.visualViewport.scale <= 1.01) return;
+  // Debounce: 与上次发送间隔不足 1 秒则跳过
+  let now = Date.now();
+  if (now - lastPinchZoomTime < 1000) return;
+  lastPinchZoomTime = now;
+  let target: any = event.target;
+  let ownerDoc = target.ownerDocument;
+  let targetIframe = ownerDoc?.defaultView?.frameElement;
+  let id = targetIframe?.getAttribute("id") || "";
+  let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
+  window.ReactNativeWebView.postMessage(
+    JSON.stringify({
+      event: "pinch-zoom",
+      chapterDocIndex: chapterDocIndex,
+      scale: window.visualViewport.scale,
+    })
+  );
+  render.handleRenderPDFChapter(chapterDocIndex, true);
+};
 export const slideAnimateTo = (
   direction: string,
   format: string,
@@ -23,6 +54,7 @@ export const slideAnimateTo = (
   // Clean up any existing animation
   if (window.scrollAnimationId) {
     cancelAnimationFrame(window.scrollAnimationId);
+    window.scrollAnimationId = null;
   }
 
   if (
@@ -67,53 +99,63 @@ export const slideAnimateTo = (
 
   const startLeft = tempDoc.body.scrollLeft;
   const distance = snapX - startLeft;
-  const duration = 250; // 缩短动画时间，减少卡顿感
+
+  // 如果无需滚动，直接返回
+  if (Math.abs(distance) < 0.5) {
+    render.record();
+    return;
+  }
+
+  const duration = 250;
 
   const body = tempDoc.body;
-  const startTime = performance.now();
+  const docElement = tempDoc.documentElement;
   window.isSwiping = true;
 
-  // 更激进的硬件加速设置
-  body.style.willChange = "transform";
-  body.style.transform = "translateZ(0)";
-  body.style.backfaceVisibility = "hidden";
+  docElement.style.willChange = "transform";
+  docElement.style.transform = "translateX(0px)";
+  docElement.style.transition = "none";
 
-  // 使用线性缓动，计算最简单，性能最好
-  const easeOutQuad = (t: number): number => t * (2 - t);
+  docElement.getBoundingClientRect();
 
-  // 预先缓存 transform 字符串的前缀，减少字符串拼接
-  const transformPrefix = "translate3d(";
-  const transformSuffix = "px, 0, 0)";
+  docElement.style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+  docElement.style.transform = `translateX(${-distance}px)`;
 
-  function animateScroll(currentTime: number) {
-    const elapsed = currentTime - startTime;
-    const progress = elapsed / duration;
+  let resolved = false;
+  const cleanup = () => {
+    if (resolved) return;
+    resolved = true;
 
-    if (progress >= 1) {
-      // 动画完成，清理并设置最终位置
-      body.style.transform = "";
-      body.style.willChange = "";
-      body.style.backfaceVisibility = "";
-      body.scrollLeft = snapX;
+    docElement.style.willChange = "";
+    docElement.style.transform = "";
+    docElement.style.transition = "";
 
-      render.record();
-      isDragging = false;
-      window.isSwiping = false;
+    body.scrollLeft = snapX;
+
+    if (Math.abs(body.scrollLeft - snapX) > 0.5) {
+      requestAnimationFrame(() => {
+        body.scrollLeft = snapX;
+        render.record();
+        isDragging = false;
+        window.isSwiping = false;
+      });
       return;
     }
 
-    // 使用更轻量的缓动函数
-    const easedProgress = easeOutQuad(progress);
-    const currentOffset = startLeft + distance * easedProgress;
-    const translateX = startLeft - currentOffset;
+    render.record();
+    isDragging = false;
+    window.isSwiping = false;
+  };
 
-    // 使用 | 0 进行快速取整，比 Math.round 更快
-    body.style.transform = transformPrefix + (translateX | 0) + transformSuffix;
+  const onTransitionEnd = (e: TransitionEvent) => {
+    if (e.target === docElement && e.propertyName === "transform") {
+      docElement.removeEventListener("transitionend", onTransitionEnd);
+      cleanup();
+    }
+  };
+  docElement.addEventListener("transitionend", onTransitionEnd);
 
-    window.scrollAnimationId = requestAnimationFrame(animateScroll);
-  }
-
-  window.scrollAnimationId = requestAnimationFrame(animateScroll);
+  window.scrollAnimationId = setTimeout(cleanup, duration + 50) as any;
 };
 export async function blobUrlToBase64(blobUrl: string): Promise<string> {
   try {
@@ -285,6 +327,7 @@ export const addAndroidTouchEvent = (
       return;
     }
     lastTouchEnd = now;
+    onPinchZoomEnd(event, render, format);
     const touch = event.changedTouches[0];
     const touchEndTime = Date.now();
     let touchEndX = touch.screenX;
@@ -437,6 +480,7 @@ export const addAndroidTouchEvent = (
 
     if (event.touches.length > 1) {
       event.preventDefault();
+      pinchZoomed = true;
     }
     const touch = event.touches[0];
 
@@ -603,7 +647,7 @@ export const addAndroidTouchEvent = (
           let targetIframe = target.ownerDocument?.defaultView?.frameElement;
           let id = targetIframe?.getAttribute("id") || "";
           let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
-          charRange = await render.getHightlightCoords(chapterDocIndex);
+          charRange = await render.getHighlightCoords(chapterDocIndex);
           position.chapterDocIndex = chapterDocIndex + "";
           let subContainer = targetIframe.parentElement;
           if (subContainer) {
@@ -615,7 +659,7 @@ export const addAndroidTouchEvent = (
           console.error("Error getting highlight coords:", error);
         }
       } else {
-        charRange = await render.getHightlightCoords();
+        charRange = await render.getHighlightCoords();
       }
       let sentence = getSelectionSentence(doc);
       window.ReactNativeWebView.postMessage(
@@ -789,6 +833,8 @@ export const addAppleTouchEvent = (
       return;
     }
     lastTouchEnd = now;
+    // iOS 上极易崩溃，所以注释掉
+    // onPinchZoomEnd(event, render, format);
     const touch = event.changedTouches[0];
     const touchEndTime = Date.now();
     const touchEndX = touch.screenX;
@@ -872,14 +918,14 @@ export const addAppleTouchEvent = (
         let id = targetIframe?.getAttribute("id") || "";
         let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
         position.chapterDocIndex = chapterDocIndex + "";
-        charRange = await render.getHightlightCoords(chapterDocIndex);
+        charRange = await render.getHighlightCoords(chapterDocIndex);
         let subContainer = targetIframe.parentElement;
         if (subContainer) {
           position.top =
             position.top + parseFloat(subContainer.getBoundingClientRect().top);
         }
       } else {
-        charRange = await render.getHightlightCoords();
+        charRange = await render.getHighlightCoords();
       }
       let sentence = getSelectionSentence(doc);
       window.ReactNativeWebView.postMessage(
@@ -986,6 +1032,9 @@ export const addAppleTouchEvent = (
     const linkElement = findLinkElement(target);
     if (linkElement) {
       return;
+    }
+    if (event.touches.length > 1) {
+      pinchZoomed = true;
     }
     //// 注释掉解决无法双指缩放pdf的问题
     // if (event.touches.length > 1) {

@@ -3,16 +3,21 @@
 // the page turns, so merely passing the corner mid-drag does not flip the page.
 
 const AUTO_TURN_DWELL_MS = 500;
-// Quarter-ellipse radius around each corner (fraction of width/height). Kept tight
-// so normal selections ending in the lower-right of the page do not auto-turn.
-const AUTO_TURN_CORNER_FRACTION = 0.15;
+// Fixed pixel radius around each corner for auto-turn detection.
+// Kept tight so normal selections ending in the lower-right of the page do not auto-turn.
+const AUTO_TURN_CORNER_RADIUS = 50;
 
 type Corner = "br" | "tl";
 
-const cornerOf = (x: number, y: number, w: number, h: number): Corner | null => {
+const cornerOf = (
+  x: number,
+  y: number,
+  w: number,
+  h: number
+): Corner | null => {
   if (w <= 0 || h <= 0) return null;
-  const rx = w * AUTO_TURN_CORNER_FRACTION;
-  const ry = h * AUTO_TURN_CORNER_FRACTION;
+  const rx = AUTO_TURN_CORNER_RADIUS;
+  const ry = AUTO_TURN_CORNER_RADIUS;
   const inEllipse = (dx: number, dy: number) =>
     (dx / rx) ** 2 + (dy / ry) ** 2 <= 1;
   if (inEllipse(w - x, h - y)) return "br";
@@ -22,7 +27,12 @@ const cornerOf = (x: number, y: number, w: number, h: number): Corner | null => 
 
 // Map a viewport point to a corner zone, if any. Ignore off-screen caret positions
 // (e.g. focus jumping into the next column while dragging at the corner).
-const cornerAt = (x: number, y: number, w: number, h: number): Corner | null => {
+const cornerAt = (
+  x: number,
+  y: number,
+  w: number,
+  h: number
+): Corner | null => {
   if (w <= 0 || h <= 0) return null;
   if (x < 0 || x > w || y < 0 || y > h) return null;
   return cornerOf(x, y, w, h);
@@ -245,7 +255,12 @@ export const createSelectionAutoTurn = (
     autoTurnTimer = setTimeout(() => {
       autoTurnTimer = null;
       const sel = doc.getSelection();
-      if (isAutoTurning || !sel || !isValidSelection(sel) || !inCorner(corner)) {
+      if (
+        isAutoTurning ||
+        !sel ||
+        !isValidSelection(sel) ||
+        !inCorner(corner)
+      ) {
         return;
       }
 

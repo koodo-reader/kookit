@@ -3,6 +3,8 @@ import ChapterDoc from "../model/chapterDoc";
 import {
   collectChapterImageUrls,
   convertStyleNum,
+  getActualOffsetLeft,
+  getActualOffsetTop,
   getSelectedElement,
   handleOneChapterDoc,
   progressInfo,
@@ -23,6 +25,7 @@ import {
   isElementFootnote,
   processHtml,
   resolveXPath,
+  isContentFootnote,
 } from "../utils/navigationUtil";
 import EventEmitter from "../utils/EventEmitter";
 import { CFI } from "../libs/cfi";
@@ -117,6 +120,7 @@ class GeneralRender extends EventEmitter {
   }) {
     super();
     this.readerMode = config.readerMode;
+    window.readerMode = config.readerMode;
     this.animation = config.animation || "none";
     this.format = config.format;
     this.convertChinese = config.convertChinese;
@@ -194,8 +198,8 @@ class GeneralRender extends EventEmitter {
       return {
         width: this.element.clientWidth,
         height: this.element.clientHeight,
-        left: this.element.offsetLeft,
-        top: this.element.offsetTop,
+        left: getActualOffsetLeft(this.element),
+        top: getActualOffsetTop(this.element),
         scrollTop: this.element.scrollTop,
         scrollLeft: this.element.scrollWidth / 2 - this.element.clientWidth / 2,
         sectionWidth: this.element.clientWidth,
@@ -208,8 +212,8 @@ class GeneralRender extends EventEmitter {
     return {
       width: this.element.clientWidth,
       height: this.element.clientHeight,
-      left: this.element.offsetLeft,
-      top: this.element.offsetTop,
+      left: getActualOffsetLeft(this.element),
+      top: getActualOffsetTop(this.element),
       scrollTop: this.element.scrollTop,
       scrollLeft: this.element.scrollWidth / 2 - this.element.clientWidth / 2,
       sectionWidth: (this.element.clientWidth - gap) / scale,
@@ -229,14 +233,14 @@ class GeneralRender extends EventEmitter {
     if (audioNodes.length > 0) {
       let targetNode: any = audioNodes[0];
       let left = targetNode
-        ? convertStyleNum(targetNode.offsetLeft) -
+        ? getActualOffsetLeft(targetNode) -
           convertStyleNum(
             targetNode.marginLeft ||
               parseFloat(getComputedStyle(targetNode).marginLeft)
           )
         : 0;
       let top = targetNode
-        ? convertStyleNum(targetNode.offsetTop) -
+        ? getActualOffsetTop(targetNode) -
           convertStyleNum(
             targetNode.marginTop ||
               parseFloat(getComputedStyle(targetNode).marginTop)
@@ -603,14 +607,14 @@ class GeneralRender extends EventEmitter {
     }
     let targetNode = getCloestBlock(node, this.element, this.readerMode);
     let left = targetNode
-      ? convertStyleNum(targetNode.offsetLeft) -
+      ? getActualOffsetLeft(targetNode) -
         convertStyleNum(
           targetNode.marginLeft ||
             parseFloat(getComputedStyle(targetNode).marginLeft)
         )
       : 0;
     let top = targetNode
-      ? convertStyleNum(targetNode.offsetTop) -
+      ? getActualOffsetTop(targetNode) -
         convertStyleNum(
           targetNode.marginTop ||
             parseFloat(getComputedStyle(targetNode).marginTop)
@@ -1151,7 +1155,7 @@ class GeneralRender extends EventEmitter {
       doc.head.appendChild(defaultStyle);
     }
   }
-  async getHightlightCoords() {
+  async getHighlightCoords() {
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
@@ -1505,7 +1509,7 @@ class GeneralRender extends EventEmitter {
       let node = doc.body.querySelector("#" + CSS.escape(id));
       let rect = event.target.getBoundingClientRect();
       let isJump = false;
-      if (!node) {
+      if (!node || event.target === node || node.contains(event.target)) {
         if (href.indexOf("#") !== 0) {
           while (href.startsWith(".")) {
             href = href.substring(1);
@@ -1569,7 +1573,11 @@ class GeneralRender extends EventEmitter {
     return { handled: false };
   }
   async getFootnoteContent(node: any) {
-    if (isElementFootnote(node) || !node.textContent.trim()) {
+    if (
+      isElementFootnote(node) ||
+      !node.textContent.trim() ||
+      node.tagName === "A"
+    ) {
       //获取当前a标签和下一个a标签之间的内容
       let next = node.nextSibling;
       let content = node.textContent;
@@ -1577,7 +1585,21 @@ class GeneralRender extends EventEmitter {
         content += next.textContent;
         next = next.nextSibling;
       }
-      if (content.trim() && content.trim().length <= 3000) {
+      //如果内容为空或者是脚注内容，则向上查找父节点，直到找到非空且非脚注的内容
+      if (!content.trim() || isContentFootnote(content)) {
+        let candidate = node.parentNode;
+        while (candidate && candidate.tagName !== "BODY") {
+          const candidateText = candidate.textContent || "";
+          if (candidateText.trim() && !isContentFootnote(candidateText)) {
+            break;
+          }
+          candidate = candidate.parentNode;
+        }
+        if (!candidate) {
+          return { handled: false };
+        }
+        node = candidate;
+      } else if (content.trim() && content.trim().length <= 3000) {
         node = document.createElement("div");
         node.innerHTML = content;
       }
@@ -1594,7 +1616,8 @@ class GeneralRender extends EventEmitter {
   }
   handleBatchTransResult(sourcetexts: string[], targetTexts: string[]) {
     let doc = this.getDocument();
-    if (!doc) return;
+    let iframe = this.getIframe();
+    if (!doc || !iframe) return;
     for (let index = 0; index < sourcetexts.length; index++) {
       const sourceText = sourcetexts[index];
       if (this.transMap[sourceText]) {
@@ -1629,6 +1652,10 @@ class GeneralRender extends EventEmitter {
         }
       }
     }
+    if (this.readerMode === "scroll") {
+      iframe.height = doc.body.scrollHeight + "px";
+      iframe.height = doc.body.scrollHeight + 300 + "px";
+    }
   }
   handleWordDefinitionResult(
     results: { text: string; words: any[] }[],
@@ -1636,7 +1663,8 @@ class GeneralRender extends EventEmitter {
     locale: string
   ) {
     let doc = this.getDocument();
-    if (!doc) return;
+    let iframe = this.getIframe();
+    if (!doc || !iframe) return;
     // Clear previous definitions before re-applying
     clearWordDefinitions(doc);
     // Build a flat list of audio nodes to match against result.text
@@ -1672,6 +1700,10 @@ class GeneralRender extends EventEmitter {
         locale,
         targetNode as Element
       );
+    }
+    if (this.readerMode === "scroll") {
+      iframe.height = doc.body.scrollHeight + "px";
+      iframe.height = doc.body.scrollHeight + 300 + "px";
     }
   }
   clearWordDefinitionResult() {

@@ -1,4 +1,9 @@
-import { createIframe, getSelectedElement } from "../utils/layoutUtil.js";
+import {
+  createIframe,
+  getActualOffsetLeft,
+  getActualOffsetTop,
+  getSelectedElement,
+} from "../utils/layoutUtil.js";
 import GeneralParser from "../utils/generalParser.js";
 import { isPDF, makePDF } from "../libs/pdf.js";
 import GeneralRender from "./GeneralRender.js";
@@ -7,6 +12,7 @@ import {
   createPDFContainer,
   createPDFIframe,
   getPDFVisibleText,
+  getTextFromPDFPage,
   handleHighlightPDFNode,
   handleIOSScrollPage,
   handlePDFLayout,
@@ -33,6 +39,8 @@ class PdfRender extends GeneralRender {
   password: string = "";
   pdfScale: number = 0;
   scale: number = 1;
+  paraSpacingValue: number = 1.5; // 段落间距
+  titleSizeValue: number = 1.2; // 标题大小倍数
   backgroundColor: string;
   isScannedPDF: string;
   enablePDFSelectionOptimization: string = "no";
@@ -46,8 +54,18 @@ class PdfRender extends GeneralRender {
   fabricHistoryLock: Set<number> = new Set();
   fabricSyncListenerMap: Map<number, { doc: Document; fn: () => void }> =
     new Map();
+  annotationStyle: string = "brush";
   brushColor: string = "#ff0000";
   brushWidth: number = 2;
+  highlighterColor: string = "#ffff00";
+  highlighterWidth: number = 24;
+  highlighterOpacity: number = 0.4;
+  shapeType: string = "rect";
+  shapeColor: string = "#ff0000";
+  shapeWidth: number = 2;
+  textSize: number = 24;
+  textFont: string = "sans-serif";
+  textColor: string = "#ff0000";
   isDrawing: string = "no";
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, convertChinese: "Default", format: "PDF" });
@@ -55,6 +73,8 @@ class PdfRender extends GeneralRender {
     this.isStartFromEven = config.isStartFromEven || "no";
     this.pdfCrop = config.pdfCrop || { top: 0, bottom: 0, left: 0, right: 0 };
     this.isKeepPDFBackground = config.isKeepPDFBackground || "no";
+    this.paraSpacingValue = parseFloat(config.paraSpacingValue) || 1.5; // 支持配置段落间距
+    this.titleSizeValue = parseFloat(config.titleSizeValue) || 1.2; // 支持配置标题大小倍数
     this.password = config.password || "";
     this.scale = config.scale || 1;
     this.backgroundColor = config.backgroundColor || "#ffffff";
@@ -64,6 +84,16 @@ class PdfRender extends GeneralRender {
       config.enablePDFSelectionOptimization || "no";
     this.brushColor = config.brushColor || "#ff0000";
     this.brushWidth = config.brushWidth || 2;
+    this.highlighterColor = config.highlighterColor || "#ffff00";
+    this.highlighterWidth = config.highlighterWidth || 24;
+    this.highlighterOpacity =
+      config.highlighterOpacity != null ? config.highlighterOpacity : 0.4;
+    this.shapeType = config.shapeType || "rect";
+    this.shapeColor = config.shapeColor || "#ff0000";
+    this.shapeWidth = config.shapeWidth || 2;
+    this.textSize = config.textSize != null ? config.textSize : 24;
+    this.textFont = config.textFont || "sans-serif";
+    this.textColor = config.textColor || "#ff0000";
     this.isDrawing = config.isDrawing || "no";
   }
   renderTo(element: HTMLElement) {
@@ -157,7 +187,7 @@ class PdfRender extends GeneralRender {
 
     // 第一层：采样5个关键位置（首页、1/4、1/2、3/4、末页）
     let keyIndices = [
-      0,
+      1,
       Math.floor(totalPages / 4),
       Math.floor(totalPages / 2),
       Math.floor((totalPages * 3) / 4),
@@ -285,7 +315,7 @@ class PdfRender extends GeneralRender {
         doc
       );
       if (isScrollIntoView) {
-        await this.renderPdfPage(chapterDocIndex, doc);
+        await this.renderPdfPage(chapterDocIndex);
       }
     }
   }
@@ -338,8 +368,8 @@ class PdfRender extends GeneralRender {
     return {
       width: doc.body.clientWidth,
       height: this.element.clientHeight,
-      left: this.element.offsetLeft,
-      top: this.element.offsetTop,
+      left: getActualOffsetLeft(this.element),
+      top: getActualOffsetTop(this.element),
       offsetTop: offsetTop,
       scrollTop: this.element.scrollTop,
       scrollLeft: this.element.scrollWidth / 2 - this.element.clientWidth / 2,
@@ -348,14 +378,14 @@ class PdfRender extends GeneralRender {
       gap: gap,
     };
   }
-  async goToChapter(chapterDocIndex, chapterHref, chapterTitle) {
+  async goToChapter(chapterDocIndex, _chapterHref, _chapterTitle) {
     if (this.readerMode === "double" && chapterDocIndex % 2 == 1) {
       chapterDocIndex--;
     }
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
-    await this.renderPdfPage(chapterDocIndex, doc);
+    await this.renderPdfPage(chapterDocIndex);
     await handleScrollPDFPosition(
       parseInt(chapterDocIndex),
       this.readerMode,
@@ -406,7 +436,7 @@ class PdfRender extends GeneralRender {
     if (this.readerMode === "double" && chapterDocIndex % 2 == 1) {
       chapterDocIndex--;
     }
-    await this.renderPdfPage(parseInt(chapterDocIndex), doc);
+    await this.renderPdfPage(parseInt(chapterDocIndex));
     if (this.readerMode === "scroll") {
       iframe.height = doc.body.scrollHeight + "px";
       iframe.height = doc.body.scrollHeight + 300 + "px";
@@ -461,8 +491,7 @@ class PdfRender extends GeneralRender {
 
       await this.renderPdfPage(
         parseInt(this.tempLocation.chapterDocIndex) -
-          (this.readerMode === "double" ? 2 : 1),
-        doc
+          (this.readerMode === "double" ? 2 : 1)
       );
     }
 
@@ -509,8 +538,7 @@ class PdfRender extends GeneralRender {
 
       await this.renderPdfPage(
         parseInt(this.tempLocation.chapterDocIndex) +
-          (this.readerMode === "double" ? 2 : 1),
-        doc
+          (this.readerMode === "double" ? 2 : 1)
       );
     }
 
@@ -537,16 +565,58 @@ class PdfRender extends GeneralRender {
     );
   }
   async visibleText() {
-    let doc = this.getDocument();
-    if (!doc) return "";
-    return await getPDFVisibleText(
-      parseInt(this.tempLocation.chapterDocIndex || "0"),
-      this.chapterDocList,
-      this.readerMode
-    );
+    let chapterDocIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
+    let chapterDoc = this.chapterDocList[chapterDocIndex];
+    let textList = (
+      await getTextFromPDFPage(
+        chapterDoc,
+        this.titleSizeValue,
+        this.paraSpacingValue
+      )
+    ).map((item) => item.text.trim());
+    if (this.readerMode === "double") {
+      let nextChapterDocIndex = chapterDocIndex + 1;
+      if (nextChapterDocIndex < this.chapterDocList.length) {
+        let nextChapterDoc = this.chapterDocList[nextChapterDocIndex];
+        let nextTextList = (
+          await getTextFromPDFPage(
+            nextChapterDoc,
+            this.titleSizeValue,
+            this.paraSpacingValue
+          )
+        ).map((item) => item.text.trim());
+        textList = textList.concat(nextTextList);
+      }
+    }
+    return textList;
   }
   async audioText() {
     return await this.visibleText();
+  }
+  async getRestAudioText(count: number) {
+    const currentIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
+    const result: { chapterDocIndex: number; audioText: string[] }[] = [];
+    const startIndex = currentIndex + 1;
+    const endIndex = Math.min(startIndex + count, this.chapterDocList.length);
+
+    for (let i = startIndex; i < endIndex; i++) {
+      const chapterDoc = this.chapterDocList[i];
+      const textList = (
+        await getTextFromPDFPage(
+          chapterDoc,
+          this.titleSizeValue,
+          this.paraSpacingValue
+        )
+      ).map((item) => item.text.trim());
+      const filteredText = textList.filter((s): s is string => !!s);
+      if (filteredText.length > 0) {
+        result.push({
+          chapterDocIndex: i,
+          audioText: filteredText,
+        });
+      }
+    }
+    return result;
   }
   async chapterText() {
     return (await this.visibleText()).join(" ");
@@ -727,7 +797,7 @@ class PdfRender extends GeneralRender {
 
     return iframe;
   }
-  async getHightlightCoords(chapterDocIndex?: number) {
+  async getHighlightCoords(chapterDocIndex?: number) {
     let pageIndex =
       chapterDocIndex !== undefined
         ? chapterDocIndex
@@ -868,8 +938,17 @@ class PdfRender extends GeneralRender {
             fabricObj.set("scaleY", jsonObj.scaleY * ratioY);
           }
           fabricObj.setCoords && fabricObj.setCoords();
+          // 恢复出的 IText 也要挂监听，保证双击编辑后点空白是结束而非新建
+          if (fabricObj.isType && fabricObj.isType("i-text")) {
+            this.attachITextListeners(canvas, fabricObj);
+          }
         }
-      : undefined;
+      : (jsonObj: any, fabricObj: any) => {
+          if (!fabricObj) return;
+          if (fabricObj.isType && fabricObj.isType("i-text")) {
+            this.attachITextListeners(canvas, fabricObj);
+          }
+        };
     try {
       await new Promise<void>((resolve) => {
         canvas.loadFromJSON(
@@ -1130,28 +1209,66 @@ class PdfRender extends GeneralRender {
     }
   }
   applyAnnotationConfig(config: any) {
+    if (config.annotationStyle) {
+      this.setAnnotationStyle(config.annotationStyle);
+    }
     if (config.brushColor) {
       this.setBrushColor(config.brushColor);
     }
     if (config.brushWidth) {
       this.setBrushWidth(config.brushWidth);
     }
+    if (config.highlighterColor) {
+      this.setHighlighterColor(config.highlighterColor);
+    }
+    if (config.highlighterWidth) {
+      this.setHighlighterWidth(config.highlighterWidth);
+    }
+    if (config.highlighterOpacity != null) {
+      this.setHighlighterOpacity(config.highlighterOpacity);
+    }
+    if (config.shapeType) {
+      this.setShapeType(config.shapeType);
+    }
+    if (config.shapeColor) {
+      this.setShapeColor(config.shapeColor);
+    }
+    if (config.shapeWidth) {
+      this.setShapeWidth(config.shapeWidth);
+    }
+    if (config.textSize != null) {
+      this.setTextSize(config.textSize);
+    }
+    if (config.textFont) {
+      this.setTextFont(config.textFont);
+    }
+    if (config.textColor) {
+      this.setTextColor(config.textColor);
+    }
     if (config.isDrawing) {
       this.setIsDrawing(config.isDrawing);
     }
   }
-  async handleRenderPDFChapter(chapterDocIndex: number, doc: Document) {
+  async handleRenderPDFChapter(
+    chapterDocIndex: number,
+    isReload: boolean = false
+  ) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
     }
 
+    let doc = this.getDocument();
+    if (!doc) return;
     let subIframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
     if (!subIframe) {
       subIframe = createPDFIframe(chapterDocIndex, doc);
     }
+    if (isReload) {
+      await this.handleUnloadPDFChapter(chapterDocIndex);
+    }
     let subDoc = subIframe?.contentDocument;
     if (!subDoc) return;
-    if (subDoc.body.innerHTML) {
+    if (subDoc.body.innerHTML && !isReload) {
       return;
     }
     subDoc.body.innerHTML = "";
@@ -1283,26 +1400,303 @@ class PdfRender extends GeneralRender {
           fn: syncFabricEnv,
         });
         this.attachFabricKeyListeners(chapterDocIndex, subDoc);
+        this.attachShapeDrawListeners(chapterDocIndex, canvas);
+        this.attachTextCreateListeners(chapterDocIndex, canvas);
       }
     }
     this.trigger("rendered", [chapterDocIndex] as any);
   }
   applyFabricBrush(canvas: any) {
     if (!canvas) return;
-    if (canvas.freeDrawingBrush) {
-      canvas.freeDrawingBrush.color = this.brushColor;
-      canvas.freeDrawingBrush.width = this.brushWidth;
+    const drawing = this.isDrawing === "yes";
+    // shape 用自定义拖拽绘制几何图形，text 用 mouse:down 创建 IText，都不走 freeDrawingBrush
+    const isShape = this.annotationStyle === "shape";
+    const isText = this.annotationStyle === "text";
+    if (canvas.freeDrawingBrush && !isShape && !isText) {
+      if (this.annotationStyle === "highlighter") {
+        canvas.freeDrawingBrush.color = this.toRgba(
+          this.highlighterColor,
+          this.highlighterOpacity
+        );
+        canvas.freeDrawingBrush.width = this.highlighterWidth;
+        canvas.freeDrawingBrush.strokeLineCap = "round";
+        canvas.freeDrawingBrush.strokeLineJoin = "round";
+      } else {
+        canvas.freeDrawingBrush.color = this.brushColor;
+        canvas.freeDrawingBrush.width = this.brushWidth;
+      }
     }
-    canvas.isDrawingMode = this.isDrawing === "yes";
-    if (this.isDrawing === "yes") {
-      canvas.selection = false;
-      canvas.defaultCursor = "crosshair";
-      canvas.hoverCursor = "crosshair";
+    canvas.isDrawingMode = drawing && !isShape && !isText;
+    if (drawing) {
+      if (isText) {
+        // text 模式保留 selection，以便双击已有文字进入编辑
+        canvas.selection = true;
+        canvas.defaultCursor = "text";
+        canvas.hoverCursor = "text";
+      } else {
+        canvas.selection = false;
+        canvas.defaultCursor = "crosshair";
+        canvas.hoverCursor = "crosshair";
+      }
     } else {
       canvas.selection = true;
       canvas.defaultCursor = "default";
       canvas.hoverCursor = "move";
     }
+  }
+  createShapeObject(x1: number, y1: number, x2: number, y2: number): any {
+    const fabricLib = window.fabric;
+    if (!fabricLib) return null;
+    const color = this.shapeColor;
+    const width = this.shapeWidth;
+    const common: any = {
+      stroke: color,
+      strokeWidth: width,
+      strokeLineCap: "round",
+      strokeLineJoin: "round",
+      fill: "transparent",
+      selectable: true,
+    };
+    const minX = Math.min(x1, x2);
+    const minY = Math.min(y1, y2);
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+    switch (this.shapeType) {
+      case "rect":
+        return new fabricLib.Rect({
+          ...common,
+          left: minX,
+          top: minY,
+          width: absDx,
+          height: absDy,
+        });
+      case "circle": {
+        const radius = Math.hypot(dx, dy) / 2;
+        return new fabricLib.Circle({
+          ...common,
+          left: x1,
+          top: y1,
+          radius,
+          originX: "center",
+          originY: "center",
+        });
+      }
+      case "ellipse":
+        return new fabricLib.Ellipse({
+          ...common,
+          left: (x1 + x2) / 2,
+          top: (y1 + y2) / 2,
+          rx: absDx / 2,
+          ry: absDy / 2,
+          originX: "center",
+          originY: "center",
+        });
+      case "line":
+        return new fabricLib.Line([x1, y1, x2, y2], {
+          stroke: color,
+          strokeWidth: width,
+          strokeLineCap: "round",
+          selectable: true,
+        });
+      case "arrow":
+        return new fabricLib.Path(this.buildArrowPath(x1, y1, x2, y2, width), {
+          stroke: color,
+          strokeWidth: width,
+          strokeLineCap: "round",
+          strokeLineJoin: "round",
+          fill: color,
+          selectable: true,
+        });
+      default:
+        return null;
+    }
+  }
+  buildArrowPath(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    width: number
+  ): any[] {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) {
+      return [
+        ["M", x1, y1],
+        ["L", x2, y2],
+      ];
+    }
+    const ux = dx / len;
+    const uy = dy / len;
+    const head = Math.max(width * 3, 8);
+    const wing = head * 0.5;
+    const px = -uy;
+    const py = ux;
+    const baseX = x2 - ux * head;
+    const baseY = y2 - uy * head;
+    const w1X = baseX + px * wing;
+    const w1Y = baseY + py * wing;
+    const w2X = baseX - px * wing;
+    const w2Y = baseY - py * wing;
+    return [
+      ["M", x1, y1],
+      ["L", baseX, baseY],
+      ["M", w1X, w1Y],
+      ["L", x2, y2],
+      ["L", w2X, w2Y],
+      ["Z"],
+    ];
+  }
+  attachShapeDrawListeners(chapterDocIndex: number, canvas: any) {
+    if (!canvas) return;
+    let isDown = false;
+    let origX = 0;
+    let origY = 0;
+    let lastX = 0;
+    let lastY = 0;
+    let activeShape: any = null;
+    canvas.on("mouse:down", (o: any) => {
+      if (this.annotationStyle !== "shape" || this.isDrawing !== "yes") return;
+      isDown = true;
+      const pointer = canvas.getPointer(o.e);
+      origX = pointer.x;
+      origY = pointer.y;
+      lastX = origX;
+      lastY = origY;
+      // 拖拽预览阶段产生的 add/remove 不入历史、不触发 annotation-changed
+      this.fabricHistoryLock.add(chapterDocIndex);
+      activeShape = this.createShapeObject(origX, origY, origX, origY);
+      if (activeShape) canvas.add(activeShape);
+    });
+    canvas.on("mouse:move", (o: any) => {
+      if (!isDown || !activeShape) return;
+      const pointer = canvas.getPointer(o.e);
+      lastX = pointer.x;
+      lastY = pointer.y;
+      const next = this.createShapeObject(origX, origY, lastX, lastY);
+      if (next) {
+        canvas.remove(activeShape);
+        activeShape = next;
+        canvas.add(activeShape);
+        canvas.requestRenderAll();
+      }
+    });
+    canvas.on("mouse:up", () => {
+      if (!isDown) return;
+      isDown = false;
+      this.fabricHistoryLock.delete(chapterDocIndex);
+      const moved = Math.hypot(lastX - origX, lastY - origY) >= 2;
+      if (activeShape && moved) {
+        this.pushFabricHistory(chapterDocIndex, activeShape);
+        this.trigger("annotation-changed", [chapterDocIndex] as any);
+      } else if (activeShape) {
+        canvas.remove(activeShape);
+        canvas.requestRenderAll();
+      }
+      activeShape = null;
+    });
+  }
+  attachTextCreateListeners(chapterDocIndex: number, canvas: any) {
+    if (!canvas) return;
+    canvas.on("mouse:down", (o: any) => {
+      if (this.annotationStyle !== "text" || this.isDrawing !== "yes") return;
+      // 消费上一次 editing:exited 留下的标志：fabric 在 fire mouse:down 之前会先
+      // 对空白点击调用当前 IText 的 exitEditing，该回调设置此标志表示"本次点击已结束上一个输入"
+      const justExited = canvas._kookitJustExitedText === true;
+      canvas._kookitJustExitedText = false;
+      // 点中已有对象时交给 fabric 默认的选中/双击编辑流程
+      const target = canvas.findTarget(o.e);
+      if (target) return;
+      // 本次 mousedown 已触发上一个 IText 退出编辑：视为"结束输入"，不新建
+      if (justExited) return;
+      // 兜底：另一种 fabric 时序下 exitEditing 尚未发生，手动退出并清标志
+      const active = canvas.getActiveObject();
+      if (active && (active as any).isEditing) {
+        (active as any).exitEditing();
+        canvas._kookitJustExitedText = false;
+        return;
+      }
+      const pointer = canvas.getPointer(o.e);
+      const fabricLib = window.fabric;
+      if (!fabricLib || !fabricLib.IText) return;
+      const text = new fabricLib.IText("", {
+        left: pointer.x,
+        top: pointer.y,
+        fontSize: this.textSize,
+        fontFamily: this.textFont,
+        fill: this.textColor,
+        editable: true,
+        selectable: true,
+      });
+      // canvas.add 触发 object:added，已自动入历史栈并 trigger annotation-changed
+      canvas.add(text);
+      canvas.setActiveObject(text);
+      text.enterEditing();
+      text.hiddenTextarea?.focus();
+      // hiddenTextarea 在 iframe 内，主 document 抢焦点会导致键盘输入不进；
+      // focus 后若焦点没落到 textarea，再切到子 window 重 focus 一次
+      const subWin =
+        canvas.getElement && canvas.getElement().ownerDocument
+          ? canvas.getElement().ownerDocument.defaultView
+          : null;
+      if (subWin && document.activeElement !== text.hiddenTextarea) {
+        try {
+          subWin.focus();
+        } catch (e) {}
+        text.hiddenTextarea?.focus();
+      }
+      this.attachITextListeners(canvas, text);
+    });
+  }
+  attachITextListeners(canvas: any, text: any) {
+    if (!canvas || !text || text._kookitListenersAttached) return;
+    text._kookitListenersAttached = true;
+    // 输入过程与退出编辑时重算尺寸并刷新，确保文字框随内容自适应而非固定尺寸
+    const finalizeText = () => {
+      try {
+        text.setCoords();
+      } catch (e) {}
+      canvas.requestRenderAll();
+    };
+    text.on("text:changed", finalizeText);
+    // 退出编辑时置标志，使紧随其后的 mouse:down 跳过新建，仅完成输入
+    text.on("editing:exited", () => {
+      canvas._kookitJustExitedText = true;
+      finalizeText();
+    });
+  }
+  toRgba(color: string, alpha: number) {
+    if (typeof color !== "string" || !color) {
+      return `rgba(255,255,0,${alpha})`;
+    }
+    const trim = color.trim();
+    const rgbaMatch = trim.match(
+      /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/i
+    );
+    if (rgbaMatch) {
+      const r = Math.round(parseFloat(rgbaMatch[1]));
+      const g = Math.round(parseFloat(rgbaMatch[2]));
+      const b = Math.round(parseFloat(rgbaMatch[3]));
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+    const hexMatch = trim.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (hexMatch) {
+      let hex = hexMatch[1];
+      if (hex.length === 3) {
+        hex = hex
+          .split("")
+          .map((c) => c + c)
+          .join("");
+      }
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+    return `rgba(255,255,0,${alpha})`;
   }
   pushFabricHistory(chapterDocIndex: number, obj: any) {
     if (!obj) return;
@@ -1323,6 +1717,9 @@ class PdfRender extends GeneralRender {
         return;
       }
       if (e.key === "Backspace" || e.key === "Delete") {
+        // IText 处于编辑态时，删除键应删字符而非整框，交还给 IText 自身处理
+        const activeObj = canvas.getActiveObject();
+        if (activeObj && (activeObj as any).isEditing) return;
         const active = canvas.getActiveObjects();
         if (active && active.length > 0) {
           e.preventDefault();
@@ -1357,17 +1754,85 @@ class PdfRender extends GeneralRender {
   setBrushColor(color: string) {
     this.brushColor = color;
     this.fabricCanvasMap.forEach((canvas: any) => {
-      if (canvas.freeDrawingBrush) {
-        canvas.freeDrawingBrush.color = color;
-      }
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setHighlighterColor(color: string) {
+    this.highlighterColor = color;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setHighlighterOpacity(opacity: number) {
+    this.highlighterOpacity = opacity;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setAnnotationStyle(style: string) {
+    this.annotationStyle = style;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
     });
   }
   setBrushWidth(width: number) {
     this.brushWidth = width;
     this.fabricCanvasMap.forEach((canvas: any) => {
-      if (canvas.freeDrawingBrush) {
-        canvas.freeDrawingBrush.width = width;
-      }
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setHighlighterWidth(width: number) {
+    this.highlighterWidth = width;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setShapeType(shapeType: string) {
+    this.shapeType = shapeType;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setShapeColor(color: string) {
+    this.shapeColor = color;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setShapeWidth(width: number) {
+    this.shapeWidth = width;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setTextSize(size: number) {
+    this.textSize = size;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setTextFont(font: string) {
+    this.textFont = font;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
+    });
+  }
+  setTextColor(color: string) {
+    this.textColor = color;
+    this.fabricCanvasMap.forEach((canvas: any) => {
+      this.applyFabricBrush(canvas);
+      canvas.requestRenderAll();
     });
   }
   setIsDrawing(isDrawing: string) {
@@ -1386,7 +1851,7 @@ class PdfRender extends GeneralRender {
     data._canvasHeight = canvas.getHeight();
     return data;
   }
-  async handleUnloadPDFChapter(chapterDocIndex: number, doc: Document) {
+  async handleUnloadPDFChapter(chapterDocIndex: number) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
     }
@@ -1427,20 +1892,20 @@ class PdfRender extends GeneralRender {
     this.fabricHistoryLock.delete(chapterDocIndex);
     subDoc.body.innerHTML = "";
   }
-  async renderPdfPage(chapterDocIndex: number, doc: Document) {
+  async renderPdfPage(chapterDocIndex: number) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
     } else if (chapterDocIndex > 3) {
-      await this.handleUnloadPDFChapter(chapterDocIndex - 4, doc);
+      await this.handleUnloadPDFChapter(chapterDocIndex - 4);
     }
-    await this.handleRenderPDFChapter(chapterDocIndex, doc);
-    this.handleRenderPDFChapter(chapterDocIndex + 1, doc);
+    await this.handleRenderPDFChapter(chapterDocIndex);
+    this.handleRenderPDFChapter(chapterDocIndex + 1);
     if (this.platform === "ios") {
       //ios 性能太差，先不预渲染后续章节了
       return;
     }
-    this.handleRenderPDFChapter(chapterDocIndex + 2, doc);
-    this.handleRenderPDFChapter(chapterDocIndex + 3, doc);
+    this.handleRenderPDFChapter(chapterDocIndex + 2);
+    this.handleRenderPDFChapter(chapterDocIndex + 3);
     // 预渲染会把 fabric.document 切到后续页，恢复为当前页 iframe，
     // 保证用户在当前页绘制时 fabric 的 mousemove/mouseup 监听器挂在正确 document 上
     this.activateFabricDocument(chapterDocIndex);
@@ -1460,7 +1925,6 @@ class PdfRender extends GeneralRender {
     if (this.pdfScale && this.pdfScale > 0) {
       return this.pdfScale;
     }
-
     let doc = this.getDocument();
     if (this.readerMode === "scroll") {
       doc = this.getSubDocument(this.templateChapterDocIndex);

@@ -1,4 +1,3 @@
-declare var window: any;
 class StyleHelper {
   // get default css for iframe
   static getDefaultCss(ConfigService: any, bookKey: string = "") {
@@ -42,6 +41,16 @@ class StyleHelper {
         "display:inline;" +
         "vertical-align:baseline;" +
         "}"
+    );
+    // Hyphenation breakpoint marker: empty span, SHY rendered via ::after
+    // so no extra character enters the DOM text — rangy offsets stay stable.
+    cssRules.push(
+      ".kookit-hyphen{display:inline;line-height:inherit;}" +
+        ".kookit-hyphen::after{content:'\\00AD';}"
+    );
+    // Highlight rule uses inline styles set directly on each span
+    cssRules.push(
+      ".kookit-text-rule-highlight{" + "line-height:inherit !important;" + "}"
     );
     cssRules.push(
       ".kookit-text-rule-replace::after{" +
@@ -124,16 +133,16 @@ class StyleHelper {
 
     // Table styles — force tables to fit within the reader width
     cssRules.push(
-      "table{width:100% !important;max-width:100% !important;table-layout:fixed !important;box-sizing:border-box;border-collapse:collapse;margin:20px 0;line-height:1.6;border:1px solid #ddd;}"
+      "table{width:100% !important;max-width:100% !important;table-layout:fixed !important;box-sizing:border-box;border-collapse:collapse;margin:20px 0;line-height:1.6;margin-left:0 !important;margin-right:0 !important;}"
     );
     cssRules.push(
-      "td,th{word-break:break-word;overflow-wrap:anywhere;max-width:0;min-width:0;overflow:hidden;box-sizing:border-box;}"
+      "td,th{word-break:break-word;overflow-wrap:anywhere;overflow:hidden;box-sizing:border-box;}"
     );
     cssRules.push(
       "thead th{font-weight:bold;padding:14px 12px;text-align:left;white-space:normal;border-bottom:2px solid #ccc;background-color:rgba(0,0,0,0.05);}"
     );
     cssRules.push(
-      "td,th{padding:12px 14px;vertical-align:top;text-align:left;border:2px solid #e0e0e0;}"
+      "td,th{padding:12px 14px;vertical-align:top;text-align:left;}"
     );
 
     // Ruby text font size
@@ -327,15 +336,11 @@ class StyleHelper {
       cssRules.push("text-decoration: underline !important");
     }
 
-    cssRules.push("padding-top: 0 !important");
-    cssRules.push("padding-bottom: 1em !important");
-    cssRules.push("margin-top: 0 !important");
-    cssRules.push("margin-bottom: 0 !important");
-
     // Padding bottom - has default value of 0
     const paraSpacing = ConfigService.getReaderConfig("paraSpacing");
-    if (paraSpacing !== undefined && paraSpacing !== null) {
-      cssRules.push(`padding-bottom: ${paraSpacing}px !important`);
+    if (paraSpacing) {
+      cssRules.push(`margin-bottom: ${paraSpacing}px !important`);
+      cssRules.push(`margin-top: ${paraSpacing}px !important`);
     }
 
     // Fixed styles that are always applied

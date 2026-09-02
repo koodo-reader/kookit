@@ -1,8 +1,12 @@
+import { buildHighlightStyleForType } from "./common";
+
 export interface TextRule {
   id: string;
-  type: "replace" | "delete";
+  type: "replace" | "delete" | "highlight";
   pattern: string;
   replacement?: string;
+  highlightStyle?: string;
+  highlightColor?: string;
   matchType: "regex" | "plain";
   scope: "all" | "book";
   bookKey?: string;
@@ -20,6 +24,7 @@ const REJECTED_CLASSES = [
   "kookit-word-tooltip",
   "kookit-text-rule-replace",
   "kookit-text-rule-delete",
+  "kookit-text-rule-highlight",
   "kookit-translation-host",
 ];
 
@@ -53,7 +58,7 @@ const expandReplacement = (
 
 export const clearTextRules = (doc: Document) => {
   const spans = doc.querySelectorAll(
-    ".kookit-text-rule-replace, .kookit-text-rule-delete"
+    ".kookit-text-rule-replace, .kookit-text-rule-delete, .kookit-text-rule-highlight"
   );
   for (let i = 0; i < spans.length; i++) {
     const span = spans[i];
@@ -110,8 +115,16 @@ const wrapMatchesInTextNode = (
           ? expandReplacement(rule.replacement || "", match)
           : rule.replacement || "";
       span.setAttribute("data-kookit-replacement", replacement);
-    } else {
+    } else if (rule.type === "delete") {
       span.className = "kookit-text-rule-delete";
+    } else if (rule.type === "highlight") {
+      span.className = "kookit-text-rule-highlight";
+      // Use buildHighlightStyleForType for consistent styling
+      if (rule.highlightStyle && rule.highlightColor) {
+        const colorCode = `${rule.highlightStyle}-${rule.highlightColor}`;
+        const inlineStyle = buildHighlightStyleForType(colorCode, false, false);
+        span.setAttribute("style", inlineStyle);
+      }
     }
     // Keep original text as the only text node so rangy offsets stay stable
     span.appendChild(doc.createTextNode(matchedText));
@@ -136,10 +149,7 @@ const applyRule = (doc: Document, rule: TextRule) => {
   const regex =
     rule.matchType === "regex"
       ? new RegExp(rule.pattern, "g")
-      : new RegExp(
-          rule.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-          "g"
-        );
+      : new RegExp(rule.pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
 
   for (let i = 0; i < elements.length; i++) {
     const textNodes = collectTextNodes(doc, elements[i] as Element);

@@ -60,21 +60,42 @@ const render = async (
   isKeepPDFBackground
 ) => {
   try {
-    let devicePixelRatio =
-      window.devicePixelRatio * (isMobile === "yes" ? (1 / zoom) * 1.5 : 1);
+    let pixelRatio =
+      window.platform === "ios" ? 1 : window.visualViewport?.scale || 1;
+    let devicePixelRatio = window.devicePixelRatio * pixelRatio;
+    if (window.platform === "ios") {
+      const basePixelRatio = devicePixelRatio;
+      const rawDpr = basePixelRatio;
+      // Cap DPR to avoid iOS WebContent OOM (max 3.1M pixels for mobile)
+      const MAX_RENDER_DPR = 2;
+      const MAX_CANVAS_PIXELS = 2048 * 1536;
+      const cappedDpr = Math.min(rawDpr, MAX_RENDER_DPR);
+      devicePixelRatio = cappedDpr;
+      const initialViewport = page.getViewport({
+        scale: zoom * devicePixelRatio,
+      });
+      const totalPixels = initialViewport.width * initialViewport.height;
+      // If canvas area exceeds budget, reduce dpr proportionally
+      if (totalPixels > MAX_CANVAS_PIXELS) {
+        devicePixelRatio =
+          devicePixelRatio * Math.sqrt(MAX_CANVAS_PIXELS / totalPixels);
+      }
+    }
+
     const scale = zoom * devicePixelRatio;
     let docLayer = doc.querySelector("#koodoPDFLayer");
     docLayer.style.visibility = "hidden";
+    // Scale layer back to 1x layout size (no device-pixel upsampling in DOM)
     docLayer.style.transform = `scale(${1 / devicePixelRatio})`;
     docLayer.style.transformOrigin = "top left";
     docLayer.style.setProperty("--scale-factor", scale);
     const viewport = page.getViewport({ scale });
+    docLayer.style.width = `${viewport.width}px`;
+    docLayer.style.height = `${viewport.height}px`;
 
     // the canvas must be in the `PDFDocument`'s `ownerDocument`
     // (`globalThis.document` by default); that's where the fonts are loaded
     const canvas = document.createElement("canvas");
-    docLayer.style.width = `${viewport.width}px`;
-    docLayer.style.height = `${viewport.height}px`;
     canvas.height = viewport.height;
     canvas.width = viewport.width;
     const canvasContext = canvas.getContext("2d");

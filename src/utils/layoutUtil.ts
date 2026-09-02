@@ -14,6 +14,25 @@ export const convertStyleNum = (value: number) => {
 export const convertComputedNum = (value: string) => {
   return parseFloat(value.substring(0, value.length - 2));
 };
+// 修复ios上的offsetTop和offsetLeft不准确的问题，使用getBoundingClientRect()来计算元素相对于容器的实际偏移量
+export const getActualOffsetLeft = (child: HTMLElement): number => {
+  if (child) {
+    const childRect = child.getBoundingClientRect();
+    return (
+      childRect.left - (child.offsetParent?.getBoundingClientRect().left || 0)
+    );
+  }
+  return 0;
+};
+export const getActualOffsetTop = (child: HTMLElement): number => {
+  if (child) {
+    const childRect = child.getBoundingClientRect();
+    return (
+      childRect.top - (child.offsetParent?.getBoundingClientRect().top || 0)
+    );
+  }
+  return 0;
+};
 export const handleIframeHeight = async (
   element: HTMLElement,
   readerMode: string,
@@ -739,7 +758,7 @@ export const handleLayout = (
   if (vertical) {
     let section = Math.floor(element.clientHeight / 12);
     let gap = section % 2 === 0 ? section : section - 1;
-    doc.body.setAttribute(
+    doc.documentElement.setAttribute(
       "style",
       `writing-mode: vertical-rl; text-orientation: mixed; height: ${
         element.clientHeight + "px"
@@ -747,17 +766,25 @@ export const handleLayout = (
         (element.clientHeight - gap) / scale
       }px;`
     );
+    doc.body.setAttribute(
+      "style",
+      `margin: 0px !important; padding: 0px !important;`
+    );
   } else {
     let section = Math.floor(element.clientWidth / 12);
     let gap = section % 2 === 0 ? section : section - 1;
     //ios 特殊处理否则平滑翻页有问题
-    doc.body.setAttribute(
+    doc.documentElement.setAttribute(
       "style",
       `width: ${
         element.clientWidth + "px"
       };height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action:none; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
         (element.clientWidth - gap) / scale
       }px;`
+    );
+    doc.body.setAttribute(
+      "style",
+      `margin: 0px !important; padding: 0px !important;`
     );
   }
 };
@@ -789,16 +816,20 @@ export function getSelectedElement(doc: Document) {
   return null;
 }
 /**
- * 向文档文本节点注入软连字符（U+00AD），解决 Electron 无 Chromium 连字词典时
+ * 向文档注入连字断点标记，解决 Electron 无 Chromium 连字词典时
  * `hyphens: auto` 静默失效的问题。CSS 规范保证：即使 hyphens:auto 无词典，
- * 浏览器仍会在 \u00AD 处断行并插入可见连字符。
+ * 浏览器仍会在 ­ 处断行并插入可见连字符。
+ *
+ * 实现方式：在断点位置用 splitText 切分文本节点，并插入不含文本的空
+ * <span class="kookit-hyphen">，通过 CSS ::after 生成 U+00AD 软连字符。
+ * 不改动任何文本节点的字符内容，也不引入额外文本节点，故 rangy 基于
+ * 字符偏移的选区计算不会偏移。
  *
  * 调用时机：章节内容渲染完成后，在 Electron 环境中调用。
  * @param doc - iframe 的 contentDocument
  */
 export const applyHyphenation = (doc: Document): void => {
   if (!doc || !doc.body) return;
-  const SHY = "\u00AD";
   const SKIP_TAGS = new Set([
     "CODE",
     "PRE",
@@ -809,27 +840,30 @@ export const applyHyphenation = (doc: Document): void => {
     "A",
   ]);
 
-  // 向 9+ 字符的单词中按固定步长插入软连字符
-  // 保证首尾各保留 3 个字符不断，每 6 字符一个断点
-  function addShy(text: string): string {
-    return text.replace(/[A-Za-z\u00C0-\u024F]{9,}/g, (word) => {
-      const len = word.length;
-      let result = "";
-      for (let i = 0; i < len; i++) {
-        result += word[i];
-        if (i >= 2 && len - i - 1 >= 3 && (i + 1) % 6 === 0) {
-          result += SHY;
-        }
+  // 计算单词中应插入断点的位置索引（首尾各保留 3 字符，每 6 字符一个断点）
+  function getBreakpoints(word: string): number[] {
+    const len = word.length;
+    const points: number[] = [];
+    for (let i = 2; i < len; i++) {
+      if (len - i - 1 >= 3 && (i + 1) % 6 === 0) {
+        points.push(i + 1);
       }
-      return result;
-    });
+    }
+    return points;
   }
+
+  // 匹配 9+ 字符的拉丁/扩展字母单词
+  const WORD_RE = /[A-Za-zÀ-ɏ]{9,}/g;
 
   const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, {
     acceptNode(node: Node) {
       const parent = (node as Text).parentElement;
       if (!parent) return NodeFilter.FILTER_REJECT;
       if (SKIP_TAGS.has(parent.tagName?.toUpperCase())) {
+        return NodeFilter.FILTER_REJECT;
+      }
+      // 跳过已注入的断点标记，避免重复处理
+      if (parent.classList?.contains("kookit-hyphen")) {
         return NodeFilter.FILTER_REJECT;
       }
       return NodeFilter.FILTER_ACCEPT;
@@ -843,10 +877,48 @@ export const applyHyphenation = (doc: Document): void => {
   }
 
   for (const textNode of nodes) {
-    const original = textNode.textContent || "";
-    const updated = addShy(original);
-    if (updated !== original) {
-      textNode.textContent = updated;
+    const text = textNode.textContent || "";
+    WORD_RE.lastIndex = 0;
+    if (!WORD_RE.test(text)) continue;
+
+    WORD_RE.lastIndex = 0;
+    type Match = { start: number; end: number; breaks: number[] };
+    const matches: Match[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = WORD_RE.exec(text)) !== null) {
+      const breaks = getBreakpoints(m[0]);
+      if (breaks.length) {
+        matches.push({
+          start: m.index,
+          end: m.index + m[0].length,
+          breaks,
+        });
+      }
+    }
+    if (!matches.length) continue;
+
+    const parent = textNode.parentNode;
+    if (!parent) continue;
+
+    // 汇总所有断点在原始文本中的绝对偏移，升序处理
+    const allBreaks: number[] = [];
+    for (const mt of matches) {
+      for (const b of mt.breaks) allBreaks.push(mt.start + b);
+    }
+    allBreaks.sort((a, b) => a - b);
+
+    // 在每个断点位置用 splitText 切分，并在切分点插入空 span 标记。
+    // 不改动任何文本节点的字符内容，span 也不含文本节点，
+    // 因此 DOM 文本字符总数不变，rangy 字符偏移不受影响。
+    let current: Text = textNode;
+    for (const absOffset of allBreaks) {
+      const curLen = current.textContent?.length || 0;
+      if (absOffset <= 0 || absOffset >= curLen) continue;
+      const after = current.splitText(absOffset);
+      const marker = doc.createElement("span");
+      marker.className = "kookit-hyphen";
+      parent.insertBefore(marker, after);
+      current = after;
     }
   }
 };

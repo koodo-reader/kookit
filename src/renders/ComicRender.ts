@@ -57,13 +57,14 @@ class ComicRender extends GeneralRender {
         lastModified: new Date().getTime(),
         type: blob.type,
       });
-      if (this.format === "CBZ") {
+      const archiveType = this.detectArchiveType();
+      if (archiveType === "zip" || archiveType === "cbz") {
         const loader: any = await this.makeZipLoader(file);
         this.book = makeComicBook(loader, file, this.readerMode);
-      } else if (this.format === "CBT") {
+      } else if (archiveType === "tar" || archiveType === "cbt") {
         const loader: any = await this.makeTarLoader();
         this.book = makeComicBook(loader, file, this.readerMode);
-      } else if (this.format === "CBR") {
+      } else if (archiveType === "rar" || archiveType === "cbr") {
         this.rpc = await window.RPC.new("./lib/libunrar/worker.js", {
           loaded: function () {
             console.info("loaded");
@@ -75,7 +76,7 @@ class ComicRender extends GeneralRender {
         await new Promise((r) => setTimeout(r, 200));
         const loader: any = await this.makeRarLoader();
         this.book = makeComicBook(loader, file, this.readerMode);
-      } else if (this.format === "CB7") {
+      } else if (archiveType === "7z" || archiveType === "cb7") {
         const loader: any = await this.make7zLoader();
         this.book = makeComicBook(loader, file, this.readerMode);
       }
@@ -83,6 +84,58 @@ class ComicRender extends GeneralRender {
       console.error(error);
       throw error;
     }
+  }
+  /**
+   * 通过文件魔数判断真实压缩格式，而非依赖文件扩展名。
+   * 很多漫画文件被改名（如实际是 zip 却命名为 .cbr），需从内容本身判定。
+   */
+  detectArchiveType() {
+    const bytes = new Uint8Array(this.comicBuffer);
+    if (bytes.length < 4) {
+      // 无法探测则回退到扩展名
+      return this.format.toLocaleLowerCase();
+    }
+    // ZIP: PK\x03\x04
+    if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
+      const sig = [bytes[2], bytes[3]];
+      // 空 zip、常规 zip
+      if (
+        (sig[0] === 0x03 && sig[1] === 0x04) ||
+        (sig[0] === 0x05 && sig[1] === 0x06) ||
+        (sig[0] === 0x07 && sig[1] === 0x08)
+      ) {
+        return "zip";
+      }
+    }
+    // RAR4: "Rar!\x1a\x07\x00"; RAR5: "Rar!\x1a\x07\x01\x00"
+    if (
+      bytes[0] === 0x52 &&
+      bytes[1] === 0x61 &&
+      bytes[2] === 0x72 &&
+      bytes[3] === 0x21
+    ) {
+      return "rar";
+    }
+    // 7z: "7z\xbc\xaf\x27\x1c"
+    if (
+      bytes[0] === 0x37 &&
+      bytes[1] === 0x7a &&
+      bytes[2] === 0xbc &&
+      bytes[3] === 0xaf
+    ) {
+      return "7z";
+    }
+    // tar: 传统 USTAR POSIX 头在偏移 257 处为 "ustar"。也检查其他 tar 变体。
+    if (
+      this.comicBuffer.byteLength >= 265 &&
+      new TextDecoder("utf8").decode(
+        new Uint8Array(this.comicBuffer, 257, 5)
+      ) === "ustar"
+    ) {
+      return "tar";
+    }
+    // 未知格式，回退到扩展名
+    return this.format.toLocaleLowerCase();
   }
   async preCache() {
     if (!this.book) {

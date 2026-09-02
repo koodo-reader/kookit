@@ -249,7 +249,7 @@ class BookHelper {
       window.rendition.on("rendered", async (chapterDocIndex: number) => {
         let position = { ...window.rendition.getPosition() };
         let progress = { ...(await window.rendition.getProgress()) };
-        if (config.format === "PDF" && config.platform === "android") {
+        if (config.format === "PDF" && chapterDocIndex) {
           position.chapterDocIndex = chapterDocIndex + "";
         }
         window.ReactNativeWebView.postMessage(
@@ -270,24 +270,23 @@ class BookHelper {
             progress,
           })
         );
-      }, 6000);
-      const throttledScrollText = throttle(async () => {
-        let position = { ...window.rendition.getPosition() };
-        let progress = { ...(await window.rendition.getProgress()) };
-        window.ReactNativeWebView.postMessage(
-          JSON.stringify({
-            event: "scroll-text",
-            bookLocation: position,
-            progress,
-          })
-        );
       }, 3000);
 
       window.rendition.on("page-changed", () => {
         throttledPageChanged();
       });
       window.rendition.on("scroll-text", async () => {
-        throttledScrollText();
+        setTimeout(async () => {
+          let position = { ...window.rendition.getPosition() };
+          let progress = { ...(await window.rendition.getProgress()) };
+          window.ReactNativeWebView.postMessage(
+            JSON.stringify({
+              event: "scroll-text",
+              bookLocation: position,
+              progress,
+            })
+          );
+        }, 1000);
       });
       window.ReactNativeWebView.postMessage(
         JSON.stringify({
@@ -300,6 +299,7 @@ class BookHelper {
         JSON.stringify({
           event: "error",
           message: "Parse book failed",
+          error: String(error) ? String(error) : "Unknown error",
         })
       );
     }
@@ -404,6 +404,7 @@ class BookHelper {
         JSON.stringify({
           event: "error",
           message: "Parse book failed",
+          error: String(error) ? String(error) : "Unknown error",
         })
       );
     }
