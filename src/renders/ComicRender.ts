@@ -7,6 +7,7 @@ import GeneralRender from "./GeneralRender";
 import untar from "js-untar";
 import { getCache } from "../libs/cache.js";
 import JSZip from "jszip";
+import { isElectron } from "../utils/common";
 declare var window: any;
 
 class ComicRender extends GeneralRender {
@@ -18,6 +19,15 @@ class ComicRender extends GeneralRender {
   chapterDocList: ChapterDoc[];
   element: any;
   rpc: any;
+  getTarBuffer: (entryPath: string, filePath: string) => Promise<ArrayBuffer>;
+  getZipBuffer: (entryPath: string, filePath: string) => Promise<ArrayBuffer>;
+  getTarEntries: (
+    filePath: string
+  ) => Promise<{ entryPath: string; size: number; fileName: string }[]>;
+  getZipEntries: (
+    filePath: string
+  ) => Promise<{ entryPath: string; size: number; fileName: string }[]>;
+  filePath: string;
   constructor(comicBuffer: ArrayBuffer, config: any) {
     super(config);
     this.comicBuffer = comicBuffer;
@@ -28,6 +38,12 @@ class ComicRender extends GeneralRender {
     this.book = "";
     this.element = "";
     this.rpc;
+    this.getTarBuffer = config.getTarBuffer;
+    this.getZipBuffer = config.getZipBuffer;
+    this.getTarEntries = config.getTarEntries;
+    this.getZipEntries = config.getZipEntries;
+    this.filePath = config.filePath;
+    console.log("ComicRender constructor", config);
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -52,6 +68,17 @@ class ComicRender extends GeneralRender {
   }
   async parse() {
     try {
+      if (isElectron()) {
+        if (this.format === "CBZ") {
+          const loader: any = await this.makeZipStreamLoader(this.filePath);
+          this.book = makeComicBook(loader, {}, this.readerMode);
+          return;
+        } else if (this.format === "CBT") {
+          const loader: any = await this.makeTarStreamLoader(this.filePath);
+          this.book = makeComicBook(loader, {}, this.readerMode);
+          return;
+        }
+      }
       let blob = new Blob([this.comicBuffer]);
       let file = new File([blob], "book." + this.format.toLocaleLowerCase(), {
         lastModified: new Date().getTime(),
@@ -142,6 +169,70 @@ class ComicRender extends GeneralRender {
       await this.parse();
     }
     return await getCache(this.book);
+  }
+  async makeZipStreamLoader(filePath: string) {
+    const entries = await this.getZipEntries(filePath);
+    const loadText = async (name) => {
+      let entry = entries.find((item) => item.fileName === name);
+      if (entry) {
+        return entry.fileName;
+      }
+      return "";
+    };
+    const loadBlob = async (name) => {
+      let entry = entries.find((item) => item.fileName === name);
+      if (entry) {
+        let buffer = await this.getZipBuffer(entry.entryPath, filePath);
+        return new Blob([buffer]);
+      }
+      return new Blob([new ArrayBuffer(0)]);
+    };
+    const getSize = (name) => {
+      let entry: any = entries.find((item) => item.fileName === name);
+      if (entry) {
+        return entry.size || 1;
+      }
+    };
+    return {
+      entries: entries.map((item) => {
+        return { filename: item.fileName };
+      }),
+      loadText,
+      loadBlob,
+      getSize,
+    };
+  }
+  async makeTarStreamLoader(filePath: string) {
+    const entries = await this.getTarEntries(filePath);
+    const loadText = async (name) => {
+      let entry = entries.find((item) => item.fileName === name);
+      if (entry) {
+        return entry.fileName;
+      }
+      return "";
+    };
+    const loadBlob = async (name) => {
+      let entry = entries.find((item) => item.fileName === name);
+      if (entry) {
+        let buffer = await this.getTarBuffer(entry.entryPath, filePath);
+        return new Blob([buffer]);
+      }
+      return new Blob([new ArrayBuffer(0)]);
+    };
+    const getSize = (name) => {
+      let entry: any = entries.find((item) => item.fileName === name);
+      if (entry) {
+        return entry.size || 1;
+      }
+    };
+    return {
+      entries: entries.map((item) => {
+        return { filename: item.fileName };
+      }),
+      loadText,
+      loadBlob,
+      getSize,
+    };
   }
   async makeZipLoader(file) {
     let zip = await JSZip.loadAsync(file);
