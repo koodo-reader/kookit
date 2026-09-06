@@ -755,10 +755,11 @@ class GeneralRender extends EventEmitter {
       overlay = doc.createElement("div");
       overlay.id = "kookit-paragraph-overlay";
       overlay.style.cssText =
-        "position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:2147483000;pointer-events:none;";
+        "position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:2147483000;pointer-events:none;text-align:center;transition:background-color 0.3s ease;";
       let content = doc.createElement("div");
       content.id = "kookit-paragraph-overlay-content";
-      content.style.cssText = "max-width:86%;max-height:90%;overflow:hidden;";
+      content.style.cssText =
+        "max-width:50%;max-height:90%;overflow:hidden;text-align:center;transition:background-color 0.3s ease;";
       overlay.appendChild(content);
       doc.body.appendChild(overlay);
     }
@@ -797,7 +798,9 @@ class GeneralRender extends EventEmitter {
       } else {
         await this.prev();
       }
-      await new Promise((r) => setTimeout(r, this.readerMode === "scroll" ? 400 : 150));
+      await new Promise((r) =>
+        setTimeout(r, this.readerMode === "scroll" ? 400 : 150)
+      );
     } finally {
       this.paragraphSkipFlip = false;
     }
