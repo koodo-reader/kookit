@@ -86,6 +86,9 @@ class GeneralRender extends EventEmitter {
   isMobile: string | undefined;
   isBionic: string = "no";
   isParagraphMode: string = "no";
+  isReadingRuler: string = "no";
+  readingRulerLineHeight: number = 3;
+  readingRulerBackgroundOpacity: number = 0.5;
   platform: string = "web";
   isAllowScript: string = "no";
   touchEventSet: any;
@@ -114,6 +117,9 @@ class GeneralRender extends EventEmitter {
     backgroundColor?: string;
     isBionic?: string;
     isParagraphMode?: string;
+    isReadingRuler?: string;
+    readingRulerLineHeight?: number;
+    readingRulerBackgroundOpacity?: number;
     textOrientation?: string;
     isAllowScript?: string;
     fullTranslationMode?: string;
@@ -146,6 +152,10 @@ class GeneralRender extends EventEmitter {
     this.tempLocation = {};
     this.isBionic = config.isBionic || "no";
     this.isParagraphMode = config.isParagraphMode || "no";
+    this.isReadingRuler = config.isReadingRuler || "no";
+    this.readingRulerLineHeight = config.readingRulerLineHeight || 3;
+    this.readingRulerBackgroundOpacity =
+      config.readingRulerBackgroundOpacity || 0.5;
     this.platform = config.platform || "web";
     window.platform = this.platform;
     window.isBionic = this.isBionic;
