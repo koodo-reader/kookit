@@ -85,6 +85,7 @@ class GeneralRender extends EventEmitter {
   mouseMoveHandler: (event: TouchEvent) => void;
   isMobile: string | undefined;
   isBionic: string = "no";
+  isParagraphMode: string = "no";
   platform: string = "web";
   isAllowScript: string = "no";
   touchEventSet: any;
@@ -98,6 +99,8 @@ class GeneralRender extends EventEmitter {
     }
   >;
   fullTranslationMode: string = "no";
+  paragraphIndex: number = 0;
+  paragraphSkipFlip: boolean = false;
 
   constructor(config: {
     readerMode: string;
@@ -110,6 +113,7 @@ class GeneralRender extends EventEmitter {
     isMobile?: string;
     backgroundColor?: string;
     isBionic?: string;
+    isParagraphMode?: string;
     textOrientation?: string;
     isAllowScript?: string;
     fullTranslationMode?: string;
@@ -141,6 +145,7 @@ class GeneralRender extends EventEmitter {
     this.element = "";
     this.tempLocation = {};
     this.isBionic = config.isBionic || "no";
+    this.isParagraphMode = config.isParagraphMode || "no";
     this.platform = config.platform || "web";
     window.platform = this.platform;
     window.isBionic = this.isBionic;
@@ -162,6 +167,14 @@ class GeneralRender extends EventEmitter {
         : config.isAllowScript || "no";
     this.flipToNextPage = () => {};
     this.flipToPrevPage = () => {};
+    this.paragraphIndex = 0;
+    this.paragraphSkipFlip = false;
+    this.on("rendered", () => {
+      if (this.isParagraphMode === "yes" && !this.paragraphSkipFlip) {
+        this.paragraphIndex = 0;
+        this.updateParagraphOverlay();
+      }
+    });
     this.mouseDownHandler = () => {};
     this.mouseUpHandler = () => {};
     this.mouseMoveHandler = (event: TouchEvent) => {};
@@ -666,11 +679,141 @@ class GeneralRender extends EventEmitter {
   removeContent() {
     this.element.innerHTML = "";
   }
+  getParagraphNodes(): HTMLElement[] {
+    let doc = this.getDocument();
+    if (!doc || !doc.body || !this.element) return [];
+    const currentDoc = doc;
+    let nodeList = getBlockElement(doc.body).filter(
+      (item) => !isParentBlock(item)
+    );
+    return nodeList.filter(
+      (el) =>
+        (el.textContent || "").trim() &&
+        this.isParagraphInViewport(currentDoc, el as HTMLElement)
+    );
+  }
+  isParagraphInViewport(doc: Document, el: HTMLElement): boolean {
+    const view: any = doc.defaultView || window;
+    const style = view.getComputedStyle(el);
+    if (
+      style.display === "none" ||
+      style.visibility === "hidden" ||
+      style.opacity === "0"
+    ) {
+      return false;
+    }
+    const rect = el.getBoundingClientRect();
+    if (!(rect.width > 0 && rect.height > 0)) return false;
+    if (this.readerMode === "scroll") {
+      return (
+        rect.bottom > this.element.scrollTop &&
+        rect.top < this.element.scrollTop + this.element.clientHeight
+      );
+    }
+    let iframe = this.getIframe();
+    if (!iframe) return false;
+    return (
+      rect.bottom > 0 &&
+      rect.top < iframe.clientHeight &&
+      rect.right > 0 &&
+      rect.left < iframe.clientWidth
+    );
+  }
+  getParagraphOverlayBackground(doc: Document): string {
+    const view: any = doc.defaultView || window;
+    let color = view.getComputedStyle(doc.body).backgroundColor;
+    if (
+      !color ||
+      color === "transparent" ||
+      color.replace(/\s/g, "") === "rgba(0,0,0,0)"
+    ) {
+      color = this.backgroundColor;
+    }
+    return color || "#ffffff";
+  }
+  updateParagraphOverlay(paragraphs?: HTMLElement[]) {
+    let doc = this.getDocument();
+    if (!doc || !doc.body) return;
+    let overlay = doc.getElementById("kookit-paragraph-overlay");
+    if (this.isParagraphMode !== "yes") {
+      if (overlay) {
+        overlay.parentNode?.removeChild(overlay);
+      }
+      return;
+    }
+    let list = paragraphs || this.getParagraphNodes();
+    if (list.length === 0) {
+      if (overlay) {
+        overlay.parentNode?.removeChild(overlay);
+      }
+      return;
+    }
+    if (this.paragraphIndex >= list.length) {
+      this.paragraphIndex = 0;
+    }
+    if (!overlay) {
+      overlay = doc.createElement("div");
+      overlay.id = "kookit-paragraph-overlay";
+      overlay.style.cssText =
+        "position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:2147483000;pointer-events:none;";
+      let content = doc.createElement("div");
+      content.id = "kookit-paragraph-overlay-content";
+      content.style.cssText = "max-width:86%;max-height:90%;overflow:hidden;";
+      overlay.appendChild(content);
+      doc.body.appendChild(overlay);
+    }
+    overlay.style.backgroundColor = this.getParagraphOverlayBackground(doc);
+    let content = doc.getElementById("kookit-paragraph-overlay-content");
+    if (!content) return;
+    content.innerHTML = "";
+    content.appendChild(list[this.paragraphIndex].cloneNode(true));
+  }
+  async handleParagraphChange(direction: number): Promise<boolean> {
+    let list = this.getParagraphNodes();
+    if (list.length === 0) return false;
+    if (direction > 0) {
+      if (this.paragraphIndex < list.length - 1) {
+        this.paragraphIndex++;
+      } else {
+        await this.flipParagraphPage(1);
+        return true;
+      }
+    } else {
+      if (this.paragraphIndex > 0) {
+        this.paragraphIndex--;
+      } else {
+        await this.flipParagraphPage(-1);
+        return true;
+      }
+    }
+    this.updateParagraphOverlay(list);
+    return true;
+  }
+  async flipParagraphPage(direction: number) {
+    this.paragraphSkipFlip = true;
+    try {
+      if (direction > 0) {
+        await this.next();
+      } else {
+        await this.prev();
+      }
+      await new Promise((r) => setTimeout(r, this.readerMode === "scroll" ? 400 : 150));
+    } finally {
+      this.paragraphSkipFlip = false;
+    }
+    let list = this.getParagraphNodes();
+    this.paragraphIndex = direction > 0 ? 0 : Math.max(0, list.length - 1);
+    this.updateParagraphOverlay(list);
+  }
   async prev() {
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) {
       return;
+    }
+    if (this.isParagraphMode === "yes" && !this.paragraphSkipFlip) {
+      const handled = await this.handleParagraphChange(-1);
+      if (handled) return;
     }
     if (
       (this.readerMode === "scroll" &&
@@ -729,6 +872,10 @@ class GeneralRender extends EventEmitter {
     let iframe = this.getIframe();
     if (!doc || !iframe) {
       return;
+    }
+    if (this.isParagraphMode === "yes" && !this.paragraphSkipFlip) {
+      const handled = await this.handleParagraphChange(1);
+      if (handled) return;
     }
     if (
       (this.isVertical() &&
