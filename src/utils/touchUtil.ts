@@ -7,6 +7,11 @@ let isDragging = false;
 let lastPinchZoomTime = 0;
 let pinchZoomed = false;
 
+// PDF 与漫画（CB 系列）共用"外层 iframe 承载滚动"的多 iframe 分页结构
+export const isPaginatedFormat = (format: string) => {
+  return format === "PDF" || (format && format.startsWith("CB"));
+};
+
 // 双指缩放 PDF 结束后发送 pinch-zoom 消息，Android/iOS 共用
 export const onPinchZoomEnd = function (
   event: any,
@@ -45,7 +50,7 @@ export const slideAnimateTo = (
   gap: number
 ) => {
   let pageWidth = element.clientWidth + gap;
-  let tempDoc = format === "PDF" ? outerDoc : doc;
+  let tempDoc = isPaginatedFormat(format) ? outerDoc : doc;
 
   // Stop any ongoing touch-move dragging immediately so onTouchMove
   // no longer modifies scrollLeft while the animation is running.
@@ -390,7 +395,7 @@ export const addAndroidTouchEvent = (
       Math.abs(distX) >= swipeThreshold || Math.abs(distY) >= swipeThreshold;
     if (
       selectedText &&
-      (format !== "PDF" || (format === "PDF" && !isSwiping))
+      (!isPaginatedFormat(format) || !isSwiping)
     ) {
       window.ReactNativeWebView.postMessage(
         JSON.stringify({
@@ -505,7 +510,7 @@ export const addAndroidTouchEvent = (
 
     // Prevent default to stop browser scroll behavior
     event.preventDefault();
-    if (window.visualViewport.scale > 1 && format === "PDF") {
+    if (window.visualViewport.scale > 1 && isPaginatedFormat(format)) {
       event.preventDefault();
       return;
     }
@@ -544,7 +549,7 @@ export const addAndroidTouchEvent = (
     }
     // If we're in dragging mode, apply direct transform for better performance
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
-      let tempDoc = format === "PDF" ? outerDoc : doc;
+      let tempDoc = isPaginatedFormat(format) ? outerDoc : doc;
       // Calculate the delta since last move event
       const deltaX = touchCurrentX - lastTouchX;
 
@@ -972,7 +977,7 @@ export const addAppleTouchEvent = (
       let normalizedX = Math.min(Math.max(touchEndX, 0), width);
       let normalizedY = Math.min(Math.max(touchEndY, 0), height);
 
-      if (format === "PDF" && readerMode === "double") {
+      if (isPaginatedFormat(format) && readerMode === "double") {
         let target: any = event.target;
         let ownerDoc = target.ownerDocument;
         let targetIframe = ownerDoc?.defaultView?.frameElement;
@@ -1060,7 +1065,7 @@ export const addAppleTouchEvent = (
     if (!isDragging && Math.abs(event.touches[0].screenX - touchStartX) <= 10) {
       return;
     }
-    if (window.visualViewport.scale > 1 && format === "PDF") {
+    if (window.visualViewport.scale > 1 && isPaginatedFormat(format)) {
       return;
     }
     if (readerMode !== "scroll") {
@@ -1100,7 +1105,7 @@ export const addAppleTouchEvent = (
     // If we're in dragging mode, apply direct transform for better performance
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
       window.isSwiping = true;
-      let tempDoc = format === "PDF" ? outerDoc : doc;
+      let tempDoc = isPaginatedFormat(format) ? outerDoc : doc;
       // Calculate the delta since last move event
       const deltaX = touchCurrentX - lastTouchX;
 

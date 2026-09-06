@@ -44,9 +44,9 @@ GeneralRender (src/renders/GeneralRender.ts)  ← 1400+ 行基类
 2. `rendition.renderTo(element)` → 在 DOM 元素内创建 iframe，注入内容
 3. `GeneralRender.addTouchEvent(isAndroid, touchControlRule)` → 为所有 iframe 注册触摸事件
 
-### PDF 页面结构（关键）
+### PDF/漫画页面结构（关键）
 
-PDF 使用 CSS 多列布局，`outerDoc`（外层 WebView 文档）的 `body` 设置了 `column-width`，每列对应一个 PDF 页面：
+PDF 与漫画（CBZ/CBT/CBR/CB7）共用同一套多 iframe 分页结构：`outerDoc`（外层 WebView 文档）的 `body` 设置了 `column-width`，每列对应一个页面。漫画的 DOM/事件 id 也沿用 `pdf-container-N` / `pdf-iframe-N` 前缀以复用 pdfUtil 中的工具函数：
 
 ```
 outerDoc.body (CSS columns, overflow-x: hidden)
@@ -59,8 +59,10 @@ outerDoc.body (CSS columns, overflow-x: hidden)
 
 - 翻页 = 修改 `outerDoc.body.scrollLeft`（`handleScrollPDFPosition` in pdfUtil）
 - 每页内容渲染在独立 iframe 的 `contentDocument` 中
-- `GeneralRender.getAllDocuments()` 返回 `[outerDoc, iframe0.contentDocument, iframe1.contentDocument, ...]`
+- `GeneralRender.getAllDocuments()` 返回 `[outerDoc, iframe0.contentDocument, iframe1.contentDocument, ...]`（PDF 与 CB 系列格式）
 - `addAndroidTouchEvent` / `addAppleTouchEvent` 针对每个 iframe 的 contentDocument 分别调用
+- 懒加载：`renderComicPage` 只渲染当前页 + 预取后 3 页（iOS 仅 +1），卸载第 -4 页（revoke blob URL）
+- `touchUtil.isPaginatedFormat(format)`：`PDF || CB*`，用于触摸/滚动路径选择外层 doc
 
 ### 触摸事件系统（`src/utils/touchUtil.ts`）
 

@@ -1,38 +1,25 @@
-export const makeComicBook = (
-  { entries, loadBlob, getSize },
-  file,
-  readerMode
-) => {
+const getExt = (name) => {
+  const idx = name.lastIndexOf(".");
+  return idx > -1 ? name.slice(idx).toLowerCase() : "";
+};
+
+export const makeComicBook = ({ entries, loadBlob, getSize }, file) => {
   const cache = new Map();
   const urls = new Map();
-  const load = async (name, nameExtra) => {
+  const load = async (name) => {
     if (cache.has(name)) return cache.get(name);
-    if (nameExtra) {
-      const src = URL.createObjectURL(await loadBlob(name));
-      const srcExtra = URL.createObjectURL(await loadBlob(nameExtra));
-      const page = URL.createObjectURL(
-        new Blob(
-          [
-            `<div style="width:100%; height:100%"><img src="${src}"></div><div style="width:100%; height:100%"><img src="${srcExtra}"></div>`,
-          ],
-          { type: "text/html" }
-        )
-      );
-      urls.set(name, [src, page]);
-      cache.set(name, page);
-      return page;
-    } else {
-      const src = URL.createObjectURL(await loadBlob(name));
-      const page = URL.createObjectURL(
-        new Blob(
-          [`<div style="width:100%; height:100%"><img src="${src}"></div>`],
-          { type: "text/html" }
-        )
-      );
-      urls.set(name, [src, page]);
-      cache.set(name, page);
-      return page;
-    }
+    const src = URL.createObjectURL(await loadBlob(name));
+    const page = URL.createObjectURL(
+      new Blob(
+        [
+          `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;"><img src="${src}" style="max-width:100%; max-height:100%; object-fit:contain;"></div>`,
+        ],
+        { type: "text/html" }
+      )
+    );
+    urls.set(name, [src, page]);
+    cache.set(name, page);
+    return page;
   };
   const unload = (name) => {
     urls.get(name)?.forEach?.((url) => URL.revokeObjectURL(url));
@@ -66,36 +53,18 @@ export const makeComicBook = (
   const book = {};
   book.getCover = () => loadBlob(files[0]);
   book.metadata = { title: file.name };
-  book.sections = files
-    .map((name, index) => ({
-      id: name,
-      load: () => {
-        if (readerMode === "double") {
-          const nameExtra = files[index + 1];
-          return load(name, nameExtra);
-        } else {
-          return load(name);
-        }
-      },
-      unload: () => unload(name),
-      size: getSize(name),
-    }))
-    .filter((_, i) => {
-      if (readerMode === "double") {
-        return i % 2 === 0;
-      } else {
-        return true;
-      }
-    });
-  book.toc = files
-    .map((name) => ({ label: name, href: name }))
-    .filter((_, i) => {
-      if (readerMode === "double") {
-        return i % 2 === 0;
-      } else {
-        return true;
-      }
-    });
+  // 每张图片始终是一个独立 section，double 模式的两页合并由渲染层的
+  // CSS 双列布局完成，与 PdfRender 的分页模型保持一致
+  book.sections = files.map((name, index) => ({
+    id: name,
+    load: () => load(name),
+    unload: () => unload(name),
+    size: getSize(name),
+  }));
+  book.toc = files.map((name, index) => ({
+    label: name.split("/").pop() || name,
+    href: name,
+  }));
   book.rendition = { layout: "pre-paginated" };
   book.resolveHref = (href) => ({
     index: book.sections.findIndex((s) => s.id === href),

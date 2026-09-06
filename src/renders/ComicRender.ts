@@ -1,6 +1,6 @@
 import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
-import { createIframe, handleLayout } from "../utils/layoutUtil";
+import { createIframe } from "../utils/layoutUtil";
 import GeneralParser from "../utils/generalParser";
 import { makeComicBook } from "../libs/comic-book";
 import GeneralRender from "./GeneralRender";
@@ -8,6 +8,14 @@ import untar from "js-untar";
 import { getCache } from "../libs/cache.js";
 import JSZip from "jszip";
 import { isElectron } from "../utils/common";
+import {
+  createPDFIframe,
+  handleIOSScrollPage,
+  handlePDFLayout,
+  handleScrollPDFPosition,
+  isPDFScrolledIntoView,
+} from "../utils/pdfUtil.js";
+import { handleScrollPage } from "../utils/navigationUtil.js";
 declare var window: any;
 
 class ComicRender extends GeneralRender {
@@ -28,6 +36,7 @@ class ComicRender extends GeneralRender {
     filePath: string
   ) => Promise<{ entryPath: string; size: number; fileName: string }[]>;
   filePath: string;
+  scrollComicInterval: any = null;
   constructor(comicBuffer: ArrayBuffer, config: any) {
     super(config);
     this.comicBuffer = comicBuffer;
@@ -43,39 +52,155 @@ class ComicRender extends GeneralRender {
     this.getTarEntries = config.getTarEntries;
     this.getZipEntries = config.getZipEntries;
     this.filePath = config.filePath;
-    console.log("ComicRender constructor", config);
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
       this.element = element;
-      createIframe(element, this.isAllowScript);
       if (!this.book) {
         try {
           await this.parse();
         } catch (error) {
           console.error(error);
           reject(error);
+          return;
         }
       }
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
-      let doc = this.getDocument();
+      createIframe(element, this.isAllowScript);
+      let doc: any = this.getDocument();
       if (!doc) return;
-      handleLayout(element, this.readerMode, doc);
+      await this.createComicContainer(doc);
+      let scrollTimeout: any = null;
+      if (this.readerMode === "scroll") {
+        this.element.addEventListener("scroll", (e) => {
+          if (scrollTimeout) {
+            clearTimeout(scrollTimeout);
+          }
+          scrollTimeout = setTimeout(async () => {
+            await this.handleComicScrollEvent(doc);
+            await this.record();
+          }, 100);
+        });
+      } else {
+        doc.addEventListener("scroll", (e) => {
+          if (scrollTimeout) {
+            clearTimeout(scrollTimeout);
+          }
+          scrollTimeout = setTimeout(async () => {
+            await this.handleComicScrollEvent(doc);
+            await this.record();
+          }, 200);
+        });
+      }
+      handlePDFLayout(element, this.readerMode, doc);
       resolve();
     });
+  }
+  async createComicContainer(doc: Document) {
+    const fragment = doc.createDocumentFragment();
+    const aspectRatio = await this.getTemplateAspectRatio();
+    for (let index = 0; index < this.chapterDocList.length; index++) {
+      const iframeContainer = doc.createElement("div");
+      iframeContainer.style.position = "relative";
+      iframeContainer.style.width = "100%";
+      iframeContainer.id = "pdf-container-" + index;
+      iframeContainer.className = "pdf-container";
+      if (this.readerMode === "single") {
+        iframeContainer.style.paddingTop = this.element.clientHeight + "px";
+      } else {
+        iframeContainer.style.paddingTop = `${(1 / aspectRatio) * 100}%`;
+        iframeContainer.style.marginBottom = "2%";
+        iframeContainer.style.overflow = "hidden";
+      }
+      if (this.readerMode === "double") {
+        iframeContainer.style.breakInside = "avoid";
+      }
+      fragment.appendChild(iframeContainer);
+    }
+    (doc.body || doc.documentElement).appendChild(fragment);
+    if (this.readerMode === "scroll") {
+      let iframe = this.getIframe();
+      if (iframe) {
+        iframe.height = doc.body.scrollHeight + 300 + "px";
+      }
+    }
+  }
+  async getTemplateAspectRatio() {
+    // 采样前几张图片的解码尺寸，取最常见的宽高比作为全书的模板比例，
+    // 用于 double/scroll 模式下容器的初始高度占位
+    const sampleCount = Math.min(3, this.chapterDocList.length);
+    const ratios: number[] = [];
+    for (let i = 0; i < sampleCount; i++) {
+      try {
+        const url = await this.book.sections[i].load();
+        const res = await fetch(url);
+        const imageBlob = await res.blob();
+        const meta = await this.getImageMeta(imageBlob);
+        if (meta.width && meta.height) {
+          ratios.push(Math.round((meta.width / meta.height) * 1000) / 1000);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    if (ratios.length === 0) return 0.75;
+    const frequency = new Map<number, number>();
+    ratios.forEach((ratio) => {
+      frequency.set(ratio, (frequency.get(ratio) || 0) + 1);
+    });
+    let maxRatio = ratios[0];
+    let maxCount = 0;
+    frequency.forEach((count, ratio) => {
+      if (count > maxCount) {
+        maxCount = count;
+        maxRatio = ratio;
+      }
+    });
+    return maxRatio;
+  }
+  async getImageMeta(blob: Blob) {
+    let url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.src = url;
+    try {
+      await img.decode();
+    } catch (error) {
+      console.error(error);
+    }
+    const { naturalWidth, naturalHeight } = img;
+    URL.revokeObjectURL(url);
+    return { width: naturalWidth, height: naturalHeight };
+  }
+  async handleComicScrollEvent(doc: Document) {
+    let subContainers = doc.querySelectorAll(".pdf-container");
+    for (let index = 0; index < subContainers.length; index++) {
+      let subContainer = subContainers[index];
+      let id = subContainer.getAttribute("id");
+      if (!id) continue;
+      let chapterDocIndex = parseInt(id.split("-").reverse()[0]);
+      let isScrollIntoView = isPDFScrolledIntoView(
+        this.element,
+        subContainer as HTMLElement,
+        this.readerMode,
+        doc
+      );
+      if (isScrollIntoView) {
+        await this.renderComicPage(chapterDocIndex);
+      }
+    }
   }
   async parse() {
     try {
       if (isElectron()) {
         if (this.format === "CBZ") {
           const loader: any = await this.makeZipStreamLoader(this.filePath);
-          this.book = makeComicBook(loader, {}, this.readerMode);
+          this.book = makeComicBook(loader, { name: this.filePath });
           return;
         } else if (this.format === "CBT") {
           const loader: any = await this.makeTarStreamLoader(this.filePath);
-          this.book = makeComicBook(loader, {}, this.readerMode);
+          this.book = makeComicBook(loader, { name: this.filePath });
           return;
         }
       }
@@ -87,10 +212,10 @@ class ComicRender extends GeneralRender {
       const archiveType = this.detectArchiveType();
       if (archiveType === "zip" || archiveType === "cbz") {
         const loader: any = await this.makeZipLoader(file);
-        this.book = makeComicBook(loader, file, this.readerMode);
+        this.book = makeComicBook(loader, file);
       } else if (archiveType === "tar" || archiveType === "cbt") {
         const loader: any = await this.makeTarLoader();
-        this.book = makeComicBook(loader, file, this.readerMode);
+        this.book = makeComicBook(loader, file);
       } else if (archiveType === "rar" || archiveType === "cbr") {
         this.rpc = await window.RPC.new("./lib/libunrar/worker.js", {
           loaded: function () {
@@ -102,10 +227,10 @@ class ComicRender extends GeneralRender {
         });
         await new Promise((r) => setTimeout(r, 200));
         const loader: any = await this.makeRarLoader();
-        this.book = makeComicBook(loader, file, this.readerMode);
+        this.book = makeComicBook(loader, file);
       } else if (archiveType === "7z" || archiveType === "cb7") {
         const loader: any = await this.make7zLoader();
-        this.book = makeComicBook(loader, file, this.readerMode);
+        this.book = makeComicBook(loader, file);
       }
     } catch (error) {
       console.error(error);
@@ -408,6 +533,383 @@ class ComicRender extends GeneralRender {
       }
     }
     return entries;
+  }
+  getSubDocument(chapterDocIndex?: number): Document | null {
+    let doc: any = this.getDocument();
+    if (!doc) return null;
+    let subIframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
+    if (!subIframe) {
+      createPDFIframe(chapterDocIndex || 0, doc);
+      subIframe = doc.getElementById("pdf-iframe-" + chapterDocIndex);
+    }
+    return subIframe?.contentDocument;
+  }
+  getSubIframe(chapterDocIndex?: number): HTMLIFrameElement | null {
+    let doc: any = this.getDocument();
+    if (!doc) return null;
+    let iframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
+    if (!iframe) {
+      createPDFIframe(chapterDocIndex || 0, doc);
+      iframe = doc.getElementById("pdf-iframe-" + chapterDocIndex);
+    }
+    return iframe;
+  }
+  async handleRenderComicChapter(chapterDocIndex: number) {
+    if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
+      return;
+    }
+    let doc: any = this.getDocument();
+    if (!doc) return;
+    let subIframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
+    if (!subIframe) {
+      subIframe = createPDFIframe(chapterDocIndex, doc);
+    }
+    let subDoc = subIframe?.contentDocument;
+    if (!subDoc) return;
+    if (subDoc.body.innerHTML) {
+      return;
+    }
+    let chapterUrl = await this.chapterDocList[chapterDocIndex].text.load();
+    let res = await fetch(chapterUrl);
+    let chapterText = await res.text();
+    subDoc.body.innerHTML = chapterText;
+    subDoc.body.style.margin = "0";
+    subDoc.body.style.height = "100%";
+    subDoc.documentElement.style.height = "100%";
+    this.trigger("rendered", [chapterDocIndex] as any);
+  }
+  async handleUnloadComicChapter(chapterDocIndex: number) {
+    if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
+      return;
+    }
+    let subDoc = this.getSubDocument(chapterDocIndex);
+    if (subDoc && subDoc.body.innerHTML === "") {
+      return;
+    }
+    await this.chapterDocList[chapterDocIndex].text.unload();
+    if (subDoc) {
+      subDoc.body.innerHTML = "";
+    }
+  }
+  async renderComicPage(chapterDocIndex: number) {
+    if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
+      return;
+    } else if (chapterDocIndex > 3) {
+      await this.handleUnloadComicChapter(chapterDocIndex - 4);
+    }
+    await this.handleRenderComicChapter(chapterDocIndex);
+    this.handleRenderComicChapter(chapterDocIndex + 1);
+    if (this.platform === "ios") {
+      //ios 性能太差，先不预渲染后续图片
+      return;
+    }
+    this.handleRenderComicChapter(chapterDocIndex + 2);
+    this.handleRenderComicChapter(chapterDocIndex + 3);
+  }
+  async goToChapterIndex(targetChapterIndex: number) {
+    if (this.chapterDocList.length > 0) {
+      await this.goToChapter(
+        targetChapterIndex,
+        this.chapterDocList[targetChapterIndex].href,
+        this.chapterDocList[targetChapterIndex].label
+      );
+    }
+  }
+  async goToChapter(chapterDocIndex, _chapterHref, _chapterTitle) {
+    if (this.readerMode === "double" && chapterDocIndex % 2 == 1) {
+      chapterDocIndex--;
+    }
+    let doc = this.getDocument();
+    let iframe = this.getIframe();
+    if (!doc || !iframe) return;
+    await this.renderComicPage(chapterDocIndex);
+    await handleScrollPDFPosition(
+      parseInt(chapterDocIndex),
+      this.readerMode,
+      doc
+    );
+    await this.recordByChapter(chapterDocIndex);
+  }
+  getPositionByChapter(chapterDocIndex: number) {
+    return {
+      percentage: chapterDocIndex / this.chapterDocList.length,
+      chapterDocIndex: chapterDocIndex + "",
+      chapterHref: this.chapterDocList[chapterDocIndex].href,
+      chapterTitle: this.chapterDocList[chapterDocIndex].label,
+      text: "",
+    };
+  }
+  async goToPercentage(percentage: number) {
+    if (this.chapterDocList.length > 0) {
+      let chapterIndex =
+        percentage === 1
+          ? this.chapterDocList.length - 1
+          : Math.floor(this.chapterDocList.length * percentage);
+      await this.goToChapter(
+        chapterIndex,
+        this.chapterDocList[chapterIndex].href,
+        this.chapterDocList[chapterIndex].label
+      );
+    }
+  }
+  async goToPosition(bookLocationStr: string) {
+    let doc = this.getDocument();
+    let iframe = this.getIframe();
+    if (!doc || !iframe) return;
+    let bookLocation = JSON.parse(bookLocationStr);
+    if (bookLocation.chapterDocIndex === undefined) {
+      bookLocation.chapterDocIndex = 0;
+    }
+    this.tempLocation = {
+      text: bookLocation.text,
+      chapterTitle: bookLocation.chapterTitle,
+      chapterDocIndex: bookLocation.chapterDocIndex,
+      chapterHref: bookLocation.chapterHref,
+      count: bookLocation.count,
+      page: bookLocation.page,
+      percentage: bookLocation.percentage,
+    };
+    let { chapterDocIndex } = bookLocation;
+    if (this.readerMode === "double" && chapterDocIndex % 2 == 1) {
+      chapterDocIndex--;
+    }
+    await this.renderComicPage(parseInt(chapterDocIndex));
+    if (this.readerMode === "scroll") {
+      iframe.height = doc.body.scrollHeight + "px";
+      iframe.height = doc.body.scrollHeight + 300 + "px";
+    }
+    await handleScrollPDFPosition(
+      parseInt(chapterDocIndex),
+      this.readerMode,
+      doc
+    );
+    await this.recordByChapter(parseInt(chapterDocIndex));
+    this.addPageAnimation();
+  }
+  async prev(platform?: string) {
+    let doc = this.getDocument();
+    let iframe = this.getIframe();
+    if (!doc || !iframe) {
+      return;
+    }
+    if (this.readerMode === "scroll") {
+      this.element.scrollBy({
+        left: 0,
+        top: -(this.element.clientHeight - 50),
+        behavior: "smooth",
+      });
+    } else {
+      if (platform === "ios") {
+        await handleIOSScrollPage(
+          this.element,
+          this.animation,
+          1,
+          doc,
+          this.flipToNextPage,
+          this.flipToPrevPage,
+          this.isMobile,
+          parseInt(this.tempLocation.chapterDocIndex || "0"),
+          this.readerMode
+        );
+      } else {
+        await handleScrollPage(
+          this.element,
+          this.animation,
+          1,
+          doc,
+          this.flipToNextPage,
+          this.flipToPrevPage,
+          this.isMobile
+        );
+      }
+      await this.renderComicPage(
+        parseInt(this.tempLocation.chapterDocIndex) -
+          (this.readerMode === "double" ? 2 : 1)
+      );
+    }
+    await this.record();
+  }
+  async next(platform?: string) {
+    let doc = this.getDocument();
+    let iframe = this.getIframe();
+    if (!doc || !iframe) {
+      return;
+    }
+    if (this.readerMode === "scroll") {
+      this.element.scrollBy({
+        left: 0,
+        top: this.element.clientHeight - 50,
+        behavior: "smooth",
+      });
+    } else {
+      if (platform === "ios") {
+        await handleIOSScrollPage(
+          this.element,
+          this.animation,
+          -1,
+          doc,
+          this.flipToNextPage,
+          this.flipToPrevPage,
+          this.isMobile,
+          parseInt(this.tempLocation.chapterDocIndex || "0"),
+          this.readerMode
+        );
+      } else {
+        await handleScrollPage(
+          this.element,
+          this.animation,
+          -1,
+          doc,
+          this.flipToNextPage,
+          this.flipToPrevPage,
+          this.isMobile
+        );
+      }
+      await this.renderComicPage(
+        parseInt(this.tempLocation.chapterDocIndex) +
+          (this.readerMode === "double" ? 2 : 1)
+      );
+    }
+    await this.record();
+  }
+  async prevChapter() {
+    await this.prev();
+  }
+  async nextChapter() {
+    await this.next();
+  }
+  async goToPage(targetPage: number): Promise<void> {
+    let chapterDocIndex = Math.floor(targetPage - 1);
+    if (chapterDocIndex >= this.chapterDocList.length) {
+      chapterDocIndex = this.chapterDocList.length - 1;
+    }
+    if (chapterDocIndex < 0) {
+      chapterDocIndex = 0;
+    }
+    await this.goToChapter(
+      chapterDocIndex,
+      this.chapterDocList[chapterDocIndex].href,
+      this.chapterDocList[chapterDocIndex].label
+    );
+  }
+  async record(): Promise<void> {
+    if (this.animation !== "none" && this.isMobile !== "yes") {
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    let doc = this.getDocument();
+    if (!doc) return;
+    await this.handleComicRecord(doc);
+  }
+  async recordByChapter(chapterDocIndex: number): Promise<void> {
+    if (this.animation !== "none" && this.isMobile !== "yes") {
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
+      return;
+    }
+    this.handleComicRecordByIndex(chapterDocIndex);
+  }
+  handleComicRecordByIndex(chapterDocIndex: number) {
+    if (chapterDocIndex !== parseInt(this.tempLocation.chapterDocIndex)) {
+      this.tempLocation.chapterDocIndex = chapterDocIndex + "";
+      this.tempLocation.percentage =
+        this.chapterDocList.length === 1
+          ? "1"
+          : chapterDocIndex / (this.chapterDocList.length - 1) + "";
+      this.tempLocation.chapterHref = this.chapterDocList[chapterDocIndex].href;
+      this.tempLocation.chapterTitle =
+        this.chapterDocList[chapterDocIndex].label;
+      this.tempLocation.text = "";
+      this.trigger("page-changed");
+    }
+  }
+  async handleComicRecord(doc: Document) {
+    let subContainers = doc.querySelectorAll(".pdf-container");
+    if (
+      subContainers.length > 0 &&
+      isPDFScrolledIntoView(
+        this.element,
+        subContainers[subContainers.length - 1] as HTMLElement,
+        this.readerMode,
+        doc
+      )
+    ) {
+      this.handleComicRecordByContainer(
+        subContainers[subContainers.length - 1] as HTMLElement
+      );
+      return;
+    }
+    for (let index = 0; index < subContainers.length; index++) {
+      let subContainer = subContainers[index];
+      if (
+        isPDFScrolledIntoView(
+          this.element,
+          subContainer as HTMLElement,
+          this.readerMode,
+          doc
+        )
+      ) {
+        this.handleComicRecordByContainer(subContainer as HTMLElement);
+        break;
+      }
+    }
+  }
+  handleComicRecordByContainer(subContainer: HTMLElement) {
+    let id = subContainer.getAttribute("id");
+    if (!id) return;
+    let chapterDocIndex = parseInt(id.split("-").reverse()[0]);
+    this.handleComicRecordByIndex(chapterDocIndex);
+  }
+  getProgress() {
+    return {
+      totalPage: this.chapterDocList.length,
+      currentPage: parseInt(this.tempLocation.chapterDocIndex || "0") + 1,
+    } as any;
+  }
+  getPageSize() {
+    let doc: any = this.getDocument();
+    if (!doc) return;
+    let scale = this.readerMode === "double" ? 2 : 1;
+    let section = Math.floor(doc.body.clientWidth / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+    let subIframe = doc.querySelectorAll("iframe")[0];
+    let iframeHeight = subIframe?.getBoundingClientRect().height;
+    return {
+      width: doc.body.clientWidth,
+      height: this.element.clientHeight,
+      sectionWidth: (doc.body.clientWidth - gap) / scale,
+      sectionHeight: iframeHeight,
+      gap: gap,
+    } as any;
+  }
+  async visibleText() {
+    return [];
+  }
+  async audioText() {
+    return await this.visibleText();
+  }
+  async getRestAudioText(_count: number) {
+    return [];
+  }
+  async chapterText() {
+    return "";
+  }
+  async doSearch(_keyword: string) {
+    return [];
+  }
+  async getImageList(chapterDocIndex?: number): Promise<string[]> {
+    if (
+      chapterDocIndex === undefined ||
+      chapterDocIndex === null ||
+      chapterDocIndex < 0 ||
+      chapterDocIndex > this.chapterDocList.length - 1
+    ) {
+      return [];
+    }
+    let subDoc = this.getSubDocument(chapterDocIndex);
+    if (!subDoc) return [];
+    let img = subDoc.querySelector("img");
+    return img && img.src ? [img.src] : [];
   }
   async getMetadata() {
     return new Promise<any>(async (resolve, reject) => {
