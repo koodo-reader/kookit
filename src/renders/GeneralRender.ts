@@ -104,6 +104,9 @@ class GeneralRender extends EventEmitter {
   fullTranslationMode: string = "no";
   paragraphIndex: number = 0;
   paragraphSkipFlip: boolean = false;
+  readingRulerIndex: number = 0;
+  readingRulerColumn: number = 0;
+  readingRulerSkipFlip: boolean = false;
 
   constructor(config: {
     readerMode: string;
@@ -151,11 +154,12 @@ class GeneralRender extends EventEmitter {
     this.element = "";
     this.tempLocation = {};
     this.isBionic = config.isBionic || "no";
-    this.isParagraphMode = config.isParagraphMode || "no";
     this.isReadingRuler = config.isReadingRuler || "no";
+    this.isParagraphMode =
+      this.isReadingRuler === "yes" ? "no" : config.isParagraphMode || "no";
     this.readingRulerLineHeight = config.readingRulerLineHeight || 3;
     this.readingRulerBackgroundOpacity =
-      config.readingRulerBackgroundOpacity || 0.5;
+      config.readingRulerBackgroundOpacity ?? 0.5;
     this.platform = config.platform || "web";
     window.platform = this.platform;
     window.isBionic = this.isBionic;
@@ -183,6 +187,11 @@ class GeneralRender extends EventEmitter {
       if (this.isParagraphMode === "yes" && !this.paragraphSkipFlip) {
         this.paragraphIndex = 0;
         this.updateParagraphOverlay();
+      }
+      if (this.isReadingRuler === "yes" && !this.readingRulerSkipFlip) {
+        this.readingRulerIndex = 0;
+        this.readingRulerColumn = 0;
+        this.updateReadingRulerOverlay();
       }
     });
     this.mouseDownHandler = () => {};
@@ -821,11 +830,245 @@ class GeneralRender extends EventEmitter {
     this.paragraphIndex = direction > 0 ? 0 : Math.max(0, list.length - 1);
     this.updateParagraphOverlay(list);
   }
+  getReadingRulerStep() {
+    return Math.max(1, Math.round(this.readingRulerLineHeight || 3));
+  }
+  getReadingRulerVisibleBounds(): { top: number; bottom: number } {
+    let iframe = this.getIframe();
+    let top = 0;
+    let bottom = iframe ? iframe.clientHeight : 0;
+    if (this.readerMode === "scroll" && this.element) {
+      top = this.element.scrollTop;
+      bottom = top + this.element.clientHeight;
+    }
+    return { top, bottom };
+  }
+  getReadingRulerColumnBounds(): { left: number; right: number } | null {
+    if (this.readerMode !== "double") return null;
+    let iframe = this.getIframe();
+    if (!iframe) return null;
+    const width = iframe.clientWidth;
+    if (!width) return null;
+    let section = Math.floor(width / 12);
+    let gap = section % 2 === 0 ? section : section - 1;
+    const sectionWidth = Math.max(0, (width - gap) / 2);
+    if (this.readingRulerColumn === 0) {
+      return { left: 0, right: sectionWidth };
+    }
+    return { left: Math.min(width, sectionWidth + gap), right: width };
+  }
+  getReadingRulerLines(
+    columnBounds?: { left: number; right: number } | null
+  ): { top: number; bottom: number }[] {
+    let doc = this.getDocument();
+    let iframe = this.getIframe();
+    if (!doc || !doc.body || !iframe) return [];
+    if (this.isVertical()) return [];
+    const view: any = doc.defaultView || window;
+    const visible = this.getReadingRulerVisibleBounds();
+    const visibleLeft = columnBounds ? columnBounds.left : 0;
+    const visibleRight = columnBounds ? columnBounds.right : iframe.clientWidth;
+    const allRects: { top: number; bottom: number }[] = [];
+    const parentCache = new Map<Element, boolean>();
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+    let currentNode = walker.nextNode();
+    while (currentNode) {
+      const text = currentNode.textContent || "";
+      if (text.trim()) {
+        const parent = currentNode.parentElement;
+        if (parent) {
+          let parentVisible = parentCache.get(parent);
+          if (parentVisible === undefined) {
+            const style = view.getComputedStyle(parent);
+            parentVisible =
+              style.display !== "none" && style.visibility !== "hidden";
+            parentCache.set(parent, parentVisible);
+          }
+          if (parentVisible) {
+            const range = doc.createRange();
+            range.selectNodeContents(currentNode);
+            const rects = range.getClientRects();
+            for (let index = 0; index < rects.length; index++) {
+              const rect = rects[index];
+              if (rect.height <= 0 || rect.width <= 0) continue;
+              if (rect.bottom <= visible.top || rect.top >= visible.bottom)
+                continue;
+              if (rect.right <= visibleLeft || rect.left >= visibleRight)
+                continue;
+              allRects.push({ top: rect.top, bottom: rect.bottom });
+            }
+          }
+        }
+      }
+      currentNode = walker.nextNode();
+    }
+    allRects.sort((a, b) => a.top - b.top || a.bottom - b.bottom);
+    const lines: { top: number; bottom: number }[] = [];
+    for (let index = 0; index < allRects.length; index++) {
+      const rect = allRects[index];
+      const last = lines[lines.length - 1];
+      if (last && rect.top < last.bottom - 2) {
+        last.bottom = Math.max(last.bottom, rect.bottom);
+      } else {
+        lines.push({ top: rect.top, bottom: rect.bottom });
+      }
+    }
+    return lines;
+  }
+  getReadingRulerMaskColor(doc: Document): string {
+    const alpha = Math.min(1, Math.max(0, this.readingRulerBackgroundOpacity));
+    const base = this.getParagraphOverlayBackground(doc);
+    const match = base.match(/rgba?\(([^)]+)\)/);
+    if (match) {
+      const parts = match[1]
+        .split(/[\s,/]+/)
+        .filter((item) => item !== "")
+        .map(parseFloat);
+      if (parts.length >= 3 && parts.slice(0, 3).every((item) => !isNaN(item))) {
+        return `rgba(${parts[0]},${parts[1]},${parts[2]},${alpha})`;
+      }
+    }
+    const hex = base.trim().replace(/^#/, "");
+    if (/^[0-9a-fA-F]{6}$/.test(hex) || /^[0-9a-fA-F]{3}$/.test(hex)) {
+      const full =
+        hex.length === 3
+          ? hex
+              .split("")
+              .map((item) => item + item)
+              .join("")
+          : hex;
+      return `rgba(${parseInt(full.slice(0, 2), 16)},${parseInt(
+        full.slice(2, 4),
+        16
+      )},${parseInt(full.slice(4, 6), 16)},${alpha})`;
+    }
+    return `rgba(0,0,0,${alpha})`;
+  }
+  updateReadingRulerOverlay(
+    animate?: boolean,
+    lines?: { top: number; bottom: number }[]
+  ) {
+    let doc = this.getDocument();
+    let iframe = this.getIframe();
+    if (!doc || !doc.body || !iframe) return;
+    if (this.isReadingRuler !== "yes") {
+      this.removeReadingRulerOverlay();
+      return;
+    }
+    let windowEl = doc.getElementById("kookit-reading-ruler-window");
+    let columnBounds = this.getReadingRulerColumnBounds();
+    let lineList = lines || this.getReadingRulerLines(columnBounds);
+    if (lineList.length === 0) {
+      this.removeReadingRulerOverlay();
+      return;
+    }
+    const step = this.getReadingRulerStep();
+    const totalChunks = Math.ceil(lineList.length / step);
+    if (this.readingRulerIndex >= totalChunks) {
+      this.readingRulerIndex = totalChunks - 1;
+    }
+    if (this.readingRulerIndex < 0) {
+      this.readingRulerIndex = 0;
+    }
+    const startIndex = this.readingRulerIndex * step;
+    const endIndex = Math.min(startIndex + step, lineList.length);
+    const visible = this.getReadingRulerVisibleBounds();
+    const top = Math.max(visible.top, lineList[startIndex].top - 4);
+    const bottom = Math.min(visible.bottom, lineList[endIndex - 1].bottom + 4);
+    const position = this.readerMode === "scroll" ? "absolute" : "fixed";
+    const left = columnBounds ? Math.max(0, columnBounds.left + 4) : 4;
+    const width = columnBounds
+      ? Math.max(0, columnBounds.right - columnBounds.left - 8)
+      : Math.max(0, iframe.clientWidth - 8);
+    if (!windowEl) {
+      windowEl = doc.createElement("div");
+      windowEl.id = "kookit-reading-ruler-window";
+      doc.body.appendChild(windowEl);
+    }
+    windowEl.style.cssText =
+      `position:${position};left:${left}px;width:${width}px;top:${top}px;height:${Math.max(
+        0,
+        bottom - top
+      )}px;border-radius:10px;border:1px solid rgba(128,128,128,0.5);` +
+      `box-shadow:0 0 0 100000px ${this.getReadingRulerMaskColor(
+        doc
+      )};box-sizing:border-box;z-index:2147483000;pointer-events:none;` +
+      `transition:${
+        animate
+          ? "top 0.3s ease, height 0.3s ease, left 0.3s ease, width 0.3s ease"
+          : "none"
+      };`;
+  }
+  removeReadingRulerOverlay() {
+    let doc = this.getDocument();
+    if (doc) {
+      let windowEl = doc.getElementById("kookit-reading-ruler-window");
+      if (windowEl && windowEl.parentNode) {
+        windowEl.parentNode.removeChild(windowEl);
+      }
+    }
+  }
+  async handleReadingRulerChange(direction: number): Promise<boolean> {
+    const columnBounds = this.getReadingRulerColumnBounds();
+    const lines = this.getReadingRulerLines(columnBounds);
+    if (lines.length === 0) return false;
+    const step = this.getReadingRulerStep();
+    const totalChunks = Math.ceil(lines.length / step);
+    if (this.readingRulerIndex >= totalChunks) {
+      this.readingRulerIndex = 0;
+    }
+    if (direction > 0) {
+      if (this.readingRulerIndex < totalChunks - 1) {
+        this.readingRulerIndex++;
+      } else if (columnBounds && this.readingRulerColumn === 0) {
+        this.readingRulerColumn = 1;
+        this.readingRulerIndex = 0;
+      } else {
+        await this.flipReadingRulerPage(1);
+        return true;
+      }
+    } else {
+      if (this.readingRulerIndex > 0) {
+        this.readingRulerIndex--;
+      } else if (columnBounds && this.readingRulerColumn === 1) {
+        this.readingRulerColumn = 0;
+        this.readingRulerIndex = Number.MAX_SAFE_INTEGER;
+      } else {
+        await this.flipReadingRulerPage(-1);
+        return true;
+      }
+    }
+    this.updateReadingRulerOverlay(true, undefined);
+    return true;
+  }
+  async flipReadingRulerPage(direction: number) {
+    this.readingRulerSkipFlip = true;
+    try {
+      if (direction > 0) {
+        await this.next();
+      } else {
+        await this.prev();
+      }
+      await new Promise((r) =>
+        setTimeout(r, this.readerMode === "scroll" ? 400 : 150)
+      );
+    } finally {
+      this.readingRulerSkipFlip = false;
+    }
+    this.readingRulerIndex = direction > 0 ? 0 : Number.MAX_SAFE_INTEGER;
+    this.readingRulerColumn =
+      direction > 0 ? 0 : this.readerMode === "double" ? 1 : 0;
+    this.updateReadingRulerOverlay();
+  }
   async prev() {
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) {
       return;
+    }
+    if (this.isReadingRuler === "yes" && !this.readingRulerSkipFlip) {
+      const handled = await this.handleReadingRulerChange(-1);
+      if (handled) return;
     }
     if (this.isParagraphMode === "yes" && !this.paragraphSkipFlip) {
       const handled = await this.handleParagraphChange(-1);
@@ -888,6 +1131,10 @@ class GeneralRender extends EventEmitter {
     let iframe = this.getIframe();
     if (!doc || !iframe) {
       return;
+    }
+    if (this.isReadingRuler === "yes" && !this.readingRulerSkipFlip) {
+      const handled = await this.handleReadingRulerChange(1);
+      if (handled) return;
     }
     if (this.isParagraphMode === "yes" && !this.paragraphSkipFlip) {
       const handled = await this.handleParagraphChange(1);
