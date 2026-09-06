@@ -759,7 +759,10 @@ class GeneralRender extends EventEmitter {
       let content = doc.createElement("div");
       content.id = "kookit-paragraph-overlay-content";
       content.style.cssText =
-        "max-width:50%;max-height:90%;overflow:hidden;text-align:center;transition:background-color 0.3s ease;";
+        "max-width:50%;max-height:90%;overflow:hidden;text-align:center;transition:background-color 0.3s ease;" +
+        (this.isMobile === "yes"
+          ? "max-width:calc(100% - 40px);max-height:calc(100% - 40px);"
+          : "");
       overlay.appendChild(content);
       doc.body.appendChild(overlay);
     }
