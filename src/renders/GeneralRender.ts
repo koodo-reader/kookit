@@ -859,7 +859,7 @@ class GeneralRender extends EventEmitter {
   }
   getReadingRulerLines(
     columnBounds?: { left: number; right: number } | null
-  ): { top: number; bottom: number }[] {
+  ): { top: number; bottom: number; left: number; right: number }[] {
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !doc.body || !iframe) return [];
@@ -868,7 +868,12 @@ class GeneralRender extends EventEmitter {
     const visible = this.getReadingRulerVisibleBounds();
     const visibleLeft = columnBounds ? columnBounds.left : 0;
     const visibleRight = columnBounds ? columnBounds.right : iframe.clientWidth;
-    const allRects: { top: number; bottom: number }[] = [];
+    const allRects: {
+      top: number;
+      bottom: number;
+      left: number;
+      right: number;
+    }[] = [];
     const parentCache = new Map<Element, boolean>();
     const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
     let currentNode = walker.nextNode();
@@ -895,7 +900,12 @@ class GeneralRender extends EventEmitter {
                 continue;
               if (rect.right <= visibleLeft || rect.left >= visibleRight)
                 continue;
-              allRects.push({ top: rect.top, bottom: rect.bottom });
+              allRects.push({
+                top: rect.top,
+                bottom: rect.bottom,
+                left: rect.left,
+                right: rect.right,
+              });
             }
           }
         }
@@ -903,14 +913,26 @@ class GeneralRender extends EventEmitter {
       currentNode = walker.nextNode();
     }
     allRects.sort((a, b) => a.top - b.top || a.bottom - b.bottom);
-    const lines: { top: number; bottom: number }[] = [];
+    const lines: {
+      top: number;
+      bottom: number;
+      left: number;
+      right: number;
+    }[] = [];
     for (let index = 0; index < allRects.length; index++) {
       const rect = allRects[index];
       const last = lines[lines.length - 1];
       if (last && rect.top < last.bottom - 2) {
         last.bottom = Math.max(last.bottom, rect.bottom);
+        last.left = Math.min(last.left, rect.left);
+        last.right = Math.max(last.right, rect.right);
       } else {
-        lines.push({ top: rect.top, bottom: rect.bottom });
+        lines.push({
+          top: rect.top,
+          bottom: rect.bottom,
+          left: rect.left,
+          right: rect.right,
+        });
       }
     }
     return lines;
@@ -924,7 +946,10 @@ class GeneralRender extends EventEmitter {
         .split(/[\s,/]+/)
         .filter((item) => item !== "")
         .map(parseFloat);
-      if (parts.length >= 3 && parts.slice(0, 3).every((item) => !isNaN(item))) {
+      if (
+        parts.length >= 3 &&
+        parts.slice(0, 3).every((item) => !isNaN(item))
+      ) {
         return `rgba(${parts[0]},${parts[1]},${parts[2]},${alpha})`;
       }
     }
@@ -946,7 +971,7 @@ class GeneralRender extends EventEmitter {
   }
   updateReadingRulerOverlay(
     animate?: boolean,
-    lines?: { top: number; bottom: number }[]
+    lines?: { top: number; bottom: number; left: number; right: number }[]
   ) {
     let doc = this.getDocument();
     let iframe = this.getIframe();
@@ -975,11 +1000,20 @@ class GeneralRender extends EventEmitter {
     const visible = this.getReadingRulerVisibleBounds();
     const top = Math.max(visible.top, lineList[startIndex].top - 4);
     const bottom = Math.min(visible.bottom, lineList[endIndex - 1].bottom + 4);
+    const offset = 16;
+    const bounds = columnBounds || {
+      left: 0,
+      right: iframe.clientWidth,
+    };
+    let minLeft = lineList[startIndex].left;
+    let maxRight = lineList[startIndex].right;
+    for (let index = startIndex + 1; index < endIndex; index++) {
+      minLeft = Math.min(minLeft, lineList[index].left);
+      maxRight = Math.max(maxRight, lineList[index].right);
+    }
+    const left = Math.max(bounds.left, minLeft - offset);
+    const width = Math.max(0, Math.min(bounds.right, maxRight + offset) - left);
     const position = this.readerMode === "scroll" ? "absolute" : "fixed";
-    const left = columnBounds ? Math.max(0, columnBounds.left + 4) : 4;
-    const width = columnBounds
-      ? Math.max(0, columnBounds.right - columnBounds.left - 8)
-      : Math.max(0, iframe.clientWidth - 8);
     if (!windowEl) {
       windowEl = doc.createElement("div");
       windowEl.id = "kookit-reading-ruler-window";
