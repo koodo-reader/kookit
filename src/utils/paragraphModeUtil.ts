@@ -13,7 +13,7 @@ class ParagraphModeManager {
 
   // 由 GeneralRender 注入的回调，与渲染实例解耦
   getDoc: () => Document | null = () => null;
-  getElement: () => HTMLElement = () => ({} as HTMLElement);
+  getElement: () => HTMLElement = () => ({}) as HTMLElement;
   getIframe: () => HTMLIFrameElement | null = () => null;
   getOverlayBackground: (doc: Document) => string = () => "#ffffff";
   nextPage: () => Promise<void> | void = async () => {};
@@ -105,11 +105,12 @@ class ParagraphModeManager {
       let content = doc.createElement("div");
       content.id = "kookit-paragraph-overlay-content";
       content.style.cssText =
-        "max-width:50%;max-height:90%;overflow:hidden;text-align:center;transition:background-color 0.3s ease;" +
+        "max-width:50%;max-height:calc(100% - 90px);overflow:hidden;text-align:center;transition:background-color 0.3s ease;" +
         (this.isMobile === "yes"
-          ? "max-width:calc(100% - 40px);max-height:calc(100% - 40px);"
+          ? "max-width:calc(100% - 40px);max-height:calc(100% - 110px);"
           : "");
       overlay.appendChild(content);
+      overlay.appendChild(this.createControls(doc));
       doc.body.appendChild(overlay);
     }
     overlay.style.backgroundColor = this.getOverlayBackground(doc);
@@ -117,6 +118,78 @@ class ParagraphModeManager {
     if (!content) return;
     content.innerHTML = "";
     content.appendChild(list[this.index].cloneNode(true));
+    this.refreshControls(doc);
+  }
+  createControls(doc: Document): HTMLElement {
+    let controls = doc.createElement("div");
+    controls.id = "kookit-paragraph-overlay-controls";
+    let css =
+      "position:fixed;left:0;right:0;bottom:" +
+      (this.isMobile === "yes" ? 32 : 20) +
+      "px;display:flex;justify-content:center;gap:48px;z-index:2147483001;pointer-events:none;";
+    if (this.readerMode === "scroll") {
+      let element = this.getElement();
+      css =
+        "position:absolute;left:0;width:100%;top:" +
+        (element ? element.scrollTop + element.clientHeight - 80 : 0) +
+        "px;display:flex;justify-content:center;gap:48px;z-index:2147483001;pointer-events:none;";
+    }
+    controls.style.cssText = css;
+    const btnCss =
+      "pointer-events:auto;width:44px;height:44px;padding:0;margin:0;background:transparent;border-radius:50%;border:1px solid rgba(128,128,128,1);color:rgba(128,128,128,1);font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;";
+    const bindButton = (btn: HTMLElement, direction: number) => {
+      const handler = (event: any) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.handleChange(direction).catch(() => {});
+      };
+      btn.addEventListener("touchend", handler, { passive: false });
+      btn.addEventListener("mousedown", handler);
+      btn.addEventListener("click", (event: any) => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+      btn.addEventListener("dblclick", (event: any) => event.stopPropagation());
+      btn.addEventListener(
+        "touchstart",
+        (event: any) => event.stopPropagation(),
+        { passive: false }
+      );
+      btn.addEventListener(
+        "touchmove",
+        (event: any) => event.stopPropagation(),
+        { passive: false }
+      );
+    };
+    let prevBtn = doc.createElement("button");
+    prevBtn.id = "kookit-paragraph-overlay-prev";
+    prevBtn.textContent = "←";
+    prevBtn.style.cssText = btnCss;
+    let nextBtn = doc.createElement("button");
+    nextBtn.id = "kookit-paragraph-overlay-next";
+    nextBtn.textContent = "→";
+    nextBtn.style.cssText = btnCss;
+    bindButton(prevBtn, -1);
+    bindButton(nextBtn, 1);
+    controls.appendChild(prevBtn);
+    controls.appendChild(nextBtn);
+    return controls;
+  }
+  refreshControls(doc: Document) {
+    let controls = doc.getElementById("kookit-paragraph-overlay-controls");
+    if (!controls) return;
+    let color = "rgba(128,128,128,1)";
+    let prevBtn = doc.getElementById("kookit-paragraph-overlay-prev");
+    let nextBtn = doc.getElementById("kookit-paragraph-overlay-next");
+    if (prevBtn) prevBtn.style.color = color;
+    if (nextBtn) nextBtn.style.color = color;
+    if (this.readerMode === "scroll") {
+      let element = this.getElement();
+      if (element) {
+        controls.style.top =
+          element.scrollTop + element.clientHeight - 80 + "px";
+      }
+    }
   }
   removeOverlay() {
     let doc = this.getDoc();
