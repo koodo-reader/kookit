@@ -101,7 +101,7 @@ class ParagraphModeManager {
       overlay = doc.createElement("div");
       overlay.id = "kookit-paragraph-overlay";
       overlay.style.cssText =
-        "position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:2147483000;pointer-events:none;text-align:center;transition:background-color 0.3s ease;margin:0;padding:0;";
+        "position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:2147483000;pointer-events:none;text-align:center;transition:background-color 0.3s ease;margin:0 !important;padding:0 !important;";
       let content = doc.createElement("div");
       content.id = "kookit-paragraph-overlay-content";
       content.style.cssText =
