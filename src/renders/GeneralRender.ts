@@ -191,6 +191,7 @@ class GeneralRender extends EventEmitter {
       readingRulerLineHeight: config.readingRulerLineHeight,
       readingRulerBackgroundOpacity: config.readingRulerBackgroundOpacity,
       readerMode: this.readerMode,
+      isMobile: this.isMobile,
     });
     this.readingRulerManager.getDoc = () => this.getDocument();
     this.readingRulerManager.getElement = () => this.element;

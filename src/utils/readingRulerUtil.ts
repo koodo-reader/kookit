@@ -5,6 +5,7 @@ class ReadingRulerManager {
   readingRulerLineHeight: number = 3;
   readingRulerBackgroundOpacity: number = 0.5;
   readerMode: string = "single";
+  isMobile: string | undefined;
 
   // 运行时状态
   index: number = 0;
@@ -13,7 +14,7 @@ class ReadingRulerManager {
 
   // 由 GeneralRender 注入的回调，与渲染实例解耦
   getDoc: () => Document | null = () => null;
-  getElement: () => HTMLElement = () => ({} as HTMLElement);
+  getElement: () => HTMLElement = () => ({}) as HTMLElement;
   getIframe: () => HTMLIFrameElement | null = () => null;
   getIsVertical: () => boolean = () => false;
   getOverlayBackground: (doc: Document) => string = () => "#ffffff";
@@ -28,6 +29,7 @@ class ReadingRulerManager {
         ? config.readingRulerBackgroundOpacity
         : 0.5;
     this.readerMode = config.readerMode || "single";
+    this.isMobile = config.isMobile;
   }
 
   applyConfig(config: any = {}) {
@@ -38,8 +40,7 @@ class ReadingRulerManager {
       this.readingRulerLineHeight = config.readingRulerLineHeight;
     }
     if (config.readingRulerBackgroundOpacity != null) {
-      this.readingRulerBackgroundOpacity =
-        config.readingRulerBackgroundOpacity;
+      this.readingRulerBackgroundOpacity = config.readingRulerBackgroundOpacity;
     }
   }
 
