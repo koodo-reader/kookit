@@ -284,7 +284,7 @@ class SpeedReadingManager {
       toggle.style.cssText =
         `margin-top:${Math.round(fontPx * 0.8)}px;width:56px;height:56px;border-radius:50%;` +
         `display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;` +
-        `border:1px solid rgba(128,128,128,0.5);color:${textColor};`;
+        `border:1px solid rgba(128,128,128,0.5);color:${textColor};pointer-events:auto;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;`;
       toggle.appendChild(this.createToggleIcon(doc, this.playing));
 
       overlay.appendChild(wordArea);
