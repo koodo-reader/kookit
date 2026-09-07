@@ -219,7 +219,7 @@ class ReadingRulerManager {
     const visible = this.getVisibleBounds();
     const top = Math.max(visible.top, lineList[startIndex].top - 4);
     const bottom = Math.min(visible.bottom, lineList[endIndex - 1].bottom + 4);
-    const offset = 16;
+    const offset = this.isMobile === "yes" ? 0 : 16;
     const bounds = columnBounds || {
       left: 0,
       right: iframe.clientWidth,
@@ -250,7 +250,7 @@ class ReadingRulerManager {
         animate
           ? "top 0.3s ease, height 0.3s ease, left 0.3s ease, width 0.3s ease"
           : "none"
-      };`;
+      };margin:0 !important;padding:0 !important;`;
   }
   removeOverlay() {
     let doc = this.getDoc();
