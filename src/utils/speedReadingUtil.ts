@@ -96,6 +96,10 @@ export const getSpeedReadingWordDelay = (word: string, wpm: number): number => {
   return Math.round(base * factor);
 };
 
+// ORP 高亮色与倒计时展示色
+const PIVOT_COLOR = "#ff3b30";
+const COUNTDOWN_COLOR = "#77A1D9";
+
 // RSVP 速读管理器：在页面上方展示全页遮罩，固定位置逐词展示（WPM 控制），
 // ORP 红色高亮，页面单词耗尽自动翻页，到书末自动暂停
 class SpeedReadingManager {
@@ -108,6 +112,7 @@ class SpeedReadingManager {
   words: string[] = [];
   index: number = 0;
   timer: any = null;
+  countdownTimer: any = null;
   playing: boolean = false;
   autoStarted: boolean = false;
   overlayEl: any = null;
@@ -160,6 +165,10 @@ class SpeedReadingManager {
   private getPageHeight(): number {
     let element = this.getElement();
     return (element && element.clientHeight) || 600;
+  }
+
+  private getWordFontSize(): number {
+    return Math.max(28, Math.min(72, Math.round(this.getPageHeight() * 0.08)));
   }
 
   private getTextColor(doc: Document): string {
@@ -244,8 +253,7 @@ class SpeedReadingManager {
         "flex:1;text-align:right;white-space:pre;overflow:visible;";
       let pivot = doc.createElement("span");
       pivot.id = "kookit-speed-reading-word-pivot";
-      pivot.style.cssText =
-        "color:#ff3b30 !important;white-space:pre;position:relative;";
+      pivot.style.cssText = `color:${PIVOT_COLOR} !important;white-space:pre;position:relative;`;
       let right = doc.createElement("span");
       right.id = "kookit-speed-reading-word-right";
       right.style.cssText =
@@ -255,7 +263,7 @@ class SpeedReadingManager {
       let tickBottom = doc.createElement("span");
       tickBottom.id = "kookit-speed-reading-tick-bottom";
       const textColor = this.getTextColor(doc);
-      const fontPx = Math.max(28, Math.min(72, Math.round(pageHeight * 0.08)));
+      const fontPx = this.getWordFontSize();
       const tickCss = `position:absolute;left:50%;transform:translateX(-50%);width:2px;height:${Math.round(
         fontPx * 0.3
       )}px;background:rgba(128,128,128,0.6);`;
@@ -329,6 +337,7 @@ class SpeedReadingManager {
       overlay.parentNode.removeChild(overlay);
     }
     this.overlayEl = null;
+    this.cancelCountdown();
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
@@ -399,6 +408,8 @@ class SpeedReadingManager {
     let pivot = doc.getElementById("kookit-speed-reading-word-pivot");
     let right = doc.getElementById("kookit-speed-reading-word-right");
     if (!left || !pivot || !right) return;
+    pivot.style.setProperty("color", PIVOT_COLOR, "important");
+    pivot.style.fontSize = "";
     let word = this.words[this.index] || "";
     let chars = Array.from(word);
     if (chars.length === 0) {
@@ -431,15 +442,67 @@ class SpeedReadingManager {
       this.showEndState();
       return;
     }
-    this.renderWord();
-    this.scheduleNext();
+    this.startCountdown();
+  }
+
+  private cancelCountdown() {
+    if (this.countdownTimer) {
+      clearInterval(this.countdownTimer);
+      this.countdownTimer = null;
+    }
+  }
+
+  // 开始播放前展示 3 秒倒计时，给用户留出准备时间，结束后进入逐词轮播
+  private startCountdown() {
+    this.cancelCountdown();
+    let count = 3;
+    this.renderCountdown(count);
+    this.countdownTimer = setInterval(() => {
+      let currentDoc = this.getDoc();
+      if (!this.playing || !currentDoc || !this.isOverlayValid(currentDoc)) {
+        this.cancelCountdown();
+        return;
+      }
+      count--;
+      if (count <= 0) {
+        this.cancelCountdown();
+        this.renderWord();
+        this.scheduleNext();
+        return;
+      }
+      this.renderCountdown(count);
+    }, 1000);
+  }
+
+  // 倒计时数字复用 ORP 高亮位置展示，使用独立颜色并放大字号
+  private renderCountdown(count: number) {
+    let doc = this.getDoc();
+    if (!doc) return;
+    this.updateOverlay();
+    this.showWordArea();
+    let left = doc.getElementById("kookit-speed-reading-word-left");
+    let pivot = doc.getElementById("kookit-speed-reading-word-pivot");
+    let right = doc.getElementById("kookit-speed-reading-word-right");
+    if (!left || !pivot || !right) return;
+    const countdownPx = Math.round(this.getWordFontSize() * 1.6);
+    left.textContent = "";
+    pivot.style.setProperty("color", COUNTDOWN_COLOR, "important");
+    pivot.style.fontSize = countdownPx + "px";
+    pivot.textContent = String(count);
+    right.textContent = "";
   }
 
   pause() {
+    const hadCountdown = this.countdownTimer != null;
     this.playing = false;
+    this.cancelCountdown();
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
+    }
+    if (hadCountdown) {
+      // 倒计时被打断时恢复显示当前词
+      this.renderWord();
     }
     this.updateToggleIcon();
   }
@@ -455,6 +518,7 @@ class SpeedReadingManager {
   }
 
   private scheduleNext() {
+    this.cancelCountdown();
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
@@ -554,6 +618,7 @@ class SpeedReadingManager {
     this.updateToggleIcon();
     if (this.words.length === 0) {
       this.showEndState();
+      this.cancelCountdown();
       if (this.timer) {
         clearTimeout(this.timer);
         this.timer = null;
@@ -567,6 +632,8 @@ class SpeedReadingManager {
       this.autoStarted = true;
       this.start();
     } else if (this.playing) {
+      // 页面被外部重新渲染时打断倒计时，直接恢复轮播
+      this.cancelCountdown();
       this.scheduleNext();
     }
   }
