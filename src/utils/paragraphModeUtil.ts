@@ -136,7 +136,7 @@ class ParagraphModeManager {
     }
     controls.style.cssText = css;
     const btnCss =
-      "pointer-events:auto;width:44px;height:44px;padding:0;margin:0;background:transparent;border-radius:50%;border:1px solid rgba(128,128,128,1);color:rgba(128,128,128,1);font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;";
+      "pointer-events:auto;width:44px;height:44px;padding:0;margin:0;background:transparent;border-radius:50%;border:1px solid rgba(128,128,128,1);color:rgba(128,128,128,1);display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;";
     const bindButton = (btn: HTMLElement, direction: number) => {
       const handler = (event: any) => {
         event.preventDefault();
@@ -163,17 +163,35 @@ class ParagraphModeManager {
     };
     let prevBtn = doc.createElement("button");
     prevBtn.id = "kookit-paragraph-overlay-prev";
-    prevBtn.textContent = "←";
     prevBtn.style.cssText = btnCss;
+    prevBtn.appendChild(this.createArrowIcon(doc, -1));
     let nextBtn = doc.createElement("button");
     nextBtn.id = "kookit-paragraph-overlay-next";
-    nextBtn.textContent = "→";
     nextBtn.style.cssText = btnCss;
+    nextBtn.appendChild(this.createArrowIcon(doc, 1));
     bindButton(prevBtn, -1);
     bindButton(nextBtn, 1);
     controls.appendChild(prevBtn);
     controls.appendChild(nextBtn);
     return controls;
+  }
+  createArrowIcon(doc: Document, direction: number) {
+    const svg = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("width", "20");
+    svg.setAttribute("height", "20");
+    svg.style.cssText =
+      "display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;";
+    const line = doc.createElementNS("http://www.w3.org/2000/svg", "path");
+    line.setAttribute("d", direction < 0 ? "M19 12H5" : "M5 12h14");
+    const head = doc.createElementNS("http://www.w3.org/2000/svg", "path");
+    head.setAttribute(
+      "d",
+      direction < 0 ? "M12 19l-7-7 7-7" : "M12 5l7 7-7 7"
+    );
+    svg.appendChild(line);
+    svg.appendChild(head);
+    return svg;
   }
   refreshControls(doc: Document) {
     let controls = doc.getElementById("kookit-paragraph-overlay-controls");
