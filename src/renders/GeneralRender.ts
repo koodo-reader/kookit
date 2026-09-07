@@ -933,6 +933,14 @@ class GeneralRender extends EventEmitter {
   async slideTo(direction: string) {
     let doc = this.getDocument();
     if (!doc) return;
+    if (this.isPageAnimationDisabled()) {
+      if (direction === "left") {
+        await this.prev();
+      } else if (direction === "right") {
+        await this.next();
+      }
+      return;
+    }
     let section = Math.floor(this.element.clientWidth / 12);
     let gap = section % 2 === 0 ? section : section - 1;
     slideAnimateTo(direction, this.format, doc, doc, this.element, this, gap);
@@ -1361,8 +1369,17 @@ class GeneralRender extends EventEmitter {
     );
   }
 
+  isPageAnimationDisabled() {
+    return (
+      this.isMobile === "yes" &&
+      (this.isParagraphMode === "yes" ||
+        this.isReadingRuler === "yes" ||
+        this.isSpeedReading === "yes")
+    );
+  }
   addPageAnimation = (backgroundColor?: string) => {
     if (this.animation !== "mimical") return;
+    if (this.isPageAnimationDisabled()) return;
     const progress = this.getProgress();
     if (!progress?.totalPage) return;
     const pageAnimation = addPageAnimation(
@@ -1470,6 +1487,7 @@ class GeneralRender extends EventEmitter {
   addTouchEvent(isAndroid: string, touchControlRule: any) {
     let docs = this.getAllDocuments();
     let iframes = this.getAllIframes();
+    const animation = this.isPageAnimationDisabled() ? "none" : this.animation;
     for (let index = 0; index < docs.length; index++) {
       const doc = docs[index];
       const iframe = iframes[index];
@@ -1485,7 +1503,7 @@ class GeneralRender extends EventEmitter {
           iframe,
           this.element,
           this.readerMode,
-          this.animation,
+          animation,
           this.format,
           touchControlRule,
           this
@@ -1496,7 +1514,7 @@ class GeneralRender extends EventEmitter {
           iframe,
           this.element,
           this.readerMode,
-          this.animation,
+          animation,
           this.format,
           touchControlRule,
           this

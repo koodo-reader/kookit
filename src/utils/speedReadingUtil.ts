@@ -115,7 +115,7 @@ class SpeedReadingManager {
 
   // 由 GeneralRender 注入的回调，与渲染实例解耦
   getDoc: () => Document | null = () => null;
-  getElement: () => HTMLElement = () => ({} as HTMLElement);
+  getElement: () => HTMLElement = () => ({}) as HTMLElement;
   getOverlayBackground: (doc: Document) => string = () => "#ffffff";
   getProgress: () => any = () => null;
   getChapterDocIndex: () => any = () => "0";
@@ -244,8 +244,7 @@ class SpeedReadingManager {
         "flex:1;text-align:right;white-space:pre;overflow:visible;";
       let pivot = doc.createElement("span");
       pivot.id = "kookit-speed-reading-word-pivot";
-      pivot.style.cssText =
-        "color:#ff3b30;white-space:pre;position:relative;";
+      pivot.style.cssText = "color:#ff3b30;white-space:pre;position:relative;";
       let right = doc.createElement("span");
       right.id = "kookit-speed-reading-word-right";
       right.style.cssText =
@@ -255,14 +254,10 @@ class SpeedReadingManager {
       let tickBottom = doc.createElement("span");
       tickBottom.id = "kookit-speed-reading-tick-bottom";
       const textColor = this.getTextColor(doc);
-      const fontPx = Math.max(
-        28,
-        Math.min(72, Math.round(pageHeight * 0.08))
-      );
-      const tickCss =
-        `position:absolute;left:50%;transform:translateX(-50%);width:2px;height:${Math.round(
-          fontPx * 0.3
-        )}px;background:rgba(128,128,128,0.6);`;
+      const fontPx = Math.max(28, Math.min(72, Math.round(pageHeight * 0.08)));
+      const tickCss = `position:absolute;left:50%;transform:translateX(-50%);width:2px;height:${Math.round(
+        fontPx * 0.3
+      )}px;background:rgba(128,128,128,0.6);`;
       tickTop.style.cssText = tickCss + `top:-${Math.round(fontPx * 0.45)}px;`;
       tickBottom.style.cssText =
         tickCss + `bottom:-${Math.round(fontPx * 0.45)}px;`;
