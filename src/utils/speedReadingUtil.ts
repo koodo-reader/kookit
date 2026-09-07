@@ -23,9 +23,10 @@ export const isNoSpaceScript = (text: string): boolean => {
   return NO_SPACE_SCRIPT_REGEX.test(text);
 };
 
-// 判断片段是否只由标点符号组成（不含字母、数字或表意文字）
+// 判断片段是否只由标点符号组成（不含字母、数字或表意文字），
+// 全角区段仅排除全角字母/数字，全角标点（，！？：；（）等）视为标点
 const isPunctuationOnly = (word: string): boolean =>
-  /^[^\w\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uff9f\u0e00-\u0e7f\u0e80-\u0eff\u1000-\u109f\u1780-\u17ff]+$/.test(
+  /^[^\w\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uac00-\ud7af\u1100-\u11ff\u3130-\u318f\u0e01-\u0e3a\u0e40-\u0e4e\u0e50-\u0e59\u0e80-\u0eff\u1000-\u109f\u1780-\u17b3\u17e0-\u17e9\uff10-\uff19\uff21-\uff3a\uff41-\uff5a]+$/.test(
     word
   );
 
