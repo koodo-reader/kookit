@@ -1,4 +1,4 @@
-import Chapter from "../model/chapter";
+﻿import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
 import {
   collectChapterImageUrls,
@@ -91,6 +91,7 @@ class GeneralRender extends EventEmitter {
   isParagraphMode: string = "no";
   isReadingRuler: string = "no";
   isSpeedReading: string = "no";
+  isShowTotalPage: string = "no";
   speedReadingSpeed: number = 300;
   platform: string = "web";
   isAllowScript: string = "no";
@@ -127,6 +128,7 @@ class GeneralRender extends EventEmitter {
     isSpeedReading?: string;
     speedReadingSpeed?: number;
     textOrientation?: string;
+    isShowTotalPage?: string;
     isAllowScript?: string;
     fullTranslationMode?: string;
     bookLayout?: string;
@@ -150,6 +152,7 @@ class GeneralRender extends EventEmitter {
     this.backgroundColor = config.backgroundColor || "";
     this.textOrientation = config.textOrientation;
     window.textOrientation = config.textOrientation;
+    this.isShowTotalPage = config.isShowTotalPage || "no";
     this.chapterList = [];
     this.chapterDocList = [];
     this.flattenChapters = [];
