@@ -201,9 +201,11 @@ function getScreenTopOffset() {
 const preventLinkNavigation = async (event: any, doc: any, render: any) => {
   const target = event.target;
   if (!target) return;
+  // 先判断是否命中链接，非链接点击不拦截，避免吞掉阅读区内其他可点击元素（如速读播放按钮）的点击事件
+  let href = render.getTargetHref(event);
+  if (!href) return;
   event.preventDefault();
   event.stopPropagation();
-  let href = render.getTargetHref(event);
   let result = await render.handleLinkJump(href, event);
   if (!result.handled) {
     return false;
@@ -325,6 +327,9 @@ export const addAndroidTouchEvent = (
   });
   let onTouchEnd = function (event) {
     window.isSwiping = false;
+    // 拖拽结束后清除硬件加速用的 transform，避免 body 长期作为 fixed 定位元素的
+    // 包含块，导致段落模式/速读模式等悬浮控件在翻页后随内容滚动而错位失效
+    doc.body.style.transform = "";
 
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
