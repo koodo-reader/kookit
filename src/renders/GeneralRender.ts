@@ -860,38 +860,6 @@ class GeneralRender extends EventEmitter {
     this.paragraphIndex = direction > 0 ? 0 : Math.max(0, list.length - 1);
     this.updateParagraphOverlay(list);
   }
-  // 阅读尺对外接口，核心逻辑见 src/utils/readingRulerUtil.ts 的 ReadingRulerManager
-  getReadingRulerStep() {
-    return this.readingRulerManager.getStep();
-  }
-  getReadingRulerColumnBounds() {
-    return this.readingRulerManager.getColumnBounds();
-  }
-  updateReadingRulerOverlay(
-    animate?: boolean,
-    lines?: { top: number; bottom: number; left: number; right: number }[]
-  ) {
-    this.readingRulerManager.updateOverlay(animate, lines);
-  }
-  removeReadingRulerOverlay() {
-    this.readingRulerManager.removeOverlay();
-  }
-  handleReadingRulerChange(direction: number): Promise<boolean> {
-    return this.readingRulerManager.handleChange(direction);
-  }
-  flipReadingRulerPage(direction: number) {
-    return this.readingRulerManager.flipPage(direction);
-  }
-  // 速读模式对外接口，核心逻辑见 src/utils/speedReadingUtil.ts 的 SpeedReadingManager
-  startSpeedReading() {
-    this.speedReadingManager.start();
-  }
-  pauseSpeedReading() {
-    this.speedReadingManager.pause();
-  }
-  toggleSpeedReading() {
-    this.speedReadingManager.toggle();
-  }
   async prev() {
     let doc = this.getDocument();
     let iframe = this.getIframe();
@@ -907,7 +875,7 @@ class GeneralRender extends EventEmitter {
       this.isSpeedReading !== "yes" &&
       !this.readingRulerManager.skipFlip
     ) {
-      const handled = await this.handleReadingRulerChange(-1);
+      const handled = await this.readingRulerManager.handleChange(-1);
       if (handled) return;
     }
     if (
@@ -985,7 +953,7 @@ class GeneralRender extends EventEmitter {
       this.isSpeedReading !== "yes" &&
       !this.readingRulerManager.skipFlip
     ) {
-      const handled = await this.handleReadingRulerChange(1);
+      const handled = await this.readingRulerManager.handleChange(1);
       if (handled) return;
     }
     if (
