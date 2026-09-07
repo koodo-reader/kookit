@@ -48,11 +48,7 @@ import {
   slideAnimateTo,
 } from "../utils/touchUtil";
 import { getBlockElement, isParentBlock } from "../utils/common";
-import {
-  segmentSpeedReadingWords,
-  getSpeedReadingORPIndex,
-  getSpeedReadingWordDelay,
-} from "../utils/speedReadingUtil";
+import SpeedReadingManager from "../utils/speedReadingUtil";
 declare var window: any;
 export interface TextRule {
   id: string;
@@ -114,13 +110,7 @@ class GeneralRender extends EventEmitter {
   readingRulerIndex: number = 0;
   readingRulerColumn: number = 0;
   readingRulerSkipFlip: boolean = false;
-  speedReadingWords: string[] = [];
-  speedReadingIndex: number = 0;
-  speedReadingTimer: any = null;
-  speedReadingPlaying: boolean = false;
-  speedReadingSkipFlip: boolean = false;
-  speedReadingAutoStarted: boolean = false;
-  speedReadingOverlayEl: any = null;
+  speedReadingManager: SpeedReadingManager;
 
   constructor(config: {
     readerMode: string;
@@ -201,6 +191,21 @@ class GeneralRender extends EventEmitter {
     this.flipToPrevPage = () => {};
     this.paragraphIndex = 0;
     this.paragraphSkipFlip = false;
+    this.speedReadingManager = new SpeedReadingManager({
+      isSpeedReading: this.isSpeedReading,
+      speedReadingSpeed: this.speedReadingSpeed,
+      isDarkMode: this.isDarkMode,
+      readerMode: this.readerMode,
+    });
+    this.speedReadingManager.getDoc = () => this.getDocument();
+    this.speedReadingManager.getElement = () => this.element;
+    this.speedReadingManager.getOverlayBackground = (doc: Document) =>
+      this.getParagraphOverlayBackground(doc);
+    this.speedReadingManager.getProgress = () => this.getProgress();
+    this.speedReadingManager.getChapterDocIndex = () =>
+      this.tempLocation.chapterDocIndex;
+    this.speedReadingManager.nextPage = () => this.next();
+    this.speedReadingManager.prevPage = () => this.prev();
     this.on("rendered", () => {
       if (this.isParagraphMode === "yes" && !this.paragraphSkipFlip) {
         this.paragraphIndex = 0;
@@ -211,8 +216,8 @@ class GeneralRender extends EventEmitter {
         this.readingRulerColumn = 0;
         this.updateReadingRulerOverlay();
       }
-      if (!this.speedReadingSkipFlip) {
-        this.handleSpeedReadingRendered();
+      if (!this.speedReadingManager.skipFlip) {
+        this.speedReadingManager.handleRendered();
       }
     });
     this.mouseDownHandler = () => {};
@@ -1115,392 +1120,15 @@ class GeneralRender extends EventEmitter {
       direction > 0 ? 0 : this.readerMode === "double" ? 1 : 0;
     this.updateReadingRulerOverlay();
   }
-  extractSpeedReadingWords(): string[] {
-    let doc = this.getDocument();
-    if (!doc || !doc.body || !this.element) return [];
-    let texts = getVisibleText(this.element, this.readerMode, doc);
-    let words: string[] = [];
-    for (let index = 0; index < texts.length; index++) {
-      words = words.concat(segmentSpeedReadingWords(texts[index]));
-    }
-    return words;
-  }
-  getSpeedReadingPageHeight(): number {
-    return (this.element && this.element.clientHeight) || 600;
-  }
-  getSpeedReadingTextColor(doc: Document): string {
-    const base = this.getParagraphOverlayBackground(doc);
-    const match = base.match(/rgba?\(([^)]+)\)/);
-    if (match) {
-      const parts = match[1]
-        .split(/[\s,/]+/)
-        .filter((item) => item !== "")
-        .map(parseFloat);
-      if (parts.length >= 3 && parts.slice(0, 3).every((item) => !isNaN(item))) {
-        const luminance =
-          0.299 * parts[0] + 0.587 * parts[1] + 0.114 * parts[2];
-        return luminance > 128 ? "#333333" : "#f5f5f5";
-      }
-    }
-    const hex = base.trim().replace(/^#/, "");
-    if (/^[0-9a-fA-F]{6}$/.test(hex) || /^[0-9a-fA-F]{3}$/.test(hex)) {
-      const full =
-        hex.length === 3
-          ? hex
-              .split("")
-              .map((item) => item + item)
-              .join("")
-          : hex;
-      const r = parseInt(full.slice(0, 2), 16);
-      const g = parseInt(full.slice(2, 4), 16);
-      const b = parseInt(full.slice(4, 6), 16);
-      const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-      return luminance > 128 ? "#333333" : "#f5f5f5";
-    }
-    return this.isDarkMode === "yes" ? "#f5f5f5" : "#333333";
-  }
-  updateSpeedReadingOverlay() {
-    let doc = this.getDocument();
-    if (!doc || !doc.body) return;
-    let overlay = doc.getElementById("kookit-speed-reading-overlay");
-    if (this.isSpeedReading !== "yes") {
-      if (overlay && overlay.parentNode) {
-        overlay.parentNode.removeChild(overlay);
-      }
-      if (overlay === this.speedReadingOverlayEl) {
-        this.speedReadingOverlayEl = null;
-      }
-      return;
-    }
-    if (!overlay) {
-      overlay = doc.createElement("div");
-      overlay.id = "kookit-speed-reading-overlay";
-      this.speedReadingOverlayEl = overlay;
-      const pageHeight = this.getSpeedReadingPageHeight();
-      const isScrollMode = this.readerMode === "scroll";
-      const position = isScrollMode ? "absolute" : "fixed";
-      const visibilityTop = isScrollMode
-        ? convertStyleNum(this.element.scrollTop)
-        : 0;
-      const height = isScrollMode
-        ? this.element.clientHeight
-        : doc.defaultView
-          ? doc.defaultView.innerHeight
-          : pageHeight;
-      overlay.style.cssText =
-        `position:${position};left:0;width:100%;top:${isScrollMode ? visibilityTop : 0}px;` +
-        `height:${Math.max(0, height)}px;z-index:2147483000;display:flex;flex-direction:column;` +
-        `align-items:center;justify-content:center;padding-bottom:${Math.round(
-          pageHeight * 0.2
-        )}px;user-select:none;transition:background-color 0.3s ease;`;
-      overlay.style.backgroundColor = this.getParagraphOverlayBackground(doc);
-
-      let wordArea = doc.createElement("div");
-      wordArea.id = "kookit-speed-reading-word-area";
-      wordArea.style.cssText =
-        "position:relative;display:flex;align-items:baseline;width:80%;max-width:900px;font-weight:600;line-height:1.6;";
-      let left = doc.createElement("span");
-      left.id = "kookit-speed-reading-word-left";
-      left.style.cssText = "flex:1;text-align:right;white-space:pre;overflow:visible;";
-      let pivot = doc.createElement("span");
-      pivot.id = "kookit-speed-reading-word-pivot";
-      pivot.style.cssText =
-        "color:#ff3b30;white-space:pre;position:relative;";
-      let right = doc.createElement("span");
-      right.id = "kookit-speed-reading-word-right";
-      right.style.cssText = "flex:1;text-align:left;white-space:pre;overflow:visible;";
-      let tickTop = doc.createElement("span");
-      tickTop.id = "kookit-speed-reading-tick-top";
-      let tickBottom = doc.createElement("span");
-      tickBottom.id = "kookit-speed-reading-tick-bottom";
-      const textColor = this.getSpeedReadingTextColor(doc);
-      const fontPx = Math.max(
-        28,
-        Math.min(72, Math.round(pageHeight * 0.08))
-      );
-      const tickCss =
-        `position:absolute;left:50%;transform:translateX(-50%);width:2px;height:${Math.round(
-          fontPx * 0.3
-        )}px;background:rgba(128,128,128,0.6);`;
-      tickTop.style.cssText = tickCss + `top:-${Math.round(fontPx * 0.45)}px;`;
-      tickBottom.style.cssText =
-        tickCss + `bottom:-${Math.round(fontPx * 0.45)}px;`;
-      wordArea.appendChild(left);
-      wordArea.appendChild(pivot);
-      wordArea.appendChild(right);
-      wordArea.appendChild(tickTop);
-      wordArea.appendChild(tickBottom);
-      wordArea.style.fontSize = fontPx + "px";
-      wordArea.style.color = textColor;
-
-      let status = doc.createElement("div");
-      status.id = "kookit-speed-reading-status";
-      status.style.cssText =
-        "display:none;font-size:" +
-        Math.round(fontPx * 0.6) +
-        "px;opacity:0.7;";
-      status.textContent = "The End";
-      status.style.color = textColor;
-
-      let toggle = doc.createElement("div");
-      toggle.id = "kookit-speed-reading-toggle";
-      toggle.style.cssText =
-        `margin-top:${Math.round(fontPx * 0.8)}px;width:56px;height:56px;border-radius:50%;` +
-        `display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;` +
-        `border:1px solid rgba(128,128,128,0.5);color:${textColor};`;
-      toggle.textContent = "⏸";
-
-      overlay.appendChild(wordArea);
-      overlay.appendChild(status);
-      overlay.appendChild(toggle);
-      doc.body.appendChild(overlay);
-
-      toggle.addEventListener("click", (event: any) => {
-        event.stopPropagation();
-        this.toggleSpeedReading();
-      });
-      overlay.addEventListener("click", (event: any) => {
-        event.stopPropagation();
-        this.toggleSpeedReading();
-      });
-      // 阻止遮罩上的触摸/滚动事件冒泡到翻页处理器
-      const blockEvent = (event: any) => {
-        event.stopPropagation();
-      };
-      overlay.addEventListener("touchstart", blockEvent, { passive: false });
-      overlay.addEventListener("touchmove", blockEvent, { passive: false });
-      overlay.addEventListener("touchend", blockEvent, { passive: false });
-      overlay.addEventListener("wheel", blockEvent, { passive: false });
-      overlay.addEventListener("mousedown", blockEvent, false);
-      overlay.addEventListener("dblclick", blockEvent, false);
-    } else if (overlay !== this.speedReadingOverlayEl) {
-      this.speedReadingOverlayEl = overlay;
-    }
-    if (this.readerMode === "scroll" && this.element) {
-      // scroll 模式下遮罩需要跟随外层滚动位置
-      overlay.style.top = convertStyleNum(this.element.scrollTop) + "px";
-      overlay.style.height = this.element.clientHeight + "px";
-    }
-  }
-  removeSpeedReadingOverlay() {
-    let doc = this.getDocument();
-    if (!doc) return;
-    let overlay = doc.getElementById("kookit-speed-reading-overlay");
-    if (overlay && overlay.parentNode) {
-      overlay.parentNode.removeChild(overlay);
-    }
-    this.speedReadingOverlayEl = null;
-    if (this.speedReadingTimer) {
-      clearTimeout(this.speedReadingTimer);
-      this.speedReadingTimer = null;
-    }
-  }
-  isSpeedReadingOverlayValid(doc: Document): boolean {
-    if (
-      !this.speedReadingOverlayEl ||
-      doc.getElementById("kookit-speed-reading-overlay") !==
-        this.speedReadingOverlayEl
-    ) {
-      return false;
-    }
-    return true;
-  }
-  updateSpeedReadingToggleIcon() {
-    let doc = this.getDocument();
-    if (!doc) return;
-    let toggle = doc.getElementById("kookit-speed-reading-toggle");
-    if (!toggle) return;
-    toggle.textContent = this.speedReadingPlaying ? "⏸" : "▶";
-  }
-  showSpeedReadingEndState() {
-    let doc = this.getDocument();
-    if (!doc) return;
-    let wordArea = doc.getElementById("kookit-speed-reading-word-area");
-    let status = doc.getElementById("kookit-speed-reading-status");
-    if (wordArea) wordArea.style.display = "none";
-    if (status) status.style.display = "block";
-  }
-  showSpeedReadingWordArea() {
-    let doc = this.getDocument();
-    if (!doc) return;
-    let wordArea = doc.getElementById("kookit-speed-reading-word-area");
-    let status = doc.getElementById("kookit-speed-reading-status");
-    if (wordArea) wordArea.style.display = "flex";
-    if (status) status.style.display = "none";
-  }
-  renderSpeedReadingWord() {
-    let doc = this.getDocument();
-    if (!doc) return;
-    this.updateSpeedReadingOverlay();
-    this.showSpeedReadingWordArea();
-    let left = doc.getElementById("kookit-speed-reading-word-left");
-    let pivot = doc.getElementById("kookit-speed-reading-word-pivot");
-    let right = doc.getElementById("kookit-speed-reading-word-right");
-    if (!left || !pivot || !right) return;
-    let word = this.speedReadingWords[this.speedReadingIndex] || "";
-    let chars = Array.from(word);
-    if (chars.length === 0) {
-      left.textContent = "";
-      pivot.textContent = "";
-      right.textContent = "";
-      this.showSpeedReadingEndState();
-      return;
-    }
-    let orp = Math.min(getSpeedReadingORPIndex(word), chars.length - 1);
-    left.textContent = chars.slice(0, orp).join("");
-    pivot.textContent = chars[orp];
-    right.textContent = chars.slice(orp + 1).join("");
-  }
+  // 速读模式对外接口，核心逻辑见 src/utils/speedReadingUtil.ts 的 SpeedReadingManager
   startSpeedReading() {
-    if (this.isSpeedReading !== "yes" || this.speedReadingPlaying) return;
-    let doc = this.getDocument();
-    if (!doc) return;
-    this.speedReadingPlaying = true;
-    this.updateSpeedReadingOverlay();
-    this.updateSpeedReadingToggleIcon();
-    if (this.speedReadingWords.length === 0) {
-      this.speedReadingWords = this.extractSpeedReadingWords();
-      this.speedReadingIndex = 0;
-    }
-    if (this.speedReadingWords.length === 0) {
-      this.pauseSpeedReading();
-      this.showSpeedReadingEndState();
-      return;
-    }
-    this.renderSpeedReadingWord();
-    this.scheduleNextSpeedReadingWord();
+    this.speedReadingManager.start();
   }
   pauseSpeedReading() {
-    this.speedReadingPlaying = false;
-    if (this.speedReadingTimer) {
-      clearTimeout(this.speedReadingTimer);
-      this.speedReadingTimer = null;
-    }
-    this.updateSpeedReadingToggleIcon();
+    this.speedReadingManager.pause();
   }
   toggleSpeedReading() {
-    let doc = this.getDocument();
-    if (!doc) return;
-    if (this.speedReadingPlaying) {
-      this.pauseSpeedReading();
-    } else {
-      this.startSpeedReading();
-    }
-  }
-  scheduleNextSpeedReadingWord() {
-    if (this.speedReadingTimer) {
-      clearTimeout(this.speedReadingTimer);
-      this.speedReadingTimer = null;
-    }
-    if (!this.speedReadingPlaying) return;
-    let doc = this.getDocument();
-    if (!doc || !this.isSpeedReadingOverlayValid(doc)) return;
-    const word = this.speedReadingWords[this.speedReadingIndex] || "";
-    const wpm = this.speedReadingSpeed || 300;
-    const delay = getSpeedReadingWordDelay(word, wpm);
-    this.speedReadingTimer = setTimeout(async () => {
-      this.speedReadingTimer = null;
-      let currentDoc = this.getDocument();
-      if (
-        !this.speedReadingPlaying ||
-        !currentDoc ||
-        !this.isSpeedReadingOverlayValid(currentDoc)
-      ) {
-        return;
-      }
-      await this.showNextSpeedReadingWord();
-    }, delay);
-  }
-  async showNextSpeedReadingWord() {
-    if (!this.speedReadingPlaying) return;
-    if (this.speedReadingIndex < this.speedReadingWords.length - 1) {
-      this.speedReadingIndex++;
-      this.renderSpeedReadingWord();
-      this.scheduleNextSpeedReadingWord();
-      return;
-    }
-    // 当前页单词展示完毕，自动翻页
-    await this.flipSpeedReadingPage(1);
-  }
-  getSpeedReadingPageKey(): string {
-    let progress = this.getProgress();
-    return JSON.stringify([
-      this.tempLocation.chapterDocIndex,
-      progress?.currentPage,
-      progress?.totalPage,
-    ]);
-  }
-  async flipSpeedReadingPage(direction: number) {
-    let doc = this.getDocument();
-    if (!doc) {
-      this.pauseSpeedReading();
-      return;
-    }
-    this.speedReadingSkipFlip = true;
-    try {
-      let attempts = 0;
-      while (attempts < 5 && this.speedReadingPlaying) {
-        const beforeKey = this.getSpeedReadingPageKey();
-        if (direction > 0) {
-          await this.next();
-        } else {
-          await this.prev();
-        }
-        await new Promise((r) =>
-          setTimeout(r, this.readerMode === "scroll" ? 400 : 150)
-        );
-        const afterKey = this.getSpeedReadingPageKey();
-        this.speedReadingWords = this.extractSpeedReadingWords();
-        if (this.speedReadingWords.length > 0) {
-          this.speedReadingIndex = direction > 0 ? 0 : this.speedReadingWords.length - 1;
-          this.updateSpeedReadingOverlay();
-          this.renderSpeedReadingWord();
-          break;
-        }
-        if (beforeKey === afterKey) {
-          // 页面没有变化，说明已经到达书籍末尾，暂停速读
-          this.pauseSpeedReading();
-          this.speedReadingWords = [];
-          this.speedReadingIndex = 0;
-          this.showSpeedReadingEndState();
-          return;
-        }
-        attempts++;
-      }
-    } finally {
-      this.speedReadingSkipFlip = false;
-    }
-    this.scheduleNextSpeedReadingWord();
-  }
-  handleSpeedReadingRendered() {
-    if (this.isSpeedReading !== "yes") {
-      this.pauseSpeedReading();
-      this.removeSpeedReadingOverlay();
-      return;
-    }
-    let doc = this.getDocument();
-    if (!doc || !doc.body) return;
-    this.speedReadingWords = this.extractSpeedReadingWords();
-    this.speedReadingIndex = 0;
-    this.updateSpeedReadingOverlay();
-    this.updateSpeedReadingToggleIcon();
-    if (this.speedReadingWords.length === 0) {
-      this.showSpeedReadingEndState();
-      if (this.speedReadingTimer) {
-        clearTimeout(this.speedReadingTimer);
-        this.speedReadingTimer = null;
-      }
-      return;
-    }
-    this.showSpeedReadingWordArea();
-    this.renderSpeedReadingWord();
-    if (!this.speedReadingAutoStarted) {
-      // 首次渲染自动开始播放
-      this.speedReadingAutoStarted = true;
-      this.startSpeedReading();
-    } else if (this.speedReadingPlaying) {
-      this.scheduleNextSpeedReadingWord();
-    }
+    this.speedReadingManager.toggle();
   }
   async prev() {
     let doc = this.getDocument();
@@ -1508,7 +1136,7 @@ class GeneralRender extends EventEmitter {
     if (!doc || !iframe) {
       return;
     }
-    if (this.isSpeedReading === "yes" && !this.speedReadingSkipFlip) {
+    if (this.isSpeedReading === "yes" && !this.speedReadingManager.skipFlip) {
       // 速读模式下禁用鼠标、快捷键等外部触发的翻页
       return;
     }
@@ -1586,7 +1214,7 @@ class GeneralRender extends EventEmitter {
     if (!doc || !iframe) {
       return;
     }
-    if (this.isSpeedReading === "yes" && !this.speedReadingSkipFlip) {
+    if (this.isSpeedReading === "yes" && !this.speedReadingManager.skipFlip) {
       // 速读模式下禁用鼠标、快捷键等外部触发的翻页
       return;
     }
