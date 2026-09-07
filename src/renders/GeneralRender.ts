@@ -89,6 +89,8 @@ class GeneralRender extends EventEmitter {
   isReadingRuler: string = "no";
   readingRulerLineHeight: number = 3;
   readingRulerBackgroundOpacity: number = 0.5;
+  isSpeedReading: string = "no";
+  speedReadingSpeed: number = 300;
   platform: string = "web";
   isAllowScript: string = "no";
   touchEventSet: any;
@@ -123,6 +125,8 @@ class GeneralRender extends EventEmitter {
     isReadingRuler?: string;
     readingRulerLineHeight?: number;
     readingRulerBackgroundOpacity?: number;
+    isSpeedReading?: string;
+    speedReadingSpeed?: number;
     textOrientation?: string;
     isAllowScript?: string;
     fullTranslationMode?: string;
@@ -160,6 +164,8 @@ class GeneralRender extends EventEmitter {
     this.readingRulerLineHeight = config.readingRulerLineHeight || 3;
     this.readingRulerBackgroundOpacity =
       config.readingRulerBackgroundOpacity ?? 0.5;
+    this.isSpeedReading = config.isSpeedReading || "no";
+    this.speedReadingSpeed = config.speedReadingSpeed || 300;
     this.platform = config.platform || "web";
     window.platform = this.platform;
     window.isBionic = this.isBionic;
