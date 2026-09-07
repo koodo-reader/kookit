@@ -101,7 +101,7 @@ class ParagraphModeManager {
       overlay = doc.createElement("div");
       overlay.id = "kookit-paragraph-overlay";
       overlay.style.cssText =
-        "position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:2147483000;pointer-events:none;text-align:center;transition:background-color 0.3s ease;";
+        "position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:2147483000;pointer-events:none;text-align:center;transition:background-color 0.3s ease;margin:0;padding:0;";
       let content = doc.createElement("div");
       content.id = "kookit-paragraph-overlay-content";
       content.style.cssText =
@@ -185,10 +185,7 @@ class ParagraphModeManager {
     const line = doc.createElementNS("http://www.w3.org/2000/svg", "path");
     line.setAttribute("d", direction < 0 ? "M19 12H5" : "M5 12h14");
     const head = doc.createElementNS("http://www.w3.org/2000/svg", "path");
-    head.setAttribute(
-      "d",
-      direction < 0 ? "M12 19l-7-7 7-7" : "M12 5l7 7-7 7"
-    );
+    head.setAttribute("d", direction < 0 ? "M12 19l-7-7 7-7" : "M12 5l7 7-7 7");
     svg.appendChild(line);
     svg.appendChild(head);
     return svg;

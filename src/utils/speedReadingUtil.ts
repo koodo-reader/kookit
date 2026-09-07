@@ -231,7 +231,7 @@ class SpeedReadingManager {
         `height:${Math.max(0, height)}px;z-index:2147483000;display:flex;flex-direction:column;` +
         `align-items:center;justify-content:center;padding-bottom:${Math.round(
           pageHeight * 0.2
-        )}px;user-select:none;transition:background-color 0.3s ease;`;
+        )}px;user-select:none;transition:background-color 0.3s ease;margin:0;padding:0;`;
       overlay.style.backgroundColor = this.getOverlayBackground(doc);
 
       let wordArea = doc.createElement("div");
