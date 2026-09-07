@@ -289,7 +289,7 @@ class SpeedReadingManager {
         `margin-top:${Math.round(fontPx * 0.8)}px;width:56px;height:56px;border-radius:50%;` +
         `display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;` +
         `border:1px solid rgba(128,128,128,0.5);color:${textColor};`;
-      toggle.textContent = "⏸";
+      toggle.appendChild(this.createToggleIcon(doc, this.playing));
 
       overlay.appendChild(wordArea);
       overlay.appendChild(status);
@@ -349,12 +349,31 @@ class SpeedReadingManager {
     return true;
   }
 
+  private createToggleIcon(doc: Document, playing: boolean) {
+    const svg = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("width", "22");
+    svg.setAttribute("height", "22");
+    svg.style.cssText = "display:block;fill:currentColor;";
+    const path = doc.createElementNS("http://www.w3.org/2000/svg", "path");
+    // 播放三角形的几何重心偏左，向右偏移 1px 以达到视觉居中
+    path.setAttribute(
+      "d",
+      playing ? "M7 5h4v14H7zM13 5h4v14h-4z" : "M9 5v14l11-7z"
+    );
+    svg.appendChild(path);
+    return svg;
+  }
+
   private updateToggleIcon() {
     let doc = this.getDoc();
     if (!doc) return;
     let toggle = doc.getElementById("kookit-speed-reading-toggle");
     if (!toggle) return;
-    toggle.textContent = this.playing ? "⏸" : "▶";
+    while (toggle.firstChild) {
+      toggle.removeChild(toggle.firstChild);
+    }
+    toggle.appendChild(this.createToggleIcon(doc, this.playing));
   }
 
   private showEndState() {
