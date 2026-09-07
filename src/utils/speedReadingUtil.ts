@@ -244,7 +244,8 @@ class SpeedReadingManager {
         "flex:1;text-align:right;white-space:pre;overflow:visible;";
       let pivot = doc.createElement("span");
       pivot.id = "kookit-speed-reading-word-pivot";
-      pivot.style.cssText = "color:#ff3b30;white-space:pre;position:relative;";
+      pivot.style.cssText =
+        "color:#ff3b30 !important;white-space:pre;position:relative;";
       let right = doc.createElement("span");
       right.id = "kookit-speed-reading-word-right";
       right.style.cssText =
