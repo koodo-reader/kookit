@@ -23,17 +23,39 @@ export const isNoSpaceScript = (text: string): boolean => {
   return NO_SPACE_SCRIPT_REGEX.test(text);
 };
 
+// 判断片段是否只由标点符号组成（不含字母、数字或表意文字）
+const isPunctuationOnly = (word: string): boolean =>
+  /^[^\w\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uff9f\u0e00-\u0e7f\u0e80-\u0eff\u1000-\u109f\u1780-\u17ff]+$/.test(
+    word
+  );
+
+// 将独立成词的标点符号合并到前一个单词的末尾
+const mergePunctuationToPrevWord = (words: string[]): string[] => {
+  const merged: string[] = [];
+  for (const word of words) {
+    if (merged.length > 0 && isPunctuationOnly(word)) {
+      merged[merged.length - 1] += word;
+    } else {
+      merged.push(word);
+    }
+  }
+  return merged;
+};
+
 // 英文等空格连写语言按空白切分；中日韩、泰语等非印欧语系语言使用 Intl.Segmenter 分词
 export const segmentSpeedReadingWords = (text: string): string[] => {
   if (!text || !text.trim()) return [];
   if (isNoSpaceScript(text)) {
     const segmenter = getWordSegmenter();
     if (segmenter) {
-      return Array.from(segmenter.segment(text))
+      const words = Array.from(segmenter.segment(text))
         .map((segment: any) => segment.segment as string)
         .filter((segment: string) => segment.trim().length > 0);
+      return mergePunctuationToPrevWord(words);
     }
-    return Array.from(text).filter((char) => char.trim().length > 0);
+    return mergePunctuationToPrevWord(
+      Array.from(text).filter((char) => char.trim().length > 0)
+    );
   }
   return text.split(/\s+/).filter((word) => word.length > 0);
 };
