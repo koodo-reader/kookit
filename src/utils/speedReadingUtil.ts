@@ -245,19 +245,16 @@ class SpeedReadingManager {
 
       let wordArea = doc.createElement("div");
       wordArea.id = "kookit-speed-reading-word-area";
-      wordArea.style.cssText =
-        "position:relative;display:flex;align-items:baseline;width:80%;max-width:900px;font-weight:600;line-height:1.6;";
+      wordArea.style.cssText = `position:relative;display:flex;align-items:baseline;width:80%;max-width:900px;font-weight:600;line-height:1.6;font-size:${this.getWordFontSize()}px !important;transition:background-color 0.3s ease;pointer-events:none;`;
       let left = doc.createElement("span");
       left.id = "kookit-speed-reading-word-left";
-      left.style.cssText =
-        "flex:1;text-align:right;white-space:pre;overflow:visible;";
+      left.style.cssText = `flex:1;text-align:right;white-space:pre;overflow:visible;font-size:${this.getWordFontSize()}px !important;`;
       let pivot = doc.createElement("span");
       pivot.id = "kookit-speed-reading-word-pivot";
-      pivot.style.cssText = `color:${PIVOT_COLOR} !important;white-space:pre;position:relative;`;
+      pivot.style.cssText = `color:${PIVOT_COLOR} !important;white-space:pre;position:relative;font-size:${this.getWordFontSize()}px !important;overflow:visible;`;
       let right = doc.createElement("span");
       right.id = "kookit-speed-reading-word-right";
-      right.style.cssText =
-        "flex:1;text-align:left;white-space:pre;overflow:visible;";
+      right.style.cssText = `flex:1;text-align:left;white-space:pre;overflow:visible;font-size:${this.getWordFontSize()}px !important;`;
       let tickTop = doc.createElement("span");
       tickTop.id = "kookit-speed-reading-tick-top";
       let tickBottom = doc.createElement("span");
@@ -275,7 +272,7 @@ class SpeedReadingManager {
       wordArea.appendChild(right);
       wordArea.appendChild(tickTop);
       wordArea.appendChild(tickBottom);
-      wordArea.style.fontSize = fontPx + "px";
+      wordArea.style.cssText += `font-size:${fontPx}px !important;`;
       wordArea.style.color = textColor;
 
       let status = doc.createElement("div");
@@ -283,7 +280,7 @@ class SpeedReadingManager {
       status.style.cssText =
         "display:none;font-size:" +
         Math.round(fontPx * 0.6) +
-        "px;opacity:0.7;";
+        "px !important;opacity:0.7;";
       status.textContent = "The End";
       status.style.color = textColor;
 
@@ -291,7 +288,7 @@ class SpeedReadingManager {
       toggle.id = "kookit-speed-reading-toggle";
       toggle.style.cssText =
         `margin-top:${Math.round(fontPx * 0.8)}px;width:56px;height:56px;border-radius:50%;` +
-        `display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;` +
+        `display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px !important;` +
         `border:1px solid rgba(128,128,128,0.5);color:${textColor};pointer-events:auto;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;`;
       toggle.appendChild(this.createToggleIcon(doc, this.playing));
 
@@ -487,7 +484,7 @@ class SpeedReadingManager {
     const countdownPx = Math.round(this.getWordFontSize() * 1.6);
     left.textContent = "";
     pivot.style.setProperty("color", COUNTDOWN_COLOR, "important");
-    pivot.style.fontSize = countdownPx + "px";
+    pivot.style.cssText += `font-size:${countdownPx}px !important;`;
     pivot.textContent = String(count);
     right.textContent = "";
   }
