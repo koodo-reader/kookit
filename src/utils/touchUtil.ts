@@ -334,7 +334,14 @@ export const addAndroidTouchEvent = (
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
       event.preventDefault();
-      return;
+      // 段落/速读/阅读尺模式下快速连点是主要交互，不吞掉 300ms 内的连续点击
+      if (
+        render.isParagraphMode !== "yes" &&
+        render.isSpeedReading !== "yes" &&
+        render.isReadingRuler !== "yes"
+      ) {
+        return;
+      }
     }
     lastTouchEnd = now;
     onPinchZoomEnd(event, render, format);
@@ -443,15 +450,7 @@ export const addAndroidTouchEvent = (
       var col = Math.floor(touchEndX / cellWidth);
       var row = Math.floor(touchEndY / cellHeight);
       var result = getTouchAction(col, row, touchControlRule);
-      if (animation === "sliding" && readerMode !== "scroll") {
-        if (result === "right") {
-          slideAnimateTo("right", format, doc, outerDoc, element, render, gap);
-          return;
-        } else if (result === "left") {
-          slideAnimateTo("left", format, doc, outerDoc, element, render, gap);
-          return;
-        }
-      }
+      // 段落/速读/阅读尺模式下点击直接推进，优先于滑动翻页动画
       if (
         render.isParagraphMode === "yes" ||
         render.isSpeedReading === "yes" ||
@@ -462,6 +461,15 @@ export const addAndroidTouchEvent = (
           return;
         } else if (result === "left") {
           render.prev();
+          return;
+        }
+      }
+      if (animation === "sliding" && readerMode !== "scroll") {
+        if (result === "right") {
+          slideAnimateTo("right", format, doc, outerDoc, element, render, gap);
+          return;
+        } else if (result === "left") {
+          slideAnimateTo("left", format, doc, outerDoc, element, render, gap);
           return;
         }
       }
@@ -850,7 +858,14 @@ export const addAppleTouchEvent = (
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
       event.preventDefault();
-      return;
+      // 段落/速读/阅读尺模式下快速连点是主要交互，不吞掉 300ms 内的连续点击
+      if (
+        render.isParagraphMode !== "yes" &&
+        render.isSpeedReading !== "yes" &&
+        render.isReadingRuler !== "yes"
+      ) {
+        return;
+      }
     }
     lastTouchEnd = now;
     // iOS 上极易崩溃，所以注释掉
@@ -1009,15 +1024,7 @@ export const addAppleTouchEvent = (
       const col = Math.min(Math.floor(normalizedX / cellWidth), 2);
       const row = Math.min(Math.floor(normalizedY / cellHeight), 2);
       let result = getTouchAction(col, row, touchControlRules);
-      if (animation === "sliding" && readerMode !== "scroll") {
-        if (result === "right") {
-          slideAnimateTo("right", format, doc, outerDoc, element, render, gap);
-          return;
-        } else if (result === "left") {
-          slideAnimateTo("left", format, doc, outerDoc, element, render, gap);
-          return;
-        }
-      }
+      // 段落/速读/阅读尺模式下点击直接推进，优先于滑动翻页动画
       if (
         render.isParagraphMode === "yes" ||
         render.isSpeedReading === "yes" ||
@@ -1028,6 +1035,15 @@ export const addAppleTouchEvent = (
           return;
         } else if (result === "left") {
           render.prev();
+          return;
+        }
+      }
+      if (animation === "sliding" && readerMode !== "scroll") {
+        if (result === "right") {
+          slideAnimateTo("right", format, doc, outerDoc, element, render, gap);
+          return;
+        } else if (result === "left") {
+          slideAnimateTo("left", format, doc, outerDoc, element, render, gap);
           return;
         }
       }
