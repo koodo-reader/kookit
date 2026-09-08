@@ -52,7 +52,14 @@ class PdfRender extends GeneralRender {
   pdfTextLineHeightFixed: number | null = null;
   annotationManager: AnnotationManager;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
-    super({ ...config, convertChinese: "Default", format: "PDF" });
+    super({
+      ...config,
+      convertChinese: "Default",
+      format: "PDF",
+      isParagraphMode: "no",
+      isReadingRuler: "no",
+      isSpeedReading: "no",
+    });
     this.pdfBuffer = pdfBuffer;
     this.isStartFromEven = config.isStartFromEven || "no";
     this.pdfCrop = config.pdfCrop || { top: 0, bottom: 0, left: 0, right: 0 };
