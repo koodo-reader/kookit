@@ -398,10 +398,7 @@ export const addAndroidTouchEvent = (
     var selectedText = iWin.getSelection().toString();
     var isSwiping =
       Math.abs(distX) >= swipeThreshold || Math.abs(distY) >= swipeThreshold;
-    if (
-      selectedText &&
-      (!isPaginatedFormat(format) || !isSwiping)
-    ) {
+    if (selectedText && (!isPaginatedFormat(format) || !isSwiping)) {
       window.ReactNativeWebView.postMessage(
         JSON.stringify({
           event: "select-text-after-touch",
@@ -452,6 +449,19 @@ export const addAndroidTouchEvent = (
           return;
         } else if (result === "left") {
           slideAnimateTo("left", format, doc, outerDoc, element, render, gap);
+          return;
+        }
+      }
+      if (
+        render.isParagraphMode === "yes" ||
+        render.isSpeedReading === "yes" ||
+        render.isReadingRuler === "yes"
+      ) {
+        if (result === "right") {
+          render.next();
+          return;
+        } else if (result === "left") {
+          render.prev();
           return;
         }
       }
@@ -1005,6 +1015,19 @@ export const addAppleTouchEvent = (
           return;
         } else if (result === "left") {
           slideAnimateTo("left", format, doc, outerDoc, element, render, gap);
+          return;
+        }
+      }
+      if (
+        render.isParagraphMode === "yes" ||
+        render.isSpeedReading === "yes" ||
+        render.isReadingRuler === "yes"
+      ) {
+        if (result === "right") {
+          render.next();
+          return;
+        } else if (result === "left") {
+          render.prev();
           return;
         }
       }
