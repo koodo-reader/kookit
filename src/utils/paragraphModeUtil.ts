@@ -40,11 +40,15 @@ class ParagraphModeManager {
     let element = this.getElement();
     if (!doc || !doc.body || !element) return [];
     const currentDoc = doc;
+    // 排除段落模式遮罩层本身，避免其中克隆展示的段落被当作真实段落，
+    // 导致到达页末尾时需要两次 next() 才能翻页
+    let overlay = doc.getElementById("kookit-paragraph-overlay");
     let nodeList = getBlockElement(doc.body).filter(
       (item) => !isParentBlock(item)
     );
     return nodeList.filter(
       (el) =>
+        (!overlay || !overlay.contains(el)) &&
         (el.textContent || "").trim() &&
         this.isParagraphInViewport(currentDoc, el as HTMLElement)
     );
