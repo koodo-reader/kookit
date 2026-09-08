@@ -168,7 +168,7 @@ class SpeedReadingManager {
   }
 
   private getWordFontSize(): number {
-    return Math.max(28, Math.min(72, Math.round(this.getPageHeight() * 0.08)));
+    return Math.max(28, Math.min(72, Math.round(this.getPageHeight() * 0.06)));
   }
 
   private getTextColor(doc: Document): string {
@@ -406,7 +406,11 @@ class SpeedReadingManager {
     let right = doc.getElementById("kookit-speed-reading-word-right");
     if (!left || !pivot || !right) return;
     pivot.style.setProperty("color", PIVOT_COLOR, "important");
-    pivot.style.fontSize = "";
+    pivot.style.cssText += `font-size:${this.getWordFontSize()}px !important;`;
+    right.style.setProperty("color", this.getTextColor(doc), "important");
+    right.style.cssText += `font-size:${this.getWordFontSize()}px !important;`;
+    left.style.setProperty("color", this.getTextColor(doc), "important");
+    left.style.cssText += `font-size:${this.getWordFontSize()}px !important;`;
     let word = this.words[this.index] || "";
     let chars = Array.from(word);
     if (chars.length === 0) {
