@@ -100,15 +100,11 @@ class ParagraphModeManager {
     if (!overlay) {
       overlay = doc.createElement("div");
       overlay.id = "kookit-paragraph-overlay";
-      overlay.style.cssText =
-        "position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:2147483000;pointer-events:none;text-align:center;transition:background-color 0.3s ease;margin:0 !important;padding:0 !important;";
+      overlay.style.cssText = `position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:2147483000;pointer-events:none;text-align:center;transition:background-color 0.3s ease;margin:0 !important;padding:0 !important;`;
       let content = doc.createElement("div");
       content.id = "kookit-paragraph-overlay-content";
       content.style.cssText =
-        "max-width:50%;max-height:calc(100% - 90px);overflow:hidden;text-align:center;transition:background-color 0.3s ease;" +
-        (this.isMobile === "yes"
-          ? "max-width:calc(100% - 40px);max-height:calc(100% - 110px);"
-          : "");
+        "width:calc(100% - 40px);max-width:600px;max-height:calc(100% - 90px);overflow:hidden;text-align:center;transition:background-color 0.3s ease;";
       overlay.appendChild(content);
       overlay.appendChild(this.createControls(doc));
       doc.body.appendChild(overlay);

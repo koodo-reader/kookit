@@ -137,6 +137,15 @@ class GeneralRender extends EventEmitter {
     codeHighlight?: string;
   }) {
     super();
+    if (
+      config.isParagraphMode === "yes" ||
+      config.isSpeedReading === "yes" ||
+      config.isReadingRuler === "yes"
+    ) {
+      if (config.readerMode === "scroll") {
+        config.readerMode = "single";
+      }
+    }
     this.readerMode = config.readerMode;
     window.readerMode = config.readerMode;
     this.animation = config.animation || "none";
