@@ -115,6 +115,7 @@ class SpeedReadingManager {
   countdownTimer: any = null;
   playing: boolean = false;
   autoStarted: boolean = false;
+  hasStartedOnce: boolean = false;
   overlayEl: any = null;
   skipFlip: boolean = false;
 
@@ -443,6 +444,13 @@ class SpeedReadingManager {
       this.showEndState();
       return;
     }
+    if (this.hasStartedOnce) {
+      // 首次播放后暂停再继续，不再展示倒计时，直接进入逐词轮播
+      this.renderWord();
+      this.scheduleNext();
+      return;
+    }
+    this.hasStartedOnce = true;
     this.startCountdown();
   }
 
