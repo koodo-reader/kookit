@@ -7,6 +7,7 @@ import {
   getActualOffsetTop,
   getSelectedElement,
   handleOneChapterDoc,
+  isVerticalLayout,
   progressInfo,
 } from "../utils/layoutUtil";
 import {
@@ -93,6 +94,7 @@ class GeneralRender extends EventEmitter {
   isSpeedReading: string = "no";
   isShowTotalPage: string = "no";
   chapterSizeCache: { sizes: number[]; total: number } | null = null;
+  estimatedSizePerPageCache: { key: string; value: number } | null = null;
   speedReadingSpeed: number = 300;
   platform: string = "web";
   isAllowScript: string = "no";
@@ -1230,6 +1232,101 @@ class GeneralRender extends EventEmitter {
     this.chapterSizeCache = { sizes, total };
     return this.chapterSizeCache;
   }
+  getEstimatedSizePerPage() {
+    const doc = this.getDocument();
+    if (!doc || !doc.body) return 0;
+    const { sizes } = this.getChapterSizes();
+    const chapterIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
+    const vertical = isVerticalLayout() && this.readerMode !== "scroll";
+    const scroll = this.readerMode === "scroll";
+    let inlinePx = 0;
+    let blockPx = 0;
+    if (scroll) {
+      inlinePx = this.element.clientWidth;
+      blockPx = this.element.clientHeight - 50;
+    } else if (vertical) {
+      inlinePx = doc.body.clientHeight;
+      blockPx = doc.body.clientWidth;
+    } else {
+      inlinePx = doc.body.clientWidth;
+      blockPx = doc.body.clientHeight;
+    }
+    if (inlinePx <= 0 || blockPx <= 0) return 0;
+    const view = doc.defaultView || window;
+    const blockSelector = "p,div,li,blockquote,h1,h2,h3,h4,h5,h6,dd,dt,pre,td";
+    const blocks = doc.body.querySelectorAll(blockSelector);
+    const text = doc.body.textContent || "";
+    const textLen = text.length;
+    if (textLen <= 0) return 0;
+    const sampleEl: any =
+      (Array.prototype.find.call(
+        blocks,
+        (el: any) => el.textContent && el.textContent.trim()
+      ) as any) || doc.body;
+    const style = view.getComputedStyle(sampleEl);
+    const bodyStyle = view.getComputedStyle(doc.body);
+    const fontSize =
+      parseFloat(style.fontSize) || parseFloat(bodyStyle.fontSize) || 18;
+    let lineHeightPx = parseFloat(style.lineHeight);
+    if (!lineHeightPx || style.lineHeight === "normal") {
+      lineHeightPx = fontSize * 1.25;
+    }
+    const letterSpacing = parseFloat(style.letterSpacing) || 0;
+    const marginBlock =
+      (parseFloat(style.marginTop) || 0) +
+      (parseFloat(style.marginBottom) || 0);
+    const avgBlockChars = Math.max(textLen / Math.max(blocks.length, 1), 1);
+    let charAdvance = fontSize;
+    try {
+      const canvas = doc.createElement("canvas");
+      const ctx: any = canvas.getContext && canvas.getContext("2d");
+      if (ctx) {
+        const before = ctx.font;
+        ctx.font =
+          style.font ||
+          `${style.fontStyle} ${style.fontWeight} ${fontSize}px ${style.fontFamily}`;
+        if (ctx.font !== before || style.font) {
+          const sample = text.replace(/\s+/g, " ").slice(0, 500);
+          const width = ctx.measureText(sample).width;
+          if (width > 0 && sample.length > 0) {
+            charAdvance = width / sample.length;
+          }
+        }
+      }
+    } catch (e) {
+      charAdvance = fontSize;
+    }
+    const charAdvancePx = Math.max(charAdvance + letterSpacing, 1);
+    const charsPerLine = Math.max(Math.floor(inlinePx / charAdvancePx), 1);
+    const chapterSize = sizes[chapterIndex] || 1;
+    const bytesPerChar = chapterSize / textLen;
+    const key = [
+      this.readerMode,
+      vertical ? "v" : "h",
+      chapterIndex,
+      inlinePx,
+      blockPx,
+      fontSize,
+      lineHeightPx,
+      charAdvancePx.toFixed(2),
+      marginBlock,
+      avgBlockChars.toFixed(0),
+      chapterSize,
+    ].join("|");
+    if (
+      this.estimatedSizePerPageCache &&
+      this.estimatedSizePerPageCache.key === key
+    ) {
+      return this.estimatedSizePerPageCache.value;
+    }
+    const charsPerPage = Math.max(
+      blockPx / (lineHeightPx / charsPerLine + marginBlock / avgBlockChars),
+      1
+    );
+    const value = Math.max(charsPerPage * bytesPerChar, 1);
+    this.estimatedSizePerPageCache = { key, value };
+    return value;
+  }
   getChapterProgress() {
     let doc = this.getDocument();
     if (!doc) return null;
@@ -1246,10 +1343,11 @@ class GeneralRender extends EventEmitter {
     }
     const chapterIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
     const { sizes, total } = this.getChapterSizes();
-    console.log("sizes", sizes, "total", total, "chapterIndex", chapterIndex);
     const chapterSize = sizes[chapterIndex] || 1;
     const chapterPage = Math.max(chapterProgress.totalPage, 1);
-    const sizePerPage = chapterSize / chapterPage;
+    const sizePerPage =
+      this.getEstimatedSizePerPage() || chapterSize / chapterPage;
+    console.log("sizePerPage", sizePerPage, chapterSize, chapterPage);
     const sizeBefore = sizes.slice(0, chapterIndex).reduce((a, b) => a + b, 0);
     const offset =
       sizeBefore +
