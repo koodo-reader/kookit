@@ -92,6 +92,7 @@ class GeneralRender extends EventEmitter {
   isReadingRuler: string = "no";
   isSpeedReading: string = "no";
   isShowTotalPage: string = "no";
+  chapterSizeCache: { sizes: number[]; total: number } | null = null;
   speedReadingSpeed: number = 300;
   platform: string = "web";
   isAllowScript: string = "no";
@@ -510,7 +511,7 @@ class GeneralRender extends EventEmitter {
     }
     if (this.flattenChapters.length > 0) {
       if (this.flattenChapters.length === 1) {
-        let progressInfo = this.getProgress();
+        let progressInfo = this.getChapterProgress();
         if (!progressInfo) return;
         let pageNumber = Math.floor(progressInfo.totalPage * percentage);
         await this.goToPage(pageNumber);
@@ -1220,12 +1221,51 @@ class GeneralRender extends EventEmitter {
       return await getSearchResult(keyword, this.chapterDocList);
     }
   }
-  getProgress() {
+  getChapterSizes() {
+    if (this.chapterSizeCache) return this.chapterSizeCache;
+    const sizes = this.chapterDocList.map((item) =>
+      item?.text ? item.text.size || item.text.length || 1 : 1
+    );
+    const total = sizes.reduce((a, b) => a + b, 0);
+    this.chapterSizeCache = { sizes, total };
+    return this.chapterSizeCache;
+  }
+  getChapterProgress() {
     let doc = this.getDocument();
-    if (!doc) return;
+    if (!doc) return null;
     return {
       ...progressInfo(this.readerMode, doc, this.element),
       percentage: this.tempLocation.percentage,
+    } as any;
+  }
+  getProgress() {
+    const chapterProgress = this.getChapterProgress();
+    if (!chapterProgress) return;
+    if (this.isShowTotalPage !== "yes") {
+      return { ...chapterProgress } as any;
+    }
+    const chapterIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
+    const { sizes, total } = this.getChapterSizes();
+    console.log("sizes", sizes, "total", total, "chapterIndex", chapterIndex);
+    const chapterSize = sizes[chapterIndex] || 1;
+    const chapterPage = Math.max(chapterProgress.totalPage, 1);
+    const sizePerPage = chapterSize / chapterPage;
+    const sizeBefore = sizes.slice(0, chapterIndex).reduce((a, b) => a + b, 0);
+    const offset =
+      sizeBefore +
+      ((chapterProgress.currentPage - 1) / chapterPage) * chapterSize;
+    const totalPage = Math.max(
+      Math.round(total / sizePerPage),
+      chapterProgress.totalPage
+    );
+    const currentPage = Math.min(
+      Math.max(Math.floor(offset / sizePerPage) + 1, 1),
+      totalPage
+    );
+    return {
+      totalPage,
+      currentPage,
+      percentage: chapterProgress.percentage,
     } as any;
   }
   async record() {
@@ -1390,7 +1430,7 @@ class GeneralRender extends EventEmitter {
   addPageAnimation = (backgroundColor?: string) => {
     if (this.animation !== "mimical") return;
     if (this.isPageAnimationDisabled()) return;
-    const progress = this.getProgress();
+    const progress = this.getChapterProgress();
     if (!progress?.totalPage) return;
     const pageAnimation = addPageAnimation(
       progress.totalPage,
