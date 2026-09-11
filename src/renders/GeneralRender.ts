@@ -1319,18 +1319,27 @@ class GeneralRender extends EventEmitter {
     } as any;
   }
   getProgress() {
+    console.log("getProgress111", this.tempLocation.chapterDocIndex);
     const chapterProgress = this.getChapterProgress();
+    console.log("chapterProgress", chapterProgress);
     if (!chapterProgress) return;
     if (this.isShowTotalPage !== "yes") {
       return { ...chapterProgress } as any;
     }
     const chapterIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
+    console.log("chapterProgress", this.tempLocation.chapterDocIndex);
     const { sizes, total } = this.getChapterSizes();
     const chapterSize = sizes[chapterIndex] || 1;
     const chapterPage = Math.max(chapterProgress.totalPage, 1);
     const sizePerPage =
       this.getEstimatedSizePerPage() || chapterSize / chapterPage;
-    console.log("sizePerPage", sizePerPage, chapterSize, chapterPage);
+    console.log(
+      "sizePerPage",
+      sizePerPage,
+      chapterSize,
+      chapterSize / sizePerPage,
+      chapterIndex
+    );
     const sizeBefore = sizes.slice(0, chapterIndex).reduce((a, b) => a + b, 0);
     const offset =
       sizeBefore +
