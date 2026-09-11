@@ -48,7 +48,11 @@ import {
   blobUrlToBase64,
   slideAnimateTo,
 } from "../utils/touchUtil";
-import { getBlockElement, isParentBlock } from "../utils/common";
+import {
+  cumulativeSumWithPrevious,
+  getBlockElement,
+  isParentBlock,
+} from "../utils/common";
 import SpeedReadingManager from "../utils/speedReadingUtil";
 import ReadingRulerManager from "../utils/readingRulerUtil";
 import ParagraphModeManager from "../utils/paragraphModeUtil";
@@ -93,7 +97,8 @@ class GeneralRender extends EventEmitter {
   isReadingRuler: string = "no";
   isSpeedReading: string = "no";
   isShowTotalPage: string = "no";
-  chapterSizeCache: { sizes: number[]; total: number } | null = null;
+  chapterSizeCache: { sizes: number[]; pages: number[]; total: number } | null =
+    null;
   estimatedSizePerPage: number | null = null;
   speedReadingSpeed: number = 300;
   platform: string = "web";
@@ -249,7 +254,7 @@ class GeneralRender extends EventEmitter {
     });
     this.on("rendered", () => {
       const value = this.computeEstimatedSizePerPage();
-      if (value > 0) {
+      if (value > 1) {
         this.estimatedSizePerPage = value;
       }
     });
@@ -1234,8 +1239,15 @@ class GeneralRender extends EventEmitter {
     const sizes = this.chapterDocList.map((item) =>
       item?.text ? item.text.size || item.text.length || 1 : 1
     );
+    const pageList = sizes.map(
+      (size) =>
+        Math.max(Math.round(size / this.getEstimatedSizePerPage()), 1) *
+        (this.readerMode === "double" ? 2 : 1)
+    );
+    //get total pages for each chapter
+    const pages = cumulativeSumWithPrevious(pageList);
     const total = sizes.reduce((a, b) => a + b, 0);
-    this.chapterSizeCache = { sizes, total };
+    this.chapterSizeCache = { sizes, total, pages };
     return this.chapterSizeCache;
   }
   // 每个可见字符对应的"章节文件大小"单位数（size 源自源文件，已包含文字内容与标记开销）
@@ -1282,10 +1294,13 @@ class GeneralRender extends EventEmitter {
     if (inlinePx <= 0 || blockPx <= 0) return 1;
     const view = doc.defaultView || window;
     const bodyStyle = view.getComputedStyle(doc.body);
-    const sampleEl: any =
-      doc.body.querySelector("div,p:not(.hide),li,blockquote,dd,dt,pre,td") ||
-      doc.body;
+    const sampleEl: any = doc.body.querySelector(
+      "div,p:not(.hide),li,blockquote,dd,dt,pre,td"
+    );
+    if (!sampleEl) return 1;
+
     const style = view.getComputedStyle(sampleEl);
+    console.log(style.fontSize, sampleEl, "style.fontSize");
     const fontSize =
       parseFloat(style.fontSize) || parseFloat(bodyStyle.fontSize) || 18;
     let lineHeightPx = parseFloat(style.lineHeight);
@@ -1324,21 +1339,19 @@ class GeneralRender extends EventEmitter {
     if (this.isShowTotalPage !== "yes") {
       return { ...chapterProgress } as any;
     }
-    const chapterIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
-    const { sizes, total } = this.getChapterSizes();
-    const chapterSize = sizes[chapterIndex] || 1;
-    const chapterPage = Math.max(chapterProgress.totalPage, 1);
-    const sizePerPage =
-      this.getEstimatedSizePerPage() || chapterSize / chapterPage;
+    let sizePerPage = this.getEstimatedSizePerPage();
+    if (sizePerPage === 1) {
+      return { ...chapterProgress } as any;
+    }
+    const { total } = this.getChapterSizes();
     const totalPage = Math.max(
       Math.round(total / sizePerPage),
       chapterProgress.totalPage
     );
-    const currentPage = Math.ceil(
-      totalPage * parseFloat(chapterProgress.percentage || "0")
-    );
+    const currentPage =
+      Math.round(totalPage * parseFloat(chapterProgress.percentage || "0")) + 1;
     return {
-      totalPage,
+      totalPage: totalPage * (this.readerMode === "double" ? 2 : 1),
       currentPage,
       percentage: chapterProgress.percentage,
     } as any;

@@ -245,3 +245,23 @@ export const detectLocalLanguage = (text: string): string => {
     return "ja";
   return "ko";
 };
+export const cumulativeSumWithPrevious = (arr: number[]): number[] => {
+  // 根据示例 [1,2,3,4] -> [1,2,6,10]
+  // 规则：索引0和1保持原值，索引>=2时，值为原值加上之前所有元素的和
+  const result: number[] = [];
+  let prefixSum = 0; // 用于累加之前所有元素的和（但不包括当前元素）
+  for (let i = 0; i < arr.length; i++) {
+    if (i < 2) {
+      // 前两个元素直接使用原值
+      result.push(arr[i]);
+      // 同时更新prefixSum，以便后续使用
+      prefixSum += arr[i];
+    } else {
+      // 从第三个元素开始，加上之前所有元素的和
+      result.push(arr[i] + prefixSum);
+      // 更新prefixSum，加上当前原值，供下一个元素使用
+      prefixSum += arr[i];
+    }
+  }
+  return result;
+};
