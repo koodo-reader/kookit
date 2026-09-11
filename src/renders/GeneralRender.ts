@@ -1232,11 +1232,27 @@ class GeneralRender extends EventEmitter {
     this.chapterSizeCache = { sizes, total };
     return this.chapterSizeCache;
   }
+  // 每个可见字符对应的"章节文件大小"单位数（size 源自源文件，已包含文字内容与标记开销）
+  static SIZE_PER_CHAR: Record<string, number> = {
+    TXT: 1.5,
+    MD: 2,
+    DOCX: 2.5,
+    HTML: 3,
+    MHTML: 3,
+    XHTML: 3,
+    HTM: 3,
+    XML: 3,
+    EPUB: 4.5,
+    MOBI: 4.5,
+    FB2: 5,
+    PDFTEXT: 0.5,
+  };
   getEstimatedSizePerPage() {
     const doc = this.getDocument();
     if (!doc || !doc.body) return 0;
-    const { sizes } = this.getChapterSizes();
-    const chapterIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
+    if (this.format === "CACHE") return 0;
+    const bytesPerChar =
+      GeneralRender.SIZE_PER_CHAR[(this.format || "").toUpperCase()] || 3;
     const vertical = isVerticalLayout() && this.readerMode !== "scroll";
     const scroll = this.readerMode === "scroll";
     let inlinePx = 0;
@@ -1253,18 +1269,11 @@ class GeneralRender extends EventEmitter {
     }
     if (inlinePx <= 0 || blockPx <= 0) return 0;
     const view = doc.defaultView || window;
-    const blockSelector = "p,div,li,blockquote,h1,h2,h3,h4,h5,h6,dd,dt,pre,td";
-    const blocks = doc.body.querySelectorAll(blockSelector);
-    const text = doc.body.textContent || "";
-    const textLen = text.length;
-    if (textLen <= 0) return 0;
-    const sampleEl: any =
-      (Array.prototype.find.call(
-        blocks,
-        (el: any) => el.textContent && el.textContent.trim()
-      ) as any) || doc.body;
-    const style = view.getComputedStyle(sampleEl);
     const bodyStyle = view.getComputedStyle(doc.body);
+    const sampleEl: any =
+      doc.body.querySelector("div,p:not(.hide),li,blockquote,dd,dt,pre,td") ||
+      doc.body;
+    const style = view.getComputedStyle(sampleEl);
     const fontSize =
       parseFloat(style.fontSize) || parseFloat(bodyStyle.fontSize) || 18;
     let lineHeightPx = parseFloat(style.lineHeight);
@@ -1275,43 +1284,24 @@ class GeneralRender extends EventEmitter {
     const marginBlock =
       (parseFloat(style.marginTop) || 0) +
       (parseFloat(style.marginBottom) || 0);
-    const avgBlockChars = Math.max(textLen / Math.max(blocks.length, 1), 1);
-    let charAdvance = fontSize;
-    try {
-      const canvas = doc.createElement("canvas");
-      const ctx: any = canvas.getContext && canvas.getContext("2d");
-      if (ctx) {
-        const before = ctx.font;
-        ctx.font =
-          style.font ||
-          `${style.fontStyle} ${style.fontWeight} ${fontSize}px ${style.fontFamily}`;
-        if (ctx.font !== before || style.font) {
-          const sample = text.replace(/\s+/g, " ").slice(0, 500);
-          const width = ctx.measureText(sample).width;
-          if (width > 0 && sample.length > 0) {
-            charAdvance = width / sample.length;
-          }
-        }
-      }
-    } catch (e) {
-      charAdvance = fontSize;
-    }
-    const charAdvancePx = Math.max(charAdvance + letterSpacing, 1);
+    const charAdvancePx = Math.max(fontSize + letterSpacing, 1);
     const charsPerLine = Math.max(Math.floor(inlinePx / charAdvancePx), 1);
-    const chapterSize = sizes[chapterIndex] || 1;
-    const bytesPerChar = chapterSize / textLen;
+    // 假设段落平均占 3 行，把段前段后 margin 摊到每行
+    const effectiveLineHeight = lineHeightPx + marginBlock / 3;
+    const charsPerPage = Math.max(
+      Math.floor(blockPx / effectiveLineHeight) * charsPerLine,
+      1
+    );
     const key = [
       this.readerMode,
       vertical ? "v" : "h",
-      chapterIndex,
       inlinePx,
       blockPx,
       fontSize,
       lineHeightPx,
       charAdvancePx.toFixed(2),
       marginBlock,
-      avgBlockChars.toFixed(0),
-      chapterSize,
+      bytesPerChar,
     ].join("|");
     if (
       this.estimatedSizePerPageCache &&
@@ -1319,12 +1309,19 @@ class GeneralRender extends EventEmitter {
     ) {
       return this.estimatedSizePerPageCache.value;
     }
-    const charsPerPage = Math.max(
-      blockPx / (lineHeightPx / charsPerLine + marginBlock / avgBlockChars),
-      1
-    );
     const value = Math.max(charsPerPage * bytesPerChar, 1);
     this.estimatedSizePerPageCache = { key, value };
+    console.log(
+      "Estimated size per page:",
+      value,
+      this.readerMode,
+      "bytes (key:",
+      key,
+      ")"
+    );
+    if (this.readerMode === "double") {
+      return value / 2;
+    }
     return value;
   }
   getChapterProgress() {

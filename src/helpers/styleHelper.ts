@@ -101,12 +101,12 @@ class StyleHelper {
 
     // Content elements with custom styles
     cssRules.push(
-      `a, article, cite, div, li, p, span:not(.kookit-note):not(.kookit-note-icon):not(.kookit-highlight-text):not(.kookit-note-tooltip):not(.kookit-word-def):not(.kookit-word-tooltip):not(.kookit-text-rule-replace):not(.kookit-text-rule-delete):not([class*="hljs"]), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
+      `a, article, cite, div, li, p:not(.hide), span:not(.kookit-note):not(.kookit-note-icon):not(.kookit-highlight-text):not(.kookit-note-tooltip):not(.kookit-word-def):not(.kookit-word-tooltip):not(.kookit-text-rule-replace):not(.kookit-text-rule-delete):not([class*="hljs"]), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
     );
 
     // Title elements with custom styles
     cssRules.push(
-      `h1, h2, h3, h4, h5, h6, title{${this.getCustomCss(ConfigService, true)}}`
+      `h1:not(.hide), h2, h3, h4, h5, h6, title{${this.getCustomCss(ConfigService, true)}}`
     );
 
     // Code formatting — allow wrapping and column fragmentation
