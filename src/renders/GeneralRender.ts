@@ -1356,6 +1356,13 @@ class GeneralRender extends EventEmitter {
       percentage: chapterProgress.percentage,
     } as any;
   }
+  getPages() {
+    if (this.chapterSizeCache) {
+      const { pages } = this.chapterSizeCache;
+      return pages;
+    }
+    return [];
+  }
   async record() {
     if (this.animation !== "none" && this.isMobile !== "yes") {
       await new Promise((r) => setTimeout(r, 1000));
