@@ -94,7 +94,7 @@ class GeneralRender extends EventEmitter {
   isSpeedReading: string = "no";
   isShowTotalPage: string = "no";
   chapterSizeCache: { sizes: number[]; total: number } | null = null;
-  estimatedSizePerPageCache: { key: string; value: number } | null = null;
+  estimatedSizePerPage: number | null = null;
   speedReadingSpeed: number = 300;
   platform: string = "web";
   isAllowScript: string = "no";
@@ -245,6 +245,12 @@ class GeneralRender extends EventEmitter {
       this.readingRulerManager.handleRendered();
       if (!this.speedReadingManager.skipFlip) {
         this.speedReadingManager.handleRendered();
+      }
+    });
+    this.on("rendered", () => {
+      const value = this.computeEstimatedSizePerPage();
+      if (value > 0) {
+        this.estimatedSizePerPage = value;
       }
     });
     this.mouseDownHandler = () => {};
@@ -1248,6 +1254,12 @@ class GeneralRender extends EventEmitter {
     PDFTEXT: 0.5,
   };
   getEstimatedSizePerPage() {
+    if (this.estimatedSizePerPage !== null) {
+      return this.estimatedSizePerPage;
+    }
+    return this.computeEstimatedSizePerPage();
+  }
+  computeEstimatedSizePerPage() {
     const doc = this.getDocument();
     if (!doc || !doc.body) return 0;
     if (this.format === "CACHE") return 0;
@@ -1292,33 +1304,7 @@ class GeneralRender extends EventEmitter {
       Math.floor(blockPx / effectiveLineHeight) * charsPerLine,
       1
     );
-    const key = [
-      this.readerMode,
-      vertical ? "v" : "h",
-      inlinePx,
-      blockPx,
-      fontSize,
-      lineHeightPx,
-      charAdvancePx.toFixed(2),
-      marginBlock,
-      bytesPerChar,
-    ].join("|");
-    if (
-      this.estimatedSizePerPageCache &&
-      this.estimatedSizePerPageCache.key === key
-    ) {
-      return this.estimatedSizePerPageCache.value;
-    }
     const value = Math.max(charsPerPage * bytesPerChar, 1);
-    this.estimatedSizePerPageCache = { key, value };
-    console.log(
-      "Estimated size per page:",
-      value,
-      this.readerMode,
-      "bytes (key:",
-      key,
-      ")"
-    );
     if (this.readerMode === "double") {
       return value / 2;
     }
