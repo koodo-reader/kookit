@@ -1261,8 +1261,8 @@ class GeneralRender extends EventEmitter {
   }
   computeEstimatedSizePerPage() {
     const doc = this.getDocument();
-    if (!doc || !doc.body) return 0;
-    if (this.format === "CACHE") return 0;
+    if (!doc || !doc.body) return 1;
+    if (this.format === "CACHE") return 1;
     const bytesPerChar =
       GeneralRender.SIZE_PER_CHAR[(this.format || "").toUpperCase()] || 3;
     const vertical = isVerticalLayout() && this.readerMode !== "scroll";
@@ -1279,7 +1279,7 @@ class GeneralRender extends EventEmitter {
       inlinePx = doc.body.clientWidth;
       blockPx = doc.body.clientHeight;
     }
-    if (inlinePx <= 0 || blockPx <= 0) return 0;
+    if (inlinePx <= 0 || blockPx <= 0) return 1;
     const view = doc.defaultView || window;
     const bodyStyle = view.getComputedStyle(doc.body);
     const sampleEl: any =
@@ -1319,38 +1319,23 @@ class GeneralRender extends EventEmitter {
     } as any;
   }
   getProgress() {
-    console.log("getProgress111", this.tempLocation.chapterDocIndex);
     const chapterProgress = this.getChapterProgress();
-    console.log("chapterProgress", chapterProgress);
     if (!chapterProgress) return;
     if (this.isShowTotalPage !== "yes") {
       return { ...chapterProgress } as any;
     }
     const chapterIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
-    console.log("chapterProgress", this.tempLocation.chapterDocIndex);
     const { sizes, total } = this.getChapterSizes();
     const chapterSize = sizes[chapterIndex] || 1;
     const chapterPage = Math.max(chapterProgress.totalPage, 1);
     const sizePerPage =
       this.getEstimatedSizePerPage() || chapterSize / chapterPage;
-    console.log(
-      "sizePerPage",
-      sizePerPage,
-      chapterSize,
-      chapterSize / sizePerPage,
-      chapterIndex
-    );
-    const sizeBefore = sizes.slice(0, chapterIndex).reduce((a, b) => a + b, 0);
-    const offset =
-      sizeBefore +
-      ((chapterProgress.currentPage - 1) / chapterPage) * chapterSize;
     const totalPage = Math.max(
       Math.round(total / sizePerPage),
       chapterProgress.totalPage
     );
-    const currentPage = Math.min(
-      Math.max(Math.floor(offset / sizePerPage) + 1, 1),
-      totalPage
+    const currentPage = Math.ceil(
+      totalPage * parseFloat(chapterProgress.percentage || "0")
     );
     return {
       totalPage,
