@@ -806,7 +806,20 @@ class ComicRender extends GeneralRender {
     if (!doc) return;
     let currentIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
     if (isNaN(currentIndex)) currentIndex = 0;
-    let target = currentIndex + direction;
+    // double 模式一屏两张，需要跨两章走到下一个对页
+    let step = this.readerMode === "double" ? 2 : 1;
+    let target = currentIndex + direction * step;
+    if (this.readerMode === "double" && target % 2 === 1) {
+      target--;
+    }
+    if (
+      this.readerMode === "double" &&
+      target > this.chapterDocList.length - 1
+    ) {
+      // 不满一页时退回上一对，避免越界
+      target = this.chapterDocList.length - 1;
+      if (target % 2 === 1) target--;
+    }
     if (
       target < 0 ||
       target > this.chapterDocList.length - 1 ||
@@ -971,16 +984,29 @@ class ComicRender extends GeneralRender {
         return [];
       }
     }
+    // double 模式一屏两张，返回当前对页的两张图
+    let indices =
+      this.readerMode === "double" && chapterDocIndex % 2 === 0
+        ? [chapterDocIndex, chapterDocIndex + 1]
+        : [chapterDocIndex];
+    let urls: string[] = [];
+    for (const index of indices) {
+      const url = await this.getComicImageUrl(index);
+      if (url) urls.push(url);
+    }
+    return urls;
+  }
+  async getComicImageUrl(chapterDocIndex: number): Promise<string> {
     let subDoc = this.getSubDocument(chapterDocIndex);
-    if (!subDoc) return [];
+    if (!subDoc) return "";
     // 懒加载的页还没渲染出 img，先渲染再取
     if (!subDoc.querySelector("img")) {
       await this.handleRenderComicChapter(chapterDocIndex);
       subDoc = this.getSubDocument(chapterDocIndex);
-      if (!subDoc) return [];
+      if (!subDoc) return "";
     }
     let img = subDoc.querySelector("img");
-    return img && img.src ? [img.src] : [];
+    return img && img.src ? img.src : "";
   }
   async getMetadata() {
     return new Promise<any>(async (resolve, reject) => {
