@@ -686,6 +686,29 @@ class ComicRender extends GeneralRender {
     await this.recordByChapter(parseInt(chapterDocIndex));
     this.addPageAnimation();
   }
+  // 等待平滑滚动结束：scrollBy(smooth) 后位置尚未到位时 record 会读到旧页
+  waitForScrollEnd(timeoutMs = 500): Promise<void> {
+    return new Promise((resolve) => {
+      const element = this.element;
+      const startTop = element.scrollTop;
+      let lastTop = startTop;
+      let stableCount = 0;
+      const started = Date.now();
+      const timer = setInterval(() => {
+        if (Date.now() - started > timeoutMs || element.scrollTop === lastTop) {
+          stableCount++;
+          if (stableCount >= 2 || Date.now() - started > timeoutMs) {
+            clearInterval(timer);
+            resolve();
+            return;
+          }
+        } else {
+          stableCount = 0;
+        }
+        lastTop = element.scrollTop;
+      }, 50);
+    });
+  }
   async prev(platform?: string) {
     let doc = this.getDocument();
     let iframe = this.getIframe();
@@ -698,6 +721,8 @@ class ComicRender extends GeneralRender {
         top: -(this.element.clientHeight - 50),
         behavior: "smooth",
       });
+      // 平滑滚动尚未结束前 record 会读到旧位置，等待滚动结束再定位
+      await this.waitForScrollEnd();
     } else {
       if (platform === "ios") {
         await handleIOSScrollPage(
@@ -741,6 +766,8 @@ class ComicRender extends GeneralRender {
         top: this.element.clientHeight - 50,
         behavior: "smooth",
       });
+      // 平滑滚动尚未结束前 record 会读到旧位置，等待滚动结束再定位
+      await this.waitForScrollEnd();
     } else {
       if (platform === "ios") {
         await handleIOSScrollPage(
@@ -772,10 +799,38 @@ class ComicRender extends GeneralRender {
     }
     await this.record();
   }
+  // scroll 模式下漫画每章就是一张图，直接按页定位比依赖
+  // 平滑滚动 + 位置检测可靠，否则翻页容易停在旧页或跨过多页
+  async goToNeighborChapter(direction: 1 | -1) {
+    let doc = this.getDocument();
+    if (!doc) return;
+    let currentIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
+    if (isNaN(currentIndex)) currentIndex = 0;
+    let target = currentIndex + direction;
+    if (
+      target < 0 ||
+      target > this.chapterDocList.length - 1 ||
+      target === currentIndex
+    ) {
+      // 已到边界，索引保持不变，由调用方判定"没有更多"
+      return;
+    }
+    await this.renderComicPage(target);
+    await handleScrollPDFPosition(target, this.readerMode, doc);
+    this.handleComicRecordByIndex(target);
+  }
   async prevChapter() {
+    if (this.readerMode === "scroll") {
+      await this.goToNeighborChapter(-1);
+      return;
+    }
     await this.prev();
   }
   async nextChapter() {
+    if (this.readerMode === "scroll") {
+      await this.goToNeighborChapter(1);
+      return;
+    }
     await this.next();
   }
   async goToPage(targetPage: number): Promise<void> {
@@ -904,10 +959,26 @@ class ComicRender extends GeneralRender {
       chapterDocIndex < 0 ||
       chapterDocIndex > this.chapterDocList.length - 1
     ) {
-      return [];
+      // 无参调用时回退到当前页，漫画每章只有一张图，其余索引直接返回空
+      if (chapterDocIndex !== undefined && chapterDocIndex !== null) {
+        return [];
+      }
+      chapterDocIndex = parseInt(this.tempLocation.chapterDocIndex || "0");
+      if (isNaN(chapterDocIndex)) {
+        chapterDocIndex = 0;
+      }
+      if (chapterDocIndex < 0 || chapterDocIndex > this.chapterDocList.length - 1) {
+        return [];
+      }
     }
     let subDoc = this.getSubDocument(chapterDocIndex);
     if (!subDoc) return [];
+    // 懒加载的页还没渲染出 img，先渲染再取
+    if (!subDoc.querySelector("img")) {
+      await this.handleRenderComicChapter(chapterDocIndex);
+      subDoc = this.getSubDocument(chapterDocIndex);
+      if (!subDoc) return [];
+    }
     let img = subDoc.querySelector("img");
     return img && img.src ? [img.src] : [];
   }
