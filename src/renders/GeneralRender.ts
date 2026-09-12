@@ -1458,7 +1458,7 @@ class GeneralRender extends EventEmitter {
     }));
 
     try {
-      showNoteHighlightBatch(
+      await showNoteHighlightBatch(
         batchItems,
         handleNoteClick,
         doc,
