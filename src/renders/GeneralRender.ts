@@ -1248,6 +1248,7 @@ class GeneralRender extends EventEmitter {
     const pages = cumulativeSumWithPrevious(pageList);
     const total = sizes.reduce((a, b) => a + b, 0);
     this.chapterSizeCache = { sizes, total, pages };
+    this.trigger("chapter-pages");
     return this.chapterSizeCache;
   }
   // 每个可见字符对应的"章节文件大小"单位数（size 源自源文件，已包含文字内容与标记开销）
@@ -1300,7 +1301,6 @@ class GeneralRender extends EventEmitter {
     if (!sampleEl) return 1;
 
     const style = view.getComputedStyle(sampleEl);
-    console.log(style.fontSize, sampleEl, "style.fontSize");
     const fontSize =
       parseFloat(style.fontSize) || parseFloat(bodyStyle.fontSize) || 18;
     let lineHeightPx = parseFloat(style.lineHeight);

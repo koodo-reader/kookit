@@ -275,6 +275,14 @@ class BookHelper {
       window.rendition.on("page-changed", () => {
         throttledPageChanged();
       });
+      window.rendition.on("chapter-pages", () => {
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({
+            event: "chapter-pages",
+            pages: window.rendition.getPages(),
+          })
+        );
+      });
       window.rendition.on("scroll-text", async () => {
         setTimeout(async () => {
           let position = { ...window.rendition.getPosition() };
