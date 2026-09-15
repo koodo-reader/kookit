@@ -1712,6 +1712,7 @@ class GeneralRender extends EventEmitter {
     isShowMenu?: boolean;
     isJump?: boolean;
     node?: any;
+    redirectChapter?: boolean;
   }> {
     let doc = this.getDocument();
     if (!doc) return { handled: false };
@@ -1727,7 +1728,7 @@ class GeneralRender extends EventEmitter {
           chapterInfo.href,
           chapterInfo.label
         );
-        return { handled: true };
+        return { handled: true, redirectChapter: true };
       }
       let result = await this.book.resolveHref(href);
       let chapterDocIndex = this.tempLocation.chapterDocIndex;
@@ -1790,7 +1791,7 @@ class GeneralRender extends EventEmitter {
         chapterInfo.href,
         chapterInfo.label
       );
-      return { handled: true };
+      return { handled: true, redirectChapter: true };
     } else if (href && href.indexOf("#") > -1) {
       let id = href.split("#").reverse()[0];
       let node = doc.body.querySelector("#" + CSS.escape(id));
@@ -1855,7 +1856,7 @@ class GeneralRender extends EventEmitter {
         chapterInfo.href,
         chapterInfo.label
       );
-      return { handled: true };
+      return { handled: true, redirectChapter: true };
     }
     return { handled: false };
   }

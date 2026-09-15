@@ -206,6 +206,7 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
   if (!href) return;
   event.preventDefault();
   event.stopPropagation();
+  let beforeLocation = { ...render.getPosition() };
   let result = await render.handleLinkJump(href, event);
   if (!result.handled) {
     return false;
@@ -219,6 +220,19 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
         ...result,
       })
     );
+    return true;
+  }
+  if (result.redirectChapter) {
+    window.ReactNativeWebView.postMessage(
+      JSON.stringify({
+        event: "link-clicked",
+        bookLocation: beforeLocation,
+        ...result,
+      })
+    );
+    return true;
+  }
+  if (!result.node) {
     return true;
   }
   let footnoteResult = await render.getFootnoteContent(result.node);
