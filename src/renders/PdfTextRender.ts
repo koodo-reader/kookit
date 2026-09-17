@@ -107,10 +107,12 @@ class PdfTextRender extends GeneralRender {
             return this.cache[index];
           }
 
+          let src = "";
+          // 优先处理当前章节
+          src = await this.processCurrentChapter(index);
           // 异步处理后续章节
           this.preProcessNextChapters(index);
-          // 当前章节优先处理（结果由 getTextByOCR 统一写入 this.cache）
-          return await this.processCurrentChapter(index);
+          return src;
         };
       }
       createIframe(element, this.isAllowScript);
