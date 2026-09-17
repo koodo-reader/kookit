@@ -50,7 +50,9 @@ class PdfTextRender extends GeneralRender {
     this.ocrEngine = config.ocrEngine || "paddle"; // 支持配置OCR引擎
     this.externalWorker = config.externalWorker || null;
     this.pdfPageCount = config.pdfPageCount || 0;
-    this.getOcrCache = config.getOcrCache || (() => ({}));
+    this.getOcrCache =
+      config.getOcrCache ||
+      ((_bookKey: string, _chapterDocIndex: number) => null);
     this.saveOcrCache =
       config.saveOcrCache ||
       (() => {
