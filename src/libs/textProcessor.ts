@@ -196,7 +196,7 @@ export const isTitle = (line: any, parserRegex: string = "") => {
   line = cleanText(line); // Clean once per line
   return (
     line &&
-    line.length < 40 &&
+    line.length < 50 &&
     !isContain(line) &&
     (isStartWithChars(line) ||
       (line.startsWith("第") && startWithDI(line)) ||

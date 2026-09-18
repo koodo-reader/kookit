@@ -32,18 +32,18 @@ export const handlePDFLayout = (
   let scale = readerMode === "double" ? 2 : 1;
   let section = Math.floor(doc.body.clientWidth / 12);
   let gap = section % 2 === 0 ? section : section - 1;
-  doc.documentElement.setAttribute(
+  doc.body.setAttribute(
     "style",
     `${readerMode === "double" ? "position: absolute;" : ""}height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action: manipulation; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
       (doc.body.clientWidth - gap) / scale
     }px;`
   );
-  doc.body.setAttribute(
-    "style",
-    `margin: 0px !important; padding: 0px !important;column-fill: auto;column-gap: ${gap}px; column-width: ${
-      (doc.body.clientWidth - gap) / scale
-    }px;`
-  );
+  // doc.body.setAttribute(
+  //   "style",
+  //   `margin: 0px !important; padding: 0px !important;column-fill: auto;column-gap: ${gap}px; column-width: ${
+  //     (doc.body.clientWidth - gap) / scale
+  //   }px;`
+  // );
 };
 export const createPDFContainer = async (
   element: HTMLElement,

@@ -91,7 +91,7 @@ class StyleHelper {
 
     // Body and html base styles
     cssRules.push(
-      "body,html,svg{margin: 0px !important; padding: 0px !important; font-size: 18px; background-color: transparent !important;background-size: contain !important; background-position: top left !important;}"
+      "body,html,svg{margin: 0px !important; padding: 0px !important; font-size: 18px; background-color: transparent !important;background-size: contain !important; background-position: top left !important;-webkit-text-size-adjust: 100%;}"
     );
 
     // Force horizontal writing mode - only if vertical writing is not enabled
