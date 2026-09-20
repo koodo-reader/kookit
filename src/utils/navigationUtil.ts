@@ -906,11 +906,15 @@ export const getAudioText = (
   }
   let firstSliceIndex = 0;
   let visibleText = getVisibleText(element, readerMode, doc);
+  console.log("visibleText", visibleText);
   if (visibleText && visibleText.length > 0) {
     let trimmedVisibleText = visibleText.map((s) => s.trim());
     firstSliceIndex = audioText.findIndex((item) => {
       return item && trimmedVisibleText.includes(item.trim());
     });
+  }
+  if (firstSliceIndex === -1) {
+    firstSliceIndex = 0;
   }
 
   return audioText.slice(firstSliceIndex).filter((s) => s);
