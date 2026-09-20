@@ -147,6 +147,16 @@ type ResolvedNoteItem = {
 const BATCH_CHUNK_SIZE = 20;
 const BATCH_CHUNK_TIME_BUDGET = 8;
 
+// Per-document generation counter, used to cancel stale chunked batch
+// renders (e.g. after a re-render or clearHighlight()). Kept in a WeakMap
+// so the state stays private and dies with the document.
+const noteBatchGen = new WeakMap<Document, number>();
+const bumpNoteBatchGen = (doc: Document): number => {
+  const gen = (noteBatchGen.get(doc) || 0) + 1;
+  noteBatchGen.set(doc, gen);
+  return gen;
+};
+
 /**
  * Resolve every note's character range into a native Range.
  *
@@ -280,15 +290,14 @@ export const showNoteHighlightBatch = (
     }
     // Generation marker: clearHighlight() bumps it to cancel stale chunked
     // batches still pending on this document (e.g. after a re-render).
-    const gen = ((doc as any).__kookitNoteBatchGen =
-      ((doc as any).__kookitNoteBatchGen || 0) + 1);
+    const gen = bumpNoteBatchGen(doc);
     const schedule =
       iWin && typeof iWin.requestAnimationFrame === "function"
         ? iWin.requestAnimationFrame.bind(iWin)
         : (callback: () => void) => setTimeout(callback, 0);
     let index = 0;
     const applyChunk = () => {
-      if ((doc as any).__kookitNoteBatchGen !== gen) {
+      if (noteBatchGen.get(doc) !== gen) {
         resolvePromise();
         return;
       }
@@ -513,8 +522,7 @@ export const showPDFHighlight = (
 
 export const clearHighlight = (doc: Document) => {
   // Cancel any pending chunked batch rendering into this document
-  (doc as any).__kookitNoteBatchGen =
-    ((doc as any).__kookitNoteBatchGen || 0) + 1;
+  bumpNoteBatchGen(doc);
   // Remove absolutely-positioned note icon elements (📋) first
   const icons = doc.querySelectorAll(".kookit-note-icon");
   for (let index = 0; index < icons.length; index++) {
