@@ -853,19 +853,11 @@ class GeneralRender extends EventEmitter {
       // 速读模式下禁用鼠标、快捷键等外部触发的翻页
       return;
     }
-    if (
-      this.isReadingRuler === "yes" &&
-      this.isSpeedReading !== "yes" &&
-      !this.readingRulerManager.skipFlip
-    ) {
+    if (this.isReadingRuler === "yes" && !this.readingRulerManager.skipFlip) {
       const handled = await this.readingRulerManager.handleChange(1);
       if (handled) return;
     }
-    if (
-      this.isParagraphMode === "yes" &&
-      this.isSpeedReading !== "yes" &&
-      !this.paragraphModeManager.skipFlip
-    ) {
+    if (this.isParagraphMode === "yes" && !this.paragraphModeManager.skipFlip) {
       const handled = await this.paragraphModeManager.handleChange(1);
       if (handled) return;
     }

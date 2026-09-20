@@ -32,16 +32,14 @@ export const makeComicBook = ({ entries, loadBlob, getSize }, file) => {
     ".jpeg",
     ".png",
     ".gif",
-    ".bmp",
     ".webp",
     ".svg",
-    ".avif",
-    ".apng",
-    ".ico",
-    ".cur",
+    ".bmp",
+    ".tif",
+    ".tiff",
     ".jfif",
-    ".pjpeg",
-    ".pjp",
+    ".jpe",
+    ".heic",
   ];
   const files = entries
     .map((entry) => entry.filename)
