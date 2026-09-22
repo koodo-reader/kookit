@@ -3,7 +3,7 @@ class ReadingRulerManager {
   // 配置
   isReadingRuler: string = "no";
   readingRulerLineHeight: number = 3;
-  readingRulerBackgroundOpacity: number = 0.5;
+  readingRulerBackgroundOpacity: number = 0.6;
   readerMode: string = "single";
   isMobile: string | undefined;
 
@@ -27,7 +27,7 @@ class ReadingRulerManager {
     this.readingRulerBackgroundOpacity =
       config.readingRulerBackgroundOpacity != null
         ? config.readingRulerBackgroundOpacity
-        : 0.5;
+        : 0.6;
     this.readerMode = config.readerMode || "single";
     this.isMobile = config.isMobile;
   }
