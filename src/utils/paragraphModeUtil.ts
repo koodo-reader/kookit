@@ -9,6 +9,10 @@ class ParagraphModeManager {
 
   // 运行时状态
   index: number = 0;
+  // 超长段落经 CSS 多列分屏后的屏索引/总屏数/单屏位移步长
+  sliceIndex: number = 0;
+  sliceCount: number = 1;
+  sliceStep: number = 0;
   skipFlip: boolean = false;
 
   // 由 GeneralRender 注入的回调，与渲染实例解耦
@@ -100,6 +104,7 @@ class ParagraphModeManager {
     }
     if (this.index >= list.length) {
       this.index = 0;
+      this.sliceIndex = 0;
     }
     if (!overlay) {
       overlay = doc.createElement("div");
@@ -108,7 +113,7 @@ class ParagraphModeManager {
       let content = doc.createElement("div");
       content.id = "kookit-paragraph-overlay-content";
       content.style.cssText =
-        "width:calc(100% - 40px);max-width:600px;max-height:calc(100% - 90px);overflow:hidden;text-align:center;transition:background-color 0.3s ease;";
+        "width:calc(100% - 40px);max-width:600px;max-height:calc(100% - 150px);overflow:hidden;text-align:center;transition:background-color 0.3s ease;";
       overlay.appendChild(content);
       overlay.appendChild(this.createControls(doc));
       doc.body.appendChild(overlay);
@@ -117,8 +122,63 @@ class ParagraphModeManager {
     let content = doc.getElementById("kookit-paragraph-overlay-content");
     if (!content) return;
     content.innerHTML = "";
-    content.appendChild(list[this.index].cloneNode(true));
+    content.style.height = "";
+    // 列容器：段落在定高下溢出时以多列横向流动，由 transform 逐屏展示
+    let inner = doc.createElement("div");
+    inner.id = "kookit-paragraph-overlay-inner";
+    inner.style.cssText =
+      "width:100%;column-gap:40px;column-fill:auto;transition:transform 0.3s ease;";
+    inner.appendChild(list[this.index].cloneNode(true));
+    content.appendChild(inner);
+    this.measureSlice(content, inner);
+    this.sliceIndex = Math.min(this.sliceIndex, this.sliceCount - 1);
+    this.showSlice();
+    // 段内图片异步加载会改变实际高度，加载完成后重新测量分屏
+    inner.querySelectorAll("img").forEach((img) => {
+      if (!img.complete) {
+        img.addEventListener("load", () => this.remeasureSlice(), {
+          once: true,
+        });
+      }
+    });
     this.refreshControls(doc);
+  }
+  // 图片加载完成后基于当前 DOM 重新测量分屏
+  remeasureSlice() {
+    let doc = this.getDoc();
+    if (!doc) return;
+    let content = doc.getElementById("kookit-paragraph-overlay-content");
+    let inner = doc.getElementById("kookit-paragraph-overlay-inner");
+    if (!content || !inner || !inner.isConnected) return;
+    this.measureSlice(content, inner);
+    this.sliceIndex = Math.min(this.sliceIndex, this.sliceCount - 1);
+    this.showSlice();
+  }
+  // 段落自然高度超出遮罩容量时，切换为定高 + 多列布局并计算总屏数
+  measureSlice(content: HTMLElement, inner: HTMLElement) {
+    this.sliceCount = 1;
+    this.sliceStep = 0;
+    if (content.scrollHeight <= content.clientHeight + 1) return;
+    content.style.height = "calc(100% - 150px)";
+    inner.style.height = "100%";
+    inner.style.columnWidth = content.clientWidth + "px";
+    let gap = 40;
+    // 临时让 inner 成为滚动容器，确保 scrollWidth 包含溢出列的总宽度
+    inner.style.overflow = "hidden";
+    let extent = Math.max(content.scrollWidth, inner.scrollWidth);
+    inner.style.overflow = "";
+    let step = content.clientWidth + gap;
+    this.sliceCount = Math.max(1, Math.round((extent + gap) / step));
+    this.sliceStep = (extent + gap) / this.sliceCount;
+  }
+  showSlice() {
+    let doc = this.getDoc();
+    if (!doc) return;
+    let content = doc.getElementById("kookit-paragraph-overlay-content");
+    let inner = doc.getElementById("kookit-paragraph-overlay-inner");
+    if (!content || !inner) return;
+    let step = this.sliceStep || content.clientWidth + 40;
+    inner.style.transform = `translateX(${-this.sliceIndex * step}px)`;
   }
   createControls(doc: Document): HTMLElement {
     let controls = doc.createElement("div");
@@ -218,15 +278,27 @@ class ParagraphModeManager {
     let list = this.getParagraphNodes();
     if (list.length === 0) return false;
     if (direction > 0) {
-      if (this.index < list.length - 1) {
+      if (this.sliceIndex < this.sliceCount - 1) {
+        // 当前段还有未展示的屏，先在段内推进
+        this.sliceIndex++;
+        this.showSlice();
+        return true;
+      } else if (this.index < list.length - 1) {
         this.index++;
+        this.sliceIndex = 0;
       } else {
         await this.flipPage(1);
         return true;
       }
     } else {
-      if (this.index > 0) {
+      if (this.sliceIndex > 0) {
+        this.sliceIndex--;
+        this.showSlice();
+        return true;
+      } else if (this.index > 0) {
         this.index--;
+        // 回退到上一段时直接定位到其末屏，交由 updateOverlay 收敛
+        this.sliceIndex = Number.MAX_SAFE_INTEGER;
       } else {
         await this.flipPage(-1);
         return true;
@@ -251,12 +323,14 @@ class ParagraphModeManager {
     }
     let list = this.getParagraphNodes();
     this.index = direction > 0 ? 0 : Math.max(0, list.length - 1);
+    this.sliceIndex = direction > 0 ? 0 : Number.MAX_SAFE_INTEGER;
     this.updateOverlay(list);
   }
   // 由 GeneralRender 的 rendered 事件驱动
   handleRendered() {
     if (!this.isParagraphModeActive() || this.skipFlip) return;
     this.index = 0;
+    this.sliceIndex = 0;
     this.updateOverlay();
   }
 }
