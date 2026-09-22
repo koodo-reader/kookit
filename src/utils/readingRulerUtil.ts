@@ -310,7 +310,32 @@ class ReadingRulerManager {
     }
     this.index = direction > 0 ? 0 : Number.MAX_SAFE_INTEGER;
     this.column = direction > 0 ? 0 : this.readerMode === "double" ? 1 : 0;
-    this.updateOverlay();
+    // 记录旧遮罩是否存在：跨章时内容重建会移除旧元素，无法做位置过渡
+    let doc = this.getDoc();
+    let windowEl = doc
+      ? doc.getElementById("kookit-reading-ruler-window")
+      : null;
+    this.updateOverlay(true, undefined);
+    if (doc && !windowEl) {
+      // 元素被重建时从淡入+轻微上滑进入新位置，避免直接闪现
+      let newWindowEl = doc.getElementById("kookit-reading-ruler-window");
+      if (newWindowEl) {
+        const fadeEl = newWindowEl;
+        fadeEl.style.transition = "none";
+        fadeEl.style.opacity = "0";
+        fadeEl.style.transform = "translateY(-20px)";
+        void fadeEl.offsetHeight;
+        fadeEl.style.transition =
+          "opacity 0.3s ease, top 0.3s ease, height 0.3s ease, left 0.3s ease, width 0.3s ease";
+        fadeEl.style.opacity = "1";
+        fadeEl.style.transform = "translateY(0)";
+        setTimeout(() => {
+          fadeEl.style.opacity = "";
+          fadeEl.style.transform = "";
+          fadeEl.style.transition = "";
+        }, 350);
+      }
+    }
   }
   // 由 GeneralRender 的 rendered 事件驱动
   handleRendered() {
