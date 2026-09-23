@@ -34,6 +34,7 @@ export default [
         format: {
           comments: false, // 移除所有注释
         },
+        mangle: false,
       }), // 压缩代码
     ],
 
@@ -92,6 +93,7 @@ export default [
         format: {
           comments: false, // 移除所有注释
         },
+        mangle: false,
       }), // 压缩代码
     ],
 
@@ -128,6 +130,7 @@ export default [
         format: {
           comments: false, // 移除所有注释
         },
+        mangle: false,
       }), // 压缩代码
     ],
     external: [],
