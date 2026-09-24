@@ -250,11 +250,11 @@ class GeneralRender extends EventEmitter {
       if (!this.speedReadingManager.skipFlip) {
         this.speedReadingManager.handleRendered();
       }
-    });
-    this.on("rendered", () => {
-      const value = this.computeEstimatedSizePerPage();
-      if (value > 1) {
-        this.estimatedSizePerPage = value;
+      if (this.estimatedSizePerPage === null) {
+        const value = this.computeEstimatedSizePerPage();
+        if (value > 1) {
+          this.estimatedSizePerPage = value;
+        }
       }
     });
     this.mouseDownHandler = () => {};
@@ -1222,13 +1222,14 @@ class GeneralRender extends EventEmitter {
     const sizes = this.chapterDocList.map((item) =>
       item?.text ? item.text.size || item.text.length || 1 : 1
     );
-    const pageList = sizes.map(
-      (size) =>
-        Math.max(Math.round(size / this.getEstimatedSizePerPage()), 1) *
-        (this.readerMode === "double" ? 2 : 1)
-    );
     //get total pages for each chapter
-    const pages = cumulativeSumWithPrevious(pageList);
+    const sizeList = cumulativeSumWithPrevious(sizes);
+    const pages = sizeList.map(
+      (size) =>
+        Math.round(size / this.getEstimatedSizePerPage()) *
+          (this.readerMode === "double" ? 2 : 1) +
+        1
+    );
     const total = sizes.reduce((a, b) => a + b, 0);
     this.chapterSizeCache = { sizes, total, pages };
     this.trigger("chapter-pages");

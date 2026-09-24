@@ -249,6 +249,6 @@ export const cumulativeSumWithPrevious = (arr: number[]): number[] => {
   return arr.map((num, index) => {
     // 计算当前元素之前所有数字之和
     const sumBefore = arr.slice(0, index).reduce((acc, cur) => acc + cur, 0);
-    return sumBefore + 1;
+    return sumBefore;
   });
 };
