@@ -242,6 +242,11 @@ class GeneralRender extends EventEmitter {
     this.paragraphModeManager.getIframe = () => this.getIframe();
     this.paragraphModeManager.getOverlayBackground = (doc: Document) =>
       this.getParagraphOverlayBackground(doc);
+    this.paragraphModeManager.getIsVertical = () => this.isVertical();
+    this.paragraphModeManager.getChapterDocIndex = () =>
+      this.tempLocation.chapterDocIndex || "";
+    this.paragraphModeManager.locateParagraph = (el: HTMLElement) =>
+      this.locateParagraph(el);
     this.paragraphModeManager.nextPage = () => this.next();
     this.paragraphModeManager.prevPage = () => this.prev();
     this.on("rendered", () => {
@@ -772,6 +777,37 @@ class GeneralRender extends EventEmitter {
       color = this.backgroundColor;
     }
     return color || "#ffffff";
+  }
+  // 段落模式下将底层页面静默同步到指定段落所在页，保证阅读进度与
+  // 退出段落模式后的位置正确；瞬时滚动，不触发 rendered 事件
+  locateParagraph(el: HTMLElement) {
+    let doc = this.getDocument();
+    if (!doc || !doc.body || !el) return;
+    let left = getActualOffsetLeft(el);
+    let top = getActualOffsetTop(el);
+    if (this.readerMode !== "scroll") {
+      // 页宽/页高计算与 handleScrollPage 保持一致，并对齐到页网格
+      if (this.isVertical()) {
+        let section = Math.floor(this.element.clientHeight / 12);
+        let gap = section % 2 === 0 ? section : section - 1;
+        let scrollDistance = this.element.clientHeight + gap;
+        doc.body.scrollTo(
+          0,
+          Math.max(0, Math.round(top / scrollDistance)) * scrollDistance
+        );
+      } else {
+        let section = Math.floor(this.element.clientWidth / 12);
+        let gap = section % 2 === 0 ? section : section - 1;
+        let scrollDistance = this.element.clientWidth + gap;
+        doc.body.scrollTo(
+          Math.max(0, Math.round(left / scrollDistance)) * scrollDistance,
+          0
+        );
+      }
+    } else {
+      this.element.scrollTo(0, top);
+    }
+    this.record();
   }
   async prev() {
     let doc = this.getDocument();
