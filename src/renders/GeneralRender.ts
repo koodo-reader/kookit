@@ -1255,6 +1255,9 @@ class GeneralRender extends EventEmitter {
   }
   getChapterSizes() {
     if (this.chapterSizeCache) return this.chapterSizeCache;
+    if (this.isShowTotalPage !== "yes") {
+      return { sizes: [], total: 0, pages: [] };
+    }
     const sizes = this.chapterDocList.map((item) =>
       item?.text ? item.text.size || item.text.length || 1 : 1
     );
