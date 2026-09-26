@@ -91,7 +91,7 @@ class StyleHelper {
 
     // Body and html base styles
     cssRules.push(
-      "body,html,svg{margin: 0px !important; padding: 0px !important; font-size: 18px; background-color: transparent !important;background-size: contain !important; background-position: top left !important;}"
+      "body,html,svg{margin: 0px !important; padding: 0px !important; font-size: 18px; background-color: transparent !important;background-size: contain !important; background-position: top left !important;-webkit-text-size-adjust: 100%;}"
     );
 
     // Force horizontal writing mode - only if vertical writing is not enabled
@@ -101,12 +101,12 @@ class StyleHelper {
 
     // Content elements with custom styles
     cssRules.push(
-      `a, article, cite, div, li, p, span:not(.kookit-note):not(.kookit-note-icon):not(.kookit-highlight-text):not(.kookit-note-tooltip):not(.kookit-word-def):not(.kookit-word-tooltip):not(.kookit-text-rule-replace):not(.kookit-text-rule-delete):not([class*="hljs"]), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
+      `a, article, cite, div, li, p:not(.hide), span:not(.kookit-note):not(.kookit-note-icon):not(.kookit-highlight-text):not(.kookit-note-tooltip):not(.kookit-word-def):not(.kookit-word-tooltip):not(.kookit-text-rule-replace):not(.kookit-text-rule-delete):not([class*="hljs"]), pre, dt, dd, table, bold, font, blockquote{${this.getCustomCss(ConfigService)}}`
     );
 
     // Title elements with custom styles
     cssRules.push(
-      `h1, h2, h3, h4, h5, h6, title{${this.getCustomCss(ConfigService, true)}}`
+      `h1:not(.hide), h2, h3, h4, h5, h6, title{${this.getCustomCss(ConfigService, true)}}`
     );
 
     // Code formatting — allow wrapping and column fragmentation

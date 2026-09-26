@@ -7,6 +7,11 @@ let isDragging = false;
 let lastPinchZoomTime = 0;
 let pinchZoomed = false;
 
+// PDF 与漫画（CB 系列）共用"外层 iframe 承载滚动"的多 iframe 分页结构
+export const isPaginatedFormat = (format: string) => {
+  return format === "PDF" || (format && format.startsWith("CB"));
+};
+
 // 双指缩放 PDF 结束后发送 pinch-zoom 消息，Android/iOS 共用
 export const onPinchZoomEnd = function (
   event: any,
@@ -45,7 +50,7 @@ export const slideAnimateTo = (
   gap: number
 ) => {
   let pageWidth = element.clientWidth + gap;
-  let tempDoc = format === "PDF" ? outerDoc : doc;
+  let tempDoc = isPaginatedFormat(format) ? outerDoc : doc;
 
   // Stop any ongoing touch-move dragging immediately so onTouchMove
   // no longer modifies scrollLeft while the animation is running.
@@ -196,9 +201,12 @@ function getScreenTopOffset() {
 const preventLinkNavigation = async (event: any, doc: any, render: any) => {
   const target = event.target;
   if (!target) return;
+  // 先判断是否命中链接，非链接点击不拦截，避免吞掉阅读区内其他可点击元素（如速读播放按钮）的点击事件
+  let href = render.getTargetHref(event);
+  if (!href) return;
   event.preventDefault();
   event.stopPropagation();
-  let href = render.getTargetHref(event);
+  let beforeLocation = { ...render.getPosition() };
   let result = await render.handleLinkJump(href, event);
   if (!result.handled) {
     return false;
@@ -212,6 +220,19 @@ const preventLinkNavigation = async (event: any, doc: any, render: any) => {
         ...result,
       })
     );
+    return true;
+  }
+  if (result.redirectChapter) {
+    window.ReactNativeWebView.postMessage(
+      JSON.stringify({
+        event: "link-clicked",
+        bookLocation: beforeLocation,
+        ...result,
+      })
+    );
+    return true;
+  }
+  if (!result.node) {
     return true;
   }
   let footnoteResult = await render.getFootnoteContent(result.node);
@@ -320,11 +341,21 @@ export const addAndroidTouchEvent = (
   });
   let onTouchEnd = function (event) {
     window.isSwiping = false;
+    // 拖拽结束后清除硬件加速用的 transform，避免 body 长期作为 fixed 定位元素的
+    // 包含块，导致段落模式/速读模式等悬浮控件在翻页后随内容滚动而错位失效
+    doc.body.style.transform = "";
 
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
       event.preventDefault();
-      return;
+      // 段落/速读/阅读尺模式下快速连点是主要交互，不吞掉 300ms 内的连续点击
+      if (
+        render.isParagraphMode !== "yes" &&
+        render.isSpeedReading !== "yes" &&
+        render.isReadingRuler !== "yes"
+      ) {
+        return;
+      }
     }
     lastTouchEnd = now;
     onPinchZoomEnd(event, render, format);
@@ -388,10 +419,7 @@ export const addAndroidTouchEvent = (
     var selectedText = iWin.getSelection().toString();
     var isSwiping =
       Math.abs(distX) >= swipeThreshold || Math.abs(distY) >= swipeThreshold;
-    if (
-      selectedText &&
-      (format !== "PDF" || (format === "PDF" && !isSwiping))
-    ) {
+    if (selectedText && (!isPaginatedFormat(format) || !isSwiping)) {
       window.ReactNativeWebView.postMessage(
         JSON.stringify({
           event: "select-text-after-touch",
@@ -436,6 +464,20 @@ export const addAndroidTouchEvent = (
       var col = Math.floor(touchEndX / cellWidth);
       var row = Math.floor(touchEndY / cellHeight);
       var result = getTouchAction(col, row, touchControlRule);
+      // 段落/速读/阅读尺模式下点击直接推进，优先于滑动翻页动画
+      if (
+        render.isParagraphMode === "yes" ||
+        render.isSpeedReading === "yes" ||
+        render.isReadingRuler === "yes"
+      ) {
+        if (result === "right") {
+          render.next();
+          return;
+        } else if (result === "left") {
+          render.prev();
+          return;
+        }
+      }
       if (animation === "sliding" && readerMode !== "scroll") {
         if (result === "right") {
           slideAnimateTo("right", format, doc, outerDoc, element, render, gap);
@@ -505,7 +547,7 @@ export const addAndroidTouchEvent = (
 
     // Prevent default to stop browser scroll behavior
     event.preventDefault();
-    if (window.visualViewport.scale > 1 && format === "PDF") {
+    if (window.visualViewport.scale > 1 && isPaginatedFormat(format)) {
       event.preventDefault();
       return;
     }
@@ -544,7 +586,7 @@ export const addAndroidTouchEvent = (
     }
     // If we're in dragging mode, apply direct transform for better performance
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
-      let tempDoc = format === "PDF" ? outerDoc : doc;
+      let tempDoc = isPaginatedFormat(format) ? outerDoc : doc;
       // Calculate the delta since last move event
       const deltaX = touchCurrentX - lastTouchX;
 
@@ -830,7 +872,14 @@ export const addAppleTouchEvent = (
     let now = new Date().getTime();
     if (now - lastTouchEnd <= 300) {
       event.preventDefault();
-      return;
+      // 段落/速读/阅读尺模式下快速连点是主要交互，不吞掉 300ms 内的连续点击
+      if (
+        render.isParagraphMode !== "yes" &&
+        render.isSpeedReading !== "yes" &&
+        render.isReadingRuler !== "yes"
+      ) {
+        return;
+      }
     }
     lastTouchEnd = now;
     // iOS 上极易崩溃，所以注释掉
@@ -972,7 +1021,7 @@ export const addAppleTouchEvent = (
       let normalizedX = Math.min(Math.max(touchEndX, 0), width);
       let normalizedY = Math.min(Math.max(touchEndY, 0), height);
 
-      if (format === "PDF" && readerMode === "double") {
+      if (isPaginatedFormat(format) && readerMode === "double") {
         let target: any = event.target;
         let ownerDoc = target.ownerDocument;
         let targetIframe = ownerDoc?.defaultView?.frameElement;
@@ -989,6 +1038,20 @@ export const addAppleTouchEvent = (
       const col = Math.min(Math.floor(normalizedX / cellWidth), 2);
       const row = Math.min(Math.floor(normalizedY / cellHeight), 2);
       let result = getTouchAction(col, row, touchControlRules);
+      // 段落/速读/阅读尺模式下点击直接推进，优先于滑动翻页动画
+      if (
+        render.isParagraphMode === "yes" ||
+        render.isSpeedReading === "yes" ||
+        render.isReadingRuler === "yes"
+      ) {
+        if (result === "right") {
+          render.next();
+          return;
+        } else if (result === "left") {
+          render.prev();
+          return;
+        }
+      }
       if (animation === "sliding" && readerMode !== "scroll") {
         if (result === "right") {
           slideAnimateTo("right", format, doc, outerDoc, element, render, gap);
@@ -1060,7 +1123,7 @@ export const addAppleTouchEvent = (
     if (!isDragging && Math.abs(event.touches[0].screenX - touchStartX) <= 10) {
       return;
     }
-    if (window.visualViewport.scale > 1 && format === "PDF") {
+    if (window.visualViewport.scale > 1 && isPaginatedFormat(format)) {
       return;
     }
     if (readerMode !== "scroll") {
@@ -1100,7 +1163,7 @@ export const addAppleTouchEvent = (
     // If we're in dragging mode, apply direct transform for better performance
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
       window.isSwiping = true;
-      let tempDoc = format === "PDF" ? outerDoc : doc;
+      let tempDoc = isPaginatedFormat(format) ? outerDoc : doc;
       // Calculate the delta since last move event
       const deltaX = touchCurrentX - lastTouchX;
 

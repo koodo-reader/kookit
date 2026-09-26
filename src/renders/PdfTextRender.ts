@@ -29,6 +29,13 @@ class PdfTextRender extends GeneralRender {
   externalWorker: any;
   pdfPageCount: number = 0;
   pdfDoc: any;
+  bookKey: string = ""; // 用于标识当前PDF的唯一键值，便于缓存管理
+  getOcrCache: (bookKey: string, chapterDocIndex: number) => { text: string };
+  saveOcrCache: (
+    bookKey: string,
+    chapterDocIndex: number,
+    cacheData: { text: string }
+  ) => void;
   constructor(pdfBuffer: ArrayBuffer, config: any) {
     super({ ...config, format: "PDFTEXT" });
     this.pdfBuffer = pdfBuffer;
@@ -43,6 +50,15 @@ class PdfTextRender extends GeneralRender {
     this.ocrEngine = config.ocrEngine || "paddle"; // 支持配置OCR引擎
     this.externalWorker = config.externalWorker || null;
     this.pdfPageCount = config.pdfPageCount || 0;
+    this.getOcrCache =
+      config.getOcrCache ||
+      ((_bookKey: string, _chapterDocIndex: number) => null);
+    this.saveOcrCache =
+      config.saveOcrCache ||
+      (() => {
+        /* 默认不做任何操作 */
+      });
+    this.bookKey = config.bookKey || ""; // 用于标识当前PDF的唯一键值，便于缓存管理
   }
 
   renderTo(element: HTMLElement) {
@@ -119,19 +135,25 @@ class PdfTextRender extends GeneralRender {
       return this.cache[index];
     }
 
-    // 如果当前章节正在处理，等待完成
+    // 如果当前章节正在处理，等待完成并返回缓存结果
     if (this.processingPromises.has(index)) {
       await this.processingPromises.get(index);
       return this.cache[index];
     }
 
-    const chapterDoc = this.chapterDocList[index];
+    // 主动触发当前章节的 OCR，结果统一由 getTextByOCR 写入 this.cache
     this.isFinishOCR = false; // 重置完成标志
     this.shouldShowProgress = true; // 当前章节显示进度
-    const src = await this.getTextByOCR(chapterDoc, index);
-    this.shouldShowProgress = false;
-    this.cache[index] = src;
-    return src;
+    try {
+      const promise = this.processChapterOCR(index).finally(() => {
+        this.processingPromises.delete(index);
+      });
+      this.processingPromises.set(index, promise);
+      await promise;
+      return this.cache[index];
+    } finally {
+      this.shouldShowProgress = false;
+    }
   }
 
   // 同步预处理后续章节
@@ -157,12 +179,11 @@ class PdfTextRender extends GeneralRender {
     }
   }
 
-  // 处理单个章节的OCR
+  // 处理单个章节的OCR（结果写入 this.cache 的唯一入口在 getTextByOCR）
   async processChapterOCR(index: number): Promise<void> {
     try {
       const chapterDoc = this.chapterDocList[index];
-      const src = await this.getTextByOCR(chapterDoc, index);
-      this.cache[index] = src;
+      await this.getTextByOCR(chapterDoc, index);
     } catch (error) {
       console.error(`Failed to process OCR for chapter ${index}:`, error);
     }
@@ -277,6 +298,33 @@ class PdfTextRender extends GeneralRender {
     return blob;
   };
   async getTextByOCR(chapterDoc, chapterDocIndex: number) {
+    // 所有 OCR 结果统一在此写入 this.cache，保证被 OCR 过的页面总有缓存
+    if (this.cache[chapterDocIndex]) {
+      return this.cache[chapterDocIndex];
+    }
+    let ocrCacheData = this.getOcrCache(this.bookKey, chapterDocIndex);
+    if (ocrCacheData) {
+      let url = URL.createObjectURL(
+        new Blob([ocrCacheData.text], { type: "text/html" })
+      );
+      this.cache[chapterDocIndex] = url;
+      return url;
+    }
+    const textContent = await this.doTextByOCR(chapterDoc, chapterDocIndex);
+    const url = URL.createObjectURL(
+      new Blob([textContent], { type: "text/html" })
+    );
+
+    this.cache[chapterDocIndex] = url;
+    if (this.ocrEngine === "system-ocr" && this.isScannedPDF !== "yes") {
+      return url;
+    } else {
+      this.saveOcrCache(this.bookKey, chapterDocIndex, { text: textContent });
+      return url;
+    }
+  }
+
+  private async doTextByOCR(chapterDoc, chapterDocIndex: number) {
     let textContent = "";
     if (this.ocrEngine === "system-ocr" && this.isScannedPDF !== "yes") {
       return await this.getTextFromDoc(chapterDoc);
@@ -338,10 +386,7 @@ class PdfTextRender extends GeneralRender {
           this.ocrEngine === "official-ai-ocr" &&
           this.ocrLang === "accurate"
         ) {
-          const src = URL.createObjectURL(
-            new Blob([textContent], { type: "text/html" })
-          );
-          return src;
+          return textContent;
         }
       } finally {
         if (this.shouldShowProgress && progressInterval) {
@@ -355,10 +400,7 @@ class PdfTextRender extends GeneralRender {
     }
 
     let paraList = textContent.split("\n").filter((para) => para.trim() !== "");
-    const src = URL.createObjectURL(
-      new Blob(
-        [
-          `
+    return `
             <!DOCTYPE html>
             <html lang="en">
             <meta charset="utf-8">
@@ -380,12 +422,7 @@ class PdfTextRender extends GeneralRender {
             }
             </style>
             <div>${paraList.map((para) => `<p>${para}</p>`).join("")}</div>
-          `,
-        ],
-        { type: "text/html" }
-      )
-    );
-    return src;
+          `;
   }
   async getTextFromDoc(chapterDoc) {
     let paraList: any[] = await getTextFromPDFPage(
@@ -394,10 +431,7 @@ class PdfTextRender extends GeneralRender {
       this.paraSpacingValue
     );
 
-    const src = URL.createObjectURL(
-      new Blob(
-        [
-          `
+    return `
         <!DOCTYPE html>
         <html lang="en">
         <meta charset="utf-8">
@@ -430,12 +464,7 @@ class PdfTextRender extends GeneralRender {
                 .join("")
             : "Empty"
         }</div>
-      `,
-        ],
-        { type: "text/html" }
-      )
-    );
-    return src;
+      `;
   }
   async parse() {
     try {

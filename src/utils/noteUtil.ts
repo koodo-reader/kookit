@@ -136,6 +136,135 @@ const hideNoteTooltip = (doc: Document) => {
  * 1. It avoids any edge cases with overlapping ranges after splitText()
  * 2. It's more efficient (single pass for resolve, single pass for apply)
  */
+type ResolvedNoteItem = {
+  nativeRange: Range;
+  colorCode: string;
+  noteKey: string;
+  isNote: boolean;
+  noteContent: string;
+};
+
+const BATCH_CHUNK_SIZE = 20;
+const BATCH_CHUNK_TIME_BUDGET = 8;
+
+// Per-document generation counter, used to cancel stale chunked batch
+// renders (e.g. after a re-render or clearHighlight()). Kept in a WeakMap
+// so the state stays private and dies with the document.
+const noteBatchGen = new WeakMap<Document, number>();
+const bumpNoteBatchGen = (doc: Document): number => {
+  const gen = (noteBatchGen.get(doc) || 0) + 1;
+  noteBatchGen.set(doc, gen);
+  return gen;
+};
+
+/**
+ * Resolve every note's character range into a native Range.
+ *
+ * Instead of calling restoreCharacterRanges once per note (which walks the
+ * whole document from its start for every single note — O(notes × length)
+ * with a fresh rangy session and fresh getComputedStyle lookups each time),
+ * notes are sorted by start offset and resolved with ONE rangy range whose
+ * start boundary only ever moves forward. The move sequence per note
+ * (collapse → moveStart → collapse → moveEnd) is identical to rangy's
+ * selectCharacters, so resolution semantics are exactly the same — only the
+ * redundant re-walking from the document start is removed, making the total
+ * cost O(document length) across all notes.
+ */
+const resolveNoteRanges = (
+  notes: Array<{
+    range: any;
+    colorCode: string;
+    noteKey: string;
+    isNote: boolean;
+    noteContent: string;
+  }>,
+  selection: any,
+  doc: Document,
+  iWin: any
+): Array<ResolvedNoteItem | undefined> => {
+  const resolved: Array<ResolvedNoteItem | undefined> = new Array(
+    notes.length
+  );
+  const indices: number[] = [];
+  for (let i = 0; i < notes.length; i++) {
+    const cr = notes[i]?.range?.characterRange;
+    if (cr && typeof cr.start === "number" && typeof cr.end === "number") {
+      indices.push(i);
+    }
+  }
+  indices.sort(
+    (a, b) =>
+      (notes[a].range.characterRange.start as number) -
+      (notes[b].range.characterRange.start as number)
+  );
+
+  let range: any = null;
+  let prevStart = 0;
+  for (let k = 0; k < indices.length; k++) {
+    const i = indices[k];
+    const item = notes[i];
+    const cr = item.range.characterRange;
+    try {
+      if (!range) {
+        range = rangy.createRange(doc);
+        range.selectNodeContents(doc);
+        range.collapse(true);
+        prevStart = 0;
+      }
+      range.collapse(true);
+      range.moveStart("character", cr.start - prevStart);
+      range.collapse(true);
+      range.moveEnd("character", cr.end - cr.start);
+      resolved[i] = {
+        nativeRange: range.nativeRange.cloneRange(),
+        colorCode: item.colorCode,
+        noteKey: item.noteKey,
+        isNote: item.isNote,
+        noteContent: item.noteContent,
+      };
+      prevStart = cr.start;
+    } catch (e) {
+      // The incremental scan state is unreliable after a failure, so fall
+      // back to the original per-note restoreCharacterRanges path (which
+      // restarts from the container start) for the remaining notes.
+      console.warn(
+        "Failed to restore character range for note:",
+        item.noteKey,
+        e
+      );
+      range = null;
+      try {
+        selection.restoreCharacterRanges(doc, [item.range]);
+        resolved[i] = {
+          nativeRange: selection.getRangeAt(0).nativeRange.cloneRange(),
+          colorCode: item.colorCode,
+          noteKey: item.noteKey,
+          isNote: item.isNote,
+          noteContent: item.noteContent,
+        };
+      } catch (e2) {
+        console.warn(
+          "Failed to restore character range for note:",
+          item.noteKey,
+          e2
+        );
+      }
+      if (iWin?.getSelection()) iWin.getSelection().empty();
+    }
+  }
+  selection.removeAllRanges();
+  if (iWin?.getSelection()) iWin.getSelection().empty();
+  return resolved;
+};
+
+/**
+ * Resolves all ranges in a single increasing scan, then applies the inline
+ * highlights in chunked animation frames so the main thread is never blocked
+ * for a long stretch while a large number of notes is rendered.
+ *
+ * Returns a promise that resolves once every highlight has been applied (or
+ * immediately if there is nothing to apply).
+ */
 export const showNoteHighlightBatch = (
   notes: Array<{
     range: any;
@@ -148,57 +277,61 @@ export const showNoteHighlightBatch = (
   doc: Document,
   iframe: any,
   isMobile: boolean
-) => {
+): Promise<void> => {
   let iWin: any = iframe.contentWindow || iframe.contentDocument?.defaultView;
   let selection = rangy.getSelection(iframe);
 
-  // Phase 1: Resolve all character ranges → native Range objects on clean DOM
-  const resolved: Array<{
-    nativeRange: Range;
-    colorCode: string;
-    noteKey: string;
-    isNote: boolean;
-    noteContent: string;
-  }> = [];
+  const resolved = resolveNoteRanges(notes, selection, doc, iWin);
 
-  for (let i = 0; i < notes.length; i++) {
-    const item = notes[i];
-    try {
-      selection.restoreCharacterRanges(doc, [item.range]);
-      const nativeRange = selection.getRangeAt(0).nativeRange.cloneRange();
-      resolved.push({
-        nativeRange,
-        colorCode: item.colorCode,
-        noteKey: item.noteKey,
-        isNote: item.isNote,
-        noteContent: item.noteContent,
-      });
-    } catch (e) {
-      console.warn(
-        "Failed to restore character range for note:",
-        item.noteKey,
-        e
-      );
+  return new Promise<void>((resolvePromise) => {
+    if (resolved.length === 0) {
+      resolvePromise();
+      return;
     }
-    if (iWin?.getSelection()) iWin.getSelection().empty();
-  }
-
-  // Phase 2: Apply all inline highlights (order doesn't matter now,
-  // since we already have concrete Range objects)
-  for (let i = 0; i < resolved.length; i++) {
-    const r = resolved[i];
-    // Wrap in a rangy range so highlightRange can access .nativeRange
-    highlightRange(
-      { nativeRange: r.nativeRange },
-      r.colorCode,
-      r.noteKey,
-      handleNoteClick,
-      doc,
-      r.isNote,
-      isMobile,
-      r.noteContent
-    );
-  }
+    // Generation marker: clearHighlight() bumps it to cancel stale chunked
+    // batches still pending on this document (e.g. after a re-render).
+    const gen = bumpNoteBatchGen(doc);
+    const schedule =
+      iWin && typeof iWin.requestAnimationFrame === "function"
+        ? iWin.requestAnimationFrame.bind(iWin)
+        : (callback: () => void) => setTimeout(callback, 0);
+    let index = 0;
+    const applyChunk = () => {
+      if (noteBatchGen.get(doc) !== gen) {
+        resolvePromise();
+        return;
+      }
+      const chunkStart = Date.now();
+      let applied = 0;
+      while (
+        index < resolved.length &&
+        applied < BATCH_CHUNK_SIZE &&
+        Date.now() - chunkStart < BATCH_CHUNK_TIME_BUDGET
+      ) {
+        const r = resolved[index++];
+        if (!r) continue;
+        // Wrap in a rangy-compatible shape so highlightRange can access
+        // .nativeRange
+        highlightRange(
+          { nativeRange: r.nativeRange },
+          r.colorCode,
+          r.noteKey,
+          handleNoteClick,
+          doc,
+          r.isNote,
+          isMobile,
+          r.noteContent
+        );
+        applied++;
+      }
+      if (index < resolved.length) {
+        schedule(applyChunk);
+      } else {
+        resolvePromise();
+      }
+    };
+    schedule(applyChunk);
+  });
 };
 
 export const showNoteHighlight = (
@@ -388,6 +521,8 @@ export const showPDFHighlight = (
 };
 
 export const clearHighlight = (doc: Document) => {
+  // Cancel any pending chunked batch rendering into this document
+  bumpNoteBatchGen(doc);
   // Remove absolutely-positioned note icon elements (📋) first
   const icons = doc.querySelectorAll(".kookit-note-icon");
   for (let index = 0; index < icons.length; index++) {
@@ -397,16 +532,16 @@ export const clearHighlight = (doc: Document) => {
   // 1. Inline highlight spans (from highlightRange) → unwrap to restore text
   // 2. Absolutely-positioned divs (from showPDFHighlight) → just remove
   //
-  // Overlapping highlights produce nested .kookit-note spans. We must unwrap
-  // from outermost to innermost; querySelectorAll returns them in DOM order
-  // (outer first), so each iteration re-queries to pick up newly-exposed
-  // inner spans after the outer span is removed.
-  let elements = doc.querySelectorAll(".kookit-note");
-  while (elements.length > 0) {
-    const element = elements[0];
+  // querySelectorAll returns spans in DOM order (outermost first), so unwrap
+  // in reverse (innermost first): unwrapping an inner span moves its text
+  // into the outer span, which is then unwrapped itself. A single pass is
+  // enough and avoids re-querying the whole DOM after every element.
+  const elements = doc.querySelectorAll(".kookit-note");
+  const parentsToNormalize = new Set<Node>();
+  for (let index = elements.length - 1; index >= 0; index--) {
+    const element = elements[index];
     const parent = element.parentNode;
     if (!parent) {
-      elements = doc.querySelectorAll(".kookit-note");
       continue;
     }
     if (element.tagName === "SPAN" && element.childNodes.length > 0) {
@@ -414,14 +549,14 @@ export const clearHighlight = (doc: Document) => {
       while (element.firstChild) {
         parent.insertBefore(element.firstChild, element);
       }
-      parent.removeChild(element);
-      parent.normalize();
-    } else {
-      // Absolutely-positioned overlay (PDF) or empty: just remove
-      parent.removeChild(element);
+      parentsToNormalize.add(parent);
     }
-    elements = doc.querySelectorAll(".kookit-note");
+    // Absolutely-positioned overlay (PDF) or empty span: just remove
+    parent.removeChild(element);
   }
+  parentsToNormalize.forEach((parent) => {
+    (parent as Element).normalize();
+  });
 };
 
 export const highlightRange = (
@@ -471,17 +606,10 @@ export const highlightRange = (
     NodeFilter.SHOW_TEXT,
     {
       acceptNode: (node: Text) => {
-        // Check if this text node is within (or partially within) the range
-        const nodeRange = doc.createRange();
-        nodeRange.selectNodeContents(node);
-        if (
-          nativeRange.compareBoundaryPoints(Range.END_TO_START, nodeRange) <
-            0 &&
-          nativeRange.compareBoundaryPoints(Range.START_TO_END, nodeRange) > 0
-        ) {
-          return NodeFilter.FILTER_ACCEPT;
-        }
-        return NodeFilter.FILTER_REJECT;
+        // Accept text nodes whose contents overlap (or touch) the range
+        return nativeRange.intersectsNode(node)
+          ? NodeFilter.FILTER_ACCEPT
+          : NodeFilter.FILTER_REJECT;
       },
     }
   );

@@ -1,4 +1,4 @@
-import Chapter from "../model/chapter";
+﻿import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
 import {
   collectChapterImageUrls,
@@ -7,6 +7,7 @@ import {
   getActualOffsetTop,
   getSelectedElement,
   handleOneChapterDoc,
+  isVerticalLayout,
   progressInfo,
 } from "../utils/layoutUtil";
 import {
@@ -47,7 +48,14 @@ import {
   blobUrlToBase64,
   slideAnimateTo,
 } from "../utils/touchUtil";
-import { getBlockElement, isParentBlock } from "../utils/common";
+import {
+  cumulativeSumWithPrevious,
+  getBlockElement,
+  isParentBlock,
+} from "../utils/common";
+import SpeedReadingManager from "../utils/speedReadingUtil";
+import ReadingRulerManager from "../utils/readingRulerUtil";
+import ParagraphModeManager from "../utils/paragraphModeUtil";
 declare var window: any;
 export interface TextRule {
   id: string;
@@ -85,6 +93,14 @@ class GeneralRender extends EventEmitter {
   mouseMoveHandler: (event: TouchEvent) => void;
   isMobile: string | undefined;
   isBionic: string = "no";
+  isParagraphMode: string = "no";
+  isReadingRuler: string = "no";
+  isSpeedReading: string = "no";
+  isShowTotalPage: string = "no";
+  chapterSizeCache: { sizes: number[]; pages: number[]; total: number } | null =
+    null;
+  estimatedSizePerPage: number | null = null;
+  speedReadingSpeed: number = 300;
   platform: string = "web";
   isAllowScript: string = "no";
   touchEventSet: any;
@@ -98,6 +114,9 @@ class GeneralRender extends EventEmitter {
     }
   >;
   fullTranslationMode: string = "no";
+  readingRulerManager: ReadingRulerManager;
+  speedReadingManager: SpeedReadingManager;
+  paragraphModeManager: ParagraphModeManager;
 
   constructor(config: {
     readerMode: string;
@@ -110,7 +129,14 @@ class GeneralRender extends EventEmitter {
     isMobile?: string;
     backgroundColor?: string;
     isBionic?: string;
+    isParagraphMode?: string;
+    isReadingRuler?: string;
+    readingRulerLineHeight?: number;
+    readingRulerBackgroundOpacity?: number;
+    isSpeedReading?: string;
+    speedReadingSpeed?: number;
     textOrientation?: string;
+    isShowTotalPage?: string;
     isAllowScript?: string;
     fullTranslationMode?: string;
     bookLayout?: string;
@@ -119,6 +145,15 @@ class GeneralRender extends EventEmitter {
     codeHighlight?: string;
   }) {
     super();
+    if (
+      config.isParagraphMode === "yes" ||
+      config.isSpeedReading === "yes" ||
+      config.isReadingRuler === "yes"
+    ) {
+      if (config.readerMode === "scroll") {
+        config.readerMode = "single";
+      }
+    }
     this.readerMode = config.readerMode;
     window.readerMode = config.readerMode;
     this.animation = config.animation || "none";
@@ -134,6 +169,7 @@ class GeneralRender extends EventEmitter {
     this.backgroundColor = config.backgroundColor || "";
     this.textOrientation = config.textOrientation;
     window.textOrientation = config.textOrientation;
+    this.isShowTotalPage = config.isShowTotalPage || "no";
     this.chapterList = [];
     this.chapterDocList = [];
     this.flattenChapters = [];
@@ -141,6 +177,10 @@ class GeneralRender extends EventEmitter {
     this.element = "";
     this.tempLocation = {};
     this.isBionic = config.isBionic || "no";
+    this.isReadingRuler = config.isReadingRuler || "no";
+    this.isParagraphMode = config.isParagraphMode || "no";
+    this.isSpeedReading = config.isSpeedReading || "no";
+    this.speedReadingSpeed = config.speedReadingSpeed || 300;
     this.platform = config.platform || "web";
     window.platform = this.platform;
     window.isBionic = this.isBionic;
@@ -162,6 +202,66 @@ class GeneralRender extends EventEmitter {
         : config.isAllowScript || "no";
     this.flipToNextPage = () => {};
     this.flipToPrevPage = () => {};
+    this.readingRulerManager = new ReadingRulerManager({
+      isReadingRuler: this.isReadingRuler,
+      readingRulerLineHeight: config.readingRulerLineHeight,
+      readingRulerBackgroundOpacity: config.readingRulerBackgroundOpacity,
+      readerMode: this.readerMode,
+      isMobile: this.isMobile,
+    });
+    this.readingRulerManager.getDoc = () => this.getDocument();
+    this.readingRulerManager.getElement = () => this.element;
+    this.readingRulerManager.getIframe = () => this.getIframe();
+    this.readingRulerManager.getIsVertical = () => this.isVertical();
+    this.readingRulerManager.getOverlayBackground = (doc: Document) =>
+      this.getParagraphOverlayBackground(doc);
+    this.readingRulerManager.nextPage = () => this.next();
+    this.readingRulerManager.prevPage = () => this.prev();
+    this.speedReadingManager = new SpeedReadingManager({
+      isSpeedReading: this.isSpeedReading,
+      speedReadingSpeed: this.speedReadingSpeed,
+      isDarkMode: this.isDarkMode,
+      readerMode: this.readerMode,
+    });
+    this.speedReadingManager.getDoc = () => this.getDocument();
+    this.speedReadingManager.getElement = () => this.element;
+    this.speedReadingManager.getOverlayBackground = (doc: Document) =>
+      this.getParagraphOverlayBackground(doc);
+    this.speedReadingManager.getProgress = () => this.getProgress();
+    this.speedReadingManager.getChapterDocIndex = () =>
+      this.tempLocation.chapterDocIndex;
+    this.speedReadingManager.nextPage = () => this.next();
+    this.speedReadingManager.prevPage = () => this.prev();
+    this.paragraphModeManager = new ParagraphModeManager({
+      isParagraphMode: this.isParagraphMode,
+      readerMode: this.readerMode,
+      isMobile: this.isMobile,
+    });
+    this.paragraphModeManager.getDoc = () => this.getDocument();
+    this.paragraphModeManager.getElement = () => this.element;
+    this.paragraphModeManager.getIframe = () => this.getIframe();
+    this.paragraphModeManager.getOverlayBackground = (doc: Document) =>
+      this.getParagraphOverlayBackground(doc);
+    this.paragraphModeManager.getIsVertical = () => this.isVertical();
+    this.paragraphModeManager.getChapterDocIndex = () =>
+      this.tempLocation.chapterDocIndex || "";
+    this.paragraphModeManager.locateParagraph = (el: HTMLElement) =>
+      this.locateParagraph(el);
+    this.paragraphModeManager.nextPage = () => this.next();
+    this.paragraphModeManager.prevPage = () => this.prev();
+    this.on("rendered", () => {
+      this.paragraphModeManager.handleRendered();
+      this.readingRulerManager.handleRendered();
+      if (!this.speedReadingManager.skipFlip) {
+        this.speedReadingManager.handleRendered();
+      }
+      if (this.estimatedSizePerPage === null) {
+        const value = this.computeEstimatedSizePerPage();
+        if (value > 1) {
+          this.estimatedSizePerPage = value;
+        }
+      }
+    });
     this.mouseDownHandler = () => {};
     this.mouseUpHandler = () => {};
     this.mouseMoveHandler = (event: TouchEvent) => {};
@@ -428,7 +528,7 @@ class GeneralRender extends EventEmitter {
     }
     if (this.flattenChapters.length > 0) {
       if (this.flattenChapters.length === 1) {
-        let progressInfo = this.getProgress();
+        let progressInfo = this.getChapterProgress();
         if (!progressInfo) return;
         let pageNumber = Math.floor(progressInfo.totalPage * percentage);
         await this.goToPage(pageNumber);
@@ -666,11 +766,66 @@ class GeneralRender extends EventEmitter {
   removeContent() {
     this.element.innerHTML = "";
   }
+  getParagraphOverlayBackground(doc: Document): string {
+    const view: any = doc.defaultView || window;
+    let color = view.getComputedStyle(doc.body).backgroundColor;
+    if (
+      !color ||
+      color === "transparent" ||
+      color.replace(/\s/g, "") === "rgba(0,0,0,0)"
+    ) {
+      color = this.backgroundColor;
+    }
+    return color || "#ffffff";
+  }
+  // 段落模式下将底层页面静默同步到指定段落所在页，保证阅读进度与
+  // 退出段落模式后的位置正确；瞬时滚动，不触发 rendered 事件
+  locateParagraph(el: HTMLElement) {
+    let doc = this.getDocument();
+    if (!doc || !doc.body || !el) return;
+    let left = getActualOffsetLeft(el);
+    let top = getActualOffsetTop(el);
+    if (this.readerMode !== "scroll") {
+      // 页宽/页高计算与 handleScrollPage 保持一致，并对齐到页网格
+      if (this.isVertical()) {
+        let section = Math.floor(this.element.clientHeight / 12);
+        let gap = section % 2 === 0 ? section : section - 1;
+        let scrollDistance = this.element.clientHeight + gap;
+        doc.body.scrollTo(
+          0,
+          Math.max(0, Math.round(top / scrollDistance)) * scrollDistance
+        );
+      } else {
+        let section = Math.floor(this.element.clientWidth / 12);
+        let gap = section % 2 === 0 ? section : section - 1;
+        let scrollDistance = this.element.clientWidth + gap;
+        doc.body.scrollTo(
+          Math.max(0, Math.round(left / scrollDistance)) * scrollDistance,
+          0
+        );
+      }
+    } else {
+      this.element.scrollTo(0, top);
+    }
+    this.record();
+  }
   async prev() {
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) {
       return;
+    }
+    if (this.isSpeedReading === "yes" && !this.speedReadingManager.skipFlip) {
+      // 速读模式下禁用鼠标、快捷键等外部触发的翻页
+      return;
+    }
+    if (this.isReadingRuler === "yes" && !this.readingRulerManager.skipFlip) {
+      const handled = await this.readingRulerManager.handleChange(-1);
+      if (handled) return;
+    }
+    if (this.isParagraphMode === "yes" && !this.paragraphModeManager.skipFlip) {
+      const handled = await this.paragraphModeManager.handleChange(-1);
+      if (handled) return;
     }
     if (
       (this.readerMode === "scroll" &&
@@ -729,6 +884,18 @@ class GeneralRender extends EventEmitter {
     let iframe = this.getIframe();
     if (!doc || !iframe) {
       return;
+    }
+    if (this.isSpeedReading === "yes" && !this.speedReadingManager.skipFlip) {
+      // 速读模式下禁用鼠标、快捷键等外部触发的翻页
+      return;
+    }
+    if (this.isReadingRuler === "yes" && !this.readingRulerManager.skipFlip) {
+      const handled = await this.readingRulerManager.handleChange(1);
+      if (handled) return;
+    }
+    if (this.isParagraphMode === "yes" && !this.paragraphModeManager.skipFlip) {
+      const handled = await this.paragraphModeManager.handleChange(1);
+      if (handled) return;
     }
     if (
       (this.isVertical() &&
@@ -809,6 +976,14 @@ class GeneralRender extends EventEmitter {
   async slideTo(direction: string) {
     let doc = this.getDocument();
     if (!doc) return;
+    if (this.isPageAnimationDisabled()) {
+      if (direction === "left") {
+        await this.prev();
+      } else if (direction === "right") {
+        await this.next();
+      }
+      return;
+    }
     let section = Math.floor(this.element.clientWidth / 12);
     let gap = section % 2 === 0 ? section : section - 1;
     slideAnimateTo(direction, this.format, doc, doc, this.element, this, gap);
@@ -1078,13 +1253,138 @@ class GeneralRender extends EventEmitter {
       return await getSearchResult(keyword, this.chapterDocList);
     }
   }
-  getProgress() {
+  getChapterSizes() {
+    if (this.chapterSizeCache) return this.chapterSizeCache;
+    if (this.isShowTotalPage !== "yes") {
+      return { sizes: [], total: 0, pages: [] };
+    }
+    const sizes = this.chapterDocList.map((item) =>
+      item?.text ? item.text.size || item.text.length || 1 : 1
+    );
+    //get total pages for each chapter
+    const sizeList = cumulativeSumWithPrevious(sizes);
+    const pages = sizeList.map(
+      (size) =>
+        Math.round(size / this.getEstimatedSizePerPage()) *
+          (this.readerMode === "double" ? 2 : 1) +
+        1
+    );
+    const total = sizes.reduce((a, b) => a + b, 0);
+    this.chapterSizeCache = { sizes, total, pages };
+    this.trigger("chapter-pages");
+    return this.chapterSizeCache;
+  }
+  // 每个可见字符对应的"章节文件大小"单位数（size 源自源文件，已包含文字内容与标记开销）
+  static SIZE_PER_CHAR: Record<string, number> = {
+    TXT: 1.5,
+    MD: 2,
+    DOCX: 2.5,
+    HTML: 3,
+    MHTML: 3,
+    XHTML: 3,
+    HTM: 3,
+    XML: 3,
+    EPUB: 4.5,
+    MOBI: 4.5,
+    FB2: 5,
+    PDFTEXT: 0.5,
+  };
+  getEstimatedSizePerPage() {
+    if (this.estimatedSizePerPage !== null) {
+      return this.estimatedSizePerPage;
+    }
+    return this.computeEstimatedSizePerPage();
+  }
+  computeEstimatedSizePerPage() {
+    const doc = this.getDocument();
+    if (!doc || !doc.body) return 1;
+    if (this.format === "CACHE") return 1;
+    const bytesPerChar =
+      GeneralRender.SIZE_PER_CHAR[(this.format || "").toUpperCase()] || 3;
+    const vertical = isVerticalLayout() && this.readerMode !== "scroll";
+    const scroll = this.readerMode === "scroll";
+    let inlinePx = 0;
+    let blockPx = 0;
+    if (scroll) {
+      inlinePx = this.element.clientWidth;
+      blockPx = this.element.clientHeight - 50;
+    } else if (vertical) {
+      inlinePx = doc.body.clientHeight;
+      blockPx = doc.body.clientWidth;
+    } else {
+      inlinePx = doc.body.clientWidth;
+      blockPx = doc.body.clientHeight;
+    }
+    if (inlinePx <= 0 || blockPx <= 0) return 1;
+    const view = doc.defaultView || window;
+    const bodyStyle = view.getComputedStyle(doc.body);
+    const sampleEl: any = doc.body.querySelector(
+      "div,p:not(.hide),li,blockquote,dd,dt,pre,td"
+    );
+    if (!sampleEl) return 1;
+
+    const style = view.getComputedStyle(sampleEl);
+    const fontSize =
+      parseFloat(style.fontSize) || parseFloat(bodyStyle.fontSize) || 18;
+    let lineHeightPx = parseFloat(style.lineHeight);
+    if (!lineHeightPx || style.lineHeight === "normal") {
+      lineHeightPx = fontSize * 1.25;
+    }
+    const letterSpacing = parseFloat(style.letterSpacing) || 0;
+    const marginBlock =
+      (parseFloat(style.marginTop) || 0) +
+      (parseFloat(style.marginBottom) || 0);
+    const charAdvancePx = Math.max(fontSize + letterSpacing, 1);
+    const charsPerLine = Math.max(Math.floor(inlinePx / charAdvancePx), 1);
+    // 假设段落平均占 3 行，把段前段后 margin 摊到每行
+    const effectiveLineHeight = lineHeightPx + marginBlock / 3;
+    const charsPerPage = Math.max(
+      Math.floor(blockPx / effectiveLineHeight) * charsPerLine,
+      1
+    );
+    const value = Math.max(charsPerPage * bytesPerChar, 1);
+    if (this.readerMode === "double") {
+      return value / 2;
+    }
+    return value;
+  }
+  getChapterProgress() {
     let doc = this.getDocument();
-    if (!doc) return;
+    if (!doc) return null;
     return {
       ...progressInfo(this.readerMode, doc, this.element),
       percentage: this.tempLocation.percentage,
     } as any;
+  }
+  getProgress() {
+    const chapterProgress = this.getChapterProgress();
+    if (!chapterProgress) return;
+    if (this.isShowTotalPage !== "yes") {
+      return { ...chapterProgress } as any;
+    }
+    let sizePerPage = this.getEstimatedSizePerPage();
+    if (sizePerPage === 1) {
+      return { ...chapterProgress } as any;
+    }
+    const { total } = this.getChapterSizes();
+    const totalPage = Math.max(
+      Math.round(total / sizePerPage),
+      chapterProgress.totalPage
+    );
+    const currentPage =
+      Math.round(totalPage * parseFloat(chapterProgress.percentage || "0")) + 1;
+    return {
+      totalPage: totalPage * (this.readerMode === "double" ? 2 : 1),
+      currentPage,
+      percentage: chapterProgress.percentage,
+    } as any;
+  }
+  getPages() {
+    if (this.chapterSizeCache) {
+      const { pages } = this.chapterSizeCache;
+      return pages;
+    }
+    return [];
   }
   async record() {
     if (this.animation !== "none" && this.isMobile !== "yes") {
@@ -1181,7 +1481,7 @@ class GeneralRender extends EventEmitter {
     }));
 
     try {
-      showNoteHighlightBatch(
+      await showNoteHighlightBatch(
         batchItems,
         handleNoteClick,
         doc,
@@ -1237,9 +1537,18 @@ class GeneralRender extends EventEmitter {
     );
   }
 
+  isPageAnimationDisabled() {
+    return (
+      this.isMobile === "yes" &&
+      (this.isParagraphMode === "yes" ||
+        this.isReadingRuler === "yes" ||
+        this.isSpeedReading === "yes")
+    );
+  }
   addPageAnimation = (backgroundColor?: string) => {
     if (this.animation !== "mimical") return;
-    const progress = this.getProgress();
+    if (this.isPageAnimationDisabled()) return;
+    const progress = this.getChapterProgress();
     if (!progress?.totalPage) return;
     const pageAnimation = addPageAnimation(
       progress.totalPage,
@@ -1314,7 +1623,7 @@ class GeneralRender extends EventEmitter {
   getAllDocuments() {
     let doc = this.getDocument();
     if (!doc) return [];
-    if (this.format !== "PDF") {
+    if (this.format !== "PDF" && !this.format?.startsWith("CB")) {
       return [doc];
     }
     let iframes = doc.querySelectorAll("iframe");
@@ -1330,7 +1639,7 @@ class GeneralRender extends EventEmitter {
   getAllIframes() {
     let iframe = this.getIframe();
     if (!iframe) return [];
-    if (this.format !== "PDF") {
+    if (this.format !== "PDF" && !this.format?.startsWith("CB")) {
       return [iframe];
     }
     let doc = this.getDocument();
@@ -1346,6 +1655,7 @@ class GeneralRender extends EventEmitter {
   addTouchEvent(isAndroid: string, touchControlRule: any) {
     let docs = this.getAllDocuments();
     let iframes = this.getAllIframes();
+    const animation = this.isPageAnimationDisabled() ? "none" : this.animation;
     for (let index = 0; index < docs.length; index++) {
       const doc = docs[index];
       const iframe = iframes[index];
@@ -1361,7 +1671,7 @@ class GeneralRender extends EventEmitter {
           iframe,
           this.element,
           this.readerMode,
-          this.animation,
+          animation,
           this.format,
           touchControlRule,
           this
@@ -1372,7 +1682,7 @@ class GeneralRender extends EventEmitter {
           iframe,
           this.element,
           this.readerMode,
-          this.animation,
+          animation,
           this.format,
           touchControlRule,
           this
@@ -1425,6 +1735,7 @@ class GeneralRender extends EventEmitter {
     isShowMenu?: boolean;
     isJump?: boolean;
     node?: any;
+    redirectChapter?: boolean;
   }> {
     let doc = this.getDocument();
     if (!doc) return { handled: false };
@@ -1440,7 +1751,7 @@ class GeneralRender extends EventEmitter {
           chapterInfo.href,
           chapterInfo.label
         );
-        return { handled: true };
+        return { handled: true, redirectChapter: true };
       }
       let result = await this.book.resolveHref(href);
       let chapterDocIndex = this.tempLocation.chapterDocIndex;
@@ -1503,7 +1814,7 @@ class GeneralRender extends EventEmitter {
         chapterInfo.href,
         chapterInfo.label
       );
-      return { handled: true };
+      return { handled: true, redirectChapter: true };
     } else if (href && href.indexOf("#") > -1) {
       let id = href.split("#").reverse()[0];
       let node = doc.body.querySelector("#" + CSS.escape(id));
@@ -1568,7 +1879,7 @@ class GeneralRender extends EventEmitter {
         chapterInfo.href,
         chapterInfo.label
       );
-      return { handled: true };
+      return { handled: true, redirectChapter: true };
     }
     return { handled: false };
   }

@@ -275,6 +275,14 @@ class BookHelper {
       window.rendition.on("page-changed", () => {
         throttledPageChanged();
       });
+      window.rendition.on("chapter-pages", () => {
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({
+            event: "chapter-pages",
+            pages: window.rendition.getPages(),
+          })
+        );
+      });
       window.rendition.on("scroll-text", async () => {
         setTimeout(async () => {
           let position = { ...window.rendition.getPosition() };
@@ -320,30 +328,6 @@ class BookHelper {
           userAgent: navigator.userAgent,
         })
       );
-      if (extension.toUpperCase() === "PDF" && size > 300 * 1024 * 1024) {
-        bookName = bookName.replace(/\.[^/.]+$/, "");
-        let format = extension.toUpperCase();
-        let key = new Date().getTime() + "";
-
-        let bookInfo = new Book(
-          key,
-          bookName,
-          "",
-          "",
-          md5,
-          "",
-          format,
-          "",
-          size,
-          0,
-          path,
-          ""
-        );
-        window.ReactNativeWebView.postMessage(
-          JSON.stringify({ event: "metadata", bookInfo: bookInfo })
-        );
-        return;
-      }
       //get arraybuffer from url
       // Using fetch instead of axios
       const response = await fetch(bookUrl);

@@ -912,6 +912,9 @@ export const getAudioText = (
       return item && trimmedVisibleText.includes(item.trim());
     });
   }
+  if (firstSliceIndex === -1) {
+    firstSliceIndex = 0;
+  }
 
   return audioText.slice(firstSliceIndex).filter((s) => s);
 };
