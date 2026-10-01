@@ -12,6 +12,7 @@ class AnnotationManager {
   shapeType: string = "rect";
   shapeColor: string = "#ff0000";
   shapeWidth: number = 2;
+  eraserWidth: number = 24;
   textSize: number = 24;
   textFont: string = "sans-serif";
   textColor: string = "#ff0000";
@@ -36,6 +37,7 @@ class AnnotationManager {
     this.shapeType = config.shapeType || "rect";
     this.shapeColor = config.shapeColor || "#ff0000";
     this.shapeWidth = config.shapeWidth || 2;
+    this.eraserWidth = config.eraserWidth != null ? config.eraserWidth : 24;
     this.textSize = config.textSize != null ? config.textSize : 24;
     this.textFont = config.textFont || "sans-serif";
     this.textColor = config.textColor || "#ff0000";
@@ -69,6 +71,9 @@ class AnnotationManager {
     }
     if (config.shapeWidth) {
       this.setShapeWidth(config.shapeWidth);
+    }
+    if (config.eraserWidth) {
+      this.setEraserWidth(config.eraserWidth);
     }
     if (config.textSize != null) {
       this.setTextSize(config.textSize);
@@ -163,6 +168,7 @@ class AnnotationManager {
       this.attachFabricKeyListeners(chapterDocIndex, subDoc);
       this.attachShapeDrawListeners(chapterDocIndex, canvas);
       this.attachTextCreateListeners(chapterDocIndex, canvas);
+      this.attachEraserListeners(chapterDocIndex, canvas);
     }
   }
 
@@ -172,7 +178,8 @@ class AnnotationManager {
     // shape 用自定义拖拽绘制几何图形，text 用 mouse:down 创建 IText，都不走 freeDrawingBrush
     const isShape = this.annotationStyle === "shape";
     const isText = this.annotationStyle === "text";
-    if (canvas.freeDrawingBrush && !isShape && !isText) {
+    const isEraser = this.annotationStyle === "eraser";
+    if (canvas.freeDrawingBrush && !isShape && !isText && !isEraser) {
       if (this.annotationStyle === "highlighter") {
         canvas.freeDrawingBrush.color = this.toRgba(
           this.highlighterColor,
@@ -186,13 +193,18 @@ class AnnotationManager {
         canvas.freeDrawingBrush.width = this.brushWidth;
       }
     }
-    canvas.isDrawingMode = drawing && !isShape && !isText;
+    canvas.isDrawingMode = drawing && !isShape && !isText && !isEraser;
     if (drawing) {
       if (isText) {
         // text 模式保留 selection，以便双击已有文字进入编辑
         canvas.selection = true;
         canvas.defaultCursor = "text";
         canvas.hoverCursor = "text";
+      } else if (isEraser) {
+        canvas.selection = false;
+        const cursor = this.buildEraserCursor();
+        canvas.defaultCursor = cursor;
+        canvas.hoverCursor = cursor;
       } else {
         canvas.selection = false;
         canvas.defaultCursor = "crosshair";
@@ -361,6 +373,70 @@ class AnnotationManager {
       }
       activeShape = null;
     });
+  }
+
+  attachEraserListeners(chapterDocIndex: number, canvas: any) {
+    if (!canvas) return;
+    let isErasing = false;
+    const eraseAt = (opt: any) => {
+      const pointer = canvas.getPointer(opt.e);
+      const radius = this.eraserWidth / 2;
+      const targets = canvas
+        .getObjects()
+        .filter((obj: any) =>
+          this.hitTestObject(obj, pointer.x, pointer.y, radius)
+        );
+      if (targets.length === 0) return;
+      const history = this.fabricHistoryMap.get(chapterDocIndex);
+      targets.forEach((obj: any) => {
+        if (history) {
+          const idx = history.lastIndexOf(obj);
+          if (idx >= 0) history.splice(idx, 1);
+        }
+        canvas.remove(obj);
+      });
+      canvas.requestRenderAll();
+    };
+    canvas.on("mouse:down", (o: any) => {
+      if (this.annotationStyle !== "eraser" || this.isDrawing !== "yes") return;
+      isErasing = true;
+      eraseAt(o);
+    });
+    canvas.on("mouse:move", (o: any) => {
+      if (!isErasing) return;
+      if (this.annotationStyle !== "eraser" || this.isDrawing !== "yes") {
+        isErasing = false;
+        return;
+      }
+      eraseAt(o);
+    });
+    canvas.on("mouse:up", () => {
+      isErasing = false;
+    });
+  }
+
+  hitTestObject(obj: any, x: number, y: number, radius: number): boolean {
+    try {
+      const rect = obj.getBoundingRect ? obj.getBoundingRect(true, true) : null;
+      if (!rect) return false;
+      const closestX = Math.max(rect.left, Math.min(x, rect.left + rect.width));
+      const closestY = Math.max(rect.top, Math.min(y, rect.top + rect.height));
+      return Math.hypot(closestX - x, closestY - y) <= radius;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  buildEraserCursor(): string {
+    const size = Math.max(Math.round(this.eraserWidth), 12) + 6;
+    const center = size / 2;
+    const radius = center - 3;
+    const svg =
+      `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'>` +
+      `<circle cx='${center}' cy='${center}' r='${radius}' fill='rgba(255,255,255,0.35)' stroke='white' stroke-width='2'/>` +
+      `<circle cx='${center}' cy='${center}' r='${radius}' fill='none' stroke='black' stroke-width='1'/>` +
+      `</svg>`;
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${center} ${center}, crosshair`;
   }
 
   attachTextCreateListeners(chapterDocIndex: number, canvas: any) {
@@ -563,6 +639,11 @@ class AnnotationManager {
 
   setShapeWidth(width: number) {
     this.shapeWidth = width;
+    this.applyBrushToAll();
+  }
+
+  setEraserWidth(width: number) {
+    this.eraserWidth = width;
     this.applyBrushToAll();
   }
 
