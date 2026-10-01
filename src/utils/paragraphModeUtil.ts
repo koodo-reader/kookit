@@ -1,5 +1,9 @@
 import { getBlockElement, isParentBlock } from "./common";
 
+// 遮罩内容区上下预留量：内容垂直居中后单侧空隙为该值一半，
+// 需不小于按钮组的最大占位（移动端 32+44=76px、scroll 模式底边-80px）并留缓冲
+const OVERLAY_RESERVED_PX = 180;
+
 // 段落模式管理器：整页遮罩居中展示当前段落，逐段推进
 // 段落列表按章节维度维护，段落切换与翻页解耦：
 // 页面位置由 locateParagraph 静默同步，不再依赖翻页，
@@ -151,8 +155,7 @@ class ParagraphModeManager {
       overlay.style.cssText = `position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:2147483000;pointer-events:none;text-align:center;transition:background-color 0.3s ease;margin:0 !important;padding:0 !important;`;
       let content = doc.createElement("div");
       content.id = "kookit-paragraph-overlay-content";
-      content.style.cssText =
-        "width:calc(100% - 40px);max-width:600px;max-height:calc(100% - 150px);overflow:hidden;text-align:center;transition:background-color 0.3s ease;";
+      content.style.cssText = `width:calc(100% - 40px);max-width:600px;max-height:calc(100% - ${OVERLAY_RESERVED_PX}px);overflow:hidden;text-align:center;transition:background-color 0.3s ease;`;
       overlay.appendChild(content);
       overlay.appendChild(this.createControls(doc));
       doc.body.appendChild(overlay);
@@ -199,7 +202,7 @@ class ParagraphModeManager {
     this.sliceCount = 1;
     this.sliceStep = 0;
     if (content.scrollHeight <= content.clientHeight + 1) return;
-    content.style.height = "calc(100% - 150px)";
+    content.style.height = `calc(100% - ${OVERLAY_RESERVED_PX}px)`;
     inner.style.height = "100%";
     inner.style.columnWidth = content.clientWidth + "px";
     let gap = 40;
