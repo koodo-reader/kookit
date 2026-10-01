@@ -13,6 +13,7 @@ class AnnotationManager {
   shapeColor: string = "#ff0000";
   shapeWidth: number = 2;
   eraserWidth: number = 24;
+  quickErase: string = "no";
   textSize: number = 24;
   textFont: string = "sans-serif";
   textColor: string = "#ff0000";
@@ -38,6 +39,7 @@ class AnnotationManager {
     this.shapeColor = config.shapeColor || "#ff0000";
     this.shapeWidth = config.shapeWidth || 2;
     this.eraserWidth = config.eraserWidth != null ? config.eraserWidth : 24;
+    this.quickErase = config.quickErase || "no";
     this.textSize = config.textSize != null ? config.textSize : 24;
     this.textFont = config.textFont || "sans-serif";
     this.textColor = config.textColor || "#ff0000";
@@ -74,6 +76,9 @@ class AnnotationManager {
     }
     if (config.eraserWidth) {
       this.setEraserWidth(config.eraserWidth);
+    }
+    if (config.quickErase) {
+      this.setQuickErase(config.quickErase);
     }
     if (config.textSize != null) {
       this.setTextSize(config.textSize);
@@ -389,7 +394,10 @@ class AnnotationManager {
       if (targets.length === 0) return;
       targets.forEach((obj: any) => {
         this.removeFromHistory(chapterDocIndex, obj);
-        if (this.canSliceObject(obj)) {
+        if (this.quickErase === "yes") {
+          // 快速擦除模式：只要触碰到就整块删除
+          canvas.remove(obj);
+        } else if (this.canSliceObject(obj)) {
           // 路径（笔迹）可以切开：只擦除经过的区段，保留其余部分
           const pieces = this.slicePathObject(obj, pointer.x, pointer.y, radius);
           canvas.remove(obj);
@@ -794,6 +802,10 @@ class AnnotationManager {
   setEraserWidth(width: number) {
     this.eraserWidth = width;
     this.applyBrushToAll();
+  }
+
+  setQuickErase(quickErase: string) {
+    this.quickErase = quickErase;
   }
 
   setTextSize(size: number) {
