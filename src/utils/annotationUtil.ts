@@ -387,13 +387,17 @@ class AnnotationManager {
           this.hitTestObject(obj, pointer.x, pointer.y, radius)
         );
       if (targets.length === 0) return;
-      const history = this.fabricHistoryMap.get(chapterDocIndex);
       targets.forEach((obj: any) => {
-        if (history) {
-          const idx = history.lastIndexOf(obj);
-          if (idx >= 0) history.splice(idx, 1);
+        this.removeFromHistory(chapterDocIndex, obj);
+        if (this.canSliceObject(obj)) {
+          // 路径（笔迹）可以切开：只擦除经过的区段，保留其余部分
+          const pieces = this.slicePathObject(obj, pointer.x, pointer.y, radius);
+          canvas.remove(obj);
+          pieces.forEach((piece: any) => canvas.add(piece));
+        } else {
+          // 非路径对象（文字/图形）无法局部切割，保持整块擦除
+          canvas.remove(obj);
         }
-        canvas.remove(obj);
       });
       canvas.requestRenderAll();
     };
@@ -413,6 +417,151 @@ class AnnotationManager {
     canvas.on("mouse:up", () => {
       isErasing = false;
     });
+  }
+
+  removeFromHistory(chapterDocIndex: number, obj: any) {
+    const history = this.fabricHistoryMap.get(chapterDocIndex);
+    if (!history) return;
+    const idx = history.lastIndexOf(obj);
+    if (idx >= 0) history.splice(idx, 1);
+  }
+
+  canSliceObject(obj: any): boolean {
+    if (!obj || !(obj.isType && obj.isType("path"))) return false;
+    if (!obj.path || !obj.path.length || !obj.getCenterPoint) return false;
+    // 有填充的对象（图形/文字）切开后形状会破坏，不做局部切割
+    const fill = obj.fill;
+    return !fill || fill === "transparent" || fill === "rgba(0,0,0,0)";
+  }
+
+  // 把路径在橡皮擦圆域附近的区段剔除，返回剩余区段组成的路径对象数组。
+  // 每个连续"未被擦除"的采样点串成一个新路径，其余（被擦除的点）断开。
+  slicePathObject(obj: any, x: number, y: number, radius: number): any[] {
+    const fabricLib = window.fabric;
+    if (!fabricLib || !fabricLib.Path) return [];
+    const commands = obj.path;
+    const center = obj.getCenterPoint();
+    const scaleX = Math.abs(obj.scaleX || 1);
+    const scaleY = Math.abs(obj.scaleY || 1);
+    const angleRad = ((obj.angle || 0) * Math.PI) / 180;
+    const cos = Math.cos(angleRad);
+    const sin = Math.sin(angleRad);
+    const pathOffset = obj.pathOffset || { x: 0, y: 0 };
+    const toAbsolute = (lx: number, ly: number) => {
+      const dx = (lx - pathOffset.x) * scaleX;
+      const dy = (ly - pathOffset.y) * scaleY;
+      return {
+        x: dx * cos - dy * sin + center.x,
+        y: dx * sin + dy * cos + center.y,
+      };
+    };
+    const toLocal = (ax: number, ay: number) => {
+      const dx = ax - center.x;
+      const dy = ay - center.y;
+      return {
+        x: (dx * cos + dy * sin) / scaleX + pathOffset.x,
+        y: (-dx * sin + dy * cos) / scaleY + pathOffset.y,
+      };
+    };
+    const local = toLocal(x, y);
+    const eraseRadius = radius + (obj.strokeWidth || 1) / 2;
+    const steps = 16;
+    const pts: { x: number; y: number; erase: boolean }[] = [];
+    const pushPoint = (lx: number, ly: number) => {
+      const abs = toAbsolute(lx, ly);
+      pts.push({
+        x: abs.x,
+        y: abs.y,
+        erase: Math.hypot(lx - local.x, ly - local.y) <= eraseRadius,
+      });
+    };
+    let cur = { x: 0, y: 0 };
+    commands.forEach((cmd: any[]) => {
+      switch (cmd[0]) {
+        case "M":
+        case "L":
+        case "T":
+          cur = { x: cmd[1], y: cmd[2] };
+          pushPoint(cmd[1], cmd[2]);
+          break;
+        case "C": {
+          const c1x = cmd[1];
+          const c1y = cmd[2];
+          const c2x = cmd[3];
+          const c2y = cmd[4];
+          const ex = cmd[5];
+          const ey = cmd[6];
+          for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            const mt = 1 - t;
+            const w0 = mt * mt * mt;
+            const w1 = 3 * mt * mt * t;
+            const w2 = 3 * mt * t * t;
+            const w3 = t * t * t;
+            pushPoint(
+              w0 * cur.x + w1 * c1x + w2 * c2x + w3 * ex,
+              w0 * cur.y + w1 * c1y + w2 * c2y + w3 * ey
+            );
+          }
+          cur = { x: ex, y: ey };
+          break;
+        }
+        case "Q": {
+          const c1x = cmd[1];
+          const c1y = cmd[2];
+          const ex = cmd[3];
+          const ey = cmd[4];
+          for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            const mt = 1 - t;
+            const w0 = mt * mt;
+            const w1 = 2 * mt * t;
+            const w2 = t * t;
+            pushPoint(
+              w0 * cur.x + w1 * c1x + w2 * ex,
+              w0 * cur.y + w1 * c1y + w2 * ey
+            );
+          }
+          cur = { x: ex, y: ey };
+          break;
+        }
+        default:
+          break;
+      }
+    });
+    const pieces: any[] = [];
+    let run: { x: number; y: number }[] = [];
+    const flushRun = () => {
+      if (run.length >= 2) {
+        const cmds: any[] = [["M", run[0].x, run[0].y]];
+        for (let i = 1; i < run.length; i++) {
+          cmds.push(["L", run[i].x, run[i].y]);
+        }
+        // 拼出的区段坐标已是画布绝对坐标，对象本身不再带缩放/旋转，
+        // 线宽需按原对象的变换折算回实际显示粗细
+        const avgScale = (scaleX + scaleY) / 2;
+        pieces.push(
+          new fabricLib.Path(cmds, {
+            stroke: obj.stroke,
+            strokeWidth: (obj.strokeWidth || 1) * avgScale,
+            strokeLineCap: obj.strokeLineCap || "round",
+            strokeLineJoin: obj.strokeLineJoin || "round",
+            fill: "transparent",
+            selectable: true,
+          })
+        );
+      }
+      run = [];
+    };
+    pts.forEach((p) => {
+      if (p.erase) {
+        flushRun();
+      } else {
+        run.push({ x: p.x, y: p.y });
+      }
+    });
+    flushRun();
+    return pieces;
   }
 
   hitTestObject(obj: any, x: number, y: number, radius: number): boolean {
