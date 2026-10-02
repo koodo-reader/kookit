@@ -438,17 +438,24 @@ export const addAndroidTouchEvent = (
       if (linkElement) {
         return;
       }
-      if (target.tagName === "IMG" || target.tagName === "image") {
-        const imgSrc = target.src || target.getAttribute("xlink:href");
-        //blob to base64
-        if (imgSrc.startsWith("blob:")) {
-          blobUrlToBase64(imgSrc).then((base64) => {
-            window.ReactNativeWebView.postMessage(
-              JSON.stringify({ event: "view-image", imgSrc: base64 })
-            );
-          });
+      // 按住图片后滚动（scroll 模式上下滑动、翻页模式拖动翻页）时手指位移明显，
+      // 不是想查看图片，只有按在图片上没怎么动的"长按"才触发
+      if (
+        Math.abs(distX) < swipeThreshold &&
+        Math.abs(distY) < swipeThreshold
+      ) {
+        if (target.tagName === "IMG" || target.tagName === "image") {
+          const imgSrc = target.src || target.getAttribute("xlink:href");
+          //blob to base64
+          if (imgSrc.startsWith("blob:")) {
+            blobUrlToBase64(imgSrc).then((base64) => {
+              window.ReactNativeWebView.postMessage(
+                JSON.stringify({ event: "view-image", imgSrc: base64 })
+              );
+            });
+          }
+          return;
         }
-        return;
       }
     }
     if (
@@ -998,17 +1005,24 @@ export const addAppleTouchEvent = (
       if (linkElement) {
         return;
       }
-      if (target.tagName === "IMG" || target.tagName === "image") {
-        const imgSrc = target.src || target.getAttribute("xlink:href");
-        //blob to base64
-        if (imgSrc.startsWith("blob:")) {
-          blobUrlToBase64(imgSrc).then((base64) => {
-            window.ReactNativeWebView.postMessage(
-              JSON.stringify({ event: "view-image", imgSrc: base64 })
-            );
-          });
+      // 与 Android 端一致：按住图片滚动（scroll 上下滑动、翻页拖动）时位移明显，
+      // 松手不应触发查看图片
+      if (
+        Math.abs(distX) < swipeThreshold &&
+        Math.abs(distY) < swipeThreshold
+      ) {
+        if (target.tagName === "IMG" || target.tagName === "image") {
+          const imgSrc = target.src || target.getAttribute("xlink:href");
+          //blob to base64
+          if (imgSrc.startsWith("blob:")) {
+            blobUrlToBase64(imgSrc).then((base64) => {
+              window.ReactNativeWebView.postMessage(
+                JSON.stringify({ event: "view-image", imgSrc: base64 })
+              );
+            });
+          }
+          return;
         }
-        return;
       }
     }
     if (
