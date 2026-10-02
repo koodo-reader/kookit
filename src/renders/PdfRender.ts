@@ -167,6 +167,7 @@ class PdfRender extends GeneralRender {
       }
 
       handlePDFLayout(element, this.readerMode, doc);
+      this.trigger("chapter-pages");
       resolve();
     });
   }
