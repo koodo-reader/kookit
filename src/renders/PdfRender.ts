@@ -739,6 +739,9 @@ class PdfRender extends GeneralRender {
       currentPage: parseInt(this.tempLocation.chapterDocIndex || "0") + 1,
     };
   }
+  getPages() {
+    return this.chapterDocList.map((_item, index) => index + 1);
+  }
   async getNotePosition() {
     let doc = this.getDocument();
     if (!doc) return;
