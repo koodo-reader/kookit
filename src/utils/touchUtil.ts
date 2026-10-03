@@ -2,7 +2,6 @@ import rangy from "rangy/lib/rangy-core.js";
 import { createSelectionAutoTurn } from "./selectionAutoTurn";
 
 declare var window: any;
-let selectionTimeout: any = null;
 let isDragging = false;
 let lastPinchZoomTime = 0;
 let pinchZoomed = false;
