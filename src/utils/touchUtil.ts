@@ -113,53 +113,39 @@ export const slideAnimateTo = (
   const duration = 250;
 
   const body = tempDoc.body;
-  const docElement = tempDoc.documentElement;
   window.isSwiping = true;
 
-  docElement.style.willChange = "transform";
-  docElement.style.transform = "translateX(0px)";
-  docElement.style.transition = "none";
-
-  docElement.getBoundingClientRect();
-
-  docElement.style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
-  docElement.style.transform = `translateX(${-distance}px)`;
+  // 用 rAF 驱动 scrollLeft 而非 transform 平移整个文档：
+  // 滚动只绘制视口内容，性能与页面元素数量无关，
+  // 而 transform 会把整份文档当作一个巨型合成层移动，元素多时掉帧。
+  body.style.willChange = "scroll-position";
 
   let resolved = false;
   const cleanup = () => {
     if (resolved) return;
     resolved = true;
 
-    docElement.style.willChange = "";
-    docElement.style.transform = "";
-    docElement.style.transition = "";
-
+    body.style.willChange = "";
     body.scrollLeft = snapX;
-
-    if (Math.abs(body.scrollLeft - snapX) > 0.5) {
-      requestAnimationFrame(() => {
-        body.scrollLeft = snapX;
-        render.record();
-        isDragging = false;
-        window.isSwiping = false;
-      });
-      return;
-    }
-
     render.record();
     isDragging = false;
     window.isSwiping = false;
   };
 
-  const onTransitionEnd = (e: TransitionEvent) => {
-    if (e.target === docElement && e.propertyName === "transform") {
-      docElement.removeEventListener("transitionend", onTransitionEnd);
+  let startTime: number | null = null;
+  const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+  const step = (now: number) => {
+    if (resolved) return;
+    if (startTime === null) startTime = now;
+    const progress = Math.min(1, (now - startTime) / duration);
+    body.scrollLeft = startLeft + distance * easeOutCubic(progress);
+    if (progress < 1) {
+      window.scrollAnimationId = requestAnimationFrame(step);
+    } else {
       cleanup();
     }
   };
-  docElement.addEventListener("transitionend", onTransitionEnd);
-
-  window.scrollAnimationId = setTimeout(cleanup, duration + 50) as any;
+  window.scrollAnimationId = requestAnimationFrame(step);
 };
 export async function blobUrlToBase64(blobUrl: string): Promise<string> {
   try {
