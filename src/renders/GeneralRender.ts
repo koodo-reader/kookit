@@ -1255,9 +1255,6 @@ class GeneralRender extends EventEmitter {
   }
   getChapterSizes() {
     if (this.chapterSizeCache) return this.chapterSizeCache;
-    if (this.isShowTotalPage !== "yes") {
-      return { sizes: [], total: 0, pages: [] };
-    }
     const sizes = this.chapterDocList.map((item) =>
       item?.text ? item.text.size || item.text.length || 1 : 1
     );
@@ -1359,6 +1356,7 @@ class GeneralRender extends EventEmitter {
   getProgress() {
     const chapterProgress = this.getChapterProgress();
     if (!chapterProgress) return;
+    this.getChapterSizes();
     if (this.isShowTotalPage !== "yes") {
       return { ...chapterProgress } as any;
     }
