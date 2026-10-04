@@ -261,6 +261,7 @@ export const isElementFootnote = (element: HTMLElement) => {
 };
 export const isContentFootnote = (content: string) => {
   if (!content) return false;
+  if (content.trim().length > 10) return false;
   let textContent = content.trim();
   // Check for patterns like [1], [a], (1), (a), 〔2〕, 【3】, 〈4〉, 《5》, roman numerals, and circled numbers (①-㊿)
   const footnotePattern =
