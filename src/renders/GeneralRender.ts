@@ -1255,6 +1255,9 @@ class GeneralRender extends EventEmitter {
   }
   getChapterSizes() {
     if (this.chapterSizeCache) return this.chapterSizeCache;
+    if (!this.estimatedSizePerPage) {
+      return { sizes: [], total: 0, pages: [] };
+    }
     const sizes = this.chapterDocList.map((item) =>
       item?.text ? item.text.size || item.text.length || 1 : 1
     );
@@ -1358,6 +1361,9 @@ class GeneralRender extends EventEmitter {
     if (!chapterProgress) return;
     this.getChapterSizes();
     if (this.isShowTotalPage !== "yes") {
+      return { ...chapterProgress } as any;
+    }
+    if (!this.estimatedSizePerPage) {
       return { ...chapterProgress } as any;
     }
     let sizePerPage = this.getEstimatedSizePerPage();
