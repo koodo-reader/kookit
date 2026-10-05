@@ -39,8 +39,11 @@ export const onPinchZoomEnd = function (
   );
   render.handleRenderPDFChapter(chapterDocIndex, true);
 };
-export const slideAnimateTo = () => {};
-export const slideAnimateToWithRaf = (
+// 直接子元素过多时逐个提升合成层同样会拖慢每帧合成，退回原生滚动路径
+const SLIDE_TRANSFORM_THRESHOLD = 20000;
+const SLIDE_TRANSFORM_CHILD_LIMIT = 100;
+
+export const slideAnimateTo = (
   direction: string,
   format: string,
   doc: any,
@@ -114,130 +117,52 @@ export const slideAnimateToWithRaf = (
   const duration = 250;
 
   const body = tempDoc.body;
-  const docElement = tempDoc.documentElement;
   window.isSwiping = true;
 
-  docElement.style.willChange = "transform";
-  docElement.style.transform = "translateX(0px)";
-  docElement.style.transition = "none";
+  // 直接子元素过多时逐个提升合成层同样会拖慢每帧合成，退回原生滚动路径
+  const children = body.children;
+  const useTransform =
+    body.scrollWidth <= SLIDE_TRANSFORM_THRESHOLD &&
+    children.length > 0 &&
+    children.length <= SLIDE_TRANSFORM_CHILD_LIMIT;
 
-  docElement.getBoundingClientRect();
+  if (!useTransform) {
+    // 原生滚动方案：rAF 驱动 scrollLeft，滚动只绘制视口内容，
+    // 性能与页面元素数量无关，适合内容庞大的章节
+    body.style.willChange = "scroll-position";
 
-  docElement.style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
-  docElement.style.transform = `translateX(${-distance}px)`;
+    let resolved = false;
+    const cleanup = () => {
+      if (resolved) return;
+      resolved = true;
 
-  let resolved = false;
-  const cleanup = () => {
-    if (resolved) return;
-    resolved = true;
+      body.style.willChange = "";
+      body.scrollLeft = snapX;
+      render.record();
+      isDragging = false;
+      window.isSwiping = false;
+    };
 
-    docElement.style.willChange = "";
-    docElement.style.transform = "";
-    docElement.style.transition = "";
-
-    body.scrollLeft = snapX;
-
-    if (Math.abs(body.scrollLeft - snapX) > 0.5) {
-      requestAnimationFrame(() => {
-        body.scrollLeft = snapX;
-        render.record();
-        isDragging = false;
-        window.isSwiping = false;
-      });
-      return;
-    }
-
-    render.record();
-    isDragging = false;
-    window.isSwiping = false;
-  };
-
-  const onTransitionEnd = (e: TransitionEvent) => {
-    if (e.target === docElement && e.propertyName === "transform") {
-      docElement.removeEventListener("transitionend", onTransitionEnd);
-      cleanup();
-    }
-  };
-  docElement.addEventListener("transitionend", onTransitionEnd);
-
-  window.scrollAnimationId = setTimeout(cleanup, duration + 50) as any;
-};
-export const slideAnimateToWithTransform = (
-  direction: string,
-  format: string,
-  doc: any,
-  outerDoc: any,
-  element: any,
-  render: any,
-  gap: number
-) => {
-  let pageWidth = element.clientWidth + gap;
-  let tempDoc = isPaginatedFormat(format) ? outerDoc : doc;
-
-  // Stop any ongoing touch-move dragging immediately so onTouchMove
-  // no longer modifies scrollLeft while the animation is running.
-  isDragging = false;
-
-  // Clean up any existing animation
-  if (window.scrollAnimationId) {
-    cancelAnimationFrame(window.scrollAnimationId);
-    window.scrollAnimationId = null;
-  }
-
-  if (
-    Math.abs(
-      tempDoc.body.scrollWidth - tempDoc.body.scrollLeft - element.clientWidth
-    ) < 10 &&
-    direction === "right"
-  ) {
-    render.next();
-    return;
-  }
-  if (tempDoc.body.scrollLeft === 0 && direction === "left") {
-    render.prev();
+    let startTime: number | null = null;
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+    const step = (now: number) => {
+      if (resolved) return;
+      if (startTime === null) startTime = now;
+      const progress = Math.min(1, (now - startTime) / duration);
+      body.scrollLeft = startLeft + distance * easeOutCubic(progress);
+      if (progress < 1) {
+        window.scrollAnimationId = requestAnimationFrame(step);
+      } else {
+        cleanup();
+      }
+    };
+    window.scrollAnimationId = requestAnimationFrame(step);
     return;
   }
 
-  let scrollLeft = tempDoc.body.scrollLeft;
-
-  // Improved snapping logic
-  let snapX;
-  const currentPage = Math.round(scrollLeft / pageWidth);
-
-  if (direction === "left") {
-    snapX = (currentPage - 1) * pageWidth;
-  } else if (direction === "right") {
-    snapX = (currentPage + 1) * pageWidth;
-  } else {
-    snapX = currentPage * pageWidth;
-  }
-
-  // Clamp to valid range. For the last page the body may not be an exact
-  // multiple of pageWidth, so if the remaining content after snapX is less
-  // than a full page we snap all the way to the end in one step.
-  const maxScroll = tempDoc.body.scrollWidth - element.clientWidth;
-  if (
-    snapX >= maxScroll ||
-    tempDoc.body.scrollWidth - snapX < pageWidth + gap
-  ) {
-    snapX = maxScroll;
-  }
-  snapX = Math.max(0, snapX);
-
-  const startLeft = tempDoc.body.scrollLeft;
-  const distance = snapX - startLeft;
-
-  // 如果无需滚动，直接返回
-  if (Math.abs(distance) < 0.5) {
-    render.record();
-    return;
-  }
-
-  const duration = 250;
-
-  const body = tempDoc.body;
+  // transform 方案：把整份文档作为单个合成层平移，合成开销固定，
+  // 元素较少时相比逐帧重绘更顺滑
   const docElement = tempDoc.documentElement;
-  window.isSwiping = true;
 
   docElement.style.willChange = "transform";
   docElement.style.transform = "translateX(0px)";
