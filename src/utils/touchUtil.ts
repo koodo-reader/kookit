@@ -39,7 +39,130 @@ export const onPinchZoomEnd = function (
   );
   render.handleRenderPDFChapter(chapterDocIndex, true);
 };
-export const slideAnimateTo = (
+export const slideAnimateTo = () => {};
+export const slideAnimateToWithRaf = (
+  direction: string,
+  format: string,
+  doc: any,
+  outerDoc: any,
+  element: any,
+  render: any,
+  gap: number
+) => {
+  let pageWidth = element.clientWidth + gap;
+  let tempDoc = isPaginatedFormat(format) ? outerDoc : doc;
+
+  // Stop any ongoing touch-move dragging immediately so onTouchMove
+  // no longer modifies scrollLeft while the animation is running.
+  isDragging = false;
+
+  // Clean up any existing animation
+  if (window.scrollAnimationId) {
+    cancelAnimationFrame(window.scrollAnimationId);
+    window.scrollAnimationId = null;
+  }
+
+  if (
+    Math.abs(
+      tempDoc.body.scrollWidth - tempDoc.body.scrollLeft - element.clientWidth
+    ) < 10 &&
+    direction === "right"
+  ) {
+    render.next();
+    return;
+  }
+  if (tempDoc.body.scrollLeft === 0 && direction === "left") {
+    render.prev();
+    return;
+  }
+
+  let scrollLeft = tempDoc.body.scrollLeft;
+
+  // Improved snapping logic
+  let snapX;
+  const currentPage = Math.round(scrollLeft / pageWidth);
+
+  if (direction === "left") {
+    snapX = (currentPage - 1) * pageWidth;
+  } else if (direction === "right") {
+    snapX = (currentPage + 1) * pageWidth;
+  } else {
+    snapX = currentPage * pageWidth;
+  }
+
+  // Clamp to valid range. For the last page the body may not be an exact
+  // multiple of pageWidth, so if the remaining content after snapX is less
+  // than a full page we snap all the way to the end in one step.
+  const maxScroll = tempDoc.body.scrollWidth - element.clientWidth;
+  if (
+    snapX >= maxScroll ||
+    tempDoc.body.scrollWidth - snapX < pageWidth + gap
+  ) {
+    snapX = maxScroll;
+  }
+  snapX = Math.max(0, snapX);
+
+  const startLeft = tempDoc.body.scrollLeft;
+  const distance = snapX - startLeft;
+
+  // 如果无需滚动，直接返回
+  if (Math.abs(distance) < 0.5) {
+    render.record();
+    return;
+  }
+
+  const duration = 250;
+
+  const body = tempDoc.body;
+  const docElement = tempDoc.documentElement;
+  window.isSwiping = true;
+
+  docElement.style.willChange = "transform";
+  docElement.style.transform = "translateX(0px)";
+  docElement.style.transition = "none";
+
+  docElement.getBoundingClientRect();
+
+  docElement.style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+  docElement.style.transform = `translateX(${-distance}px)`;
+
+  let resolved = false;
+  const cleanup = () => {
+    if (resolved) return;
+    resolved = true;
+
+    docElement.style.willChange = "";
+    docElement.style.transform = "";
+    docElement.style.transition = "";
+
+    body.scrollLeft = snapX;
+
+    if (Math.abs(body.scrollLeft - snapX) > 0.5) {
+      requestAnimationFrame(() => {
+        body.scrollLeft = snapX;
+        render.record();
+        isDragging = false;
+        window.isSwiping = false;
+      });
+      return;
+    }
+
+    render.record();
+    isDragging = false;
+    window.isSwiping = false;
+  };
+
+  const onTransitionEnd = (e: TransitionEvent) => {
+    if (e.target === docElement && e.propertyName === "transform") {
+      docElement.removeEventListener("transitionend", onTransitionEnd);
+      cleanup();
+    }
+  };
+  docElement.addEventListener("transitionend", onTransitionEnd);
+
+  window.scrollAnimationId = setTimeout(cleanup, duration + 50) as any;
+};
+export const slideAnimateToWithTransform = (
   direction: string,
   format: string,
   doc: any,
