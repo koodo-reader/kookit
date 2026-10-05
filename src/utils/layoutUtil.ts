@@ -768,7 +768,7 @@ export const handleLayout = (
     );
     doc.body.setAttribute(
       "style",
-      `margin: 0px !important; padding: 0px !important;`
+      `margin: 0px !important; padding: 0px !important; overflow: unset !important;`
     );
   } else {
     let section = Math.floor(element.clientWidth / 12);
@@ -784,7 +784,7 @@ export const handleLayout = (
     );
     doc.body.setAttribute(
       "style",
-      `margin: 0px !important; padding: 0px !important;`
+      `margin: 0px !important; padding: 0px !important; overflow: unset !important;`
     );
   }
 };
