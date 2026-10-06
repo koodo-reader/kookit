@@ -167,6 +167,7 @@ class PdfRender extends GeneralRender {
       }
 
       handlePDFLayout(element, this.readerMode, doc);
+      this.trigger("chapter-pages");
       resolve();
     });
   }
@@ -738,6 +739,9 @@ class PdfRender extends GeneralRender {
       totalPage: this.chapterDocList.length,
       currentPage: parseInt(this.tempLocation.chapterDocIndex || "0") + 1,
     };
+  }
+  getPages() {
+    return this.chapterDocList.map((_item, index) => index + 1);
   }
   async getNotePosition() {
     let doc = this.getDocument();

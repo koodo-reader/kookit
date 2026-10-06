@@ -2,7 +2,6 @@ import rangy from "rangy/lib/rangy-core.js";
 import { createSelectionAutoTurn } from "./selectionAutoTurn";
 
 declare var window: any;
-let selectionTimeout: any = null;
 let isDragging = false;
 let lastPinchZoomTime = 0;
 let pinchZoomed = false;
@@ -40,6 +39,9 @@ export const onPinchZoomEnd = function (
   );
   render.handleRenderPDFChapter(chapterDocIndex, true);
 };
+// 直接子元素过多时逐个提升合成层同样会拖慢每帧合成，退回原生滚动路径
+const SLIDE_TRANSFORM_THRESHOLD = 10000;
+
 export const slideAnimateTo = (
   direction: string,
   format: string,
@@ -114,8 +116,47 @@ export const slideAnimateTo = (
   const duration = 250;
 
   const body = tempDoc.body;
-  const docElement = tempDoc.documentElement;
   window.isSwiping = true;
+
+  const useTransform = body.scrollWidth <= SLIDE_TRANSFORM_THRESHOLD;
+
+  if (!useTransform) {
+    // 原生滚动方案：rAF 驱动 scrollLeft，滚动只绘制视口内容，
+    // 性能与页面元素数量无关，适合内容庞大的章节
+    body.style.willChange = "scroll-position";
+
+    let resolved = false;
+    const cleanup = () => {
+      if (resolved) return;
+      resolved = true;
+
+      body.style.willChange = "";
+      body.scrollLeft = snapX;
+      render.record();
+      isDragging = false;
+      window.isSwiping = false;
+    };
+
+    let startTime: number | null = null;
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+    const step = (now: number) => {
+      if (resolved) return;
+      if (startTime === null) startTime = now;
+      const progress = Math.min(1, (now - startTime) / duration);
+      body.scrollLeft = startLeft + distance * easeOutCubic(progress);
+      if (progress < 1) {
+        window.scrollAnimationId = requestAnimationFrame(step);
+      } else {
+        cleanup();
+      }
+    };
+    window.scrollAnimationId = requestAnimationFrame(step);
+    return;
+  }
+
+  // transform 方案：把整份文档作为单个合成层平移，合成开销固定，
+  // 元素较少时相比逐帧重绘更顺滑
+  const docElement = tempDoc.documentElement;
 
   docElement.style.willChange = "transform";
   docElement.style.transform = "translateX(0px)";
@@ -438,17 +479,24 @@ export const addAndroidTouchEvent = (
       if (linkElement) {
         return;
       }
-      if (target.tagName === "IMG" || target.tagName === "image") {
-        const imgSrc = target.src || target.getAttribute("xlink:href");
-        //blob to base64
-        if (imgSrc.startsWith("blob:")) {
-          blobUrlToBase64(imgSrc).then((base64) => {
-            window.ReactNativeWebView.postMessage(
-              JSON.stringify({ event: "view-image", imgSrc: base64 })
-            );
-          });
+      // 按住图片后滚动（scroll 模式上下滑动、翻页模式拖动翻页）时手指位移明显，
+      // 不是想查看图片，只有按在图片上没怎么动的"长按"才触发
+      if (
+        Math.abs(distX) < swipeThreshold &&
+        Math.abs(distY) < swipeThreshold
+      ) {
+        if (target.tagName === "IMG" || target.tagName === "image") {
+          const imgSrc = target.src || target.getAttribute("xlink:href");
+          //blob to base64
+          if (imgSrc.startsWith("blob:")) {
+            blobUrlToBase64(imgSrc).then((base64) => {
+              window.ReactNativeWebView.postMessage(
+                JSON.stringify({ event: "view-image", imgSrc: base64 })
+              );
+            });
+          }
+          return;
         }
-        return;
       }
     }
     if (
@@ -998,17 +1046,24 @@ export const addAppleTouchEvent = (
       if (linkElement) {
         return;
       }
-      if (target.tagName === "IMG" || target.tagName === "image") {
-        const imgSrc = target.src || target.getAttribute("xlink:href");
-        //blob to base64
-        if (imgSrc.startsWith("blob:")) {
-          blobUrlToBase64(imgSrc).then((base64) => {
-            window.ReactNativeWebView.postMessage(
-              JSON.stringify({ event: "view-image", imgSrc: base64 })
-            );
-          });
+      // 与 Android 端一致：按住图片滚动（scroll 上下滑动、翻页拖动）时位移明显，
+      // 松手不应触发查看图片
+      if (
+        Math.abs(distX) < swipeThreshold &&
+        Math.abs(distY) < swipeThreshold
+      ) {
+        if (target.tagName === "IMG" || target.tagName === "image") {
+          const imgSrc = target.src || target.getAttribute("xlink:href");
+          //blob to base64
+          if (imgSrc.startsWith("blob:")) {
+            blobUrlToBase64(imgSrc).then((base64) => {
+              window.ReactNativeWebView.postMessage(
+                JSON.stringify({ event: "view-image", imgSrc: base64 })
+              );
+            });
+          }
+          return;
         }
-        return;
       }
     }
     if (

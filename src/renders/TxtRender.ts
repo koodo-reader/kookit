@@ -48,6 +48,7 @@ class TxtRender extends GeneralRender {
     this.chapterList = await parser.getChapter(this.book.toc);
     this.chapterDocList = await parser.getChapterDoc();
     await this.record();
+    this.chapterSizeCache = null;
     return this.chapterList;
   }
   async preCache() {

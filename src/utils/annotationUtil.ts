@@ -12,6 +12,8 @@ class AnnotationManager {
   shapeType: string = "rect";
   shapeColor: string = "#ff0000";
   shapeWidth: number = 2;
+  eraserWidth: number = 24;
+  quickErase: string = "no";
   textSize: number = 24;
   textFont: string = "sans-serif";
   textColor: string = "#ff0000";
@@ -36,6 +38,8 @@ class AnnotationManager {
     this.shapeType = config.shapeType || "rect";
     this.shapeColor = config.shapeColor || "#ff0000";
     this.shapeWidth = config.shapeWidth || 2;
+    this.eraserWidth = config.eraserWidth != null ? config.eraserWidth : 24;
+    this.quickErase = config.quickErase || "no";
     this.textSize = config.textSize != null ? config.textSize : 24;
     this.textFont = config.textFont || "sans-serif";
     this.textColor = config.textColor || "#ff0000";
@@ -69,6 +73,12 @@ class AnnotationManager {
     }
     if (config.shapeWidth) {
       this.setShapeWidth(config.shapeWidth);
+    }
+    if (config.eraserWidth) {
+      this.setEraserWidth(config.eraserWidth);
+    }
+    if (config.quickErase) {
+      this.setQuickErase(config.quickErase);
     }
     if (config.textSize != null) {
       this.setTextSize(config.textSize);
@@ -163,6 +173,7 @@ class AnnotationManager {
       this.attachFabricKeyListeners(chapterDocIndex, subDoc);
       this.attachShapeDrawListeners(chapterDocIndex, canvas);
       this.attachTextCreateListeners(chapterDocIndex, canvas);
+      this.attachEraserListeners(chapterDocIndex, canvas);
     }
   }
 
@@ -172,7 +183,8 @@ class AnnotationManager {
     // shape 用自定义拖拽绘制几何图形，text 用 mouse:down 创建 IText，都不走 freeDrawingBrush
     const isShape = this.annotationStyle === "shape";
     const isText = this.annotationStyle === "text";
-    if (canvas.freeDrawingBrush && !isShape && !isText) {
+    const isEraser = this.annotationStyle === "eraser";
+    if (canvas.freeDrawingBrush && !isShape && !isText && !isEraser) {
       if (this.annotationStyle === "highlighter") {
         canvas.freeDrawingBrush.color = this.toRgba(
           this.highlighterColor,
@@ -186,13 +198,18 @@ class AnnotationManager {
         canvas.freeDrawingBrush.width = this.brushWidth;
       }
     }
-    canvas.isDrawingMode = drawing && !isShape && !isText;
+    canvas.isDrawingMode = drawing && !isShape && !isText && !isEraser;
     if (drawing) {
       if (isText) {
         // text 模式保留 selection，以便双击已有文字进入编辑
         canvas.selection = true;
         canvas.defaultCursor = "text";
         canvas.hoverCursor = "text";
+      } else if (isEraser) {
+        canvas.selection = false;
+        const cursor = this.buildEraserCursor();
+        canvas.defaultCursor = cursor;
+        canvas.hoverCursor = cursor;
       } else {
         canvas.selection = false;
         canvas.defaultCursor = "crosshair";
@@ -361,6 +378,222 @@ class AnnotationManager {
       }
       activeShape = null;
     });
+  }
+
+  attachEraserListeners(chapterDocIndex: number, canvas: any) {
+    if (!canvas) return;
+    let isErasing = false;
+    const eraseAt = (opt: any) => {
+      const pointer = canvas.getPointer(opt.e);
+      const radius = this.eraserWidth / 2;
+      const targets = canvas
+        .getObjects()
+        .filter((obj: any) =>
+          this.hitTestObject(obj, pointer.x, pointer.y, radius)
+        );
+      if (targets.length === 0) return;
+      targets.forEach((obj: any) => {
+        this.removeFromHistory(chapterDocIndex, obj);
+        if (this.quickErase === "yes") {
+          // 快速擦除模式：只要触碰到就整块删除
+          canvas.remove(obj);
+        } else if (this.canSliceObject(obj)) {
+          // 路径（笔迹）可以切开：只擦除经过的区段，保留其余部分
+          const pieces = this.slicePathObject(obj, pointer.x, pointer.y, radius);
+          canvas.remove(obj);
+          pieces.forEach((piece: any) => canvas.add(piece));
+        } else {
+          // 非路径对象（文字/图形）无法局部切割，保持整块擦除
+          canvas.remove(obj);
+        }
+      });
+      canvas.requestRenderAll();
+    };
+    canvas.on("mouse:down", (o: any) => {
+      if (this.annotationStyle !== "eraser" || this.isDrawing !== "yes") return;
+      isErasing = true;
+      eraseAt(o);
+    });
+    canvas.on("mouse:move", (o: any) => {
+      if (!isErasing) return;
+      if (this.annotationStyle !== "eraser" || this.isDrawing !== "yes") {
+        isErasing = false;
+        return;
+      }
+      eraseAt(o);
+    });
+    canvas.on("mouse:up", () => {
+      isErasing = false;
+    });
+  }
+
+  removeFromHistory(chapterDocIndex: number, obj: any) {
+    const history = this.fabricHistoryMap.get(chapterDocIndex);
+    if (!history) return;
+    const idx = history.lastIndexOf(obj);
+    if (idx >= 0) history.splice(idx, 1);
+  }
+
+  canSliceObject(obj: any): boolean {
+    if (!obj || !(obj.isType && obj.isType("path"))) return false;
+    if (!obj.path || !obj.path.length || !obj.getCenterPoint) return false;
+    // 有填充的对象（图形/文字）切开后形状会破坏，不做局部切割
+    const fill = obj.fill;
+    return !fill || fill === "transparent" || fill === "rgba(0,0,0,0)";
+  }
+
+  // 把路径在橡皮擦圆域附近的区段剔除，返回剩余区段组成的路径对象数组。
+  // 每个连续"未被擦除"的采样点串成一个新路径，其余（被擦除的点）断开。
+  slicePathObject(obj: any, x: number, y: number, radius: number): any[] {
+    const fabricLib = window.fabric;
+    if (!fabricLib || !fabricLib.Path) return [];
+    const commands = obj.path;
+    const center = obj.getCenterPoint();
+    const scaleX = Math.abs(obj.scaleX || 1);
+    const scaleY = Math.abs(obj.scaleY || 1);
+    const angleRad = ((obj.angle || 0) * Math.PI) / 180;
+    const cos = Math.cos(angleRad);
+    const sin = Math.sin(angleRad);
+    const pathOffset = obj.pathOffset || { x: 0, y: 0 };
+    const toAbsolute = (lx: number, ly: number) => {
+      const dx = (lx - pathOffset.x) * scaleX;
+      const dy = (ly - pathOffset.y) * scaleY;
+      return {
+        x: dx * cos - dy * sin + center.x,
+        y: dx * sin + dy * cos + center.y,
+      };
+    };
+    const toLocal = (ax: number, ay: number) => {
+      const dx = ax - center.x;
+      const dy = ay - center.y;
+      return {
+        x: (dx * cos + dy * sin) / scaleX + pathOffset.x,
+        y: (-dx * sin + dy * cos) / scaleY + pathOffset.y,
+      };
+    };
+    const local = toLocal(x, y);
+    const eraseRadius = radius + (obj.strokeWidth || 1) / 2;
+    const steps = 16;
+    const pts: { x: number; y: number; erase: boolean }[] = [];
+    const pushPoint = (lx: number, ly: number) => {
+      const abs = toAbsolute(lx, ly);
+      pts.push({
+        x: abs.x,
+        y: abs.y,
+        erase: Math.hypot(lx - local.x, ly - local.y) <= eraseRadius,
+      });
+    };
+    let cur = { x: 0, y: 0 };
+    commands.forEach((cmd: any[]) => {
+      switch (cmd[0]) {
+        case "M":
+        case "L":
+        case "T":
+          cur = { x: cmd[1], y: cmd[2] };
+          pushPoint(cmd[1], cmd[2]);
+          break;
+        case "C": {
+          const c1x = cmd[1];
+          const c1y = cmd[2];
+          const c2x = cmd[3];
+          const c2y = cmd[4];
+          const ex = cmd[5];
+          const ey = cmd[6];
+          for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            const mt = 1 - t;
+            const w0 = mt * mt * mt;
+            const w1 = 3 * mt * mt * t;
+            const w2 = 3 * mt * t * t;
+            const w3 = t * t * t;
+            pushPoint(
+              w0 * cur.x + w1 * c1x + w2 * c2x + w3 * ex,
+              w0 * cur.y + w1 * c1y + w2 * c2y + w3 * ey
+            );
+          }
+          cur = { x: ex, y: ey };
+          break;
+        }
+        case "Q": {
+          const c1x = cmd[1];
+          const c1y = cmd[2];
+          const ex = cmd[3];
+          const ey = cmd[4];
+          for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            const mt = 1 - t;
+            const w0 = mt * mt;
+            const w1 = 2 * mt * t;
+            const w2 = t * t;
+            pushPoint(
+              w0 * cur.x + w1 * c1x + w2 * ex,
+              w0 * cur.y + w1 * c1y + w2 * ey
+            );
+          }
+          cur = { x: ex, y: ey };
+          break;
+        }
+        default:
+          break;
+      }
+    });
+    const pieces: any[] = [];
+    let run: { x: number; y: number }[] = [];
+    const flushRun = () => {
+      if (run.length >= 2) {
+        const cmds: any[] = [["M", run[0].x, run[0].y]];
+        for (let i = 1; i < run.length; i++) {
+          cmds.push(["L", run[i].x, run[i].y]);
+        }
+        // 拼出的区段坐标已是画布绝对坐标，对象本身不再带缩放/旋转，
+        // 线宽需按原对象的变换折算回实际显示粗细
+        const avgScale = (scaleX + scaleY) / 2;
+        pieces.push(
+          new fabricLib.Path(cmds, {
+            stroke: obj.stroke,
+            strokeWidth: (obj.strokeWidth || 1) * avgScale,
+            strokeLineCap: obj.strokeLineCap || "round",
+            strokeLineJoin: obj.strokeLineJoin || "round",
+            fill: "transparent",
+            selectable: true,
+          })
+        );
+      }
+      run = [];
+    };
+    pts.forEach((p) => {
+      if (p.erase) {
+        flushRun();
+      } else {
+        run.push({ x: p.x, y: p.y });
+      }
+    });
+    flushRun();
+    return pieces;
+  }
+
+  hitTestObject(obj: any, x: number, y: number, radius: number): boolean {
+    try {
+      const rect = obj.getBoundingRect ? obj.getBoundingRect(true, true) : null;
+      if (!rect) return false;
+      const closestX = Math.max(rect.left, Math.min(x, rect.left + rect.width));
+      const closestY = Math.max(rect.top, Math.min(y, rect.top + rect.height));
+      return Math.hypot(closestX - x, closestY - y) <= radius;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  buildEraserCursor(): string {
+    const size = Math.max(Math.round(this.eraserWidth), 12) + 6;
+    const center = size / 2;
+    const radius = center - 3;
+    const svg =
+      `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}'>` +
+      `<circle cx='${center}' cy='${center}' r='${radius}' fill='rgba(255,255,255,0.35)' stroke='white' stroke-width='2'/>` +
+      `<circle cx='${center}' cy='${center}' r='${radius}' fill='none' stroke='black' stroke-width='1'/>` +
+      `</svg>`;
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${center} ${center}, crosshair`;
   }
 
   attachTextCreateListeners(chapterDocIndex: number, canvas: any) {
@@ -564,6 +797,15 @@ class AnnotationManager {
   setShapeWidth(width: number) {
     this.shapeWidth = width;
     this.applyBrushToAll();
+  }
+
+  setEraserWidth(width: number) {
+    this.eraserWidth = width;
+    this.applyBrushToAll();
+  }
+
+  setQuickErase(quickErase: string) {
+    this.quickErase = quickErase;
   }
 
   setTextSize(size: number) {
