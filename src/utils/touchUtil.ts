@@ -40,8 +40,7 @@ export const onPinchZoomEnd = function (
   render.handleRenderPDFChapter(chapterDocIndex, true);
 };
 // 直接子元素过多时逐个提升合成层同样会拖慢每帧合成，退回原生滚动路径
-const SLIDE_TRANSFORM_THRESHOLD = 20000;
-const SLIDE_TRANSFORM_CHILD_LIMIT = 100;
+const SLIDE_TRANSFORM_THRESHOLD = 10000;
 
 export const slideAnimateTo = (
   direction: string,
@@ -119,12 +118,7 @@ export const slideAnimateTo = (
   const body = tempDoc.body;
   window.isSwiping = true;
 
-  // 直接子元素过多时逐个提升合成层同样会拖慢每帧合成，退回原生滚动路径
-  const children = body.children;
-  const useTransform =
-    body.scrollWidth <= SLIDE_TRANSFORM_THRESHOLD &&
-    children.length > 0 &&
-    children.length <= SLIDE_TRANSFORM_CHILD_LIMIT;
+  const useTransform = body.scrollWidth <= SLIDE_TRANSFORM_THRESHOLD;
 
   if (!useTransform) {
     // 原生滚动方案：rAF 驱动 scrollLeft，滚动只绘制视口内容，
