@@ -77,6 +77,8 @@ class BookHelper {
       }
     } else if (format === "FB2") {
       rendition = new Kookit.Fb2Render(result, config);
+    } else if (format === "CHM") {
+      rendition = new Kookit.ChmRender(result, config);
     } else if (format === "DOCX") {
       rendition = new Kookit.DocxRender(result, config);
     } else if (
@@ -133,6 +135,7 @@ class BookHelper {
           case "azw":
           case "azw3":
           case "fb2":
+          case "chm":
             metadata = await rendition.getMetadata();
             [name, author, description, publisher, cover] = [
               metadata.name || bookName,

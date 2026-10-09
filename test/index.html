@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -44,8 +44,10 @@
             let reader = new FileReader();
             reader.readAsArrayBuffer(files[0]);
             reader.onload = (event) => {
-              const file_content = event.target.result;
-              localforage.setItem("book", file_content);
+              localforage.setItem("book", {
+                content: event.target.result,
+                name: files[0].name,
+              });
             };
           }
         },
@@ -54,55 +56,25 @@
 
       const renderFunc = async () => {
         localforage.getItem("book").then(async (result) => {
-          const { PdfRender } = Kookit;
           var loaded = function () {};
 
           var progressShow = function (fileName, fileSize, progress) {};
 
           var errShow = function (errMsg) {};
 
-          // sort by name
-
-          // var rpc;
-          // var so = { loaded: loaded, progressShow: progressShow };
-          // RPC.new("./worker.js", so).then(function (r) {
-          //   rpc = r;
-          //   //test
-          //   localforage.getItem("book").then(async (result) => {
-          //     // const { ComicRender } = Kookit;
-          //     console.log(result);
-          //     var buffers = [result];
-          //     var dataToPass = [{ name: "test.rar", content: result }];
-          //     var password = null;
-          //     rpc.transferables = buffers;
-          //     rpc
-          //       .unrar(dataToPass, password, 0)
-          //       .then(function (ret) {
-          //         console.log(ret);
-          //       })
-          //       .catch(errShow);
-          //   });
-          // });
-
-          // let unrar = new Unrar(result);
-          // var entries = unrar.getEntries();
-
-          // let rendition = new ComicRender(
-          //   entries.map((item) => item.name),
-          //   unrar,
-          //   "scroll",
-          //   "cbr"
-          // );
-
-          // console.log(
-          //   unrar.decompress(
-          //     "Fantastic Four Anniversary Tribute (2021) 001-001.jpg"
-          //   )
-          // );
-          // await rendition.renderTo(
-          //   document.getElementsByClassName("ebook-viewer")[0]
-          // );
-          let rendition = new PdfRender(result, "scroll", "sliding");
+          const format = (result.name.split(".").pop() || "").toUpperCase();
+          let rendition = Kookit.BookHelper.getRendition(
+            result.content,
+            {
+              format: format,
+              readerMode: "scroll",
+              animation: "sliding",
+              isDarkMode: "no",
+              isMobile: "no",
+            },
+            Kookit
+          );
+          if (!rendition) return;
           await rendition.renderTo(
             document.getElementsByClassName("ebook-viewer")[0]
           );

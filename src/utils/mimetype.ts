@@ -14,6 +14,9 @@ export const mimetype = {
   xml: "text/xml",
   xhtml: "application/xhtml+xml",
   css: "text/css",
+  bmp: "image/bmp",
+  ico: "image/x-icon",
+  chm: "application/vnd.ms-htmlhelp",
 };
 export const mimetypeReverse = {
   "image/svg+xml": "svg",

@@ -1,0 +1,13 @@
+chmlib-ts is a pure TypeScript library for reading Microsoft HTML Help
+(.chm) archives. It is a port of chmlib by Jed Wing, with LZX
+decompression derived from cabextract by Stuart Caie.
+
+This directory vendors the core runtime sources of chmlib-ts
+(https://github.com/dmihal/chmlib-ts) for use inside kookit. Only the
+library sources are included; the Node.js CLI and its helpers are not
+part of this vendored copy.
+
+The original chmlib (and therefore this port) is distributed under the
+terms of the GNU Lesser General Public License version 2.1. The
+original COPYING file and AUTHORS list from chmlib-ts are preserved in
+this directory.

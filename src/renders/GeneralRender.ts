@@ -1287,6 +1287,7 @@ class GeneralRender extends EventEmitter {
     EPUB: 4.5,
     MOBI: 4.5,
     FB2: 5,
+    CHM: 4.5,
     PDFTEXT: 0.5,
   };
   getEstimatedSizePerPage() {
