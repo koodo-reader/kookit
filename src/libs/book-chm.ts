@@ -142,7 +142,7 @@ export const makeChmBook = async (chm: ChmFile) => {
       }
       const data = await chm.retrieve(entry);
       return URL.createObjectURL(
-        new Blob([data], {
+        new Blob([data.slice()], {
           type: mimetype[ext] || "application/octet-stream",
         })
       );
