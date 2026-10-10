@@ -30,6 +30,50 @@ const stubFsPromises = () => ({
     return null;
   },
 });
+// @aiden0z/pptx-renderer 静态依赖 echarts（图表渲染），stub 后产物约减 1MB。
+// 包内图表初始化自带 try/catch 降级：init 抛错时图表位置显示
+// "Chart render error" 占位提示；LinearGradient 需保留以便图表 option 正常构建
+const stubECharts = () => {
+  const virtualId = "\0stub:echarts";
+  const tokens = [
+    "BarChart",
+    "CandlestickChart",
+    "CustomChart",
+    "LineChart",
+    "PieChart",
+    "RadarChart",
+    "ScatterChart",
+    "AxisPointerComponent",
+    "GraphicComponent",
+    "GridComponent",
+    "LegendComponent",
+    "RadarComponent",
+    "TitleComponent",
+    "TooltipComponent",
+    "LabelLayout",
+    "CanvasRenderer",
+  ];
+  return {
+    name: "stub-echarts",
+    resolveId(source) {
+      if (source === "echarts" || source.startsWith("echarts/")) {
+        return { id: virtualId, moduleSideEffects: false };
+      }
+      return null;
+    },
+    load(id) {
+      if (id !== virtualId) return null;
+      return [
+        "const token = {};",
+        ...tokens.map((name) => `export const ${name} = token;`),
+        "export const use = () => {};",
+        'export const init = () => { throw new Error("echarts is not bundled"); };',
+        "export class LinearGradient { constructor(x, y, x2, y2, colorStops) { this.type = \"linear\"; this.x = x; this.y = y; this.x2 = x2; this.y2 = y2; this.colorStops = colorStops; } }",
+        "export const graphic = { LinearGradient };",
+      ].join("\n");
+    },
+  };
+};
 export default [
   {
     input: "src/index.ts",
@@ -45,6 +89,7 @@ export default [
     ],
     plugins: [
       stubFsPromises(),
+      stubECharts(),
       resolve({ browser: true }),
       commonjs({
         include: [/node_modules/],
@@ -86,6 +131,7 @@ export default [
     ],
     plugins: [
       stubFsPromises(),
+      stubECharts(),
       resolve({ browser: true }),
       commonjs({
         include: [/node_modules/],
@@ -145,6 +191,7 @@ export default [
     ],
     plugins: [
       stubFsPromises(),
+      stubECharts(),
       resolve({ browser: true }),
       commonjs({
         include: [/node_modules/],
