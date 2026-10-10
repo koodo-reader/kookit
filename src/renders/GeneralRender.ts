@@ -1628,7 +1628,11 @@ class GeneralRender extends EventEmitter {
   getAllDocuments() {
     let doc = this.getDocument();
     if (!doc) return [];
-    if (this.format !== "PDF" && !this.format?.startsWith("CB")) {
+    if (
+      this.format !== "PDF" &&
+      this.format !== "PPTX" &&
+      !this.format?.startsWith("CB")
+    ) {
       return [doc];
     }
     let iframes = doc.querySelectorAll("iframe");
@@ -1644,7 +1648,11 @@ class GeneralRender extends EventEmitter {
   getAllIframes() {
     let iframe = this.getIframe();
     if (!iframe) return [];
-    if (this.format !== "PDF" && !this.format?.startsWith("CB")) {
+    if (
+      this.format !== "PDF" &&
+      this.format !== "PPTX" &&
+      !this.format?.startsWith("CB")
+    ) {
       return [iframe];
     }
     let doc = this.getDocument();

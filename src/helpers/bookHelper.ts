@@ -96,6 +96,9 @@ class BookHelper {
       format === "CB7"
     ) {
       rendition = new Kookit.ComicRender(copyArrayBuffer(result), config);
+    } else if (format === "PPTX") {
+      // PPTX 逐页渲染为图片，沿用漫画的多 iframe 分页结构
+      rendition = new Kookit.PptxRender(copyArrayBuffer(result), config);
     }
     return rendition;
   };
@@ -149,6 +152,7 @@ class BookHelper {
           case "cbt":
           case "cbz":
           case "cb7":
+          case "pptx":
             metadata = await rendition.getMetadata();
             cover = metadata.cover;
             break;

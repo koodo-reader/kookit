@@ -21,6 +21,8 @@ export default [
         name: "Kookit",
         file: getDesktopOutputPath("kookit.min.js"),
         format: "es",
+        // pptx-browser 内部含动态 import（smartart/extract 等），需内联保持单文件
+        inlineDynamicImports: true,
       },
     ],
     plugins: [
@@ -58,6 +60,8 @@ export default [
         name: "Kookit",
         file: getMobileOutputPath("kookit.min.txt"),
         format: "umd",
+        // pptx-browser 内部含动态 import（smartart/extract 等），需内联保持单文件
+        inlineDynamicImports: true,
       },
     ],
     plugins: [
