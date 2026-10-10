@@ -3,10 +3,46 @@ import {
   ChmEnumerateFlags,
   parseSystemInfo,
   parseToc,
-  decodeText,
-} from "./chmlib";
-import type { ChmTocEntry, ChmUnitInfo } from "./chmlib";
+} from "chmlib-ts";
+import type { ChmTocEntry, ChmUnitInfo } from "chmlib-ts";
+import chardet from "chardet";
 import { mimetype } from "../utils/mimetype";
+
+const BOMS: Array<[number[], string]> = [
+  [[0xef, 0xbb, 0xbf], "utf-8"],
+  [[0xff, 0xfe], "utf-16le"],
+  [[0xfe, 0xff], "utf-16be"],
+];
+
+const detectBomEncoding = (data: Uint8Array) => {
+  for (const [bytes, encoding] of BOMS) {
+    if (bytes.every((byte, index) => data[index] === byte)) return encoding;
+  }
+  return "";
+};
+
+const decodeText = (
+  data: Uint8Array,
+  options: { charset?: string } = {}
+) => {
+  const explicit = options.charset?.trim();
+  let encoding = explicit || detectBomEncoding(data);
+  if (!encoding) {
+    try {
+      encoding = chardet.detect(data.slice(0, 4096)) || "utf-8";
+    } catch {
+      encoding = "utf-8";
+    }
+  }
+  try {
+    return { text: new TextDecoder(encoding).decode(data), encoding };
+  } catch {
+    return {
+      text: new TextDecoder("windows-1252").decode(data),
+      encoding: "windows-1252",
+    };
+  }
+};
 
 const HTML_EXTS = ["html", "htm", "xhtml"];
 

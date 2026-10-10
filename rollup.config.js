@@ -13,6 +13,23 @@ const getMobileOutputPath = (filename) => {
   const basePath = "D:\\Project\\koodo-reader-expo";
   return path.join(basePath, "assets", "lib", filename);
 };
+// chmlib-ts 的 Node.js 文件读取器使用动态 import('fs/promises')，
+// 浏览器/移动端构建不会调用，stub 掉避免 unresolved dependency 警告
+const stubFsPromises = () => ({
+  name: "stub-fs-promises",
+  resolveId(source) {
+    if (source === "fs/promises") {
+      return { id: "\0stub:fs/promises", moduleSideEffects: false };
+    }
+    return null;
+  },
+  load(id) {
+    if (id === "\0stub:fs/promises") {
+      return "export default {};";
+    }
+    return null;
+  },
+});
 export default [
   {
     input: "src/index.ts",
@@ -21,12 +38,13 @@ export default [
         name: "Kookit",
         file: getDesktopOutputPath("kookit.min.js"),
         format: "es",
-        // 内嵌 pptx-renderer 的 pdfRenderer（EMF 回退）使用变量 specifier
-        // 的动态 import，rollup 无法静态分析，需内联保持单文件
+        // @aiden0z/pptx-renderer 的 EMF 回退 worker 以字符串形式内嵌
+        // import(pdfjsUrl)，无法被 rollup 静态分析；内联动态 import 保持单文件
         inlineDynamicImports: true,
       },
     ],
     plugins: [
+      stubFsPromises(),
       resolve({ browser: true }),
       commonjs({
         include: [/node_modules/],
@@ -61,12 +79,13 @@ export default [
         name: "Kookit",
         file: getMobileOutputPath("kookit.min.txt"),
         format: "umd",
-        // 内嵌 pptx-renderer 的 pdfRenderer（EMF 回退）使用变量 specifier
-        // 的动态 import，rollup 无法静态分析，需内联保持单文件
+        // @aiden0z/pptx-renderer 的 EMF 回退 worker 以字符串形式内嵌
+        // import(pdfjsUrl)，无法被 rollup 静态分析；内联动态 import 保持单文件
         inlineDynamicImports: true,
       },
     ],
     plugins: [
+      stubFsPromises(),
       resolve({ browser: true }),
       commonjs({
         include: [/node_modules/],
@@ -125,6 +144,7 @@ export default [
       },
     ],
     plugins: [
+      stubFsPromises(),
       resolve({ browser: true }),
       commonjs({
         include: [/node_modules/],

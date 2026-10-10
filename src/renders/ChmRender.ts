@@ -1,6 +1,6 @@
 import { createIframe, handleLayout } from "../utils/layoutUtil";
 import GeneralParser from "../utils/generalParser";
-import { ChmFile, chmReaderFromBuffer } from "../libs/chmlib";
+import { ChmFile, chmReaderFromBuffer } from "chmlib-ts";
 import { makeChmBook } from "../libs/book-chm";
 import GeneralRender from "./GeneralRender";
 import { getCache } from "../libs/cache.js";

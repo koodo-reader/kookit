@@ -7,15 +7,15 @@ import {
   renderSlide,
   RECOMMENDED_ZIP_LIMITS,
   searchPresentation,
-} from "../libs/pptx-renderer/index";
+} from "@aiden0z/pptx-renderer";
 import type {
   PresentationData,
   SlideHandle,
   TextSearchResult,
-} from "../libs/pptx-renderer/index";
+} from "@aiden0z/pptx-renderer";
 
-// PPTX 逐页经 @aiden0z/pptx-renderer（vendor 于 src/libs/pptx-renderer）
-// 渲染为 HTML DOM 后直接挂进每页 iframe，中文文本走系统字体 fallback。
+// PPTX 逐页经 @aiden0z/pptx-renderer 渲染为 HTML DOM 后直接挂进每页 iframe，
+// 中文文本走系统字体 fallback。
 // 分页/懒加载/卸载机制沿用漫画的多 iframe 结构。
 class PptxRender extends ComicRender {
   presentation: PresentationData | null = null;
