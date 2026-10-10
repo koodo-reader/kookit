@@ -8,8 +8,6 @@ import { ThemeData } from '../model/Theme';
 import { MasterData } from '../model/Master';
 import { LayoutData } from '../model/Layout';
 import { SafeXmlNode } from '../parser/XmlParser';
-import type { EChartsType } from 'echarts/core';
-import type { PdfjsConfig } from '../utils/pdfRenderer';
 
 export interface RenderContext {
   presentation: PresentationData;
@@ -27,14 +25,8 @@ export interface RenderContext {
   colorCache: Map<string, { color: string; alpha: number }>;
   /** Async media/rendering work that callers may await before screenshot/export. */
   asyncTasks?: Promise<void>[];
-  /** Presentation-specific embedded CSS families referenced by this render. */
-  usedEmbeddedFontFamilies?: Set<string>;
   /** Aborted when the owning slide is disposed; async renderers must stop late writes. */
   signal?: AbortSignal;
-  /** Optional pdfjs URLs for EMF-embedded PDF fallback rendering. */
-  pdfjs?: PdfjsConfig;
-  /** Shared set of live ECharts instances for explicit disposal. */
-  chartInstances?: Set<EChartsType>;
   /** Fill node from parent group's grpSpPr, used to resolve `a:grpFill` in children. */
   groupFillNode?: SafeXmlNode;
   /** Template provenance and group depth keep narrowly verified renderer lanes from overclaiming. */
@@ -62,8 +54,6 @@ export function createRenderContext(
   presentation: PresentationData,
   slide: SlideData,
   mediaUrlCache?: Map<string, string>,
-  chartInstances?: Set<EChartsType>,
-  pdfjs?: PdfjsConfig,
   signal?: AbortSignal,
 ): RenderContext {
   // Resolve the chain: slide -> layout -> master -> theme
@@ -112,9 +102,6 @@ export function createRenderContext(
     nodeOrigin: 'slide',
     groupDepth: 0,
     groupAncestorHas3dScene: false,
-    usedEmbeddedFontFamilies: new Set(),
-    pdfjs,
     signal,
-    chartInstances,
   };
 }

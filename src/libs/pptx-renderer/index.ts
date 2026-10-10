@@ -12,13 +12,6 @@ export {
 } from './model/Presentation';
 export type { BuildPresentationOptions, PresentationData } from './model/Presentation';
 
-export { serializePresentation } from './export/serializePresentation';
-export type {
-  SerializedPresentation,
-  SerializedSlide,
-  SerializedNode,
-} from './export/serializePresentation';
-
 // Model-level text search
 export { buildTextIndex, searchPresentation, searchText } from './search/TextSearch';
 export type {
@@ -33,10 +26,6 @@ export type {
 // Headless single-slide rendering
 export { renderSlide } from './renderer/SlideRenderer';
 export type { SlideHandle, SlideRendererOptions } from './renderer/SlideRenderer';
-export { DEFAULT_EMBEDDED_FONT_LIMITS } from './renderer/EmbeddedFontLoader';
-export type { EmbeddedFontLimits } from './renderer/EmbeddedFontLoader';
-export type { FontFaceConfig } from './renderer/ConfiguredFontLoader';
-export type { PdfjsOptions, PdfjsConfig } from './utils/pdfRenderer';
 
 // Model types
 export type { SlideData, SlideNode } from './model/Slide';

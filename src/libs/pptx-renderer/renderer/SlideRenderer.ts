@@ -20,12 +20,6 @@ import { BaseNodeData } from '../model/nodes/BaseNode';
 import { SafeXmlNode } from '../parser/XmlParser';
 import type { RelEntry } from '../parser/RelParser';
 import { isPlaceholderNode, parseRenderableChildren } from '../model/RenderableChild';
-import type { EChartsType } from 'echarts/core';
-import { useEmbeddedFonts } from './EmbeddedFontLoader';
-import type { EmbeddedFontLimits } from './EmbeddedFontLoader';
-import type { PdfjsConfig } from '../utils/pdfRenderer';
-import { useConfiguredFonts } from './ConfiguredFontLoader';
-import type { FontFaceConfig } from './ConfiguredFontLoader';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,14 +36,6 @@ export interface SlideRendererOptions {
   onNavigate?: (target: { slideIndex?: number; url?: string }) => void;
   /** Shared media URL cache for blob URL reuse across slides. */
   mediaUrlCache?: Map<string, string>;
-  /** Optional pdfjs URLs for EMF-embedded PDF fallback rendering. */
-  pdfjs?: PdfjsConfig;
-  /** Shared set of live ECharts instances for explicit disposal. */
-  chartInstances?: Set<EChartsType>;
-  /** Optional embedded-font resource limit overrides. Defaults remain enforced for omitted fields. */
-  embeddedFontLimits?: EmbeddedFontLimits;
-  /** Host-provided faces for fonts referenced by the PPTX but not embedded in it. */
-  fontFaces?: readonly FontFaceConfig[];
 }
 
 /**
@@ -259,19 +245,14 @@ export function renderSlide(
   materializeSlideNodes(presentation, slide);
 
   const isSharedCache = !!options?.mediaUrlCache;
-  const chartInstances = options?.chartInstances ?? new Set<EChartsType>();
   const asyncTasks: Promise<void>[] = [];
   const abortController = new AbortController();
-  const configuredFontUse = useConfiguredFonts(options?.fontFaces);
-  asyncTasks.push(configuredFontUse.ready);
 
   // Create render context (resolves slide -> layout -> master -> theme chain)
   const ctx = createRenderContext(
     presentation,
     slide,
     options?.mediaUrlCache,
-    chartInstances,
-    options?.pdfjs,
     abortController.signal,
   );
   ctx.asyncTasks = asyncTasks;
@@ -365,13 +346,6 @@ export function renderSlide(
     restoreMeasurementMount();
   }
 
-  const embeddedFontUse = useEmbeddedFonts(
-    presentation,
-    ctx.usedEmbeddedFontFamilies ?? new Set(),
-    options?.embeddedFontLimits,
-  );
-  asyncTasks.push(embeddedFontUse.ready);
-
   // Build SlideHandle
   let disposed = false;
   const mediaUrlCache = ctx.mediaUrlCache;
@@ -381,18 +355,6 @@ export function renderSlide(
     if (disposed) return;
     disposed = true;
     abortController.abort();
-    embeddedFontUse.dispose();
-    configuredFontUse.dispose();
-
-    // Dispose chart instances whose DOM is inside this slide container
-    if (chartInstances) {
-      for (const chart of chartInstances) {
-        if (!chart.isDisposed() && container.contains(chart.getDom())) {
-          chart.dispose();
-          chartInstances.delete(chart);
-        }
-      }
-    }
 
     // Revoke blob URLs only in standalone mode (caller doesn't own a shared cache)
     if (!isSharedCache) {

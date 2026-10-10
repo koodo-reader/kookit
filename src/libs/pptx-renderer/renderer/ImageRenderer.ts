@@ -13,8 +13,6 @@ import {
 import { isExternalTargetMode, RelEntry } from '../parser/RelParser';
 import { resolveColor, resolveFill, resolveLineStyle } from './StyleResolver';
 import { hexToRgb } from '../utils/color';
-import { parseEmfContent } from '../utils/emfParser';
-import { renderPdfToImage } from '../utils/pdfRenderer';
 import { emuToPx } from '../parser/units';
 import { SafeXmlNode } from '../parser/XmlParser';
 import { isAllowedExternalMediaUrl, isAllowedExternalUrl } from '../utils/urlSafety';
@@ -30,19 +28,12 @@ import {
 } from './Shape3DRenderer';
 
 /**
- * Check if a file extension is an unsupported legacy format (WMF only now; EMF is handled).
+ * Check if a file extension is an unsupported legacy vector format (wmf/emf),
+ * which renders as a placeholder instead.
  */
 function isUnsupportedFormat(path: string): boolean {
   const ext = path.split('.').pop()?.toLowerCase() || '';
-  return ext === 'wmf';
-}
-
-/**
- * Check if a file path is an EMF image.
- */
-function isEmfFormat(path: string): boolean {
-  const ext = path.split('.').pop()?.toLowerCase() || '';
-  return ext === 'emf';
+  return ext === 'wmf' || ext === 'emf';
 }
 
 let pictureClipPathIdCounter = 0;
@@ -223,11 +214,7 @@ function renderResolvedImage(
   data: Uint8Array,
 ): void | Promise<void> {
   if (ctx.signal?.aborted) return;
-  // Handle EMF images — extract embedded PDF/bitmap content
-  if (isEmfFormat(mediaPath)) {
-    const emfData = data instanceof Uint8Array ? data : new Uint8Array(data);
-    return renderEmf(emfData, node, ctx, wrapper, mediaPath);
-  }
+  // WMF/EMF are unsupported legacy vector formats and fall back to a placeholder
 
   const url = getOrCreateBlobUrl(mediaPath, data, ctx.mediaUrlCache);
   renderImageUrl(node, ctx, wrapper, url);
@@ -1083,116 +1070,6 @@ function renderUnsupportedPlaceholder(wrapper: HTMLElement, path: string): void 
   placeholder.appendChild(icon);
   placeholder.appendChild(label);
   wrapper.appendChild(placeholder);
-}
-
-// ---------------------------------------------------------------------------
-// EMF Rendering
-// ---------------------------------------------------------------------------
-
-/**
- * Render EMF content by extracting embedded PDF or bitmap data.
- */
-function renderEmf(
-  data: Uint8Array,
-  node: PicNodeData,
-  ctx: RenderContext,
-  wrapper: HTMLElement,
-  mediaPath: string,
-): void | Promise<void> {
-  const content = parseEmfContent(data);
-
-  switch (content.type) {
-    case 'pdf':
-      return renderEmfPdf(content.data, wrapper, node, ctx, mediaPath);
-    case 'bitmap':
-      return renderEmfBitmap(content.imageData, wrapper, ctx, mediaPath);
-    case 'empty':
-      // Render nothing — transparent placeholder
-      break;
-    case 'unsupported':
-      // Vector-only EMF cannot be faithfully rendered in the browser. A visible
-      // placeholder is worse than transparent fallback because it pollutes the
-      // slide with artifacts that are not present in PowerPoint/PDF exports.
-      break;
-  }
-}
-
-/**
- * Render an embedded PDF from EMF using pdfjs-dist.
- * Populates the wrapper asynchronously — the wrapper is returned immediately.
- */
-function renderEmfPdf(
-  pdfData: Uint8Array,
-  wrapper: HTMLElement,
-  node: PicNodeData,
-  ctx: RenderContext,
-  mediaPath: string,
-): void | Promise<void> {
-  const cacheKey = `${mediaPath}:emf-pdf`;
-  const cached = ctx.mediaUrlCache.get(cacheKey);
-  if (cached) {
-    wrapper.appendChild(createFillImage(cached));
-    return;
-  }
-
-  const task = renderPdfToImage(pdfData, node.size.w, node.size.h, ctx.pdfjs, ctx.signal)
-    .then((url) => {
-      if (!url) return;
-      if (ctx.signal?.aborted) {
-        URL.revokeObjectURL(url);
-        return;
-      }
-      const existing = ctx.mediaUrlCache.get(cacheKey);
-      if (existing) {
-        URL.revokeObjectURL(url);
-        wrapper.appendChild(createFillImage(existing));
-      } else {
-        ctx.mediaUrlCache.set(cacheKey, url);
-        wrapper.appendChild(createFillImage(url));
-      }
-    })
-    .catch(() => {
-      // PDF rendering failed — leave wrapper empty (transparent)
-    });
-  ctx.asyncTasks?.push(task);
-  return task;
-}
-
-/**
- * Render an embedded DIB bitmap from EMF.
- */
-function renderEmfBitmap(
-  imageData: ImageData,
-  wrapper: HTMLElement,
-  ctx: RenderContext,
-  mediaPath: string,
-): void | Promise<void> {
-  const cacheKey = `${mediaPath}:emf-bitmap`;
-  const cached = ctx.mediaUrlCache.get(cacheKey);
-  if (cached) {
-    wrapper.appendChild(createFillImage(cached));
-    return;
-  }
-
-  const canvas = document.createElement('canvas');
-  canvas.width = imageData.width;
-  canvas.height = imageData.height;
-  const canvasCtx = canvas.getContext('2d');
-  if (!canvasCtx) return;
-
-  canvasCtx.putImageData(imageData, 0, 0);
-  const task = new Promise<void>((resolve) => {
-    canvas.toBlob((blob) => {
-      if (blob && !ctx.signal?.aborted) {
-        const url = ctx.mediaUrlCache.get(cacheKey) ?? URL.createObjectURL(blob);
-        ctx.mediaUrlCache.set(cacheKey, url);
-        wrapper.appendChild(createFillImage(url));
-      }
-      resolve();
-    }, 'image/png');
-  });
-  ctx.asyncTasks?.push(task);
-  return task;
 }
 
 /**

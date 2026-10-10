@@ -84,11 +84,7 @@ export function resolveThemeFont(
   ctx: RenderContext,
   languageHints?: LanguageHint | LanguageHint[],
 ): string {
-  const resolved = resolveThemeFontName(typeface, ctx, languageHints);
-  const embeddedFamily = ctx.presentation.embeddedFontFamilies?.get(resolved.trim().toLowerCase());
-  if (!embeddedFamily) return resolved;
-  ctx.usedEmbeddedFontFamilies?.add(embeddedFamily);
-  return embeddedFamily;
+  return resolveThemeFontName(typeface, ctx, languageHints);
 }
 
 export function resolveThemeFontStack(
@@ -101,14 +97,11 @@ export function resolveThemeFontStack(
   for (const typeface of typefaces) {
     if (!typeface) continue;
     const resolved = resolveThemeFontName(typeface, ctx, languageHints).trim();
-    const embedded = ctx.presentation.embeddedFontFamilies?.get(resolved.toLowerCase());
-    if (embedded) ctx.usedEmbeddedFontFamilies?.add(embedded);
-    for (const font of embedded ? [embedded, resolved] : [resolved]) {
-      const key = font.toLowerCase();
-      if (!font || seen.has(key)) continue;
-      seen.add(key);
-      stack.push(font);
-    }
+    if (!resolved) continue;
+    const key = resolved.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    stack.push(resolved);
   }
   return stack;
 }
