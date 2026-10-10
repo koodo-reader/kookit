@@ -18,21 +18,3 @@ declare module "dompurify" {
   const DOMPurify: DOMPurifyI;
   export default DOMPurify;
 }
-
-declare module "pptx-browser" {
-  export class PptxRenderer {
-    slideCount: number;
-    slideSize: { cx: number; cy: number };
-    load(
-      source: ArrayBuffer | Blob | File | Uint8Array,
-      onProgress?: (progress: number, message: string) => void
-    ): Promise<void>;
-    renderSlide(
-      slideIndex: number,
-      canvas: HTMLCanvasElement,
-      width?: number
-    ): Promise<void>;
-    loadEmbeddedFonts(): Promise<void>;
-    destroy(): void;
-  }
-}

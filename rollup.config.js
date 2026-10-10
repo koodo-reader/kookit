@@ -5,6 +5,20 @@ import terser from "@rollup/plugin-terser";
 import json from "@rollup/plugin-json";
 import { babel } from "@rollup/plugin-babel";
 import path from "path";
+// pptx-browser 的 clipboard.js（createLazyDeck）内含运行时 require('./slideshow.js')，
+// rollup 无法静态分析会原样残留，CRA 打包时解析失败。Koodo 不使用该演示功能，桩化处理。
+const pptxSlideshowStub = {
+  name: "pptx-slideshow-stub",
+  transform(code, id) {
+    if (id.replace(/\\/g, "/").includes("pptx-browser/src/clipboard.js")) {
+      return code.replace(
+        /require\(['"]\.\/slideshow\.js['"]\)\.SlideShow/g,
+        "(class { start() {} })"
+      );
+    }
+    return null;
+  },
+};
 const getDesktopOutputPath = (filename) => {
   const basePath = "D:\\Project\\koodo-reader";
   return path.join(basePath, "src", "assets", "lib", filename);
@@ -27,6 +41,7 @@ export default [
     ],
     plugins: [
       resolve({ browser: true }),
+      pptxSlideshowStub,
       commonjs({
         include: [/node_modules/],
       }),
@@ -66,6 +81,7 @@ export default [
     ],
     plugins: [
       resolve({ browser: true }),
+      pptxSlideshowStub,
       commonjs({
         include: [/node_modules/],
       }),
@@ -124,6 +140,7 @@ export default [
     ],
     plugins: [
       resolve({ browser: true }),
+      pptxSlideshowStub,
       commonjs({
         include: [/node_modules/],
         ignoreGlobal: true,

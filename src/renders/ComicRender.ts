@@ -950,19 +950,19 @@ class ComicRender extends GeneralRender {
       gap: gap,
     } as any;
   }
-  async visibleText() {
+  async visibleText(): Promise<any[]> {
     return [];
   }
-  async audioText() {
+  async audioText(): Promise<any[]> {
     return await this.visibleText();
   }
-  async getRestAudioText(_count: number) {
+  async getRestAudioText(_count: number): Promise<any[]> {
     return [];
   }
   async chapterText() {
     return "";
   }
-  async doSearch(_keyword: string) {
+  async doSearch(_keyword: string): Promise<any[]> {
     return [];
   }
   async getImageList(chapterDocIndex?: number): Promise<string[]> {
