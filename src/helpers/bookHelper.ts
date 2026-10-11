@@ -99,6 +99,9 @@ class BookHelper {
     } else if (format === "PPTX") {
       // PPTX 逐页渲染为图片，沿用漫画的多 iframe 分页结构
       rendition = new Kookit.PptxRender(copyArrayBuffer(result), config);
+    } else if (format === "XPS" || format === "OXPS") {
+      // XPS/OXPS 为固定版式文档，逐页渲染为 SVG，沿用漫画的多 iframe 分页结构
+      rendition = new Kookit.XpsRender(copyArrayBuffer(result), config);
     }
     return rendition;
   };
@@ -153,6 +156,8 @@ class BookHelper {
           case "cbz":
           case "cb7":
           case "pptx":
+          case "xps":
+          case "oxps":
             metadata = await rendition.getMetadata();
             cover = metadata.cover;
             break;

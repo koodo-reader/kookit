@@ -1631,6 +1631,8 @@ class GeneralRender extends EventEmitter {
     if (
       this.format !== "PDF" &&
       this.format !== "PPTX" &&
+      this.format !== "XPS" &&
+      this.format !== "OXPS" &&
       !this.format?.startsWith("CB")
     ) {
       return [doc];
@@ -1651,6 +1653,8 @@ class GeneralRender extends EventEmitter {
     if (
       this.format !== "PDF" &&
       this.format !== "PPTX" &&
+      this.format !== "XPS" &&
+      this.format !== "OXPS" &&
       !this.format?.startsWith("CB")
     ) {
       return [iframe];

@@ -3,8 +3,27 @@ import commonjs from "@rollup/plugin-commonjs";
 import typescript from "@rollup/plugin-typescript";
 import terser from "@rollup/plugin-terser";
 import json from "@rollup/plugin-json";
-import { babel } from "@rollup/plugin-babel";
+import esbuild from "rollup-plugin-esbuild";
 import path from "path";
+// watch（yarn dev）时 terser 只做去注释（compress: false），加快重编译；
+// 注释必须移除：依赖产物中的 eslint-disable 注释会让宿主项目 ESLint 报
+// "Definition for rule ... was not found"
+const isWatch = process.env.ROLLUP_WATCH === "true";
+const terserPlugin = () =>
+  terser(
+    isWatch
+      ? {
+          compress: false,
+          mangle: false,
+          format: { comments: false },
+        }
+      : {
+          format: {
+            comments: false, // 移除所有注释
+          },
+          mangle: false,
+        }
+  );
 const getDesktopOutputPath = (filename) => {
   const basePath = "D:\\Project\\koodo-reader";
   return path.join(basePath, "src", "assets", "lib", filename);
@@ -96,12 +115,7 @@ export default [
       }),
       json(),
       typescript({ tsconfig: "./tsconfig.json" }),
-      terser({
-        format: {
-          comments: false, // 移除所有注释
-        },
-        mangle: false,
-      }), // 压缩代码
+      terserPlugin(), // 压缩代码（watch 模式仅去注释）
     ],
 
     external: [
@@ -138,34 +152,16 @@ export default [
       }),
       json(),
       typescript({ tsconfig: "./tsconfig.json" }),
-      babel({
-        babelHelpers: "bundled",
-        presets: [
-          [
-            "@babel/preset-env",
-            {
-              targets: {
-                browsers: [
-                  "iOS >= 11",
-                  "Android >= 5",
-                  "last 2 versions",
-                  "> 1%",
-                ],
-              },
-              useBuiltIns: "usage",
-              corejs: 3,
-            },
-          ],
-        ],
-        exclude: "node_modules/**",
-        extensions: [".js", ".ts"],
+      // 替代原 babel preset-env：esbuild 降级语法到 es2017（Safari 11+），
+      // 不再注入 core-js polyfill（node_modules 依赖本就不转译，polyfill 已无实际作用）；
+      // bigint 字面量无法降级（原 babel 同样保留），声明 supported 消除警告
+      esbuild({
+        target: "es2017",
+        supported: { bigint: true },
+        sourceMap: false,
+        tsconfig: false,
       }),
-      terser({
-        format: {
-          comments: false, // 移除所有注释
-        },
-        mangle: false,
-      }), // 压缩代码
+      terserPlugin(), // 压缩代码（watch 模式仅去注释）
     ],
 
     external: [],
@@ -199,12 +195,7 @@ export default [
       }),
       json(),
       typescript({ tsconfig: "./tsconfig.json" }),
-      terser({
-        format: {
-          comments: false, // 移除所有注释
-        },
-        mangle: false,
-      }), // 压缩代码
+      terserPlugin(), // 压缩代码（watch 模式仅去注释）
     ],
     external: [],
     onwarn: (warning, warn) => {
