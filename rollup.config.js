@@ -114,7 +114,12 @@ export default [
         include: [/node_modules/],
       }),
       json(),
-      typescript({ tsconfig: "./tsconfig.json" }),
+      typescript({
+        tsconfig: "./tsconfig.json",
+        // rollup 产物不需要 .d.ts（类型由 build:types 脚本单独生成），
+        // 避免向宿主项目输出目录写入一堆声明文件
+        declaration: false,
+      }),
       terserPlugin(), // 压缩代码（watch 模式仅去注释）
     ],
 
@@ -151,7 +156,12 @@ export default [
         include: [/node_modules/],
       }),
       json(),
-      typescript({ tsconfig: "./tsconfig.json" }),
+      typescript({
+        tsconfig: "./tsconfig.json",
+        // rollup 产物不需要 .d.ts（类型由 build:types 脚本单独生成），
+        // 避免向宿主项目输出目录写入一堆声明文件
+        declaration: false,
+      }),
       // 替代原 babel preset-env：esbuild 降级语法到 es2017（Safari 11+），
       // 不再注入 core-js polyfill（node_modules 依赖本就不转译，polyfill 已无实际作用）；
       // bigint 字面量无法降级（原 babel 同样保留），声明 supported 消除警告
@@ -194,7 +204,12 @@ export default [
         ignoreGlobal: true,
       }),
       json(),
-      typescript({ tsconfig: "./tsconfig.json" }),
+      typescript({
+        tsconfig: "./tsconfig.json",
+        // rollup 产物不需要 .d.ts（类型由 build:types 脚本单独生成），
+        // 避免向宿主项目输出目录写入一堆声明文件
+        declaration: false,
+      }),
       terserPlugin(), // 压缩代码（watch 模式仅去注释）
     ],
     external: [],
