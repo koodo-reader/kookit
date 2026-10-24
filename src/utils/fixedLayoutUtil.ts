@@ -1,5 +1,5 @@
-import GeneralParser from "../utils/generalParser";
-import ComicRender from "./ComicRender";
+import GeneralParser from "./generalParser";
+import ComicRender from "../renders/ComicRender";
 
 const getChapterImageSrc = (doc: Document) => {
   const img = doc.querySelector("img");
@@ -16,6 +16,28 @@ const getChapterImageSrc = (doc: Document) => {
     );
   }
   return "";
+};
+
+const updateScrollPageHeight = (
+  render: ComicRender,
+  chapterDocIndex: number,
+  img: HTMLImageElement
+) => {
+  if (render.readerMode !== "scroll") return;
+  if (!img.naturalWidth || !img.naturalHeight) return;
+  const doc = render.getDocument();
+  const container = doc?.getElementById(
+    "pdf-container-" + chapterDocIndex
+  ) as HTMLElement | null;
+  if (container) {
+    container.style.paddingTop = `${
+      (img.naturalHeight / img.naturalWidth) * 100
+    }%`;
+  }
+  const iframe: any = render.getIframe();
+  if (iframe && doc?.body) {
+    iframe.height = doc.body.scrollHeight + 300 + "px";
+  }
 };
 
 export const renderFixedLayoutChapter = async (
@@ -41,15 +63,44 @@ export const renderFixedLayoutChapter = async (
   try {
     const chapterUrl = await chapterDoc.text.load();
     if (!chapterUrl) return;
-    const res = await fetch(chapterUrl);
-    const chapterText = await res.text();
+    const chapterText = await (await fetch(chapterUrl)).text();
     if (!chapterText) return;
-    subDoc.open();
-    subDoc.write(chapterText);
-    subDoc.close();
-    const style = subDoc.createElement("style");
-    style.textContent = `html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent;}img,svg{max-width:100%!important;max-height:100%!important;object-fit:contain;}img{display:block;margin:auto;}`;
-    subDoc.head?.appendChild(style);
+    const chapterDocument = new DOMParser().parseFromString(
+      chapterText,
+      "text/html"
+    );
+    const outerDoc = render.getDocument();
+    if (outerDoc?.body) {
+      outerDoc.body.style.margin = "0";
+      outerDoc.body.style.padding = "0";
+      outerDoc.documentElement.style.margin = "0";
+    }
+    subDoc.documentElement.setAttribute(
+      "style",
+      "width:100%;height:100%;margin:0;padding:0;overflow:hidden;"
+    );
+    subDoc.body.setAttribute(
+      "style",
+      "margin:0;padding:0;width:100%;height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:transparent;"
+    );
+    const imageSrc = getChapterImageSrc(chapterDocument);
+    if (imageSrc) {
+      const img = subDoc.createElement("img");
+      img.src = imageSrc;
+      img.setAttribute(
+        "style",
+        "display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;"
+      );
+      img.addEventListener("load", () =>
+        updateScrollPageHeight(render, chapterDocIndex, img)
+      );
+      subDoc.body.appendChild(img);
+      if (img.complete) {
+        updateScrollPageHeight(render, chapterDocIndex, img);
+      }
+    } else {
+      subDoc.body.innerHTML = chapterDocument.body.innerHTML;
+    }
     iframe.dataset.rendered = "true";
     render.trigger("rendered", [chapterDocIndex] as any);
   } catch (error) {

@@ -7,7 +7,7 @@ import {
   removeFixedLayoutContent,
   renderFixedLayoutChapter,
   unloadFixedLayoutChapter,
-} from "./fixedLayoutComic";
+} from "../utils/fixedLayoutUtil";
 
 class FixedLayoutRender extends ComicRender {
   fileBuffer: ArrayBuffer;
