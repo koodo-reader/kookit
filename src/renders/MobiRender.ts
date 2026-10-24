@@ -19,6 +19,8 @@ class MobiRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
+      console.log("MobiRender renderTo chapterList", this.chapterList);
+      console.log("MobiRender renderTo chapterDocList", this.chapterDocList);
       createIframe(element, this.isAllowScript);
       let doc = this.getDocument();
       if (!doc) return;
@@ -35,6 +37,7 @@ class MobiRender extends GeneralRender {
       });
       if (await isMOBI(file)) {
         this.book = await new MOBI({ unzlib: unzlibSync }).open(file);
+        console.log("MobiRender parse book", this.book);
       } else {
         throw new Error("Not a valid MOBI file");
       }

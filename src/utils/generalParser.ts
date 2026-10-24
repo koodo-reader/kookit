@@ -3,6 +3,14 @@ import ChapterDoc from "../model/chapterDoc";
 const isString = (value: any): boolean => {
   return typeof value === "string" || value instanceof String;
 };
+const joinMetadataValue = (value: any): string => {
+  if (!value) return "";
+  if (isString(value)) return String(value);
+  if (Array.isArray(value)) {
+    return value.map(joinMetadataValue).filter(Boolean).join(",");
+  }
+  return isString(value.name) ? String(value.name) : "";
+};
 class GeneralParser {
   book: any;
   chapterList: Chapter[];
@@ -101,19 +109,10 @@ class GeneralParser {
   getMetadata() {
     return new Promise<any>(async (resolve, reject) => {
       const metadata = this.book.metadata;
-      let author =
-        metadata.author &&
-        metadata.author[0] &&
-        metadata.author[0].name &&
-        isString(metadata.author[0].name)
-          ? metadata.author[0].name
-          : metadata.author &&
-              metadata.author[0] &&
-              isString(metadata.author[0])
-            ? metadata.author[0]
-            : metadata.author && isString(metadata.author)
-              ? metadata.author
-              : "";
+      console.log("GeneralParser getMetadata metadata", metadata);
+      const author = joinMetadataValue(metadata.author);
+      const language = joinMetadataValue(metadata.language) || "en";
+      const subject = joinMetadataValue(metadata.subject);
       try {
         const blob = await this.book.getCover();
         var reader = new FileReader();
@@ -126,6 +125,11 @@ class GeneralParser {
             description: metadata.description,
             publisher: metadata.publisher,
             cover: reader.result,
+            identifier: metadata.identifier,
+            language: language,
+            published: metadata.published,
+            modified: metadata.modified,
+            subject: subject,
           });
         };
       } catch (error) {
