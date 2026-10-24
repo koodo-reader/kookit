@@ -331,7 +331,8 @@ class PdfTextRender extends GeneralRender {
     }
     if (
       this.ocrEngine === "external-engine" ||
-      this.ocrEngine === "official-ai-ocr"
+      this.ocrEngine === "official-ai-ocr" ||
+      this.ocrEngine === "plugin-ocr"
     ) {
       // 模拟进度条变化
       let progressInterval: any = null;
@@ -355,6 +356,10 @@ class PdfTextRender extends GeneralRender {
         let result: any;
         if (this.ocrEngine === "external-engine") {
           textContent = await this.worker.recognize(chapterDocIndex, "");
+        } else if (this.ocrEngine === "plugin-ocr") {
+          let page = await chapterDoc.text.getPage();
+          let { imageURL } = await convertPageToImage(page);
+          textContent = await this.worker.recognize(imageURL);
         } else {
           // official-ai-ocr
           if (
@@ -583,7 +588,8 @@ class PdfTextRender extends GeneralRender {
       }
       if (
         this.ocrEngine === "official-ai-ocr" ||
-        this.ocrEngine === "system-ocr"
+        this.ocrEngine === "system-ocr" ||
+        this.ocrEngine === "plugin-ocr"
       ) {
         this.worker = this.externalWorker;
       }
