@@ -50,6 +50,7 @@ import {
   addAndroidTouchEvent,
   addAppleTouchEvent,
   blobUrlToBase64,
+  isPaginatedFormat,
   slideAnimateTo,
 } from "../utils/touchUtil";
 import {
@@ -74,6 +75,7 @@ export interface TextRule {
 class GeneralRender extends EventEmitter {
   readerMode: string;
   format: string;
+  isPaginated: boolean = false;
   animation: string = "none";
   convertChinese: string | undefined;
   isIndent: string | undefined;
@@ -164,6 +166,7 @@ class GeneralRender extends EventEmitter {
     window.readerMode = config.readerMode;
     this.animation = config.animation || "none";
     this.format = config.format;
+    this.isPaginated = isPaginatedFormat(config.format);
     this.convertChinese = config.convertChinese;
     window.convertChinese = config.convertChinese;
     this.isIndent = config.isIndent;
@@ -1650,16 +1653,7 @@ class GeneralRender extends EventEmitter {
   getAllDocuments() {
     let doc = this.getDocument();
     if (!doc) return [];
-    if (
-      this.format !== "PDF" &&
-      this.format !== "PPTX" &&
-      this.format !== "XPS" &&
-      this.format !== "OXPS" &&
-      this.format !== "DJVU" &&
-      this.format !== "DJV" &&
-      this.format !== "OFD" &&
-      !this.format?.startsWith("CB")
-    ) {
+    if (!this.isPaginated) {
       return [doc];
     }
     let iframes = doc.querySelectorAll("iframe");
@@ -1675,16 +1669,7 @@ class GeneralRender extends EventEmitter {
   getAllIframes() {
     let iframe = this.getIframe();
     if (!iframe) return [];
-    if (
-      this.format !== "PDF" &&
-      this.format !== "PPTX" &&
-      this.format !== "XPS" &&
-      this.format !== "OXPS" &&
-      this.format !== "DJVU" &&
-      this.format !== "DJV" &&
-      this.format !== "OFD" &&
-      !this.format?.startsWith("CB")
-    ) {
+    if (!this.isPaginated) {
       return [iframe];
     }
     let doc = this.getDocument();
@@ -1701,6 +1686,10 @@ class GeneralRender extends EventEmitter {
     let docs = this.getAllDocuments();
     let iframes = this.getAllIframes();
     const animation = this.isPageAnimationDisabled() ? "none" : this.animation;
+    const touchFormat =
+      this.isPaginated && !isPaginatedFormat(this.format)
+        ? "COMIC"
+        : this.format;
     for (let index = 0; index < docs.length; index++) {
       const doc = docs[index];
       const iframe = iframes[index];
@@ -1717,7 +1706,7 @@ class GeneralRender extends EventEmitter {
           this.element,
           this.readerMode,
           animation,
-          this.format,
+          touchFormat,
           touchControlRule,
           this
         );
@@ -1728,7 +1717,7 @@ class GeneralRender extends EventEmitter {
           this.element,
           this.readerMode,
           animation,
-          this.format,
+          touchFormat,
           touchControlRule,
           this
         );

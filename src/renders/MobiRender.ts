@@ -1,9 +1,8 @@
 import { createIframe, handleLayout } from "../utils/layoutUtil";
 import GeneralParser from "../utils/generalParser";
-import { isMOBI, MOBI } from "../libs/mobi.js";
 import GeneralRender from "./GeneralRender";
-import { unzlibSync } from "fflate";
 import { getCache } from "../libs/cache.js";
+import { loadMobiBook } from "../libs/mobi-loader";
 class MobiRender extends GeneralRender {
   mobiBuffer: ArrayBuffer;
   constructor(mobiBuffer: ArrayBuffer, config: any) {
@@ -19,8 +18,6 @@ class MobiRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
-      console.log("MobiRender renderTo chapterList", this.chapterList);
-      console.log("MobiRender renderTo chapterDocList", this.chapterDocList);
       createIframe(element, this.isAllowScript);
       let doc = this.getDocument();
       if (!doc) return;
@@ -29,22 +26,7 @@ class MobiRender extends GeneralRender {
     });
   }
   async parse() {
-    try {
-      let blob = new Blob([this.mobiBuffer]);
-      let file = new File([blob], "book", {
-        lastModified: new Date().getTime(),
-        type: blob.type,
-      });
-      if (await isMOBI(file)) {
-        this.book = await new MOBI({ unzlib: unzlibSync }).open(file);
-        console.log("MobiRender parse book", this.book);
-      } else {
-        throw new Error("Not a valid MOBI file");
-      }
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+    this.book = await loadMobiBook(this.mobiBuffer);
   }
   async preCache() {
     if (!this.book) {

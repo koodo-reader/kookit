@@ -62,17 +62,23 @@ class BookHelper {
       ocrEngine: string;
       revertDirection?: string;
       externalWorker?: any;
+      isFixedLayout?: string;
     },
     Kookit: any
   ) => {
     let rendition;
     let format = config.format.toUpperCase();
+    const isFixedLayout = config.isFixedLayout === "yes";
     if (format === "CACHE") {
       rendition = new Kookit.CacheRender(result, config);
     } else if (format === "MOBI" || format === "AZW3" || format === "AZW") {
-      rendition = new Kookit.MobiRender(result, config);
+      rendition = isFixedLayout
+        ? new Kookit.FixedLayoutRender(result, config)
+        : new Kookit.MobiRender(result, config);
     } else if (format === "EPUB") {
-      rendition = new Kookit.EpubRender(result, config);
+      rendition = isFixedLayout
+        ? new Kookit.FixedLayoutRender(result, config)
+        : new Kookit.EpubRender(result, config);
     } else if (format === "TXT") {
       // let text = iconv.decode(Buffer.from(result), charset || "utf8");
       rendition = new Kookit.TxtRender(result, config);

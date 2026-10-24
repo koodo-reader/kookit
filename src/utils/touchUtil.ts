@@ -17,7 +17,8 @@ export const isPaginatedFormat = (format: string) => {
     format === "DJVU" ||
     format === "DJV" ||
     format === "OFD" ||
-    (format && format.startsWith("CB"))
+    format === "COMIC" ||
+    !!(format && format.startsWith("CB"))
   );
 };
 

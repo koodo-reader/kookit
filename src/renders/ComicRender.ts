@@ -43,6 +43,7 @@ class ComicRender extends GeneralRender {
   scrollComicInterval: any = null;
   constructor(comicBuffer: ArrayBuffer, config: any) {
     super(config);
+    this.isPaginated = true;
     this.comicBuffer = comicBuffer;
     this.readerMode = config.readerMode;
     this.format = config.format;
