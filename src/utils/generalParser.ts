@@ -125,12 +125,14 @@ class GeneralParser {
             description: metadata.description,
             publisher: metadata.publisher,
             cover: reader.result,
-            identifier: metadata.identifier,
+            identifier: joinMetadataValue(metadata.identifier) || "",
             language: language,
-            published: metadata.published,
-            modified: metadata.modified,
+            published: joinMetadataValue(metadata.published) || "",
+            modified: joinMetadataValue(metadata.modified) || "",
             subject: subject,
-            rights: metadata.rights,
+            rights: joinMetadataValue(metadata.rights) || "",
+            isbn: joinMetadataValue(metadata.isbn) || "",
+            layout: joinMetadataValue(metadata.layout) || "",
           });
         };
       } catch (error) {
@@ -143,6 +145,14 @@ class GeneralParser {
             description: metadata.description,
             publisher: metadata.publisher,
             cover: "",
+            identifier: joinMetadataValue(metadata.identifier) || "",
+            language: language,
+            published: joinMetadataValue(metadata.published) || "",
+            modified: joinMetadataValue(metadata.modified) || "",
+            subject: subject,
+            rights: joinMetadataValue(metadata.rights) || "",
+            isbn: joinMetadataValue(metadata.isbn) || "",
+            layout: joinMetadataValue(metadata.layout) || "",
           });
         } catch (error) {
           console.error(error);

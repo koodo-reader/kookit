@@ -6,6 +6,20 @@ const copyArrayBuffer = (src) => {
   new Uint8Array(dst).set(new Uint8Array(src));
   return dst;
 };
+const getMetadataText = (value: any): string => {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(getMetadataText).filter(Boolean).join(",");
+  }
+  if (typeof value === "object" && typeof value.name === "string") {
+    return value.name;
+  }
+  return "";
+};
 function throttle(fn: (...args: any[]) => void, wait: number) {
   let lastTime = 0;
   let timeout: any = null;
@@ -143,7 +157,7 @@ class BookHelper {
           "",
           0,
         ];
-        let metadata: any;
+        let metadata: any = {};
 
         switch (extension) {
           case "pdf":
@@ -198,7 +212,15 @@ class BookHelper {
             size,
             page,
             path,
-            charset
+            charset,
+            getMetadataText(metadata.published),
+            getMetadataText(metadata.modified),
+            getMetadataText(metadata.identifier),
+            getMetadataText(metadata.language),
+            getMetadataText(metadata.subject),
+            getMetadataText(metadata.rights),
+            getMetadataText(metadata.isbn),
+            getMetadataText(metadata.layout)
           )
         );
       } catch (error) {
