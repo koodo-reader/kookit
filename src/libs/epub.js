@@ -343,28 +343,94 @@ const getIdentifier = (opf) =>
       opf.getElementsByTagNameNS(NS.DC, "identifier")[0]
   );
 
-const isISBN = (value) => {
-  const normalized = value.replace(/[-\s]/g, "").toUpperCase();
-  return /^(?:97[89])?\d{9}[\dX]$/.test(normalized);
+const isISBN10 = (value) => /^\d{9}[\dX]$/.test(value);
+const isISBN13 = (value) => /^97[89]\d{10}$/.test(value);
+const isISBN = (value) => isISBN10(value) || isISBN13(value);
+
+const isbnChecksum = (value) => {
+  if (isISBN13(value)) {
+    const sum = value
+      .slice(0, 12)
+      .split("")
+      .reduce((acc, digit, i) => acc + Number(digit) * (i % 2 ? 3 : 1), 0);
+    return (10 - (sum % 10)) % 10 === Number(value[12]);
+  }
+  if (isISBN10(value)) {
+    const sum = value
+      .split("")
+      .reduce(
+        (acc, digit, i) =>
+          acc + (digit === "X" ? 10 : Number(digit)) * (10 - i),
+        0
+      );
+    return sum % 11 === 0;
+  }
+  return false;
 };
 
+// strip common prefixes, annotations and separators from an ISBN value
+const normalizeISBN = (value) =>
+  (value ?? "")
+    .replace(/[([][^)\]]*[)\]]/g, " ")
+    .replace(/^\s*urn:isbn:/i, "")
+    .replace(/^\s*isbn(?:[-\s]?(?:10|13))?\s*[:：]?\s*/i, "")
+    .replace(/[-\s\u2010-\u2015]/g, "")
+    .toUpperCase();
+
 const getISBN = (opf) => {
+  const $$meta = Array.from(opf.getElementsByTagNameNS(NS.OPF, "meta"));
+  // EPUB3: <meta refines="#id" property="identifier-type">ISBN</meta>
+  // or onix:codelist5 values 02 (ISBN-10) / 15 (ISBN-13)
+  const isbnRefines = new Set(
+    $$meta
+      .filter((meta) => {
+        if (meta.getAttribute("property") !== "identifier-type") return false;
+        const type = getElementText(meta) ?? "";
+        const scheme =
+          meta.getAttribute("scheme") ??
+          meta.getAttributeNS(NS.OPF, "scheme") ??
+          "";
+        return (
+          /isbn/i.test(type) ||
+          /isbn/i.test(scheme) ||
+          /^(02|15)$/.test(type.trim())
+        );
+      })
+      .map((meta) => (meta.getAttribute("refines") ?? "").replace(/^#/, ""))
+      .filter(Boolean)
+  );
+
+  const candidates = [];
   for (const el of opf.getElementsByTagNameNS(NS.DC, "identifier")) {
-    const value = (getElementText(el) ?? "").replace(/^isbn[:\s]*/i, "").trim();
-    if (!value) continue;
+    const raw = getElementText(el) ?? "";
     const scheme =
       el.getAttributeNS(NS.OPF, "scheme") ?? el.getAttribute("scheme") ?? "";
-    const id = el.getAttribute("id");
-    const refined =
-      id &&
-      Array.from(opf.getElementsByTagNameNS(NS.OPF, "meta")).some(
-        (meta) =>
-          meta.getAttribute("refines") === "#" + id &&
-          meta.getAttribute("property") === "identifier-type" &&
-          /isbn/i.test(getElementText(meta) ?? "")
-      );
-    if (/isbn/i.test(scheme) || refined || isISBN(value))
-      return value.replace(/[-\s]/g, "").toUpperCase();
+    const id = el.getAttribute("id") ?? "";
+    const hinted = /isbn/i.test(scheme) || /isbn/i.test(id) || isbnRefines.has(id);
+    // some OPFs list multiple identifiers separated by commas/semicolons
+    for (const part of raw.split(/[,;，；]/)) {
+      const value = normalizeISBN(part);
+      if (!isISBN(value)) continue;
+      // prefer explicitly labelled identifiers, valid checksums, then ISBN-13
+      candidates.push({
+        value,
+        score:
+          (hinted ? 4 : 0) +
+          (isbnChecksum(value) ? 2 : 0) +
+          (isISBN13(value) ? 1 : 0),
+      });
+    }
+  }
+  if (candidates.length) {
+    candidates.sort((a, b) => b.score - a.score);
+    return candidates[0].value;
+  }
+
+  // legacy OPF fallback: <meta name="ISBN" content="..."/>
+  for (const meta of $$meta) {
+    if (!/isbn/i.test(meta.getAttribute("name") ?? "")) continue;
+    const value = normalizeISBN(meta.getAttribute("content") ?? "");
+    if (isISBN(value)) return value;
   }
   return null;
 };
