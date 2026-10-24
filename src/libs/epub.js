@@ -220,6 +220,7 @@ const getMetadata = (opf) => {
     );
   const rendition = getProperties("rendition:");
   const media = getProperties("media:");
+  metadata.layout = getLayout(opf, rendition);
   return { metadata, rendition, media };
 };
 
@@ -376,6 +377,30 @@ const normalizeISBN = (value) =>
     .replace(/^\s*isbn(?:[-\s]?(?:10|13))?\s*[:：]?\s*/i, "")
     .replace(/[-\s\u2010-\u2015]/g, "")
     .toUpperCase();
+
+// legacy OPF meta content, e.g. <meta name="fixed-layout" content="true"/>
+const getMetaContent = (opf, name) => {
+  for (const el of opf.getElementsByTagNameNS(NS.OPF, "meta")) {
+    if ((el.getAttribute("name") ?? "").toLowerCase() !== name.toLowerCase())
+      continue;
+    return getElementText(el) || el.getAttribute("content");
+  }
+  return null;
+};
+
+// EPUB3 uses rendition:layout, older books use fixed-layout / rendition:layout meta
+const getLayout = (opf, rendition) => {
+  for (const value of [
+    rendition.layout,
+    getMetaContent(opf, "rendition:layout"),
+    getMetaContent(opf, "fixed-layout"),
+  ]) {
+    if (/^pre-paginated$/i.test(value ?? "")) return "pre-paginated";
+    if (/^reflowable$/i.test(value ?? "")) return "reflowable";
+    if (/^(true|yes|1)$/i.test(value ?? "")) return "pre-paginated";
+  }
+  return "reflowable";
+};
 
 const getISBN = (opf) => {
   const $$meta = Array.from(opf.getElementsByTagNameNS(NS.OPF, "meta"));
@@ -1023,6 +1048,7 @@ export class EPUB {
       language: metadata?.language,
       identifier: getIdentifier(opf),
       isbn: metadata?.isbn,
+      layout: metadata?.layout,
       description: metadata?.description?.value,
       publisher: metadata?.publisher?.value,
       published: metadata?.date,
