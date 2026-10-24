@@ -207,6 +207,7 @@ const getMetadata = (opf) => {
       ];
     })
   );
+  metadata.isbn = getISBN(opf);
 
   const getProperties = (prefix) =>
     Object.fromEntries(
@@ -341,6 +342,32 @@ const getIdentifier = (opf) =>
     opf.getElementById(opf.documentElement.getAttribute("unique-identifier")) ??
       opf.getElementsByTagNameNS(NS.DC, "identifier")[0]
   );
+
+const isISBN = (value) => {
+  const normalized = value.replace(/[-\s]/g, "").toUpperCase();
+  return /^(?:97[89])?\d{9}[\dX]$/.test(normalized);
+};
+
+const getISBN = (opf) => {
+  for (const el of opf.getElementsByTagNameNS(NS.DC, "identifier")) {
+    const value = (getElementText(el) ?? "").replace(/^isbn[:\s]*/i, "").trim();
+    if (!value) continue;
+    const scheme =
+      el.getAttributeNS(NS.OPF, "scheme") ?? el.getAttribute("scheme") ?? "";
+    const id = el.getAttribute("id");
+    const refined =
+      id &&
+      Array.from(opf.getElementsByTagNameNS(NS.OPF, "meta")).some(
+        (meta) =>
+          meta.getAttribute("refines") === "#" + id &&
+          meta.getAttribute("property") === "identifier-type" &&
+          /isbn/i.test(getElementText(meta) ?? "")
+      );
+    if (/isbn/i.test(scheme) || refined || isISBN(value))
+      return value.replace(/[-\s]/g, "").toUpperCase();
+  }
+  return null;
+};
 
 // https://www.w3.org/publishing/epub32/epub-ocf.html#sec-resource-obfuscation
 const deobfuscate = async (key, length, blob) => {
@@ -929,6 +956,7 @@ export class EPUB {
       sortAs: title?.fileAs,
       language: metadata?.language,
       identifier: getIdentifier(opf),
+      isbn: metadata?.isbn,
       description: metadata?.description?.value,
       publisher: metadata?.publisher?.value,
       published: metadata?.date,
