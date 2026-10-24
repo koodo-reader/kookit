@@ -130,6 +130,7 @@ class GeneralParser {
             published: metadata.published,
             modified: metadata.modified,
             subject: subject,
+            rights: metadata.rights,
           });
         };
       } catch (error) {
