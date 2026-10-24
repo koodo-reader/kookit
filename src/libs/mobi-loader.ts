@@ -1,9 +1,11 @@
 import { isMOBI, MOBI } from "./mobi.js";
 import { unzlibSync } from "fflate";
 
-export const loadMobiBook = async (mobiBuffer: ArrayBuffer) => {
-  let blob = new Blob([mobiBuffer]);
-  let file = new File([blob], "book", {
+export const loadMobiBook = async (
+  mobiBuffer: ArrayBuffer
+): Promise<any> => {
+  const blob = new Blob([mobiBuffer]);
+  const file = new File([blob], "book", {
     lastModified: new Date().getTime(),
     type: blob.type,
   });
