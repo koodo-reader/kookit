@@ -1,9 +1,12 @@
 declare var window: any;
 // Page gap: passed from host via config.pageGap to window.pageGap (unit px).
-// Fallback to 60 when not set; used as column-gap in single/double column layout
+// Fallback to min(60, dimension / 12) when not set; used as column-gap in
+// single/double column layout
 export const getSectionGap = (dimension: number): number => {
   const pageGap = parseInt(String(window.pageGap ?? ""));
-  let section = isNaN(pageGap) ? 60 : pageGap;
+  let section = isNaN(pageGap)
+    ? Math.min(60, Math.floor(dimension / 12))
+    : pageGap;
   // keep room for the columns
   section = Math.min(section, Math.floor(dimension - 4));
   // gap can only be an even number
