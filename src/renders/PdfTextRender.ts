@@ -167,6 +167,15 @@ class PdfTextRender extends GeneralRender {
           this.processingPromises.delete(i);
         });
         this.processingPromises.set(i, promise);
+        // externalWorker 底层实现通常一次只能识别一页（如 paddle 的单个 ort wasm
+        // session 不支持并发 run），宿主自行负责并发适配前不可放开；云端
+        // official-ai-ocr 与移动端 external-engine 桥接支持并行，保持异步分发
+        if (
+          this.ocrEngine !== "official-ai-ocr" &&
+          this.ocrEngine !== "external-engine"
+        ) {
+          await promise;
+        }
       }
     }
   }
