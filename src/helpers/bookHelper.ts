@@ -59,8 +59,13 @@ class BookHelper {
       isConvertPDF: string;
       backgroundColor: string;
       isScannedPDF: string;
+      // tesseract / paddle / system-ocr / external-engine / official-ai-ocr / plugin-ocr
+      // 所有引擎均要求通过 externalWorker 传入识别实现（recognize => Promise<string>）
       ocrEngine: string;
       revertDirection?: string;
+      // 通用 OCR 传入 image URL 调用 recognize(imageURL)；
+      // external-engine（移动端桥接）调用 recognize(chapterDocIndex, "")；
+      // official-ai-ocr accurate 模式调用 recognize(File)
       externalWorker?: any;
       isFixedLayout?: string;
     },
