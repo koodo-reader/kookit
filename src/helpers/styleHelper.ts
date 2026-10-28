@@ -108,6 +108,9 @@ class StyleHelper {
     cssRules.push(
       `h1:not(.hide), h2, h3, h4, h5, h6, title{${this.getCustomCss(ConfigService, true)}}`
     );
+    cssRules.push(
+      `h1:not(.hide), h2, h3, h4, h5, h6, title{margin-left: 0px !important; margin-right: 0px !important; }}`
+    );
 
     // Code formatting — allow wrapping and column fragmentation
     cssRules.push(

@@ -348,10 +348,7 @@ class PdfTextRender extends GeneralRender {
         showOCRProgress(1);
         this.isFinishOCR = true;
       }
-      if (
-        this.ocrEngine === "official-ai-ocr" &&
-        this.ocrLang === "accurate"
-      ) {
+      if (this.ocrEngine === "official-ai-ocr" && this.ocrLang === "accurate") {
         return textContent;
       }
     } finally {
