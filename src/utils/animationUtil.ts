@@ -64,6 +64,8 @@ function createBookElement(sectionCount) {
   document.head.appendChild(style);
 }
 
+export const MIMICAL_FLIP_END_EVENT = "page-flipend";
+
 let flipRenderTimer: number | null = null;
 let flipAnimFrameId: number | null = null;
 let flipAnimating = false;
@@ -119,6 +121,9 @@ export const addPageAnimation = (
 
   var flips: any = [];
 
+  // 上一帧是否处于翻页动画中（用于检测收敛边界并派发 flipend）
+  var mimicalBusy = false;
+
   var book = document.getElementById("book");
   if (!book) return;
 
@@ -148,8 +153,8 @@ export const addPageAnimation = (
   // Resize the canvas to match the book size (with scale reduction for GPU performance)
   canvas.width = (BOOK_WIDTH + CANVAS_PADDING * 2) * CANVAS_SCALE;
   canvas.height = (BOOK_HEIGHT + CANVAS_PADDING * 2) * CANVAS_SCALE;
-  canvas.style.width = (BOOK_WIDTH + CANVAS_PADDING * 2) + "px";
-  canvas.style.height = (BOOK_HEIGHT + CANVAS_PADDING * 2) + "px";
+  canvas.style.width = BOOK_WIDTH + CANVAS_PADDING * 2 + "px";
+  canvas.style.height = BOOK_HEIGHT + CANVAS_PADDING * 2 + "px";
 
   // 启用 GPU 加速: will-change 提示浏览器为该 canvas 创建独立合成层
   canvas.style.willChange = "transform";
@@ -242,7 +247,14 @@ export const addPageAnimation = (
     // 按缩放比例缩小绘图坐标，减少实际像素绘制量
     context.save();
     context.setTransform(CANVAS_SCALE, 0, 0, CANVAS_SCALE, 0, 0);
-    context.clearRect(0, 0, BOOK_WIDTH + CANVAS_PADDING * 2, BOOK_HEIGHT + CANVAS_PADDING * 2);
+    context.clearRect(
+      0,
+      0,
+      BOOK_WIDTH + CANVAS_PADDING * 2,
+      BOOK_HEIGHT + CANVAS_PADDING * 2
+    );
+
+    var settled = true;
 
     for (var i = 0; i < flips.length; i++) {
       var flip = flips[i];
@@ -260,10 +272,20 @@ export const addPageAnimation = (
       // If the flip is being dragged or is somewhere in the middle of the book, render it
       if (flip.dragging || Math.abs(flip.progress) < 0.997) {
         drawFlip(flip);
+        settled = false;
       }
     }
     // 恢复之前的变换状态
     context.restore();
+
+    // 翻页动画收敛后向宿主派发 flipend 事件，
+    // 导航层用它立即隐藏遮罩并解锁滚轮，避免固定等待 1000ms
+    if (mimicalBusy && settled) {
+      mimicalBusy = false;
+      window.dispatchEvent(new Event(MIMICAL_FLIP_END_EVENT));
+    } else if (!settled) {
+      mimicalBusy = true;
+    }
   }
 
   function drawFlip(flip) {
@@ -460,7 +482,9 @@ export const addPageAnimation = (
         clearInterval(flipRenderTimer);
         flipRenderTimer = null;
       }
-      const canvasEl = document.getElementById("pageflip-canvas") as HTMLCanvasElement;
+      const canvasEl = document.getElementById(
+        "pageflip-canvas"
+      ) as HTMLCanvasElement;
       if (canvasEl) {
         canvasEl.style.willChange = "";
         canvasEl.style.transform = "";

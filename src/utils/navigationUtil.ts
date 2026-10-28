@@ -25,6 +25,7 @@ import {
   isParentBlock,
   mergeStyleStrings,
 } from "./common";
+import { MIMICAL_FLIP_END_EVENT } from "./animationUtil";
 
 declare var window: any;
 
@@ -84,6 +85,14 @@ export const resolveXPath = (xpath: string, doc: Document): Element | null => {
   }
 };
 
+let mimicalFlipEndListener: (() => void) | null = null;
+let mimicalFlipEndTimer: number | null = null;
+
+const hideMimicalMask = () => {
+  const bookDiv = document.getElementById("book");
+  if (bookDiv) bookDiv.style.display = "none";
+};
+
 export const playMimicalFlip = (
   animation: string,
   isMobile: string | undefined,
@@ -97,8 +106,40 @@ export const playMimicalFlip = (
   bookDiv.style.display = "block";
   if (delta > 0) flipToPrevPage();
   else if (delta < 0) flipToNextPage();
-  setTimeout(() => {
-    bookDiv.style.display = "none";
+  // 翻页动画收敛（flipend 事件）后立即隐藏遮罩恢复交互；
+  // 1000ms 定时器兜底，防止边界页等未触发动画时遮罩常驻
+  if (mimicalFlipEndListener) {
+    window.removeEventListener(MIMICAL_FLIP_END_EVENT, mimicalFlipEndListener);
+  }
+  if (mimicalFlipEndTimer) {
+    clearTimeout(mimicalFlipEndTimer);
+    mimicalFlipEndTimer = null;
+  }
+  mimicalFlipEndListener = () => {
+    if (mimicalFlipEndListener) {
+      window.removeEventListener(
+        MIMICAL_FLIP_END_EVENT,
+        mimicalFlipEndListener
+      );
+      mimicalFlipEndListener = null;
+    }
+    if (mimicalFlipEndTimer) {
+      clearTimeout(mimicalFlipEndTimer);
+      mimicalFlipEndTimer = null;
+    }
+    hideMimicalMask();
+  };
+  window.addEventListener(MIMICAL_FLIP_END_EVENT, mimicalFlipEndListener);
+  mimicalFlipEndTimer = window.setTimeout(() => {
+    mimicalFlipEndTimer = null;
+    if (mimicalFlipEndListener) {
+      window.removeEventListener(
+        MIMICAL_FLIP_END_EVENT,
+        mimicalFlipEndListener
+      );
+      mimicalFlipEndListener = null;
+    }
+    hideMimicalMask();
   }, 1000);
   return true;
 };
