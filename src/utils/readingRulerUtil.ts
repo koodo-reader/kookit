@@ -70,8 +70,7 @@ class ReadingRulerManager {
     if (!iframe) return null;
     const width = iframe.clientWidth;
     if (!width) return null;
-    let section = Math.floor(width / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(width);
     const sectionWidth = Math.max(0, (width - gap) / 2);
     if (isRevertDirection()) {
       // RTL 双页第一栏在右半屏
@@ -356,3 +355,5 @@ class ReadingRulerManager {
 }
 
 export default ReadingRulerManager;
+import { getSectionGap } from "./common";
+

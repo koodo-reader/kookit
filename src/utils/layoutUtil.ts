@@ -1,6 +1,10 @@
 import Chinese from "../libs/zh-convert";
 import { processDocumentBody } from "./bionicUtil";
-import { getStylePxNumber, isElectron } from "./common";
+import {
+  getSectionGap,
+  getStylePxNumber,
+  isElectron,
+} from "./common";
 import { getBlockElement, isParentBlock } from "./common";
 import { applyTextRules } from "./textRuleUtil";
 declare var window: any;
@@ -112,8 +116,7 @@ export const handleIframeHeight = async (
     if (readerMode === "double") {
       if (isVerticalLayout()) {
       } else {
-        let section = Math.floor(element.clientWidth / 12);
-        let gap = section % 2 === 0 ? section : section - 1;
+        let gap = getSectionGap(element.clientWidth);
         let pageWidth = (element.clientWidth + gap) / 2;
         if (
           ((doc.body.scrollWidth - doc.body.clientWidth) / pageWidth) % 2 ===
@@ -321,8 +324,7 @@ export const progressInfo = (
 ) => {
   const vertical = isVerticalLayout() && readerMode !== "scroll";
   if (vertical) {
-    let section = Math.floor(element.clientHeight / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientHeight);
     return {
       totalPage:
         readerMode === "single"
@@ -346,8 +348,7 @@ export const progressInfo = (
         ) + 1,
     };
   }
-  let section = Math.floor(element.clientWidth / 12);
-  let gap = section % 2 === 0 ? section : section - 1;
+  let gap = getSectionGap(element.clientWidth);
   return {
     totalPage:
       readerMode === "scroll"
@@ -531,8 +532,7 @@ export const handleImageSize = async (
   format: string,
   doc: Document
 ) => {
-  let section = Math.floor(element.clientWidth / 12);
-  let gap = section % 2 === 0 ? section : section - 1;
+  let gap = getSectionGap(element.clientWidth);
   let scale = readerMode === "double" ? 2 : 1;
   let pageWidth = (element.clientWidth - gap) / scale;
   let imgs = Array.from(doc.querySelectorAll("img, image")) as any[];
@@ -807,8 +807,7 @@ export const handleLayout = (
   }
   let scale = readerMode === "double" ? 2 : 1;
   if (vertical) {
-    let section = Math.floor(element.clientHeight / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientHeight);
     doc.documentElement.setAttribute(
       "style",
       `writing-mode: vertical-rl; text-orientation: mixed; height: ${
@@ -822,8 +821,7 @@ export const handleLayout = (
       `margin: 0px !important; padding: 0px !important; overflow: unset !important;`
     );
   } else {
-    let section = Math.floor(element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientWidth);
     //ios 特殊处理否则平滑翻页有问题
     doc.documentElement.setAttribute(
       "style",

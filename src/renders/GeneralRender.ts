@@ -56,6 +56,7 @@ import {
 import {
   cumulativeSumWithPrevious,
   getBlockElement,
+  getSectionGap,
   isParentBlock,
 } from "../utils/common";
 import SpeedReadingManager from "../utils/speedReadingUtil";
@@ -82,6 +83,7 @@ class GeneralRender extends EventEmitter {
   bookLayout: string | undefined;
   textRules: TextRule[];
   codeHighlight: string | undefined;
+  pageGap: string | undefined;
   isHyphenation: string | undefined;
   isDarkMode: string | undefined;
   textOrientation: string | undefined;
@@ -151,6 +153,7 @@ class GeneralRender extends EventEmitter {
     platform?: string;
     textRules?: TextRule[];
     codeHighlight?: string;
+    pageGap?: string;
   }) {
     super();
     if (
@@ -203,6 +206,8 @@ class GeneralRender extends EventEmitter {
     window.bookLayout = this.bookLayout;
     this.codeHighlight = config.codeHighlight || "";
     window.codeHighlight = this.codeHighlight;
+    this.pageGap = config.pageGap || "";
+    window.pageGap = this.pageGap;
     this.textRules = config.textRules || [];
     window.textRules = this.textRules;
 
@@ -304,8 +309,7 @@ class GeneralRender extends EventEmitter {
     if (!iframe) return;
     let iframeHeight = iframe?.getBoundingClientRect().height;
     if (this.isVertical()) {
-      let section = Math.floor(this.element.clientHeight / 12);
-      let gap = section % 2 === 0 ? section : section - 1;
+      let gap = getSectionGap(this.element.clientHeight);
       return {
         width: this.element.clientWidth,
         height: this.element.clientHeight,
@@ -318,8 +322,7 @@ class GeneralRender extends EventEmitter {
         gap: gap,
       };
     }
-    let section = Math.floor(this.element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(this.element.clientWidth);
     return {
       width: this.element.clientWidth,
       height: this.element.clientHeight,
@@ -396,8 +399,7 @@ class GeneralRender extends EventEmitter {
       let doc = this.getDocument();
       if (!doc) return;
       if (this.isVertical()) {
-        let section = Math.floor(this.element.clientHeight / 12);
-        let gap = section % 2 === 0 ? section : section - 1;
+        let gap = getSectionGap(this.element.clientHeight);
         const height = this.element.clientHeight;
         const scrollDistance = height + gap;
         if (this.readerMode === "double") {
@@ -419,8 +421,7 @@ class GeneralRender extends EventEmitter {
               : "auto",
         });
       } else {
-        let section = Math.floor(this.element.clientWidth / 12);
-        let gap = section % 2 === 0 ? section : section - 1;
+        let gap = getSectionGap(this.element.clientWidth);
         const width = this.element.clientWidth;
         const scrollDistance = width + gap;
         if (this.readerMode === "double") {
@@ -808,16 +809,14 @@ class GeneralRender extends EventEmitter {
     if (this.readerMode !== "scroll") {
       // 页宽/页高计算与 handleScrollPage 保持一致，并对齐到页网格
       if (this.isVertical()) {
-        let section = Math.floor(this.element.clientHeight / 12);
-        let gap = section % 2 === 0 ? section : section - 1;
+        let gap = getSectionGap(this.element.clientHeight);
         let scrollDistance = this.element.clientHeight + gap;
         doc.body.scrollTo(
           0,
           Math.max(0, Math.round(top / scrollDistance)) * scrollDistance
         );
       } else {
-        let section = Math.floor(this.element.clientWidth / 12);
-        let gap = section % 2 === 0 ? section : section - 1;
+        let gap = getSectionGap(this.element.clientWidth);
         let scrollDistance = this.element.clientWidth + gap;
         let targetLeft =
           Math.max(0, Math.round(left / scrollDistance)) * scrollDistance;
@@ -1008,8 +1007,7 @@ class GeneralRender extends EventEmitter {
       }
       return;
     }
-    let section = Math.floor(this.element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(this.element.clientWidth);
     slideAnimateTo(direction, this.format, doc, doc, this.element, this, gap);
   }
   async prevChapter() {

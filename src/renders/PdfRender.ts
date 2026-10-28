@@ -26,6 +26,7 @@ import {
 } from "../utils/navigationUtil.js";
 import rangy from "rangy/lib/rangy-core.js";
 import "rangy/lib/rangy-textrange";
+import { getSectionGap } from "../utils/common.js";
 declare var window: any;
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
@@ -341,8 +342,7 @@ class PdfRender extends GeneralRender {
     let doc = this.getDocument();
     if (!doc) return;
     let scale = this.readerMode === "double" ? 2 : 1;
-    let section = Math.floor(doc.body.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(doc.body.clientWidth);
 
     let subIframe = doc.querySelectorAll("iframe")[0];
     let iframeHeight = subIframe?.getBoundingClientRect().height;
@@ -1302,8 +1302,7 @@ class PdfRender extends GeneralRender {
     let viewHeight = this.element.clientHeight;
     if (this.readerMode === "double") {
       let scale = this.readerMode === "double" ? 2 : 1;
-      let section = Math.floor(this.element.clientWidth / 12);
-      let gap = section % 2 === 0 ? section : section - 1;
+      let gap = getSectionGap(this.element.clientWidth);
       viewWidth = (viewWidth - gap) / scale;
     }
     let scale = Math.min(viewWidth / width, viewHeight / height);

@@ -68,6 +68,7 @@ class BookHelper {
       // official-ai-ocr accurate 模式调用 recognize(File)
       externalWorker?: any;
       isFixedLayout?: string;
+      pageGap?: string;
     },
     Kookit: any
   ) => {
@@ -257,6 +258,7 @@ class BookHelper {
       backgroundColor: string;
       isScannedPDF: string;
       ocrEngine: string;
+      pageGap?: string;
     }
   ) => {
     try {

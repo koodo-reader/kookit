@@ -7,7 +7,10 @@ import {
   isRevertDirection,
 } from "./layoutUtil";
 import { playMimicalFlip } from "./navigationUtil";
-import { detectLocalLanguage } from "./common";
+import {
+  detectLocalLanguage,
+  getSectionGap,
+} from "./common";
 import _ from "underscore";
 declare var window: any;
 
@@ -36,8 +39,7 @@ export const handlePDFLayout = (
 ) => {
   if (readerMode === "scroll") return;
   let scale = readerMode === "double" ? 2 : 1;
-  let section = Math.floor(doc.body.clientWidth / 12);
-  let gap = section % 2 === 0 ? section : section - 1;
+  let gap = getSectionGap(doc.body.clientWidth);
   doc.body.setAttribute(
     "style",
     `${readerMode === "double" ? "position: absolute;" : ""}height: 100%;overflow-y: hidden;overflow-X: hidden;padding-left: 0px;padding-right: 0px;margin: 0px;box-sizing: border-box;touch-action: manipulation; overscroll-behavior: none;max-width: inherit;column-fill: auto;column-gap: ${gap}px; column-width: ${
@@ -136,8 +138,7 @@ export const handleScrollPDFPosition = async (
   if (readerMode !== "scroll") {
     if (isRevertDirection()) {
       // RTL 下容器按索引逆序排列，直接按“每屏几页”计算目标偏移
-      let section = Math.floor(doc.body.clientWidth / 12);
-      let gap = section % 2 === 0 ? section : section - 1;
+      let gap = getSectionGap(doc.body.clientWidth);
       const stride = doc.body.clientWidth + gap;
       const pagesPerView = readerMode === "double" ? 2 : 1;
       const viewIndex = Math.floor(chapterDocIndex / pagesPerView);
@@ -433,8 +434,7 @@ export const handleIOSScrollPage = async (
   chapterDocIndex: number,
   readerMode: string
 ) => {
-  let section = Math.floor(doc.body.clientWidth / 12);
-  let gap = section % 2 === 0 ? section : section - 1;
+  let gap = getSectionGap(doc.body.clientWidth);
   const width = doc.body.clientWidth;
   const revertDirection = isRevertDirection();
   playMimicalFlip(animation, isMobile, delta, flipToNextPage, flipToPrevPage);

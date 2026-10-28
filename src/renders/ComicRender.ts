@@ -11,7 +11,10 @@ import GeneralRender from "./GeneralRender";
 import untar from "js-untar";
 import { getCache } from "../libs/cache.js";
 import JSZip from "jszip";
-import { isElectron } from "../utils/common";
+import {
+  getSectionGap,
+  isElectron,
+} from "../utils/common";
 import {
   createPDFIframe,
   handleIOSScrollPage,
@@ -119,8 +122,7 @@ class ComicRender extends GeneralRender {
         // 模板值，宽屏上看高图时按比例算出的高度会超出 body（可视高度
         // 一列）被 overflow 裁掉，导致图片底部不可见，超限时按可视高度
         // letterbox，图片在 iframe 内经 object-fit:contain 仍完整显示
-        const section = Math.floor(doc.body.clientWidth / 12);
-        const gap = section % 2 === 0 ? section : section - 1;
+        const gap = getSectionGap(doc.body.clientWidth);
         const pageWidth = (doc.body.clientWidth - gap) / 2;
         const containerHeight = Math.min(
           pageWidth / aspectRatio,
@@ -958,8 +960,7 @@ class ComicRender extends GeneralRender {
     let doc: any = this.getDocument();
     if (!doc) return;
     let scale = this.readerMode === "double" ? 2 : 1;
-    let section = Math.floor(doc.body.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(doc.body.clientWidth);
     let subIframe = doc.querySelectorAll("iframe")[0];
     let iframeHeight = subIframe?.getBoundingClientRect().height;
     // PPTX/XPS 等复用漫画结构的格式需要与 PDF 一致的位置信息来对齐选文菜单

@@ -19,6 +19,7 @@ import { cleanText } from "../libs/textProcessor";
 import {
   getBlockElement,
   getPageWidth,
+  getSectionGap,
   getStylePxNumber,
   getViewportSize,
   isParentBlock,
@@ -114,8 +115,7 @@ export const handleScrollPage = async (
   const vertical = isVerticalLayout();
   playMimicalFlip(animation, isMobile, delta, flipToNextPage, flipToPrevPage);
   if (vertical) {
-    let section = Math.floor(element.clientHeight / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientHeight);
     const height = element.clientHeight;
     const currentScrollTop = doc.body.scrollTop;
     const scrollDistance = height + gap;
@@ -142,8 +142,7 @@ export const handleScrollPage = async (
       });
     }
   } else {
-    let section = Math.floor(element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientWidth);
     const width = element.clientWidth;
     const currentScrollLeft = getLogicalHorizontalScroll(doc.body);
     const scrollDistance = width + gap;
@@ -552,13 +551,11 @@ export const handleScrollPosition = async (
   const vertical = isVerticalLayout() && readerMode !== "scroll";
   if (page && readerMode !== "scroll") {
     if (vertical) {
-      let section = Math.floor(element.clientHeight / 12);
-      let gap = section % 2 === 0 ? section : section - 1;
+      let gap = getSectionGap(element.clientHeight);
       let pageHeight = element.clientHeight + gap;
       top = pageHeight * (parseInt(page) - 1);
     } else {
-      let section = Math.floor(element.clientWidth / 12);
-      let gap = section % 2 === 0 ? section : section - 1;
+      let gap = getSectionGap(element.clientWidth);
       const width = convertComputedNum(getComputedStyle(element).width);
       let pageWidth = width + gap;
       left = getScrollLeftForLogical(
@@ -668,8 +665,7 @@ export const getCloestBlock = (
     return targetNode;
   }
   if (vertical) {
-    let section = Math.floor(element.clientHeight / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientHeight);
     let offsetTop =
       getActualOffsetTop(targetNode) -
       convertStyleNum(
@@ -689,8 +685,7 @@ export const getCloestBlock = (
       return targetNode;
     }
   } else {
-    let section = Math.floor(element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientWidth);
     let offsetLeft =
       getActualOffsetLeft(targetNode) -
       convertStyleNum(
@@ -794,8 +789,7 @@ export const isCurrentNodeFarFromParrent = (
 ) => {
   const vertical = isVerticalLayout() && readerMode !== "scroll";
   if (vertical) {
-    let section = Math.floor(element.clientHeight / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientHeight);
     if (
       Math.abs(
         getActualOffsetTop(targetNode) -
@@ -808,8 +802,7 @@ export const isCurrentNodeFarFromParrent = (
       return false;
     }
   } else {
-    let section = Math.floor(element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientWidth);
     if (
       Math.abs(
         getActualOffsetLeft(targetNode) -
