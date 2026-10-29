@@ -211,16 +211,34 @@ export const txtToHtml = (
     }
   } else {
     // --- Loop for Full File (if not large or no bookLocation) ---
+    let lastTitleIndex = -1;
+    let hasContentSinceTitle = false;
     for (const item of lines) {
       if (item && isTitle(item, parserRegex)) {
+        if (lastTitleIndex !== -1 && !hasContentSinceTitle) {
+          // 上一个章节只有标题没有正文，降级为正文段落，剔除出目录
+          htmlParts[lastTitleIndex] = `<p>${htmlParts[
+            lastTitleIndex
+          ].slice(4, -5)}</p>`;
+        }
+        lastTitleIndex = htmlParts.length;
         htmlParts.push(`<h1>${item}</h1>`); // Push to array
+        hasContentSinceTitle = false;
       } else {
         if (item.trim() === "") {
           htmlParts.push(`<p class="hide">${item}</p>`); // Push line break for empty lines
           continue; // Skip further processing for empty lines
         }
         htmlParts.push(`<p>${item}</p>`); // Push to array
+        hasContentSinceTitle = true;
       }
+    }
+    if (lastTitleIndex !== -1 && !hasContentSinceTitle) {
+      // 文件末尾最后一个标题只有标题没有正文，降级为正文段落，剔除出目录
+      htmlParts[lastTitleIndex] = `<p>${htmlParts[lastTitleIndex].slice(
+        4,
+        -5
+      )}</p>`;
     }
   }
 
