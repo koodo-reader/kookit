@@ -109,6 +109,10 @@ export const txtToHtml = (
   if (lines.length === 1) {
     lines = text.split("\r");
   }
+  // 丢弃文件开头的纯空白行，避免空白内容脱离第一个章节标题单独成章
+  while (lines.length > 0 && lines[0].trim() === "") {
+    lines.shift();
+  }
 
   const htmlParts: string[] = []; // Use an array to store HTML parts
   let isRefresh = false;
@@ -122,6 +126,11 @@ export const txtToHtml = (
   if (noTitle) {
     //分章方式改成每500行分一章，且不进行标题识别
     let chapterIndex = 0;
+    if (lines.length === 0) {
+      // 纯空白行文件，避免生成空 HTML 导致 noTitle 兜底无限递归
+      htmlParts.push(`<h1 class="hide">Chapter 0</h1>`);
+      chapterIndex = 1;
+    }
     for (let i = 0; i < lines.length; i += 500) {
       const chapterLines = lines.slice(i, i + 500);
       htmlParts.push(`<h1 class="hide">Chapter ${chapterIndex}</h1>`); // Push chapter title to array
@@ -217,9 +226,10 @@ export const txtToHtml = (
       if (item && isTitle(item, parserRegex)) {
         if (lastTitleIndex !== -1 && !hasContentSinceTitle) {
           // 上一个章节只有标题没有正文，降级为正文段落，剔除出目录
-          htmlParts[lastTitleIndex] = `<p>${htmlParts[
-            lastTitleIndex
-          ].slice(4, -5)}</p>`;
+          htmlParts[lastTitleIndex] = `<p>${htmlParts[lastTitleIndex].slice(
+            4,
+            -5
+          )}</p>`;
         }
         lastTitleIndex = htmlParts.length;
         htmlParts.push(`<h1>${item}</h1>`); // Push to array
