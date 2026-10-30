@@ -5,22 +5,30 @@ import terser from "@rollup/plugin-terser";
 import json from "@rollup/plugin-json";
 import esbuild from "rollup-plugin-esbuild";
 import path from "path";
-// 不再压缩/混淆（compress: false + mangle: false，产物保持可读的多行格式）：
-// 产物以源码形式跟踪在宿主仓库（koodo-reader / koodo-reader-expo），
-// 可读且确定性输出让每次修改的 git diff 最小。
-// 注释仍必须移除：依赖产物中的 eslint-disable 注释会让宿主项目 ESLint 报
-// "Definition for rule ... was not found"
-// （@zip.js 的 webpackIgnore 魔法注释如今在 external 依赖自身内，不经本构建，无需保留）
+// watch（yarn dev）时 terser 只做去注释（compress: false），加快重编译；
+// 注释必须移除：依赖产物中的 eslint-disable 注释会让宿主项目 ESLint 报
+// "Definition for rule ... was not found"。
+// 例外：@zip.js/zip.js 的 codec-registry.js 中有
+// `import(/* webpackIgnore: true */ /* @vite-ignore */ codecURI)`，
+// 保留这两个魔法注释才能避免宿主项目 webpack 报
+// "Critical dependency: the request of a dependency is an expression"
+const keepMagicComments = /webpackIgnore|@vite-ignore/;
+const isWatch = process.env.ROLLUP_WATCH === "true";
 const terserPlugin = () =>
-  terser({
-    compress: false,
-    mangle: false,
-    format: {
-      beautify: true,
-      indent_level: 2,
-      comments: false,
-    },
-  });
+  terser(
+    isWatch
+      ? {
+          compress: false,
+          mangle: false,
+          format: { comments: keepMagicComments },
+        }
+      : {
+          format: {
+            comments: keepMagicComments, // 仅保留 webpack/vite 魔法注释
+          },
+          mangle: false,
+        }
+  );
 const getDesktopOutputPath = (filename) => {
   const basePath = "D:\\Project\\koodo-reader";
   return path.join(basePath, "src", "assets", "lib", filename);
