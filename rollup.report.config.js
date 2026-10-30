@@ -16,7 +16,6 @@ const desktopExternal = [
   "rangy/lib/rangy-core.js",
   "rangy/lib/rangy-textrange",
   "chardet",
-  "@zip.js/zip.js",
   "liteofd",
   "@web-ppt/core",
   "kookit-zh-convert",

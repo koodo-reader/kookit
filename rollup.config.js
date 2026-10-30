@@ -70,7 +70,6 @@ const desktopExternal = [
   "rangy/lib/rangy-core.js",
   "rangy/lib/rangy-textrange",
   "chardet",
-  "@zip.js/zip.js",
   "liteofd",
   // chmlib-ts 不做 external：其 Node 文件读取器通过动态 import('fs/promises')
   // 读文件，宿主 vite（vite-plugin-node-polyfills → node-stdlib-browser）无法

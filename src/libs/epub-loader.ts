@@ -1,7 +1,6 @@
 import { EPUB } from "./epub";
 import JSZip from "jszip";
 import * as fflate from "fflate";
-import * as zip from "@zip.js/zip.js";
 
 export const makeEpubZipLoader = async (file: File) => {
   let zip = await JSZip.loadAsync(file);
@@ -119,39 +118,6 @@ export const makeEpubZipLoaderV2 = async (file: File) => {
   };
 };
 
-export const makeEpubZipLoaderV3 = async (file: File) => {
-  let zipReader = new zip.ZipReader(new zip.BlobReader(file));
-  let entries: any = await zipReader.getEntries();
-  const loadText = async (name: string) => {
-    let entry = entries.find((item) => item.filename === name);
-    if (entry) {
-      return await entry.getData(new zip.TextWriter("utf-8"));
-    }
-    return "";
-  };
-  const loadBlob = async (name: string) => {
-    let entry = entries.find((item) => item.filename === name);
-    if (entry) {
-      return await entry.getData(new zip.BlobWriter());
-    }
-    return new Blob([new ArrayBuffer(0)]);
-  };
-  const getSize = (name: string) => {
-    let entry = entries.find((item) => item.filename === name);
-    if (entry) {
-      return entry.uncompressedSize || 0;
-    }
-  };
-  return {
-    entries: entries.map((item) => {
-      return { filename: item.filename };
-    }),
-    loadText,
-    loadBlob,
-    getSize,
-  };
-};
-
 export const loadEpubBook = async (epubBuffer: ArrayBuffer) => {
   let blob = new Blob([epubBuffer]);
   let file = new File([blob], "book", {
@@ -164,17 +130,11 @@ export const loadEpubBook = async (epubBuffer: ArrayBuffer) => {
   } catch (error) {
     console.error(error);
     try {
-      const loader: any = await makeEpubZipLoaderV3(file);
+      const loader: any = await makeEpubZipLoaderV2(file);
       return await new EPUB(loader).init();
     } catch (error) {
       console.error(error);
-      try {
-        const loader: any = await makeEpubZipLoaderV2(file);
-        return await new EPUB(loader).init();
-      } catch (error) {
-        console.error(error);
-        throw error;
-      }
+      throw error;
     }
   }
 };
