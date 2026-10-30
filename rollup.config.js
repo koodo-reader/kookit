@@ -54,7 +54,29 @@ const stubFsPromises = () => ({
     return null;
   },
 });
+// 桌面构建 additional external：由 koodo-reader 通过 npm 安装并在其
+// vite 构建时解析注入。这些包仍在 kookit package.json 的 dependencies 中保留
+// （移动版 UMD 构建不支持 external，kookit-mobile.min.js / kookit.min.txt
+// 依旧全量打包这些依赖，koodo-reader-expo 无需额外安装）；
 // @web-ppt/core 静态依赖 fflate（桌面构建已 external），图表由包内自行渲染为 SVG
+const desktopExternal = [
+  "mammoth",
+  "jszip",
+  "underscore",
+  "marked",
+  "mhtml2html",
+  "js-untar",
+  "fflate",
+  "rangy/lib/rangy-core.js",
+  "rangy/lib/rangy-textrange",
+  "chardet",
+  "@zip.js/zip.js",
+  "liteofd",
+  // chmlib-ts 不做 external：其 Node 文件读取器通过动态 import('fs/promises')
+  // 读文件，宿主 vite（vite-plugin-node-polyfills → node-stdlib-browser）无法
+  // shim 该导入导致构建报错，仍由本构建 stubFsPromises 后打进产物
+  "@web-ppt/core",
+];
 export default [
   {
     input: "src/index.ts",
@@ -83,18 +105,7 @@ export default [
       terserPlugin(), // 压缩代码（watch 模式仅去注释）
     ],
 
-    external: [
-      "mammoth",
-      "jszip",
-      "underscore",
-      "marked",
-      "mhtml2html",
-      "js-untar",
-      "fflate",
-      "rangy/lib/rangy-core.js",
-      "rangy/lib/rangy-textrange",
-      "chardet",
-    ],
+    external: desktopExternal,
   },
   {
     input: "src/index.ts",
