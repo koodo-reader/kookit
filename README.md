@@ -4,13 +4,13 @@ kookit is built with TypeScript and Rollup, and serves as the core rendering eng
 
 ## Supported Formats
 
-| Category             | Formats                                                |
-| -------------------- | ------------------------------------------------------ |
-| Reflowable books     | EPUB, MOBI, AZW3, AZW, TXT, MD, FB2, DOCX, DOC, RTF    |
-| Fixed-layout books   | PDF, XPS, OXPS, DJVU, DJV, OFD                         |
-| Comic books          | CBZ, CBR, CBT, CB7                                     |
-| Documents            | CHM, HTML, XHTML, MHTML, HTM, XML, PPTX, PPT           |
-| Others               | CACHE (Koodo Reader's cache format)                    |
+| Category           | Formats                                             |
+| ------------------ | --------------------------------------------------- |
+| Reflowable books   | EPUB, MOBI, AZW3, AZW, TXT, MD, FB2, DOCX, DOC, RTF |
+| Fixed-layout books | PDF, XPS, OXPS, DJVU, DJV, OFD                      |
+| Comic books        | CBZ, CBR, CBT, CB7                                  |
+| Documents          | CHM, HTML, XHTML, MHTML, HTM, XML, PPTX, PPT        |
+| Others             | CACHE (Koodo Reader's cache format)                 |
 
 ## Building
 
@@ -33,8 +33,6 @@ yarn clean
 The build outputs are hardcoded in `rollup.config.js` and go directly into the host projects:
 
 - Desktop (ES module) → `koodo-reader/src/assets/lib/kookit.min.js`
-- Mobile (UMD) → `koodo-reader-expo/assets/lib/kookit.min.txt`
-- Mobile (ES module) → `koodo-reader-expo/assets/lib/kookit-mobile.min.js`
 
 ## Architecture
 
@@ -56,20 +54,20 @@ GeneralRender (src/renders/GeneralRender.ts)
 
 ## Dependencies
 
-| Package                               | Purpose                                                |
-| ------------------------------------- | ------------------------------------------------------ |
-| `jszip` / `@zip.js/zip.js` / `fflate` | ZIP decompression (multiple engines for compatibility) |
-| `7z-wasm`                             | 7z archive support (CB7)                               |
-| `js-untar`                            | TAR archive support (CBT)                              |
-| `mammoth`                             | DOCX to HTML conversion                                |
-| `marked`                              | Markdown to HTML conversion                            |
-| `mhtml2html`                          | MHTML to HTML conversion                               |
-| `rangy`                               | Cross-browser text selection and range utilities       |
-| `chardet`                             | Automatic character encoding detection                 |
-| `chmlib-ts`                           | CHM file parsing (TypeScript port of CHMLib)           |
-| `liteofd`                             | OFD page rendering to canvas                           |
-| `@web-ppt/core`                       | PPTX / PPT page rendering to SVG                       |
-| pdf.js                                | PDF rendering engine, loaded from the host (`window.pdfjsLib`) |
+| Package            | Purpose                                                        |
+| ------------------ | -------------------------------------------------------------- |
+| `jszip` / `fflate` | ZIP decompression (multiple engines for compatibility)         |
+| `7z-wasm`          | 7z archive support (CB7)                                       |
+| `js-untar`         | TAR archive support (CBT)                                      |
+| `mammoth`          | DOCX to HTML conversion                                        |
+| `marked`           | Markdown to HTML conversion                                    |
+| `mhtml2html`       | MHTML to HTML conversion                                       |
+| `rangy`            | Cross-browser text selection and range utilities               |
+| `chardet`          | Automatic character encoding detection                         |
+| `chmlib-ts`        | CHM file parsing (TypeScript port of CHMLib)                   |
+| `liteofd`          | OFD page rendering to canvas                                   |
+| `@web-ppt/core`    | PPTX / PPT page rendering to SVG                               |
+| pdf.js             | PDF rendering engine, loaded from the host (`window.pdfjsLib`) |
 
 The DjVu, legacy DOC (.doc binary format) and RTF parsers are vendored under `src/libs/` and require no external dependencies.
 
