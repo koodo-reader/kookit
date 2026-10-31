@@ -20,6 +20,8 @@ export const mimetype = {
   bmp: "image/bmp",
   ico: "image/x-icon",
   chm: "application/vnd.ms-htmlhelp",
+  mht: "application/x-mimearchive",
+  mhtml: "application/x-mimearchive",
 };
 export const mimetypeReverse = {
   "image/svg+xml": "svg",
@@ -38,6 +40,10 @@ export const mimetypeReverse = {
   "text/xml": "xml",
   "application/xhtml+xml": "xhtml",
   "text/css": "css",
+  "image/bmp": "bmp",
+  "image/x-icon": "ico",
+  "application/vnd.ms-htmlhelp": "chm",
+  "application/x-mimearchive": "mhtml",
 };
 export const removeExtraQuestionMark = (html: any) => {
   return html

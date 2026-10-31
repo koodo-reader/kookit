@@ -1683,6 +1683,7 @@ class GeneralRender extends EventEmitter {
     let docs = this.getAllDocuments();
     let iframes = this.getAllIframes();
     const animation = this.isPageAnimationDisabled() ? "none" : this.animation;
+    //针对EPUB,MOBI等格式的漫画，分页模式下的触控事件需要特殊处理
     const touchFormat =
       this.isPaginated && !isPaginatedFormat(this.format)
         ? "COMIC"
