@@ -1768,7 +1768,6 @@ class GeneralRender extends EventEmitter {
     node?: any;
     redirectChapter?: boolean;
   }> {
-    console.log("handleLinkJump11111 href:", href, event);
     let doc = this.getDocument();
     if (!doc) return { handled: false };
     if (
@@ -1826,7 +1825,6 @@ class GeneralRender extends EventEmitter {
         return { handled: true };
       }
     }
-    console.log("handleLinkJump href:", href, this.resolveChapter(href));
     if (
       href &&
       href.indexOf("../") === -1 &&
@@ -1849,19 +1847,22 @@ class GeneralRender extends EventEmitter {
       );
       return { handled: true, redirectChapter: true };
     } else if (href && href.indexOf("#") > -1) {
-      console.log("handleLinkJump343 href:", href, this.resolveChapter(href));
       let id = href.split("#").reverse()[0];
       let node = doc.body.querySelector("#" + CSS.escape(id));
       let rect = event.target.getBoundingClientRect();
       let isJump = false;
       console.log("handleLinkJump node:", node, event.target);
-      if (!node || event.target === node || node.contains(event.target)) {
+      if (
+        !node ||
+        event.target === node ||
+        node.contains(event.target) ||
+        (node && !isElementFootnote(event.target))
+      ) {
         if (href.indexOf("#") !== 0) {
           while (href.startsWith(".")) {
             href = href.substring(1);
           }
           let chapterInfo = this.resolveChapter(href.split("#")[0]);
-          console.log("handleLinkJump chapterInfo:", chapterInfo);
           if (!chapterInfo) return { handled: false };
 
           if (isElementFootnote(event.target)) {
