@@ -5,6 +5,31 @@ const unescapeHTML = (str) => {
   return textarea.value;
 };
 
+const isISBN10 = (value) => /^\d{9}[\dX]$/.test(value);
+const isISBN13 = (value) => /^97[89]\d{10}$/.test(value);
+const isISBN = (value) => isISBN10(value) || isISBN13(value);
+
+const normalizeISBN = (value) =>
+  (value ?? "")
+    .replace(/[([][^)\]]*[)\]]/g, " ")
+    .replace(/^\s*urn:isbn:/i, "")
+    .replace(/^\s*isbn(?:[-\s]?(?:10|13))?\s*[:：]?\s*/i, "")
+    .replace(/[-\s\u2010-\u2015]/g, "")
+    .toUpperCase();
+
+const getISBN = (exth) => {
+  for (const part of (exth?.isbn ?? "").split(/[,;，；]/)) {
+    const value = normalizeISBN(part);
+    if (isISBN(value)) return value;
+  }
+  return null;
+};
+
+const getLayout = (exth) =>
+  /^(true|yes|1|pre-paginated)$/i.test(exth?.fixedLayout ?? "")
+    ? "pre-paginated"
+    : "reflowable";
+
 const MIME = {
   XML: "application/xml",
   XHTML: "application/xhtml+xml",
@@ -756,6 +781,8 @@ export class MOBI extends PDB {
     const { mobi, exth } = this.headers;
     return {
       identifier: mobi.uid.toString(),
+      isbn: getISBN(exth),
+      layout: getLayout(exth),
       title: unescapeHTML(exth?.title || this.decode(mobi.title)),
       author: exth?.creator?.map(unescapeHTML),
       publisher: unescapeHTML(exth?.publisher),
@@ -1221,7 +1248,7 @@ class KF8 {
     const { exth } = this.mobi.headers;
     this.dir = exth.pageProgressionDirection;
     this.rendition = {
-      layout: exth.fixedLayout === "true" ? "pre-paginated" : "reflowable",
+      layout: getLayout(exth),
       viewport: Object.fromEntries(
         exth.originalResolution
           ?.split("x")

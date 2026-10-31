@@ -1,11 +1,59 @@
 import Chinese from "../libs/zh-convert";
 import { processDocumentBody } from "./bionicUtil";
-import { getStylePxNumber, isElectron } from "./common";
+import {
+  getSectionGap,
+  getStylePxNumber,
+  isElectron,
+} from "./common";
 import { getBlockElement, isParentBlock } from "./common";
 import { applyTextRules } from "./textRuleUtil";
 declare var window: any;
 export const isVerticalLayout = (): boolean => {
   return window.textOrientation === "vertical";
+};
+// 从右往左阅读：仅在水平排版的单页/双页模式启用
+export const isRevertDirection = (): boolean => {
+  return window.revertDirection === "yes" && !isVerticalLayout();
+};
+export const getMaxHorizontalScroll = (scroller: HTMLElement): number => {
+  return Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+};
+// RTL 滚动容器的 scrollLeft 为负值，这里统一换算成从第一页开始的逻辑偏移
+export const getLogicalHorizontalScroll = (
+  scroller: HTMLElement
+): number => {
+  const scrollLeft = convertStyleNum(scroller.scrollLeft as any);
+  return isRevertDirection() ? -scrollLeft : scrollLeft;
+};
+export const getScrollLeftForLogical = (
+  scroller: HTMLElement,
+  logicalOffset: number
+): number => {
+  const maxScroll = getMaxHorizontalScroll(scroller);
+  const target = Math.max(0, Math.min(logicalOffset, maxScroll));
+  return isRevertDirection() ? -target : target;
+};
+// 把 getActualOffsetLeft 得到的内容偏移换算为可直接传给 scrollTo 的 scrollLeft。
+// LTR 下两者相同；RTL 下内容偏移恒为非负，而目标 scrollLeft 为“内容偏移 - 最大滚动量”。
+// 保留本函数是为了让调用方继续沿用 getActualOffsetLeft，不改变 LTR 行为。
+export const getScrollLeftForContentOffset = (
+  scroller: HTMLElement,
+  contentOffset: number
+): number => {
+  const maxScroll = getMaxHorizontalScroll(scroller);
+  const logical = Math.max(0, Math.min(contentOffset, maxScroll));
+  return isRevertDirection() ? logical - maxScroll : logical;
+};
+export const applyRevertDirectionStyle = (doc: Document) => {
+  if (!isRevertDirection()) return;
+  doc.documentElement.setAttribute("data-kookit-revert-direction", "yes");
+  if (doc.getElementById("kookit-revert-direction-style")) return;
+  const style = doc.createElement("style");
+  style.id = "kookit-revert-direction-style";
+  style.textContent =
+    'html[data-kookit-revert-direction="yes"] body{direction:rtl !important;}' +
+    'html[data-kookit-revert-direction="yes"] body>*:not([dir]){direction:ltr;}';
+  (doc.head || doc.documentElement).appendChild(style);
 };
 export const convertStyleNum = (value: number) => {
   if (!value) return 0;
@@ -68,8 +116,7 @@ export const handleIframeHeight = async (
     if (readerMode === "double") {
       if (isVerticalLayout()) {
       } else {
-        let section = Math.floor(element.clientWidth / 12);
-        let gap = section % 2 === 0 ? section : section - 1;
+        let gap = getSectionGap(element.clientWidth);
         let pageWidth = (element.clientWidth + gap) / 2;
         if (
           ((doc.body.scrollWidth - doc.body.clientWidth) / pageWidth) % 2 ===
@@ -277,8 +324,7 @@ export const progressInfo = (
 ) => {
   const vertical = isVerticalLayout() && readerMode !== "scroll";
   if (vertical) {
-    let section = Math.floor(element.clientHeight / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientHeight);
     return {
       totalPage:
         readerMode === "single"
@@ -302,8 +348,7 @@ export const progressInfo = (
         ) + 1,
     };
   }
-  let section = Math.floor(element.clientWidth / 12);
-  let gap = section % 2 === 0 ? section : section - 1;
+  let gap = getSectionGap(element.clientWidth);
   return {
     totalPage:
       readerMode === "scroll"
@@ -319,16 +364,16 @@ export const progressInfo = (
                 doc.body.scrollWidth / (doc.body.clientWidth + gap) + ""
               )
             ) * 2,
-    currentPage:
-      readerMode === "scroll"
-        ? Math.floor(element.scrollTop / (element.clientHeight - 50)) + 1
-        : Math.round(
-            parseFloat(
-              convertStyleNum(doc.body.scrollLeft) /
-                (doc.body.clientWidth + gap) +
-                ""
-            )
-          ) + 1,
+      currentPage:
+        readerMode === "scroll"
+          ? Math.floor(element.scrollTop / (element.clientHeight - 50)) + 1
+          : Math.round(
+              parseFloat(
+                getLogicalHorizontalScroll(doc.body) /
+                  (doc.body.clientWidth + gap) +
+                  ""
+              )
+            ) + 1,
   };
 };
 const fetchHighlightAsset = async (path: string) => {
@@ -487,8 +532,7 @@ export const handleImageSize = async (
   format: string,
   doc: Document
 ) => {
-  let section = Math.floor(element.clientWidth / 12);
-  let gap = section % 2 === 0 ? section : section - 1;
+  let gap = getSectionGap(element.clientWidth);
   let scale = readerMode === "double" ? 2 : 1;
   let pageWidth = (element.clientWidth - gap) / scale;
   let imgs = Array.from(doc.querySelectorAll("img, image")) as any[];
@@ -725,8 +769,15 @@ export const handleImageSize = async (
     }
 
     if (isSvgImage) {
-      item.parentElement?.setAttribute("width", maxWidth);
-      item.parentElement?.setAttribute("height", maxHeight);
+      // rtf.js 的 WMF/EMF 图片为嵌套 svg 结构（外层 svg 带 viewBox，内层 svg
+      // 承载位图），尺寸需写到最外层 svg，否则内层 svg 的宽高会被当作外层
+      // viewBox 的用户单位，图片会缩小到几乎不可见
+      let svgRoot = item.parentElement;
+      while (svgRoot && svgRoot.parentElement?.tagName === "svg") {
+        svgRoot = svgRoot.parentElement;
+      }
+      svgRoot?.setAttribute("width", maxWidth);
+      svgRoot?.setAttribute("height", maxHeight);
     }
 
     // CB non-scroll: margin-left needs live clientWidth after styles are applied
@@ -756,8 +807,7 @@ export const handleLayout = (
   }
   let scale = readerMode === "double" ? 2 : 1;
   if (vertical) {
-    let section = Math.floor(element.clientHeight / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientHeight);
     doc.documentElement.setAttribute(
       "style",
       `writing-mode: vertical-rl; text-orientation: mixed; height: ${
@@ -771,8 +821,7 @@ export const handleLayout = (
       `margin: 0px !important; padding: 0px !important; overflow: unset !important;`
     );
   } else {
-    let section = Math.floor(element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientWidth);
     //ios 特殊处理否则平滑翻页有问题
     doc.documentElement.setAttribute(
       "style",
@@ -787,6 +836,7 @@ export const handleLayout = (
       `margin: 0px !important; padding: 0px !important; overflow: unset !important;`
     );
   }
+  applyRevertDirectionStyle(doc);
 };
 
 export const isElement = (obj) => {

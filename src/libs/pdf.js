@@ -50,6 +50,139 @@ const textLayerBuilderCSS = async () =>
 const annotationLayerBuilderCSS = async () =>
   await fetchText(pdfjsPath("annotation_layer_builder.css"));
 
+const WHITE_BACKGROUND_MIN_COVERAGE = 0.5;
+
+const isWhiteFillStyle = (fillStyle) => {
+  if (typeof fillStyle !== "string") {
+    return false;
+  }
+  const style = fillStyle.replace(/\s+/g, "").toLowerCase();
+  return (
+    style === "#fff" ||
+    style === "#ffffff" ||
+    style === "white" ||
+    style === "rgb(255,255,255)" ||
+    style === "rgba(255,255,255,1)"
+  );
+};
+
+const filterWhitePageBackground = (canvasContext, canvas) => {
+  const original = {
+    beginPath: canvasContext.beginPath,
+    moveTo: canvasContext.moveTo,
+    lineTo: canvasContext.lineTo,
+    rect: canvasContext.rect,
+    bezierCurveTo: canvasContext.bezierCurveTo,
+    quadraticCurveTo: canvasContext.quadraticCurveTo,
+    arc: canvasContext.arc,
+    arcTo: canvasContext.arcTo,
+    ellipse: canvasContext.ellipse,
+    fill: canvasContext.fill,
+    fillText: canvasContext.fillText,
+    strokeText: canvasContext.strokeText,
+    drawImage: canvasContext.drawImage,
+    putImageData: canvasContext.putImageData,
+  };
+
+  let bounds = null;
+  let hasCurve = false;
+  let hasPaintedContent = false;
+
+  const addPoint = (x, y) => {
+    const transform = canvasContext.getTransform();
+    const px = transform.a * x + transform.c * y + transform.e;
+    const py = transform.b * x + transform.d * y + transform.f;
+    if (!bounds) {
+      bounds = { minX: px, minY: py, maxX: px, maxY: py };
+    } else {
+      bounds.minX = Math.min(bounds.minX, px);
+      bounds.minY = Math.min(bounds.minY, py);
+      bounds.maxX = Math.max(bounds.maxX, px);
+      bounds.maxY = Math.max(bounds.maxY, py);
+    }
+  };
+
+  const coversCanvas = () => {
+    if (!bounds) {
+      return false;
+    }
+    const width = canvas.width;
+    const height = canvas.height;
+    const left = Math.max(0, bounds.minX);
+    const top = Math.max(0, bounds.minY);
+    const right = Math.min(width, bounds.maxX);
+    const bottom = Math.min(height, bounds.maxY);
+    if (right <= left || bottom <= top) {
+      return false;
+    }
+    const coveredWidth = right - left;
+    const coveredHeight = bottom - top;
+    return (
+      coveredWidth >= width * WHITE_BACKGROUND_MIN_COVERAGE &&
+      coveredHeight >= height * WHITE_BACKGROUND_MIN_COVERAGE &&
+      coveredWidth * coveredHeight >=
+        width * height * WHITE_BACKGROUND_MIN_COVERAGE
+    );
+  };
+
+  canvasContext.beginPath = function () {
+    bounds = null;
+    hasCurve = false;
+    return original.beginPath.apply(this, arguments);
+  };
+
+  canvasContext.moveTo = function (x, y) {
+    addPoint(x, y);
+    return original.moveTo.apply(this, arguments);
+  };
+
+  canvasContext.lineTo = function (x, y) {
+    addPoint(x, y);
+    return original.lineTo.apply(this, arguments);
+  };
+
+  canvasContext.rect = function (x, y, width, height) {
+    addPoint(x, y);
+    addPoint(x + width, y);
+    addPoint(x + width, y + height);
+    addPoint(x, y + height);
+    return original.rect.apply(this, arguments);
+  };
+
+  ["bezierCurveTo", "quadraticCurveTo", "arc", "arcTo", "ellipse"].forEach(
+    (method) => {
+      canvasContext[method] = function () {
+        hasCurve = true;
+        return original[method].apply(this, arguments);
+      };
+    }
+  );
+
+  canvasContext.fill = function () {
+    const isPathFill = !arguments.length || typeof arguments[0] === "string";
+    if (
+      isPathFill &&
+      !hasPaintedContent &&
+      !hasCurve &&
+      canvasContext.globalAlpha === 1 &&
+      canvasContext.globalCompositeOperation === "source-over" &&
+      isWhiteFillStyle(canvasContext.fillStyle) &&
+      coversCanvas()
+    ) {
+      return;
+    }
+    hasPaintedContent = true;
+    return original.fill.apply(this, arguments);
+  };
+
+  ["fillText", "strokeText", "drawImage", "putImageData"].forEach((method) => {
+    canvasContext[method] = function () {
+      hasPaintedContent = true;
+      return original[method].apply(this, arguments);
+    };
+  });
+};
+
 const render = async (
   page,
   pdf,
@@ -99,6 +232,9 @@ const render = async (
     canvas.height = viewport.height;
     canvas.width = viewport.width;
     const canvasContext = canvas.getContext("2d");
+    if (isKeepPDFBackground !== "yes") {
+      filterWhitePageBackground(canvasContext, canvas);
+    }
     try {
       if (isKeepPDFBackground === "yes") {
         await page.render({

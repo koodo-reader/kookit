@@ -6,6 +6,20 @@ const copyArrayBuffer = (src) => {
   new Uint8Array(dst).set(new Uint8Array(src));
   return dst;
 };
+const getMetadataText = (value: any): string => {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(getMetadataText).filter(Boolean).join(",");
+  }
+  if (typeof value === "object" && typeof value.name === "string") {
+    return value.name;
+  }
+  return "";
+};
 function throttle(fn: (...args: any[]) => void, wait: number) {
   let lastTime = 0;
   let timeout: any = null;
@@ -45,19 +59,32 @@ class BookHelper {
       isConvertPDF: string;
       backgroundColor: string;
       isScannedPDF: string;
+      // tesseract / paddle / system-ocr / external-engine / official-ai-ocr / plugin-ocr
+      // 所有引擎均要求通过 externalWorker 传入识别实现（recognize => Promise<string>）
       ocrEngine: string;
+      revertDirection?: string;
+      // 通用 OCR 传入 image URL 调用 recognize(imageURL)；
+      // external-engine（移动端桥接）调用 recognize(chapterDocIndex, "")；
+      // official-ai-ocr accurate 模式调用 recognize(File)
       externalWorker?: any;
+      isFixedLayout?: string;
+      pageGap?: string;
     },
     Kookit: any
   ) => {
     let rendition;
     let format = config.format.toUpperCase();
+    const isFixedLayout = config.isFixedLayout === "yes";
     if (format === "CACHE") {
       rendition = new Kookit.CacheRender(result, config);
     } else if (format === "MOBI" || format === "AZW3" || format === "AZW") {
-      rendition = new Kookit.MobiRender(result, config);
+      rendition = isFixedLayout
+        ? new Kookit.FixedLayoutRender(result, config)
+        : new Kookit.MobiRender(result, config);
     } else if (format === "EPUB") {
-      rendition = new Kookit.EpubRender(result, config);
+      rendition = isFixedLayout
+        ? new Kookit.FixedLayoutRender(result, config)
+        : new Kookit.EpubRender(result, config);
     } else if (format === "TXT") {
       // let text = iconv.decode(Buffer.from(result), charset || "utf8");
       rendition = new Kookit.TxtRender(result, config);
@@ -77,8 +104,14 @@ class BookHelper {
       }
     } else if (format === "FB2") {
       rendition = new Kookit.Fb2Render(result, config);
+    } else if (format === "CHM") {
+      rendition = new Kookit.ChmRender(result, config);
     } else if (format === "DOCX") {
       rendition = new Kookit.DocxRender(result, config);
+    } else if (format === "DOC") {
+      rendition = new Kookit.DocRender(result, config);
+    } else if (format === "RTF") {
+      rendition = new Kookit.RtfRender(result, config);
     } else if (
       format === "HTML" ||
       format === "XHTML" ||
@@ -94,6 +127,18 @@ class BookHelper {
       format === "CB7"
     ) {
       rendition = new Kookit.ComicRender(copyArrayBuffer(result), config);
+    } else if (format === "PPTX" || format === "PPT") {
+      // PPTX/PPT 逐页渲染为 SVG，沿用漫画的多 iframe 分页结构
+      rendition = new Kookit.PptxRender(copyArrayBuffer(result), config);
+    } else if (format === "XPS" || format === "OXPS") {
+      // XPS/OXPS 为固定版式文档，逐页渲染为 SVG，沿用漫画的多 iframe 分页结构
+      rendition = new Kookit.XpsRender(copyArrayBuffer(result), config);
+    } else if (format === "DJVU" || format === "DJV") {
+      // DjVu 为固定版式文档（MRC 位图），逐页解码合成为 canvas，沿用漫画的多 iframe 分页结构
+      rendition = new Kookit.DjvuRender(copyArrayBuffer(result), config);
+    } else if (format === "OFD") {
+      // OFD 为固定版式文档，逐页由 liteofd 渲染为 canvas，沿用漫画的多 iframe 分页结构
+      rendition = new Kookit.OfdRender(copyArrayBuffer(result), config);
     }
     return rendition;
   };
@@ -124,7 +169,7 @@ class BookHelper {
           "",
           0,
         ];
-        let metadata: any;
+        let metadata: any = {};
 
         switch (extension) {
           case "pdf":
@@ -133,6 +178,7 @@ class BookHelper {
           case "azw":
           case "azw3":
           case "fb2":
+          case "chm":
             metadata = await rendition.getMetadata();
             [name, author, description, publisher, cover] = [
               metadata.name || bookName,
@@ -146,6 +192,13 @@ class BookHelper {
           case "cbt":
           case "cbz":
           case "cb7":
+          case "pptx":
+          case "ppt":
+          case "xps":
+          case "oxps":
+          case "djvu":
+          case "djv":
+          case "ofd":
             metadata = await rendition.getMetadata();
             cover = metadata.cover;
             break;
@@ -171,7 +224,15 @@ class BookHelper {
             size,
             page,
             path,
-            charset
+            charset,
+            getMetadataText(metadata.published),
+            getMetadataText(metadata.modified),
+            getMetadataText(metadata.identifier),
+            getMetadataText(metadata.language),
+            getMetadataText(metadata.subject),
+            getMetadataText(metadata.rights),
+            getMetadataText(metadata.isbn),
+            getMetadataText(metadata.layout)
           )
         );
       } catch (error) {
@@ -197,6 +258,7 @@ class BookHelper {
       backgroundColor: string;
       isScannedPDF: string;
       ocrEngine: string;
+      pageGap?: string;
     }
   ) => {
     try {

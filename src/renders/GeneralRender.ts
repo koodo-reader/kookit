@@ -5,6 +5,10 @@ import {
   convertStyleNum,
   getActualOffsetLeft,
   getActualOffsetTop,
+  getLogicalHorizontalScroll,
+  getMaxHorizontalScroll,
+  getScrollLeftForContentOffset,
+  getScrollLeftForLogical,
   getSelectedElement,
   handleOneChapterDoc,
   isVerticalLayout,
@@ -46,11 +50,13 @@ import {
   addAndroidTouchEvent,
   addAppleTouchEvent,
   blobUrlToBase64,
+  isPaginatedFormat,
   slideAnimateTo,
 } from "../utils/touchUtil";
 import {
   cumulativeSumWithPrevious,
   getBlockElement,
+  getSectionGap,
   isParentBlock,
 } from "../utils/common";
 import SpeedReadingManager from "../utils/speedReadingUtil";
@@ -70,12 +76,14 @@ export interface TextRule {
 class GeneralRender extends EventEmitter {
   readerMode: string;
   format: string;
+  isPaginated: boolean = false;
   animation: string = "none";
   convertChinese: string | undefined;
   isIndent: string | undefined;
   bookLayout: string | undefined;
   textRules: TextRule[];
   codeHighlight: string | undefined;
+  pageGap: string | undefined;
   isHyphenation: string | undefined;
   isDarkMode: string | undefined;
   textOrientation: string | undefined;
@@ -101,6 +109,7 @@ class GeneralRender extends EventEmitter {
     null;
   estimatedSizePerPage: number | null = null;
   speedReadingSpeed: number = 300;
+  revertDirection: string = "no";
   platform: string = "web";
   isAllowScript: string = "no";
   touchEventSet: any;
@@ -136,6 +145,7 @@ class GeneralRender extends EventEmitter {
     isSpeedReading?: string;
     speedReadingSpeed?: number;
     textOrientation?: string;
+    revertDirection?: string;
     isShowTotalPage?: string;
     isAllowScript?: string;
     fullTranslationMode?: string;
@@ -143,6 +153,7 @@ class GeneralRender extends EventEmitter {
     platform?: string;
     textRules?: TextRule[];
     codeHighlight?: string;
+    pageGap?: string;
   }) {
     super();
     if (
@@ -158,6 +169,7 @@ class GeneralRender extends EventEmitter {
     window.readerMode = config.readerMode;
     this.animation = config.animation || "none";
     this.format = config.format;
+    this.isPaginated = isPaginatedFormat(config.format);
     this.convertChinese = config.convertChinese;
     window.convertChinese = config.convertChinese;
     this.isIndent = config.isIndent;
@@ -169,6 +181,8 @@ class GeneralRender extends EventEmitter {
     this.backgroundColor = config.backgroundColor || "";
     this.textOrientation = config.textOrientation;
     window.textOrientation = config.textOrientation;
+    this.revertDirection = config.revertDirection || "no";
+    window.revertDirection = this.revertDirection;
     this.isShowTotalPage = config.isShowTotalPage || "no";
     this.chapterList = [];
     this.chapterDocList = [];
@@ -192,6 +206,8 @@ class GeneralRender extends EventEmitter {
     window.bookLayout = this.bookLayout;
     this.codeHighlight = config.codeHighlight || "";
     window.codeHighlight = this.codeHighlight;
+    this.pageGap = config.pageGap || "";
+    window.pageGap = this.pageGap;
     this.textRules = config.textRules || [];
     window.textRules = this.textRules;
 
@@ -293,8 +309,7 @@ class GeneralRender extends EventEmitter {
     if (!iframe) return;
     let iframeHeight = iframe?.getBoundingClientRect().height;
     if (this.isVertical()) {
-      let section = Math.floor(this.element.clientHeight / 12);
-      let gap = section % 2 === 0 ? section : section - 1;
+      let gap = getSectionGap(this.element.clientHeight);
       return {
         width: this.element.clientWidth,
         height: this.element.clientHeight,
@@ -307,8 +322,7 @@ class GeneralRender extends EventEmitter {
         gap: gap,
       };
     }
-    let section = Math.floor(this.element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(this.element.clientWidth);
     return {
       width: this.element.clientWidth,
       height: this.element.clientHeight,
@@ -333,10 +347,13 @@ class GeneralRender extends EventEmitter {
     if (audioNodes.length > 0) {
       let targetNode: any = audioNodes[0];
       let left = targetNode
-        ? getActualOffsetLeft(targetNode) -
-          convertStyleNum(
-            targetNode.marginLeft ||
-              parseFloat(getComputedStyle(targetNode).marginLeft)
+        ? getScrollLeftForContentOffset(
+            doc.body,
+            getActualOffsetLeft(targetNode) -
+              convertStyleNum(
+                targetNode.marginLeft ||
+                  parseFloat(getComputedStyle(targetNode).marginLeft)
+              )
           )
         : 0;
       let top = targetNode
@@ -382,8 +399,7 @@ class GeneralRender extends EventEmitter {
       let doc = this.getDocument();
       if (!doc) return;
       if (this.isVertical()) {
-        let section = Math.floor(this.element.clientHeight / 12);
-        let gap = section % 2 === 0 ? section : section - 1;
+        let gap = getSectionGap(this.element.clientHeight);
         const height = this.element.clientHeight;
         const scrollDistance = height + gap;
         if (this.readerMode === "double") {
@@ -405,8 +421,7 @@ class GeneralRender extends EventEmitter {
               : "auto",
         });
       } else {
-        let section = Math.floor(this.element.clientWidth / 12);
-        let gap = section % 2 === 0 ? section : section - 1;
+        let gap = getSectionGap(this.element.clientWidth);
         const width = this.element.clientWidth;
         const scrollDistance = width + gap;
         if (this.readerMode === "double") {
@@ -418,7 +433,10 @@ class GeneralRender extends EventEmitter {
         if (targetPage < 0) {
           targetPage = 0;
         }
-        const targetScrollLeft = targetPage * scrollDistance;
+        const targetScrollLeft = getScrollLeftForLogical(
+          doc.body,
+          targetPage * scrollDistance
+        );
         doc.body.scrollTo({
           top: 0,
           left: targetScrollLeft,
@@ -707,10 +725,13 @@ class GeneralRender extends EventEmitter {
     }
     let targetNode = getCloestBlock(node, this.element, this.readerMode);
     let left = targetNode
-      ? getActualOffsetLeft(targetNode) -
-        convertStyleNum(
-          targetNode.marginLeft ||
-            parseFloat(getComputedStyle(targetNode).marginLeft)
+      ? getScrollLeftForContentOffset(
+          doc.body,
+          getActualOffsetLeft(targetNode) -
+            convertStyleNum(
+              targetNode.marginLeft ||
+                parseFloat(getComputedStyle(targetNode).marginLeft)
+            )
         )
       : 0;
     let top = targetNode
@@ -788,19 +809,19 @@ class GeneralRender extends EventEmitter {
     if (this.readerMode !== "scroll") {
       // 页宽/页高计算与 handleScrollPage 保持一致，并对齐到页网格
       if (this.isVertical()) {
-        let section = Math.floor(this.element.clientHeight / 12);
-        let gap = section % 2 === 0 ? section : section - 1;
+        let gap = getSectionGap(this.element.clientHeight);
         let scrollDistance = this.element.clientHeight + gap;
         doc.body.scrollTo(
           0,
           Math.max(0, Math.round(top / scrollDistance)) * scrollDistance
         );
       } else {
-        let section = Math.floor(this.element.clientWidth / 12);
-        let gap = section % 2 === 0 ? section : section - 1;
+        let gap = getSectionGap(this.element.clientWidth);
         let scrollDistance = this.element.clientWidth + gap;
+        let targetLeft =
+          Math.max(0, Math.round(left / scrollDistance)) * scrollDistance;
         doc.body.scrollTo(
-          Math.max(0, Math.round(left / scrollDistance)) * scrollDistance,
+          getScrollLeftForContentOffset(doc.body, targetLeft),
           0
         );
       }
@@ -855,7 +876,10 @@ class GeneralRender extends EventEmitter {
         } else if (this.isVertical()) {
           doc.body.scrollTo(0, doc.body.scrollHeight);
         } else {
-          doc.body.scrollTo(doc.body.scrollWidth, 0);
+          doc.body.scrollTo(
+            getScrollLeftForLogical(doc.body, getMaxHorizontalScroll(doc.body)),
+            0
+          );
         }
       }
       this.trigger("rendered");
@@ -905,9 +929,7 @@ class GeneralRender extends EventEmitter {
             doc.body.clientHeight
         ) < 50) ||
       (Math.abs(
-        doc.body.scrollWidth -
-          convertStyleNum(doc.body.scrollLeft) -
-          doc.body.clientWidth
+        getMaxHorizontalScroll(doc.body) - getLogicalHorizontalScroll(doc.body)
       ) < 50 &&
         this.readerMode !== "scroll" &&
         !this.isVertical()) ||
@@ -984,8 +1006,7 @@ class GeneralRender extends EventEmitter {
       }
       return;
     }
-    let section = Math.floor(this.element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(this.element.clientWidth);
     slideAnimateTo(direction, this.format, doc, doc, this.element, this, gap);
   }
   async prevChapter() {
@@ -1279,6 +1300,7 @@ class GeneralRender extends EventEmitter {
     TXT: 1.5,
     MD: 2,
     DOCX: 2.5,
+    DOC: 2.5,
     HTML: 3,
     MHTML: 3,
     XHTML: 3,
@@ -1287,6 +1309,7 @@ class GeneralRender extends EventEmitter {
     EPUB: 4.5,
     MOBI: 4.5,
     FB2: 5,
+    CHM: 4.5,
     PDFTEXT: 0.5,
   };
   getEstimatedSizePerPage() {
@@ -1627,7 +1650,7 @@ class GeneralRender extends EventEmitter {
   getAllDocuments() {
     let doc = this.getDocument();
     if (!doc) return [];
-    if (this.format !== "PDF" && !this.format?.startsWith("CB")) {
+    if (!this.isPaginated) {
       return [doc];
     }
     let iframes = doc.querySelectorAll("iframe");
@@ -1643,7 +1666,7 @@ class GeneralRender extends EventEmitter {
   getAllIframes() {
     let iframe = this.getIframe();
     if (!iframe) return [];
-    if (this.format !== "PDF" && !this.format?.startsWith("CB")) {
+    if (!this.isPaginated) {
       return [iframe];
     }
     let doc = this.getDocument();
@@ -1660,6 +1683,10 @@ class GeneralRender extends EventEmitter {
     let docs = this.getAllDocuments();
     let iframes = this.getAllIframes();
     const animation = this.isPageAnimationDisabled() ? "none" : this.animation;
+    const touchFormat =
+      this.isPaginated && !isPaginatedFormat(this.format)
+        ? "COMIC"
+        : this.format;
     for (let index = 0; index < docs.length; index++) {
       const doc = docs[index];
       const iframe = iframes[index];
@@ -1676,7 +1703,7 @@ class GeneralRender extends EventEmitter {
           this.element,
           this.readerMode,
           animation,
-          this.format,
+          touchFormat,
           touchControlRule,
           this
         );
@@ -1687,7 +1714,7 @@ class GeneralRender extends EventEmitter {
           this.element,
           this.readerMode,
           animation,
-          this.format,
+          touchFormat,
           touchControlRule,
           this
         );
@@ -1824,7 +1851,12 @@ class GeneralRender extends EventEmitter {
       let node = doc.body.querySelector("#" + CSS.escape(id));
       let rect = event.target.getBoundingClientRect();
       let isJump = false;
-      if (!node || event.target === node || node.contains(event.target)) {
+      if (
+        !node ||
+        event.target === node ||
+        node.contains(event.target) ||
+        (node && !isElementFootnote(event.target))
+      ) {
         if (href.indexOf("#") !== 0) {
           while (href.startsWith(".")) {
             href = href.substring(1);

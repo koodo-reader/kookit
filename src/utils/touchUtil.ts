@@ -1,14 +1,26 @@
 import rangy from "rangy/lib/rangy-core.js";
 import { createSelectionAutoTurn } from "./selectionAutoTurn";
+import { isRevertDirection } from "./layoutUtil";
 
+import { getSectionGap } from "./common";
 declare var window: any;
 let isDragging = false;
 let lastPinchZoomTime = 0;
 let pinchZoomed = false;
 
-// PDF 与漫画（CB 系列）共用"外层 iframe 承载滚动"的多 iframe 分页结构
+// PDF 与漫画（CB 系列）、PPTX、XPS、DjVu、OFD 共用"外层 iframe 承载滚动"的多 iframe 分页结构
 export const isPaginatedFormat = (format: string) => {
-  return format === "PDF" || (format && format.startsWith("CB"));
+  return (
+    format === "PDF" ||
+    format === "PPTX" ||
+    format === "XPS" ||
+    format === "OXPS" ||
+    format === "DJVU" ||
+    format === "DJV" ||
+    format === "OFD" ||
+    format === "COMIC" ||
+    !!(format && format.startsWith("CB"))
+  );
 };
 
 // 双指缩放 PDF 结束后发送 pinch-zoom 消息，Android/iOS 共用
@@ -53,6 +65,9 @@ export const slideAnimateTo = (
 ) => {
   let pageWidth = element.clientWidth + gap;
   let tempDoc = isPaginatedFormat(format) ? outerDoc : doc;
+  const revertDirection = isRevertDirection();
+  const toLogical = (value: number) => (revertDirection ? -value : value);
+  const toScroll = (value: number) => (revertDirection ? -value : value);
 
   // Stop any ongoing touch-move dragging immediately so onTouchMove
   // no longer modifies scrollLeft while the animation is running.
@@ -64,45 +79,44 @@ export const slideAnimateTo = (
     window.scrollAnimationId = null;
   }
 
-  if (
-    Math.abs(
-      tempDoc.body.scrollWidth - tempDoc.body.scrollLeft - element.clientWidth
-    ) < 10 &&
-    direction === "right"
-  ) {
+  const maxScroll = Math.max(
+    0,
+    tempDoc.body.scrollWidth - element.clientWidth
+  );
+  const logicalScrollLeft = toLogical(tempDoc.body.scrollLeft);
+
+  if (maxScroll - logicalScrollLeft < 10 && direction === "right") {
     render.next();
     return;
   }
-  if (tempDoc.body.scrollLeft === 0 && direction === "left") {
+  if (logicalScrollLeft <= 0.5 && direction === "left") {
     render.prev();
     return;
   }
 
-  let scrollLeft = tempDoc.body.scrollLeft;
-
-  // Improved snapping logic
-  let snapX;
-  const currentPage = Math.round(scrollLeft / pageWidth);
+  // Improved snapping logic（统一在逻辑偏移空间计算）
+  let snapLogical;
+  const currentPage = Math.round(logicalScrollLeft / pageWidth);
 
   if (direction === "left") {
-    snapX = (currentPage - 1) * pageWidth;
+    snapLogical = (currentPage - 1) * pageWidth;
   } else if (direction === "right") {
-    snapX = (currentPage + 1) * pageWidth;
+    snapLogical = (currentPage + 1) * pageWidth;
   } else {
-    snapX = currentPage * pageWidth;
+    snapLogical = currentPage * pageWidth;
   }
 
   // Clamp to valid range. For the last page the body may not be an exact
-  // multiple of pageWidth, so if the remaining content after snapX is less
-  // than a full page we snap all the way to the end in one step.
-  const maxScroll = tempDoc.body.scrollWidth - element.clientWidth;
+  // multiple of pageWidth, so if the remaining content after snapLogical is
+  // less than a full page we snap all the way to the end in one step.
   if (
-    snapX >= maxScroll ||
-    tempDoc.body.scrollWidth - snapX < pageWidth + gap
+    snapLogical >= maxScroll ||
+    maxScroll - snapLogical < pageWidth + gap
   ) {
-    snapX = maxScroll;
+    snapLogical = maxScroll;
   }
-  snapX = Math.max(0, snapX);
+  snapLogical = Math.max(0, snapLogical);
+  const snapX = toScroll(snapLogical);
 
   const startLeft = tempDoc.body.scrollLeft;
   const distance = snapX - startLeft;
@@ -306,18 +320,29 @@ function findLinkElement(element) {
 
   return null;
 }
-function getTouchAction(col: number, row: number, touchControlRule: any) {
+function getTouchAction(
+  col: number,
+  row: number,
+  touchControlRule: any,
+  revertDirection: boolean = false
+) {
   //根据col和row获取对应的区域编号，从左到右，从上到下，1-9
   const areaIndex = row * 3 + col + 1; // 1-9
   //如果区域编号在touchControlRule中存在，则返回对应的action
+  let action = "right";
   if (touchControlRule.layout["A"].area.includes(areaIndex)) {
-    return touchControlRule["touchControlA"];
+    action = touchControlRule["touchControlA"];
   } else if (touchControlRule.layout["B"].area.includes(areaIndex)) {
-    return touchControlRule["touchControlB"];
+    action = touchControlRule["touchControlB"];
   } else if (touchControlRule.layout["C"].area.includes(areaIndex)) {
-    return touchControlRule["touchControlC"];
+    action = touchControlRule["touchControlC"];
   }
-  return "right";
+  if (revertDirection) {
+    // RTL 下触控区域整体镜像：左区=下一页，右区=上一页
+    if (action === "left") return "right";
+    if (action === "right") return "left";
+  }
+  return action;
 }
 const getSelectionSentence = (doc: any): string => {
   let sel = doc.getSelection();
@@ -368,9 +393,9 @@ export const addAndroidTouchEvent = (
   let lastTouchEnd = 0;
   const swipeThreshold = 30; // Minimum distance in pixels to be considered a swipe
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
-  let section = Math.floor(element.clientWidth / 12);
-  let gap = section % 2 === 0 ? section : section - 1;
+  let gap = getSectionGap(element.clientWidth);
   let pageWidth = element.clientWidth + gap;
+  const revertDirection = isRevertDirection();
   const selectionAutoTurn = createSelectionAutoTurn({
     element,
     iframe,
@@ -415,8 +440,24 @@ export const addAndroidTouchEvent = (
       readerMode !== "scroll"
     ) {
       isDragging = false;
-      render.mouseUpHandler(event);
-      if (
+      // animation 为 none 时 mouseUpHandler 未安装，防御性调用避免
+      // TypeError 中断 touchend 的后续 tap 分类
+      render.mouseUpHandler?.(event);
+      if (revertDirection) {
+        if (
+          touch.screenX > (window.innerWidth / 4) * 1 &&
+          touchEndX - touchStartX > 0
+        ) {
+          render.next();
+          isDragging = false;
+        } else if (
+          touch.screenX < (window.innerWidth / 4) * 3 &&
+          touchEndX - touchStartX < 0
+        ) {
+          render.prev();
+          isDragging = false;
+        }
+      } else if (
         touch.screenX < (window.innerWidth / 4) * 3 &&
         touchEndX - touchStartX < 0
       ) {
@@ -443,12 +484,12 @@ export const addAndroidTouchEvent = (
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
       const dragPercentage = Math.abs(distX) / window.innerWidth;
       const dragThreshold = 0.1; // Only 10% drag needed to change page
+      const dragToPrev = revertDirection ? distX < 0 : distX > 0;
+      const dragToNext = revertDirection ? distX > 0 : distX < 0;
 
-      if (distX > 0 && dragPercentage > dragThreshold) {
-        // Dragged right (go to previous page)
+      if (dragToPrev && dragPercentage > dragThreshold) {
         slideAnimateTo("left", format, doc, outerDoc, element, render, gap);
-      } else if (distX < 0 && dragPercentage > dragThreshold) {
-        // Dragged left (go to next page)
+      } else if (dragToNext && dragPercentage > dragThreshold) {
         slideAnimateTo("right", format, doc, outerDoc, element, render, gap);
       } else {
         // Stay on current page
@@ -511,7 +552,7 @@ export const addAndroidTouchEvent = (
       var cellHeight = height / 3;
       var col = Math.floor(touchEndX / cellWidth);
       var row = Math.floor(touchEndY / cellHeight);
-      var result = getTouchAction(col, row, touchControlRule);
+      var result = getTouchAction(col, row, touchControlRule, revertDirection);
       // 段落/速读/阅读尺模式下点击直接推进，优先于滑动翻页动画
       if (
         render.isParagraphMode === "yes" ||
@@ -653,6 +694,17 @@ export const addAndroidTouchEvent = (
   doc.addEventListener("touchend", onTouchEnd, false);
   doc.addEventListener("touchstart", onTouchStart, false);
   doc.addEventListener("touchmove", onTouchMove, false);
+  // 拖拽被外层手势系统（如 RN GestureDetector）接管时 WebView 收到的是
+  // touchcancel 而非 touchend；若不重置拖拽状态，isDragging 会一直残留，
+  // 后续所有 touchend 都被劫持进翻页分支，tap 分类（左右翻页/中央菜单）失效
+  doc.addEventListener(
+    "touchcancel",
+    () => {
+      isDragging = false;
+      pinchZoomed = false;
+    },
+    false
+  );
   doc.addEventListener(
     "pointermove",
     (event) => {
@@ -904,8 +956,8 @@ export const addAppleTouchEvent = (
   let lastSelectEnd = 0;
   let swipeThreshold = 30; // Minimum distance in pixels to be considered a swipe
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
-  let section = Math.floor(element.clientWidth / 12);
-  let gap = section % 2 === 0 ? section : section - 1;
+  let gap = getSectionGap(element.clientWidth);
+  const revertDirection = isRevertDirection();
   const selectionAutoTurn = createSelectionAutoTurn({
     element,
     iframe,
@@ -945,8 +997,24 @@ export const addAppleTouchEvent = (
       readerMode !== "scroll"
     ) {
       isDragging = false;
-      render.mouseUpHandler(event);
-      if (
+      // animation 为 none 时 mouseUpHandler 未安装，防御性调用避免
+      // TypeError 中断 touchend 的后续 tap 分类
+      render.mouseUpHandler?.(event);
+      if (revertDirection) {
+        if (
+          touchEndX > (window.innerWidth / 4) * 1 &&
+          touchEndX - touchStartX > 0
+        ) {
+          render.next();
+          isDragging = false;
+        } else if (
+          touchEndX < (window.innerWidth / 4) * 3 &&
+          touchEndX - touchStartX < 0
+        ) {
+          render.prev();
+          isDragging = false;
+        }
+      } else if (
         touchEndX < (window.innerWidth / 4) * 3 &&
         touchEndX - touchStartX < 0
       ) {
@@ -972,12 +1040,12 @@ export const addAppleTouchEvent = (
     if (isDragging && animation === "sliding" && readerMode !== "scroll") {
       const dragPercentage = Math.abs(distX) / window.innerWidth;
       const dragThreshold = 0.1; // Only 10% drag needed to change page
+      const dragToPrev = revertDirection ? distX < 0 : distX > 0;
+      const dragToNext = revertDirection ? distX > 0 : distX < 0;
 
-      if (distX > 0 && dragPercentage > dragThreshold) {
-        // Dragged right (go to previous page)
+      if (dragToPrev && dragPercentage > dragThreshold) {
         slideAnimateTo("left", format, doc, outerDoc, element, render, gap);
-      } else if (distX < 0 && dragPercentage > dragThreshold) {
-        // Dragged left (go to next page)
+      } else if (dragToNext && dragPercentage > dragThreshold) {
         slideAnimateTo("right", format, doc, outerDoc, element, render, gap);
       } else {
         // Stay on current page
@@ -1082,7 +1150,10 @@ export const addAppleTouchEvent = (
         let targetIframe = ownerDoc?.defaultView?.frameElement;
         let id = targetIframe?.getAttribute("id") || "";
         let chapterDocIndex = id ? parseInt(id.split("-").reverse()[0]) : 0;
-        if (chapterDocIndex % 2 === 1) {
+        const isRightHalf = revertDirection
+          ? chapterDocIndex % 2 === 0
+          : chapterDocIndex % 2 === 1;
+        if (isRightHalf) {
           normalizedX = normalizedX + width / 2;
         }
       }
@@ -1092,7 +1163,7 @@ export const addAppleTouchEvent = (
       const cellHeight = height / 3;
       const col = Math.min(Math.floor(normalizedX / cellWidth), 2);
       const row = Math.min(Math.floor(normalizedY / cellHeight), 2);
-      let result = getTouchAction(col, row, touchControlRules);
+      let result = getTouchAction(col, row, touchControlRules, revertDirection);
       // 段落/速读/阅读尺模式下点击直接推进，优先于滑动翻页动画
       if (
         render.isParagraphMode === "yes" ||
@@ -1240,6 +1311,17 @@ export const addAppleTouchEvent = (
   doc.addEventListener("touchend", onTouchEnd, { passive: false });
   doc.addEventListener("touchstart", onTouchStart, { passive: false });
   doc.addEventListener("touchmove", onTouchMove, { passive: false });
+  // 拖拽被外层手势系统（如 RN GestureDetector）接管时 WebView 收到的是
+  // touchcancel 而非 touchend；若不重置拖拽状态，isDragging 会一直残留，
+  // 后续所有 touchend 都被劫持进翻页分支，tap 分类（左右翻页/中央菜单）失效
+  doc.addEventListener(
+    "touchcancel",
+    () => {
+      isDragging = false;
+      pinchZoomed = false;
+    },
+    { passive: false }
+  );
   doc.addEventListener(
     "pointermove",
     (event) => {

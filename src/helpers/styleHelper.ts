@@ -108,6 +108,9 @@ class StyleHelper {
     cssRules.push(
       `h1:not(.hide), h2, h3, h4, h5, h6, title{${this.getCustomCss(ConfigService, true)}}`
     );
+    cssRules.push(
+      `h1:not(.hide), h2, h3, h4, h5, h6, title{margin-left: 0px !important; margin-right: 0px !important; }}`
+    );
 
     // Code formatting — allow wrapping and column fragmentation
     cssRules.push(
@@ -135,8 +138,10 @@ class StyleHelper {
     cssRules.push(
       "table{width:100% !important;max-width:100% !important;table-layout:fixed !important;box-sizing:border-box;border-collapse:collapse;margin:20px 0;line-height:1.6;margin-left:0 !important;margin-right:0 !important;}"
     );
+    // Cells must keep overflow visible: non-visible overflow makes a box
+    // monolithic, so a tall cell can never split across columns/pages
     cssRules.push(
-      "td,th{word-break:break-word;overflow-wrap:anywhere;overflow:hidden;box-sizing:border-box;}"
+      "td,th{word-break:break-word;overflow-wrap:anywhere;overflow:visible;box-sizing:border-box;}"
     );
     cssRules.push(
       "thead th{font-weight:bold;padding:14px 12px;text-align:left;white-space:normal;border-bottom:2px solid #ccc;background-color:rgba(0,0,0,0.05);}"

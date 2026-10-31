@@ -4,6 +4,9 @@ import {
   convertStyleNum,
   getActualOffsetLeft,
   getActualOffsetTop,
+  getLogicalHorizontalScroll,
+  getScrollLeftForContentOffset,
+  getScrollLeftForLogical,
   handleIframeHeight,
   handleOneChapterDoc,
   isVerticalLayout,
@@ -16,11 +19,13 @@ import { cleanText } from "../libs/textProcessor";
 import {
   getBlockElement,
   getPageWidth,
+  getSectionGap,
   getStylePxNumber,
   getViewportSize,
   isParentBlock,
   mergeStyleStrings,
 } from "./common";
+import { MIMICAL_FLIP_END_EVENT } from "./animationUtil";
 
 declare var window: any;
 
@@ -80,6 +85,14 @@ export const resolveXPath = (xpath: string, doc: Document): Element | null => {
   }
 };
 
+let mimicalFlipEndListener: (() => void) | null = null;
+let mimicalFlipEndTimer: number | null = null;
+
+const hideMimicalMask = () => {
+  const bookDiv = document.getElementById("book");
+  if (bookDiv) bookDiv.style.display = "none";
+};
+
 export const playMimicalFlip = (
   animation: string,
   isMobile: string | undefined,
@@ -93,8 +106,40 @@ export const playMimicalFlip = (
   bookDiv.style.display = "block";
   if (delta > 0) flipToPrevPage();
   else if (delta < 0) flipToNextPage();
-  setTimeout(() => {
-    bookDiv.style.display = "none";
+  // 翻页动画收敛（flipend 事件）后立即隐藏遮罩恢复交互；
+  // 1000ms 定时器兜底，防止边界页等未触发动画时遮罩常驻
+  if (mimicalFlipEndListener) {
+    window.removeEventListener(MIMICAL_FLIP_END_EVENT, mimicalFlipEndListener);
+  }
+  if (mimicalFlipEndTimer) {
+    clearTimeout(mimicalFlipEndTimer);
+    mimicalFlipEndTimer = null;
+  }
+  mimicalFlipEndListener = () => {
+    if (mimicalFlipEndListener) {
+      window.removeEventListener(
+        MIMICAL_FLIP_END_EVENT,
+        mimicalFlipEndListener
+      );
+      mimicalFlipEndListener = null;
+    }
+    if (mimicalFlipEndTimer) {
+      clearTimeout(mimicalFlipEndTimer);
+      mimicalFlipEndTimer = null;
+    }
+    hideMimicalMask();
+  };
+  window.addEventListener(MIMICAL_FLIP_END_EVENT, mimicalFlipEndListener);
+  mimicalFlipEndTimer = window.setTimeout(() => {
+    mimicalFlipEndTimer = null;
+    if (mimicalFlipEndListener) {
+      window.removeEventListener(
+        MIMICAL_FLIP_END_EVENT,
+        mimicalFlipEndListener
+      );
+      mimicalFlipEndListener = null;
+    }
+    hideMimicalMask();
   }, 1000);
   return true;
 };
@@ -111,8 +156,7 @@ export const handleScrollPage = async (
   const vertical = isVerticalLayout();
   playMimicalFlip(animation, isMobile, delta, flipToNextPage, flipToPrevPage);
   if (vertical) {
-    let section = Math.floor(element.clientHeight / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientHeight);
     const height = element.clientHeight;
     const currentScrollTop = doc.body.scrollTop;
     const scrollDistance = height + gap;
@@ -139,16 +183,18 @@ export const handleScrollPage = async (
       });
     }
   } else {
-    let section = Math.floor(element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientWidth);
     const width = element.clientWidth;
-    const currentScrollLeft = doc.body.scrollLeft;
+    const currentScrollLeft = getLogicalHorizontalScroll(doc.body);
     const scrollDistance = width + gap;
 
     if (delta > 0) {
       const currentPage = Math.round(currentScrollLeft / scrollDistance);
       const targetPage = Math.max(0, currentPage - 1);
-      const targetScrollLeft = targetPage * scrollDistance;
+      const targetScrollLeft = getScrollLeftForLogical(
+        doc.body,
+        targetPage * scrollDistance
+      );
       doc.body.scrollTo({
         top: 0,
         left: targetScrollLeft,
@@ -158,7 +204,10 @@ export const handleScrollPage = async (
     } else if (delta < 0) {
       const currentPage = Math.round(currentScrollLeft / scrollDistance);
       const targetPage = currentPage + 1;
-      const targetScrollLeft = targetPage * scrollDistance;
+      const targetScrollLeft = getScrollLeftForLogical(
+        doc.body,
+        targetPage * scrollDistance
+      );
       doc.body.scrollTo({
         top: 0,
         left: targetScrollLeft,
@@ -543,16 +592,17 @@ export const handleScrollPosition = async (
   const vertical = isVerticalLayout() && readerMode !== "scroll";
   if (page && readerMode !== "scroll") {
     if (vertical) {
-      let section = Math.floor(element.clientHeight / 12);
-      let gap = section % 2 === 0 ? section : section - 1;
+      let gap = getSectionGap(element.clientHeight);
       let pageHeight = element.clientHeight + gap;
       top = pageHeight * (parseInt(page) - 1);
     } else {
-      let section = Math.floor(element.clientWidth / 12);
-      let gap = section % 2 === 0 ? section : section - 1;
+      let gap = getSectionGap(element.clientWidth);
       const width = convertComputedNum(getComputedStyle(element).width);
       let pageWidth = width + gap;
-      left = pageWidth * (parseInt(page) - 1);
+      left = getScrollLeftForLogical(
+        doc.body,
+        pageWidth * (parseInt(page) - 1)
+      );
     }
   } else if (text) {
     let nodeList = getBlockElement(doc.body);
@@ -592,10 +642,13 @@ export const handleScrollPosition = async (
           : 0;
     } else {
       left = targetNode
-        ? getActualOffsetLeft(targetNode) -
-          convertStyleNum(
-            targetNode.marginLeft ||
-              parseFloat(getComputedStyle(targetNode).marginLeft)
+        ? getScrollLeftForContentOffset(
+            doc.body,
+            getActualOffsetLeft(targetNode) -
+              convertStyleNum(
+                targetNode.marginLeft ||
+                  parseFloat(getComputedStyle(targetNode).marginLeft)
+              )
           )
         : text === "prevChapter"
           ? doc.body.scrollWidth
@@ -621,10 +674,13 @@ export const handleScrollPosition = async (
         : 0;
     } else {
       left = targetNode
-        ? getActualOffsetLeft(targetNode) -
-          convertStyleNum(
-            targetNode.marginLeft ||
-              parseFloat(getComputedStyle(targetNode).marginLeft)
+        ? getScrollLeftForContentOffset(
+            doc.body,
+            getActualOffsetLeft(targetNode) -
+              convertStyleNum(
+                targetNode.marginLeft ||
+                  parseFloat(getComputedStyle(targetNode).marginLeft)
+              )
           )
         : 0;
     }
@@ -650,8 +706,7 @@ export const getCloestBlock = (
     return targetNode;
   }
   if (vertical) {
-    let section = Math.floor(element.clientHeight / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientHeight);
     let offsetTop =
       getActualOffsetTop(targetNode) -
       convertStyleNum(
@@ -671,8 +726,7 @@ export const getCloestBlock = (
       return targetNode;
     }
   } else {
-    let section = Math.floor(element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientWidth);
     let offsetLeft =
       getActualOffsetLeft(targetNode) -
       convertStyleNum(
@@ -776,8 +830,7 @@ export const isCurrentNodeFarFromParrent = (
 ) => {
   const vertical = isVerticalLayout() && readerMode !== "scroll";
   if (vertical) {
-    let section = Math.floor(element.clientHeight / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientHeight);
     if (
       Math.abs(
         getActualOffsetTop(targetNode) -
@@ -790,8 +843,7 @@ export const isCurrentNodeFarFromParrent = (
       return false;
     }
   } else {
-    let section = Math.floor(element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientWidth);
     if (
       Math.abs(
         getActualOffsetLeft(targetNode) -
