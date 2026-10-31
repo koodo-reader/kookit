@@ -109,7 +109,6 @@ class GeneralParser {
   getMetadata() {
     return new Promise<any>(async (resolve, reject) => {
       const metadata = this.book.metadata;
-      console.log("GeneralParser getMetadata metadata", metadata);
       const author = joinMetadataValue(metadata.author);
       const language = joinMetadataValue(metadata.language) || "en";
       const subject = joinMetadataValue(metadata.subject);

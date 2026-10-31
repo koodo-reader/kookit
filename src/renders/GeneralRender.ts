@@ -1851,7 +1851,6 @@ class GeneralRender extends EventEmitter {
       let node = doc.body.querySelector("#" + CSS.escape(id));
       let rect = event.target.getBoundingClientRect();
       let isJump = false;
-      console.log("handleLinkJump node:", node, event.target);
       if (
         !node ||
         event.target === node ||
