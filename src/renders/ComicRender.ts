@@ -215,12 +215,17 @@ class ComicRender extends GeneralRender {
   }
   async parse() {
     try {
-      if (isElectron()) {
-        if (this.format === "CBZ") {
+      // 流式加载依赖宿主注入 getZipEntries/getTarEntries 与磁盘路径，
+      // 导入期等场景宿主只传 buffer，此时回退到内存 loader（JSZip/untar）
+      if (isElectron() && this.filePath) {
+        if (this.format === "CBZ" && typeof this.getZipEntries === "function") {
           const loader: any = await this.makeZipStreamLoader(this.filePath);
           this.book = makeComicBook(loader, { name: this.filePath });
           return;
-        } else if (this.format === "CBT") {
+        } else if (
+          this.format === "CBT" &&
+          typeof this.getTarEntries === "function"
+        ) {
           const loader: any = await this.makeTarStreamLoader(this.filePath);
           this.book = makeComicBook(loader, { name: this.filePath });
           return;
