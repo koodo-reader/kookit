@@ -612,6 +612,27 @@ const getEXTH = (buf, encoding) => {
   return results;
 };
 
+const getImageMime = (buffer) => {
+  const b = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  if (b[0] === 0xff && b[1] === 0xd8) return "image/jpeg";
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47)
+    return "image/png";
+  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return "image/gif";
+  if (b[0] === 0x42 && b[1] === 0x4d) return "image/bmp";
+  if (
+    b[0] === 0x52 &&
+    b[1] === 0x49 &&
+    b[2] === 0x46 &&
+    b[3] === 0x46 &&
+    b[8] === 0x57 &&
+    b[9] === 0x45 &&
+    b[10] === 0x42 &&
+    b[11] === 0x50
+  )
+    return "image/webp";
+  return "";
+};
+
 const getFont = async (buf, unzlib) => {
   const { flags, dataStart, keyLength, keyStart } = getStruct(FONT_HEADER, buf);
   const array = new Uint8Array(buf.slice(dataStart));
@@ -793,6 +814,22 @@ export class MOBI extends PDB {
       rights: unescapeHTML(exth?.rights),
     };
   }
+  // Cover records are either raw images or SVG wrappers that reference an
+  // embedded image (`kindle:embed:XXXX`), so resolve both and verify the
+  // result by its magic bytes.
+  async #coverBlob(buf) {
+    if (!buf) return null;
+    const mime = getImageMime(buf);
+    if (mime) return new Blob([buf], { type: mime });
+    const match = this.decode(buf).match(/kindle:embed:(\w+)/);
+    if (!match) return null;
+    try {
+      const inner = await this.loadResource(parseInt(match[1], 32) - 1);
+      const innerMime = getImageMime(inner);
+      if (innerMime) return new Blob([inner], { type: innerMime });
+    } catch (e) {}
+    return null;
+  }
   async getCover() {
     const { exth } = this.headers;
     const offset =
@@ -802,8 +839,34 @@ export class MOBI extends PDB {
           ? exth?.thumbnailOffset
           : null;
     if (offset != null) {
-      const buf = await this.loadResource(offset);
-      return new Blob([buf]);
+      try {
+        const blob = await this.#coverBlob(await this.loadResource(offset));
+        if (blob) return blob;
+      } catch (e) {}
+    }
+    // KF8 stores the cover image as a resource referenced by EXTH coverURI
+    // (`kindle:embed:XXXX`); EXTH 201/202 are often missing in these files.
+    const uriMatch = /kindle:embed:(\w+)/.exec(exth?.coverURI ?? "");
+    if (uriMatch) {
+      try {
+        const blob = await this.#coverBlob(
+          await this.loadResource(parseInt(uriMatch[1], 32) - 1)
+        );
+        if (blob) return blob;
+      } catch (e) {}
+    }
+    // Last resort: scan the resource records for the first image, which is
+    // where cover.xhtml normally points (e.g. `kindle:embed:0001`).
+    const start = this.#resourceStart;
+    if (start != null && start < this.pdb.numRecords) {
+      for (let i = start; i < this.pdb.numRecords; i++) {
+        try {
+          const blob = await this.#coverBlob(await super.loadRecord(i));
+          if (blob) return blob;
+        } catch (e) {
+          break;
+        }
+      }
     }
   }
 }
