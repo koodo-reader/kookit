@@ -1,4 +1,4 @@
-import rangy from "rangy/lib/rangy-core.js";
+﻿import rangy from "rangy/lib/rangy-core.js";
 import { createSelectionAutoTurn } from "./selectionAutoTurn";
 import { isRevertDirection } from "./layoutUtil";
 
@@ -79,10 +79,7 @@ export const slideAnimateTo = (
     window.scrollAnimationId = null;
   }
 
-  const maxScroll = Math.max(
-    0,
-    tempDoc.body.scrollWidth - element.clientWidth
-  );
+  const maxScroll = Math.max(0, tempDoc.body.scrollWidth - element.clientWidth);
   const logicalScrollLeft = toLogical(tempDoc.body.scrollLeft);
 
   if (maxScroll - logicalScrollLeft < 10 && direction === "right") {
@@ -109,10 +106,7 @@ export const slideAnimateTo = (
   // Clamp to valid range. For the last page the body may not be an exact
   // multiple of pageWidth, so if the remaining content after snapLogical is
   // less than a full page we snap all the way to the end in one step.
-  if (
-    snapLogical >= maxScroll ||
-    maxScroll - snapLogical < pageWidth + gap
-  ) {
+  if (snapLogical >= maxScroll || maxScroll - snapLogical < pageWidth + gap) {
     snapLogical = maxScroll;
   }
   snapLogical = Math.max(0, snapLogical);
@@ -424,7 +418,7 @@ export const addAndroidTouchEvent = (
       }
     }
     lastTouchEnd = now;
-    onPinchZoomEnd(event, render, format);
+    // onPinchZoomEnd(event, render, format);
     const touch = event.changedTouches[0];
     const touchEndTime = Date.now();
     let touchEndX = touch.screenX;
