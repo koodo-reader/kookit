@@ -1191,21 +1191,7 @@ class PdfRender extends GeneralRender {
     if (this.isDarkMode === "yes") {
       docLayer.style.filter = "invert(1) hue-rotate(180deg) contrast(0.95)";
     }
-    if (
-      this.backgroundColor === "rgba(233, 216, 188,1)" &&
-      this.isScannedPDF === "yes"
-    ) {
-      docLayer.style.filter = "sepia(100%) contrast(0.95) brightness(0.95)";
-    }
-    if (
-      this.backgroundColor === "rgba(197, 231, 207,1)" &&
-      this.isScannedPDF === "yes"
-    ) {
-      docLayer.style.filter =
-        "sepia(30%) hue-rotate(60deg) saturate(120%) brightness(95%)";
-    }
-    if (
-      this.pdfCrop.top > 0 ||
+    if (this.pdfCrop.top > 0 ||
       this.pdfCrop.left > 0 ||
       this.pdfCrop.right > 0
     ) {
