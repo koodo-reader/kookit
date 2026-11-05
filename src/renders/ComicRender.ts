@@ -11,10 +11,7 @@ import GeneralRender from "./GeneralRender";
 import untar from "js-untar";
 import { getCache } from "../libs/cache.js";
 import JSZip from "jszip";
-import {
-  getSectionGap,
-  isElectron,
-} from "../utils/common";
+import { getSectionGap, isElectron } from "../utils/common";
 import {
   createPDFIframe,
   handleIOSScrollPage,
@@ -888,9 +885,6 @@ class ComicRender extends GeneralRender {
     );
   }
   async record(): Promise<void> {
-    if (this.animation !== "none" && this.isMobile !== "yes") {
-      await new Promise((r) => setTimeout(r, 1000));
-    }
     let doc = this.getDocument();
     if (!doc) return;
     await this.handleComicRecord(doc);

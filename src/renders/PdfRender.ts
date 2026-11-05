@@ -611,9 +611,6 @@ class PdfRender extends GeneralRender {
     return (await this.visibleText()).join(" ");
   }
   async record(): Promise<void> {
-    if (this.animation !== "none" && this.isMobile !== "yes") {
-      await new Promise((r) => setTimeout(r, 1000));
-    }
     let doc = this.getDocument();
     if (!doc) return;
     await this.handlePDFRecord(doc);
@@ -1191,7 +1188,8 @@ class PdfRender extends GeneralRender {
     if (this.isDarkMode === "yes") {
       docLayer.style.filter = "invert(1) hue-rotate(180deg) contrast(0.95)";
     }
-    if (this.pdfCrop.top > 0 ||
+    if (
+      this.pdfCrop.top > 0 ||
       this.pdfCrop.left > 0 ||
       this.pdfCrop.right > 0
     ) {

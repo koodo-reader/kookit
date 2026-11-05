@@ -2,6 +2,9 @@ declare var window: any;
 // Page gap: passed from host via config.pageGap to window.pageGap (unit px).
 // Fallback to min(60, dimension / 12) when not set; used as column-gap in
 // single/double column layout
+// 翻页滑动动画固定时长（毫秒），宿主端的翻页节流也使用该时长
+export const PAGE_TURN_DURATION = 200;
+
 export const getSectionGap = (dimension: number): number => {
   const pageGap = parseInt(String(window.pageGap ?? ""));
   let section = isNaN(pageGap)

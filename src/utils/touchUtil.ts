@@ -2,7 +2,7 @@
 import { createSelectionAutoTurn } from "./selectionAutoTurn";
 import { isRevertDirection } from "./layoutUtil";
 
-import { getSectionGap } from "./common";
+import { getSectionGap, PAGE_TURN_DURATION } from "./common";
 declare var window: any;
 let isDragging = false;
 let lastPinchZoomTime = 0;
@@ -121,7 +121,7 @@ export const slideAnimateTo = (
     return;
   }
 
-  const duration = 250;
+  const duration = PAGE_TURN_DURATION;
 
   const body = tempDoc.body;
   window.isSwiping = true;

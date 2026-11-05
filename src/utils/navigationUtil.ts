@@ -24,6 +24,7 @@ import {
   getViewportSize,
   isParentBlock,
   mergeStyleStrings,
+  PAGE_TURN_DURATION,
 } from "./common";
 import { MIMICAL_FLIP_END_EVENT } from "./animationUtil";
 
@@ -144,6 +145,67 @@ export const playMimicalFlip = (
   return true;
 };
 
+let pageTurnAnimationId: number | null = null;
+let pageTurnAnimationResolve: (() => void) | null = null;
+
+const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
+const finishPageTurnAnimation = () => {
+  pageTurnAnimationId = null;
+  if (pageTurnAnimationResolve) {
+    pageTurnAnimationResolve();
+    pageTurnAnimationResolve = null;
+  }
+};
+
+// 原生 smooth 滚动的时长由浏览器决定且偏慢，改用固定时长动画
+export const animateScrollTo = (
+  element: HTMLElement,
+  left: number,
+  top: number
+) => {
+  if (pageTurnAnimationId !== null) {
+    cancelAnimationFrame(pageTurnAnimationId);
+  }
+  if (pageTurnAnimationResolve) {
+    pageTurnAnimationResolve();
+    pageTurnAnimationResolve = null;
+  }
+  pageTurnAnimationId = null;
+
+  const startLeft = element.scrollLeft;
+  const startTop = element.scrollTop;
+  const distanceLeft = left - startLeft;
+  const distanceTop = top - startTop;
+  if (Math.abs(distanceLeft) < 0.5 && Math.abs(distanceTop) < 0.5) {
+    return Promise.resolve();
+  }
+
+  return new Promise<void>((resolve) => {
+    pageTurnAnimationResolve = resolve;
+    let startTime: number | null = null;
+    const step = (now: number) => {
+      if (!element.isConnected) {
+        finishPageTurnAnimation();
+        return;
+      }
+      if (startTime === null) startTime = now;
+      const progress = Math.min(1, (now - startTime) / PAGE_TURN_DURATION);
+      const eased = easeOutCubic(progress);
+      element.scrollLeft = startLeft + distanceLeft * eased;
+      element.scrollTop = startTop + distanceTop * eased;
+      if (progress < 1) {
+        pageTurnAnimationId = requestAnimationFrame(step);
+      } else {
+        element.scrollLeft = left;
+        element.scrollTop = top;
+        finishPageTurnAnimation();
+      }
+    };
+    pageTurnAnimationId = requestAnimationFrame(step);
+  });
+};
+
 export const handleScrollPage = async (
   element: HTMLElement,
   animation: string,
@@ -154,6 +216,14 @@ export const handleScrollPage = async (
   isMobile: string | undefined
 ) => {
   const vertical = isVerticalLayout();
+  const sliding = animation === "sliding" && isMobile !== "yes";
+  const scrollToPage = async (left: number, top: number) => {
+    if (sliding) {
+      await animateScrollTo(doc.body, left, top);
+    } else {
+      doc.body.scrollTo({ left, top, behavior: "auto" });
+    }
+  };
   playMimicalFlip(animation, isMobile, delta, flipToNextPage, flipToPrevPage);
   if (vertical) {
     let gap = getSectionGap(element.clientHeight);
@@ -165,22 +235,12 @@ export const handleScrollPage = async (
       const currentPage = Math.round(currentScrollTop / scrollDistance);
       const targetPage = Math.max(0, currentPage - 1);
       const targetScrollTop = targetPage * scrollDistance;
-      doc.body.scrollTo({
-        left: 0,
-        top: targetScrollTop,
-        behavior:
-          animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
-      });
+      await scrollToPage(0, targetScrollTop);
     } else if (delta < 0) {
       const currentPage = Math.round(currentScrollTop / scrollDistance);
       const targetPage = currentPage + 1;
       const targetScrollTop = targetPage * scrollDistance;
-      doc.body.scrollTo({
-        left: 0,
-        top: targetScrollTop,
-        behavior:
-          animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
-      });
+      await scrollToPage(0, targetScrollTop);
     }
   } else {
     let gap = getSectionGap(element.clientWidth);
@@ -195,12 +255,7 @@ export const handleScrollPage = async (
         doc.body,
         targetPage * scrollDistance
       );
-      doc.body.scrollTo({
-        top: 0,
-        left: targetScrollLeft,
-        behavior:
-          animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
-      });
+      await scrollToPage(targetScrollLeft, 0);
     } else if (delta < 0) {
       const currentPage = Math.round(currentScrollLeft / scrollDistance);
       const targetPage = currentPage + 1;
@@ -208,12 +263,7 @@ export const handleScrollPage = async (
         doc.body,
         targetPage * scrollDistance
       );
-      doc.body.scrollTo({
-        top: 0,
-        left: targetScrollLeft,
-        behavior:
-          animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
-      });
+      await scrollToPage(targetScrollLeft, 0);
     }
   }
 };

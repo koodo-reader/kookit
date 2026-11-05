@@ -31,6 +31,7 @@ import {
   processHtml,
   resolveXPath,
   isContentFootnote,
+  animateScrollTo,
 } from "../utils/navigationUtil";
 import EventEmitter from "../utils/EventEmitter";
 import { CFI } from "../libs/cfi";
@@ -396,8 +397,16 @@ class GeneralRender extends EventEmitter {
       let top = (targetPage - 1) * (this.element.clientHeight - 50);
       this.element.scrollTo(0, top);
     } else {
-      let doc = this.getDocument();
+      const doc = this.getDocument();
       if (!doc) return;
+      const sliding = this.animation === "sliding" && this.isMobile !== "yes";
+      const scrollToPage = async (left: number, top: number) => {
+        if (sliding) {
+          await animateScrollTo(doc.body, left, top);
+        } else {
+          doc.body.scrollTo({ left, top, behavior: "auto" });
+        }
+      };
       if (this.isVertical()) {
         let gap = getSectionGap(this.element.clientHeight);
         const height = this.element.clientHeight;
@@ -412,14 +421,7 @@ class GeneralRender extends EventEmitter {
           targetPage = 0;
         }
         const targetScrollTop = targetPage * scrollDistance;
-        doc.body.scrollTo({
-          left: 0,
-          top: targetScrollTop,
-          behavior:
-            this.animation === "sliding" && this.isMobile !== "yes"
-              ? "smooth"
-              : "auto",
-        });
+        await scrollToPage(0, targetScrollTop);
       } else {
         let gap = getSectionGap(this.element.clientWidth);
         const width = this.element.clientWidth;
@@ -437,14 +439,7 @@ class GeneralRender extends EventEmitter {
           doc.body,
           targetPage * scrollDistance
         );
-        doc.body.scrollTo({
-          top: 0,
-          left: targetScrollLeft,
-          behavior:
-            this.animation === "sliding" && this.isMobile !== "yes"
-              ? "smooth"
-              : "auto",
-        });
+        await scrollToPage(targetScrollLeft, 0);
       }
     }
     await this.record();
@@ -1414,9 +1409,6 @@ class GeneralRender extends EventEmitter {
     return [];
   }
   async record() {
-    if (this.animation !== "none" && this.isMobile !== "yes") {
-      await new Promise((r) => setTimeout(r, 1000));
-    }
     let doc = this.getDocument();
     if (!doc) return;
     await handleRecord(
