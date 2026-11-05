@@ -153,9 +153,7 @@ class ComicRender extends GeneralRender {
     const ratios: number[] = [];
     for (let i = 0; i < sampleCount; i++) {
       try {
-        const url = await this.book.sections[i].load();
-        const res = await fetch(url);
-        const imageBlob = await res.blob();
+        const imageBlob = await this.book.sections[i].loadImage();
         const meta = await this.getImageMeta(imageBlob);
         if (meta.width && meta.height) {
           ratios.push(Math.round((meta.width / meta.height) * 1000) / 1000);

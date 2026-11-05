@@ -58,6 +58,7 @@ export const makeComicBook = ({ entries, loadBlob, getSize }, file) => {
   book.sections = files.map((name, index) => ({
     id: name,
     load: () => load(name),
+    loadImage: () => loadBlob(name),
     unload: () => unload(name),
     size: getSize(name),
   }));
