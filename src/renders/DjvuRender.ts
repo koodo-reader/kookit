@@ -21,6 +21,8 @@ class DjvuRender extends ComicRender {
   // 每页最终展示图片的 blob URL（卸载时释放）
   private pageImageUrls: Map<number, string> = new Map();
   private coverBlob: Blob | null = null;
+  // 当前预取的锚点：跳页后旧预取队列据此及时停止，不再解码无关页面
+  private prefetchAnchor: number = -1;
 
   async parse() {
     try {
@@ -136,7 +138,11 @@ class DjvuRender extends ComicRender {
         return;
       }
       ctx.putImageData(
-        new ImageData(new Uint8ClampedArray(image.rgba), image.width, image.height),
+        new ImageData(
+          new Uint8ClampedArray(image.rgba),
+          image.width,
+          image.height
+        ),
         0,
         0
       );
@@ -144,7 +150,9 @@ class DjvuRender extends ComicRender {
     });
   }
 
-  private async renderPageImage(chapterDocIndex: number): Promise<DjvuPageImage | null> {
+  private async renderPageImage(
+    chapterDocIndex: number
+  ): Promise<DjvuPageImage | null> {
     const djvu = this.djvu;
     if (!djvu) return null;
     try {
@@ -317,7 +325,13 @@ class DjvuRender extends ComicRender {
 
       // 最终用 <img> 展示（与漫画渲染一致，浏览器对图片的绘制最稳定），
       // canvas 仅作为渐进预览，转换完成后即可释放
-      await this.swapToImage(subDoc, wrapper, canvas, chapterDocIndex, generation);
+      await this.swapToImage(
+        subDoc,
+        wrapper,
+        canvas,
+        chapterDocIndex,
+        generation
+      );
       if (!isAlive()) return;
       state.painted = true;
       this.trigger("rendered", [chapterDocIndex] as any);
@@ -353,7 +367,10 @@ class DjvuRender extends ComicRender {
       console.error(error);
     }
     if (!blob) return;
-    if (!this.isGenerationCurrent(chapterDocIndex, generation) || !canvas.parentNode) {
+    if (
+      !this.isGenerationCurrent(chapterDocIndex, generation) ||
+      !canvas.parentNode
+    ) {
       return;
     }
     const url = URL.createObjectURL(blob);
@@ -390,7 +407,11 @@ class DjvuRender extends ComicRender {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.putImageData(
-      new ImageData(new Uint8ClampedArray(image.rgba), image.width, image.height),
+      new ImageData(
+        new Uint8ClampedArray(image.rgba),
+        image.width,
+        image.height
+      ),
       0,
       0
     );
@@ -445,7 +466,13 @@ class DjvuRender extends ComicRender {
   }[] {
     const lines: {
       key: string;
-      words: { zone: any; x: number; y: number; width: number; height: number }[];
+      words: {
+        zone: any;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      }[];
     }[] = [];
     let counter = 0;
     const visit = (node: any) => {
@@ -472,12 +499,19 @@ class DjvuRender extends ComicRender {
         weights = children.map((child) => {
           const text = child.text || "";
           const measured = measure ? measure(text, node.height) : 0;
-          const weight = measured > 0 ? measured : Math.max(1, text.length) * 0.5;
+          const weight =
+            measured > 0 ? measured : Math.max(1, text.length) * 0.5;
           return Math.max(0.5, weight);
         });
         totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
       }
-      const words: { zone: any; x: number; y: number; width: number; height: number }[] = [];
+      const words: {
+        zone: any;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      }[] = [];
       let cursor = node.x;
       for (let i = 0; i < children.length; i++) {
         const child = children[i];
@@ -661,24 +695,6 @@ class DjvuRender extends ComicRender {
     }
   }
 
-  // scroll 模式下只预取下一页，避免同时解码过多大页面
-  async renderComicPage(chapterDocIndex: number) {
-    if (
-      chapterDocIndex >= this.chapterDocList.length ||
-      chapterDocIndex < 0
-    ) {
-      return;
-    }
-    if (chapterDocIndex > 2) {
-      await this.handleUnloadComicChapter(chapterDocIndex - 3);
-    }
-    await this.handleRenderComicChapter(chapterDocIndex);
-    if (this.platform === "ios") {
-      return;
-    }
-    this.handleRenderComicChapter(chapterDocIndex + 1);
-  }
-
   // 页面由解析结果实时渲染，无静态 HTML 可缓存
   async preCache() {
     return "";
@@ -732,7 +748,8 @@ class DjvuRender extends ComicRender {
           cfi: JSON.stringify({
             text: result.excerpt,
             chapterTitle:
-              this.chapterDocList[pageIndex]?.label || "Page " + (pageIndex + 1),
+              this.chapterDocList[pageIndex]?.label ||
+              "Page " + (pageIndex + 1),
             chapterDocIndex: pageIndex,
             chapterHref: this.chapterDocList[pageIndex]?.href || "",
             count: "search",
@@ -787,7 +804,9 @@ class DjvuRender extends ComicRender {
       return [];
     }
     const indices =
-      this.readerMode === "double" && index % 2 === 0 ? [index, index + 1] : [index];
+      this.readerMode === "double" && index % 2 === 0
+        ? [index, index + 1]
+        : [index];
     const urls: string[] = [];
     for (const pageIndex of indices) {
       if (pageIndex > this.chapterDocList.length - 1) continue;
@@ -806,7 +825,11 @@ class DjvuRender extends ComicRender {
         const ctx = canvas.getContext("2d");
         if (!ctx) continue;
         ctx.putImageData(
-          new ImageData(new Uint8ClampedArray(image.rgba), image.width, image.height),
+          new ImageData(
+            new Uint8ClampedArray(image.rgba),
+            image.width,
+            image.height
+          ),
           0,
           0
         );
