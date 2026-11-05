@@ -50,22 +50,77 @@ const textLayerBuilderCSS = async () =>
 const annotationLayerBuilderCSS = async () =>
   await fetchText(pdfjsPath("annotation_layer_builder.css"));
 
-const WHITE_BACKGROUND_MIN_COVERAGE = 0.5;
+// 横向覆盖画布一半以上的填充，基本可以认定是页面/行背景
+const WHITE_BACKGROUND_MIN_WIDTH = 0.5;
+// 正文逐行/逐段的白底往往是横向铺满、纵向很扁的条带（如双栏 PDF）
+const WHITE_BACKGROUND_MIN_STRIP_WIDTH = 0.25;
+const WHITE_BACKGROUND_MAX_STRIP_HEIGHT = 0.2;
+
+// 有些 PDF 的“白色”其实是 #f9fcfe 之类的接近白色的颜色
+const WHITE_COLOR_MIN_CHANNEL = 240;
+
+const isNearWhiteChannel = (value) => value >= WHITE_COLOR_MIN_CHANNEL;
+
+const parseColorChannel = (value) => {
+  const trimmed = value.trim();
+  const number = trimmed.endsWith("%")
+    ? (parseFloat(trimmed) / 100) * 255
+    : parseFloat(trimmed);
+  return Number.isFinite(number) ? number : -1;
+};
 
 const isWhiteFillStyle = (fillStyle) => {
   if (typeof fillStyle !== "string") {
     return false;
   }
   const style = fillStyle.replace(/\s+/g, "").toLowerCase();
+  if (style === "white") {
+    return true;
+  }
+  if (style.startsWith("#")) {
+    const hex = style.slice(1);
+    if (hex.length === 3 || hex.length === 4) {
+      const [r, g, b, a] = hex
+        .split("")
+        .map((char) => parseInt(char + char, 16));
+      return (
+        (hex.length === 3 || a === 255) &&
+        isNearWhiteChannel(r) &&
+        isNearWhiteChannel(g) &&
+        isNearWhiteChannel(b)
+      );
+    }
+    if (hex.length === 6 || hex.length === 8) {
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      const a = hex.length === 8 ? parseInt(hex.slice(6, 8), 16) : 255;
+      return (
+        a === 255 &&
+        isNearWhiteChannel(r) &&
+        isNearWhiteChannel(g) &&
+        isNearWhiteChannel(b)
+      );
+    }
+    return false;
+  }
+  const match = style.match(/^rgba?\(([^)]+)\)$/);
+  if (!match) {
+    return false;
+  }
+  const parts = match[1].split(",");
+  if (parts.length < 3 || (parts.length >= 4 && parseFloat(parts[3]) !== 1)) {
+    return false;
+  }
+  const [r, g, b] = parts.slice(0, 3).map(parseColorChannel);
   return (
-    style === "#fff" ||
-    style === "#ffffff" ||
-    style === "white" ||
-    style === "rgb(255,255,255)" ||
-    style === "rgba(255,255,255,1)"
+    isNearWhiteChannel(r) && isNearWhiteChannel(g) && isNearWhiteChannel(b)
   );
 };
 
+// 当不保留 PDF 原始背景时，内容流里绘制的白色背景（整页底色，或每一行文字
+// 背后的白色条带）仍然会被画到 canvas 上，从而遮住阅读器的背景色。
+// 这里拦截“白色且横向铺满”的直线路径填充，让这些背景保持透明。
 const filterWhitePageBackground = (canvasContext, canvas) => {
   const original = {
     beginPath: canvasContext.beginPath,
@@ -78,15 +133,10 @@ const filterWhitePageBackground = (canvasContext, canvas) => {
     arcTo: canvasContext.arcTo,
     ellipse: canvasContext.ellipse,
     fill: canvasContext.fill,
-    fillText: canvasContext.fillText,
-    strokeText: canvasContext.strokeText,
-    drawImage: canvasContext.drawImage,
-    putImageData: canvasContext.putImageData,
   };
 
   let bounds = null;
   let hasCurve = false;
-  let hasPaintedContent = false;
 
   const addPoint = (x, y) => {
     const transform = canvasContext.getTransform();
@@ -102,9 +152,9 @@ const filterWhitePageBackground = (canvasContext, canvas) => {
     }
   };
 
-  const coversCanvas = () => {
+  const getCoverage = () => {
     if (!bounds) {
-      return false;
+      return null;
     }
     const width = canvas.width;
     const height = canvas.height;
@@ -113,15 +163,27 @@ const filterWhitePageBackground = (canvasContext, canvas) => {
     const right = Math.min(width, bounds.maxX);
     const bottom = Math.min(height, bounds.maxY);
     if (right <= left || bottom <= top) {
+      return null;
+    }
+    return {
+      widthRatio: (right - left) / width,
+      heightRatio: (bottom - top) / height,
+    };
+  };
+
+  const isWhiteBackground = () => {
+    const coverage = getCoverage();
+    if (!coverage) {
       return false;
     }
-    const coveredWidth = right - left;
-    const coveredHeight = bottom - top;
+    // 横向铺满：整页底色、横向色带、逐行白底的宽度都在这个范围内
+    if (coverage.widthRatio >= WHITE_BACKGROUND_MIN_WIDTH) {
+      return true;
+    }
+    // 较窄的行背景：横向占一定宽度，但纵向只有一行左右的高度
     return (
-      coveredWidth >= width * WHITE_BACKGROUND_MIN_COVERAGE &&
-      coveredHeight >= height * WHITE_BACKGROUND_MIN_COVERAGE &&
-      coveredWidth * coveredHeight >=
-        width * height * WHITE_BACKGROUND_MIN_COVERAGE
+      coverage.widthRatio >= WHITE_BACKGROUND_MIN_STRIP_WIDTH &&
+      coverage.heightRatio <= WHITE_BACKGROUND_MAX_STRIP_HEIGHT
     );
   };
 
@@ -162,25 +224,16 @@ const filterWhitePageBackground = (canvasContext, canvas) => {
     const isPathFill = !arguments.length || typeof arguments[0] === "string";
     if (
       isPathFill &&
-      !hasPaintedContent &&
       !hasCurve &&
       canvasContext.globalAlpha === 1 &&
       canvasContext.globalCompositeOperation === "source-over" &&
       isWhiteFillStyle(canvasContext.fillStyle) &&
-      coversCanvas()
+      isWhiteBackground()
     ) {
       return;
     }
-    hasPaintedContent = true;
     return original.fill.apply(this, arguments);
   };
-
-  ["fillText", "strokeText", "drawImage", "putImageData"].forEach((method) => {
-    canvasContext[method] = function () {
-      hasPaintedContent = true;
-      return original[method].apply(this, arguments);
-    };
-  });
 };
 
 const render = async (
