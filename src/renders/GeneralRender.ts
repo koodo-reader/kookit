@@ -1918,10 +1918,16 @@ class GeneralRender extends EventEmitter {
       !node.textContent.trim() ||
       node.tagName === "A"
     ) {
-      //获取当前a标签和下一个a标签之间的内容
+      //获取当前a标签和下一个脚注目标之间的内容
       let next = node.nextSibling;
       let content = node.textContent;
-      while (next && (next.tagName !== node.tagName || !content.trim())) {
+      while (
+        next &&
+        (!content.trim() ||
+          next.nodeType !== 1 ||
+          next.tagName !== node.tagName ||
+          !(next as HTMLElement).hasAttribute("id"))
+      ) {
         content += next.textContent;
         next = next.nextSibling;
       }

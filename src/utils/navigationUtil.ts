@@ -346,10 +346,54 @@ export const handlePrevChapter = async (
     iframe
   );
 };
+export const isFootnoteReference = (element: HTMLElement) => {
+  if (!element || !element.getAttribute) return false;
+  const typeToken = (
+    (element.getAttribute("epub:type") || "") +
+    " " +
+    (element.getAttribute("role") || "")
+  ).toLowerCase();
+  return typeToken
+    .split(/[\s;]+/)
+    .some((token) => token === "noteref" || token === "doc-noteref");
+};
+const isFootnoteBacklink = (element: HTMLElement) => {
+  if (!element || element.tagName !== "A" || !element.getAttribute) {
+    return false;
+  }
+  const href = element.getAttribute("href") || "";
+  const index = href.lastIndexOf("#");
+  if (index === -1) return false;
+  const id = href.substring(index + 1);
+  if (!id) return false;
+  const doc = element.ownerDocument;
+  const target = doc && doc.getElementById ? doc.getElementById(id) : null;
+  if (!target || target === element || target.contains(element)) {
+    return false;
+  }
+  // 返回链接指向的是正文中的脚注标记（noteref），不是注释内容
+  if (isFootnoteReference(target)) return true;
+  const next = (target as HTMLElement).nextElementSibling;
+  if (next && isFootnoteReference(next as HTMLElement)) return true;
+  if (!target.querySelectorAll) return false;
+  const references = target.querySelectorAll("a");
+  for (let index = 0; index < references.length; index++) {
+    if (isFootnoteReference(references[index] as HTMLElement)) {
+      return true;
+    }
+  }
+  return false;
+};
 export const isElementFootnote = (element: HTMLElement) => {
   if (!element) return false;
   if (element.tagName === "IMG") {
     return true;
+  }
+  if (isFootnoteReference(element)) {
+    return true;
+  }
+  if (isFootnoteBacklink(element)) {
+    return false;
   }
   if (element.textContent) {
     let textContent = element.textContent.trim();
@@ -366,6 +410,14 @@ export const isContentFootnote = (content: string) => {
   const footnotePattern =
     /^(\[|\(|〔|【|〈|《|〚)([a-zA-Z0-9零一二三四五六七八九十百千万]+)(\]|\)|〕|】|〉|》|〛)$|^\d+$|^(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3}))$|^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚㉛㉜㉝㉞㉟㊱㊲㊳㊴㊵㊶㊷㊸㊹㊺㊻㊼㊽㊾㊿]$/i;
   if (footnotePattern.test(textContent)) {
+    return true;
+  }
+  // Check for markers like {1}, {a} and [[n]] used by some books
+  if (
+    /^(\{|\[\[)[a-zA-Z0-9零一二三四五六七八九十百千万]+(\}|\]\])$/.test(
+      textContent
+    )
+  ) {
     return true;
   }
   if (
