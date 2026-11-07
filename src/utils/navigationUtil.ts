@@ -4,6 +4,9 @@ import {
   convertStyleNum,
   getActualOffsetLeft,
   getActualOffsetTop,
+  getLogicalHorizontalScroll,
+  getScrollLeftForContentOffset,
+  getScrollLeftForLogical,
   handleIframeHeight,
   handleOneChapterDoc,
   isVerticalLayout,
@@ -16,11 +19,14 @@ import { cleanText } from "../libs/textProcessor";
 import {
   getBlockElement,
   getPageWidth,
+  getSectionGap,
   getStylePxNumber,
   getViewportSize,
   isParentBlock,
   mergeStyleStrings,
+  PAGE_TURN_DURATION,
 } from "./common";
+import { MIMICAL_FLIP_END_EVENT } from "./animationUtil";
 
 declare var window: any;
 
@@ -80,6 +86,14 @@ export const resolveXPath = (xpath: string, doc: Document): Element | null => {
   }
 };
 
+let mimicalFlipEndListener: (() => void) | null = null;
+let mimicalFlipEndTimer: number | null = null;
+
+const hideMimicalMask = () => {
+  const bookDiv = document.getElementById("book");
+  if (bookDiv) bookDiv.style.display = "none";
+};
+
 export const playMimicalFlip = (
   animation: string,
   isMobile: string | undefined,
@@ -93,10 +107,103 @@ export const playMimicalFlip = (
   bookDiv.style.display = "block";
   if (delta > 0) flipToPrevPage();
   else if (delta < 0) flipToNextPage();
-  setTimeout(() => {
-    bookDiv.style.display = "none";
+  // 翻页动画收敛（flipend 事件）后立即隐藏遮罩恢复交互；
+  // 1000ms 定时器兜底，防止边界页等未触发动画时遮罩常驻
+  if (mimicalFlipEndListener) {
+    window.removeEventListener(MIMICAL_FLIP_END_EVENT, mimicalFlipEndListener);
+  }
+  if (mimicalFlipEndTimer) {
+    clearTimeout(mimicalFlipEndTimer);
+    mimicalFlipEndTimer = null;
+  }
+  mimicalFlipEndListener = () => {
+    if (mimicalFlipEndListener) {
+      window.removeEventListener(
+        MIMICAL_FLIP_END_EVENT,
+        mimicalFlipEndListener
+      );
+      mimicalFlipEndListener = null;
+    }
+    if (mimicalFlipEndTimer) {
+      clearTimeout(mimicalFlipEndTimer);
+      mimicalFlipEndTimer = null;
+    }
+    hideMimicalMask();
+  };
+  window.addEventListener(MIMICAL_FLIP_END_EVENT, mimicalFlipEndListener);
+  mimicalFlipEndTimer = window.setTimeout(() => {
+    mimicalFlipEndTimer = null;
+    if (mimicalFlipEndListener) {
+      window.removeEventListener(
+        MIMICAL_FLIP_END_EVENT,
+        mimicalFlipEndListener
+      );
+      mimicalFlipEndListener = null;
+    }
+    hideMimicalMask();
   }, 1000);
   return true;
+};
+
+let pageTurnAnimationId: number | null = null;
+let pageTurnAnimationResolve: (() => void) | null = null;
+
+const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
+const finishPageTurnAnimation = () => {
+  pageTurnAnimationId = null;
+  if (pageTurnAnimationResolve) {
+    pageTurnAnimationResolve();
+    pageTurnAnimationResolve = null;
+  }
+};
+
+// 原生 smooth 滚动的时长由浏览器决定且偏慢，改用固定时长动画
+export const animateScrollTo = (
+  element: HTMLElement,
+  left: number,
+  top: number
+) => {
+  if (pageTurnAnimationId !== null) {
+    cancelAnimationFrame(pageTurnAnimationId);
+  }
+  if (pageTurnAnimationResolve) {
+    pageTurnAnimationResolve();
+    pageTurnAnimationResolve = null;
+  }
+  pageTurnAnimationId = null;
+
+  const startLeft = element.scrollLeft;
+  const startTop = element.scrollTop;
+  const distanceLeft = left - startLeft;
+  const distanceTop = top - startTop;
+  if (Math.abs(distanceLeft) < 0.5 && Math.abs(distanceTop) < 0.5) {
+    return Promise.resolve();
+  }
+
+  return new Promise<void>((resolve) => {
+    pageTurnAnimationResolve = resolve;
+    let startTime: number | null = null;
+    const step = (now: number) => {
+      if (!element.isConnected) {
+        finishPageTurnAnimation();
+        return;
+      }
+      if (startTime === null) startTime = now;
+      const progress = Math.min(1, (now - startTime) / PAGE_TURN_DURATION);
+      const eased = easeOutCubic(progress);
+      element.scrollLeft = startLeft + distanceLeft * eased;
+      element.scrollTop = startTop + distanceTop * eased;
+      if (progress < 1) {
+        pageTurnAnimationId = requestAnimationFrame(step);
+      } else {
+        element.scrollLeft = left;
+        element.scrollTop = top;
+        finishPageTurnAnimation();
+      }
+    };
+    pageTurnAnimationId = requestAnimationFrame(step);
+  });
 };
 
 export const handleScrollPage = async (
@@ -109,10 +216,17 @@ export const handleScrollPage = async (
   isMobile: string | undefined
 ) => {
   const vertical = isVerticalLayout();
+  const sliding = animation === "sliding" && isMobile !== "yes";
+  const scrollToPage = async (left: number, top: number) => {
+    if (sliding) {
+      await animateScrollTo(doc.body, left, top);
+    } else {
+      doc.body.scrollTo({ left, top, behavior: "auto" });
+    }
+  };
   playMimicalFlip(animation, isMobile, delta, flipToNextPage, flipToPrevPage);
   if (vertical) {
-    let section = Math.floor(element.clientHeight / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientHeight);
     const height = element.clientHeight;
     const currentScrollTop = doc.body.scrollTop;
     const scrollDistance = height + gap;
@@ -121,50 +235,35 @@ export const handleScrollPage = async (
       const currentPage = Math.round(currentScrollTop / scrollDistance);
       const targetPage = Math.max(0, currentPage - 1);
       const targetScrollTop = targetPage * scrollDistance;
-      doc.body.scrollTo({
-        left: 0,
-        top: targetScrollTop,
-        behavior:
-          animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
-      });
+      await scrollToPage(0, targetScrollTop);
     } else if (delta < 0) {
       const currentPage = Math.round(currentScrollTop / scrollDistance);
       const targetPage = currentPage + 1;
       const targetScrollTop = targetPage * scrollDistance;
-      doc.body.scrollTo({
-        left: 0,
-        top: targetScrollTop,
-        behavior:
-          animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
-      });
+      await scrollToPage(0, targetScrollTop);
     }
   } else {
-    let section = Math.floor(element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientWidth);
     const width = element.clientWidth;
-    const currentScrollLeft = doc.body.scrollLeft;
+    const currentScrollLeft = getLogicalHorizontalScroll(doc.body);
     const scrollDistance = width + gap;
 
     if (delta > 0) {
       const currentPage = Math.round(currentScrollLeft / scrollDistance);
       const targetPage = Math.max(0, currentPage - 1);
-      const targetScrollLeft = targetPage * scrollDistance;
-      doc.body.scrollTo({
-        top: 0,
-        left: targetScrollLeft,
-        behavior:
-          animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
-      });
+      const targetScrollLeft = getScrollLeftForLogical(
+        doc.body,
+        targetPage * scrollDistance
+      );
+      await scrollToPage(targetScrollLeft, 0);
     } else if (delta < 0) {
       const currentPage = Math.round(currentScrollLeft / scrollDistance);
       const targetPage = currentPage + 1;
-      const targetScrollLeft = targetPage * scrollDistance;
-      doc.body.scrollTo({
-        top: 0,
-        left: targetScrollLeft,
-        behavior:
-          animation === "sliding" && isMobile !== "yes" ? "smooth" : "auto",
-      });
+      const targetScrollLeft = getScrollLeftForLogical(
+        doc.body,
+        targetPage * scrollDistance
+      );
+      await scrollToPage(targetScrollLeft, 0);
     }
   }
 };
@@ -247,10 +346,54 @@ export const handlePrevChapter = async (
     iframe
   );
 };
+export const isFootnoteReference = (element: HTMLElement) => {
+  if (!element || !element.getAttribute) return false;
+  const typeToken = (
+    (element.getAttribute("epub:type") || "") +
+    " " +
+    (element.getAttribute("role") || "")
+  ).toLowerCase();
+  return typeToken
+    .split(/[\s;]+/)
+    .some((token) => token === "noteref" || token === "doc-noteref");
+};
+const isFootnoteBacklink = (element: HTMLElement) => {
+  if (!element || element.tagName !== "A" || !element.getAttribute) {
+    return false;
+  }
+  const href = element.getAttribute("href") || "";
+  const index = href.lastIndexOf("#");
+  if (index === -1) return false;
+  const id = href.substring(index + 1);
+  if (!id) return false;
+  const doc = element.ownerDocument;
+  const target = doc && doc.getElementById ? doc.getElementById(id) : null;
+  if (!target || target === element || target.contains(element)) {
+    return false;
+  }
+  // 返回链接指向的是正文中的脚注标记（noteref），不是注释内容
+  if (isFootnoteReference(target)) return true;
+  const next = (target as HTMLElement).nextElementSibling;
+  if (next && isFootnoteReference(next as HTMLElement)) return true;
+  if (!target.querySelectorAll) return false;
+  const references = target.querySelectorAll("a");
+  for (let index = 0; index < references.length; index++) {
+    if (isFootnoteReference(references[index] as HTMLElement)) {
+      return true;
+    }
+  }
+  return false;
+};
 export const isElementFootnote = (element: HTMLElement) => {
   if (!element) return false;
   if (element.tagName === "IMG") {
     return true;
+  }
+  if (isFootnoteReference(element)) {
+    return true;
+  }
+  if (isFootnoteBacklink(element)) {
+    return false;
   }
   if (element.textContent) {
     let textContent = element.textContent.trim();
@@ -267,6 +410,14 @@ export const isContentFootnote = (content: string) => {
   const footnotePattern =
     /^(\[|\(|〔|【|〈|《|〚)([a-zA-Z0-9零一二三四五六七八九十百千万]+)(\]|\)|〕|】|〉|》|〛)$|^\d+$|^(M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3}))$|^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚㉛㉜㉝㉞㉟㊱㊲㊳㊴㊵㊶㊷㊸㊹㊺㊻㊼㊽㊾㊿]$/i;
   if (footnotePattern.test(textContent)) {
+    return true;
+  }
+  // Check for markers like {1}, {a} and [[n]] used by some books
+  if (
+    /^(\{|\[\[)[a-zA-Z0-9零一二三四五六七八九十百千万]+(\}|\]\])$/.test(
+      textContent
+    )
+  ) {
     return true;
   }
   if (
@@ -543,16 +694,17 @@ export const handleScrollPosition = async (
   const vertical = isVerticalLayout() && readerMode !== "scroll";
   if (page && readerMode !== "scroll") {
     if (vertical) {
-      let section = Math.floor(element.clientHeight / 12);
-      let gap = section % 2 === 0 ? section : section - 1;
+      let gap = getSectionGap(element.clientHeight);
       let pageHeight = element.clientHeight + gap;
       top = pageHeight * (parseInt(page) - 1);
     } else {
-      let section = Math.floor(element.clientWidth / 12);
-      let gap = section % 2 === 0 ? section : section - 1;
+      let gap = getSectionGap(element.clientWidth);
       const width = convertComputedNum(getComputedStyle(element).width);
       let pageWidth = width + gap;
-      left = pageWidth * (parseInt(page) - 1);
+      left = getScrollLeftForLogical(
+        doc.body,
+        pageWidth * (parseInt(page) - 1)
+      );
     }
   } else if (text) {
     let nodeList = getBlockElement(doc.body);
@@ -592,10 +744,13 @@ export const handleScrollPosition = async (
           : 0;
     } else {
       left = targetNode
-        ? getActualOffsetLeft(targetNode) -
-          convertStyleNum(
-            targetNode.marginLeft ||
-              parseFloat(getComputedStyle(targetNode).marginLeft)
+        ? getScrollLeftForContentOffset(
+            doc.body,
+            getActualOffsetLeft(targetNode) -
+              convertStyleNum(
+                targetNode.marginLeft ||
+                  parseFloat(getComputedStyle(targetNode).marginLeft)
+              )
           )
         : text === "prevChapter"
           ? doc.body.scrollWidth
@@ -621,10 +776,13 @@ export const handleScrollPosition = async (
         : 0;
     } else {
       left = targetNode
-        ? getActualOffsetLeft(targetNode) -
-          convertStyleNum(
-            targetNode.marginLeft ||
-              parseFloat(getComputedStyle(targetNode).marginLeft)
+        ? getScrollLeftForContentOffset(
+            doc.body,
+            getActualOffsetLeft(targetNode) -
+              convertStyleNum(
+                targetNode.marginLeft ||
+                  parseFloat(getComputedStyle(targetNode).marginLeft)
+              )
           )
         : 0;
     }
@@ -650,8 +808,7 @@ export const getCloestBlock = (
     return targetNode;
   }
   if (vertical) {
-    let section = Math.floor(element.clientHeight / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientHeight);
     let offsetTop =
       getActualOffsetTop(targetNode) -
       convertStyleNum(
@@ -671,8 +828,7 @@ export const getCloestBlock = (
       return targetNode;
     }
   } else {
-    let section = Math.floor(element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientWidth);
     let offsetLeft =
       getActualOffsetLeft(targetNode) -
       convertStyleNum(
@@ -776,8 +932,7 @@ export const isCurrentNodeFarFromParrent = (
 ) => {
   const vertical = isVerticalLayout() && readerMode !== "scroll";
   if (vertical) {
-    let section = Math.floor(element.clientHeight / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientHeight);
     if (
       Math.abs(
         getActualOffsetTop(targetNode) -
@@ -790,8 +945,7 @@ export const isCurrentNodeFarFromParrent = (
       return false;
     }
   } else {
-    let section = Math.floor(element.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(element.clientWidth);
     if (
       Math.abs(
         getActualOffsetLeft(targetNode) -

@@ -1,4 +1,21 @@
 declare var window: any;
+// Page gap: passed from host via config.pageGap to window.pageGap (unit px).
+// Fallback to min(60, dimension / 12) when not set; used as column-gap in
+// single/double column layout
+// 翻页滑动动画固定时长（毫秒），宿主端的翻页节流也使用该时长
+export const PAGE_TURN_DURATION = 200;
+
+export const getSectionGap = (dimension: number): number => {
+  const pageGap = parseInt(String(window.pageGap ?? ""));
+  let section = isNaN(pageGap)
+    ? Math.min(60, Math.floor(dimension / 12))
+    : pageGap;
+  // keep room for the columns
+  section = Math.min(section, Math.floor(dimension - 4));
+  // gap can only be an even number
+  section = section % 2 === 0 ? section : section - 1;
+  return Math.max(section, 0);
+};
 export const classes = [
   "color-0",
   "color-1",
@@ -223,8 +240,7 @@ export function getStylePxNumber(
 
 export function getPageWidth(element: HTMLElement, readerMode: string): number {
   if (!element) return 0;
-  const section = Math.floor(element.clientWidth / 12);
-  const gap = section % 2 === 0 ? section : section - 1;
+  const gap = getSectionGap(element.clientWidth);
   const scale = readerMode === "double" ? 2 : 1;
   return (element.clientWidth - gap) / scale;
 }

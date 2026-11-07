@@ -1,3 +1,5 @@
+import { isRevertDirection } from "./layoutUtil";
+
 function createBookElement(sectionCount) {
   let tempDiv = document.getElementById("book");
   if (tempDiv) {
@@ -62,6 +64,8 @@ function createBookElement(sectionCount) {
   document.head.appendChild(style);
 }
 
+export const MIMICAL_FLIP_END_EVENT = "page-flipend";
+
 let flipRenderTimer: number | null = null;
 let flipAnimFrameId: number | null = null;
 let flipAnimating = false;
@@ -83,6 +87,7 @@ export const addPageAnimation = (
   }
   flipAnimating = false;
 
+  const revertDirection = isRevertDirection();
   createBookElement(Math.max(1, Math.floor(totalPage) + 1));
   var WINDOW_WIDTH = window.innerWidth;
   var WINDOW_HEIGHT = window.innerHeight;
@@ -116,6 +121,9 @@ export const addPageAnimation = (
 
   var flips: any = [];
 
+  // 上一帧是否处于翻页动画中（用于检测收敛边界并派发 flipend）
+  var mimicalBusy = false;
+
   var book = document.getElementById("book");
   if (!book) return;
 
@@ -138,11 +146,15 @@ export const addPageAnimation = (
     });
   }
 
+  // 以当前页初始化翻页状态，避免动画始终从第 0 页开始而错位
+  pageNum = Math.min(pageIndex, Math.max(0, flips.length - 1));
+  resetFlips();
+
   // Resize the canvas to match the book size (with scale reduction for GPU performance)
   canvas.width = (BOOK_WIDTH + CANVAS_PADDING * 2) * CANVAS_SCALE;
   canvas.height = (BOOK_HEIGHT + CANVAS_PADDING * 2) * CANVAS_SCALE;
-  canvas.style.width = (BOOK_WIDTH + CANVAS_PADDING * 2) + "px";
-  canvas.style.height = (BOOK_HEIGHT + CANVAS_PADDING * 2) + "px";
+  canvas.style.width = BOOK_WIDTH + CANVAS_PADDING * 2 + "px";
+  canvas.style.height = BOOK_HEIGHT + CANVAS_PADDING * 2 + "px";
 
   // 启用 GPU 加速: will-change 提示浏览器为该 canvas 创建独立合成层
   canvas.style.willChange = "transform";
@@ -170,6 +182,8 @@ export const addPageAnimation = (
     if (!book || !event.touches?.[0]) return;
     const touch = event.touches[0];
     const bookRect = book.getBoundingClientRect();
+    // 保持屏幕坐标：LTR/RTL 统一，折痕的镜像在 render/drawFlip 内处理，
+    // 这样折痕才能稳定地跟随手指而不是被翻转出屏幕外。
     mouse.x = touch.screenX - bookRect.left - BOOK_WIDTH / 2;
     mouse.y = touch.screenY - bookRect.top;
   }
@@ -178,12 +192,13 @@ export const addPageAnimation = (
     const touch = event.touches?.[0];
     if (!touch) return;
     touchStartX = touch.screenX;
-    if (touch.screenX < window.screen.width / 2 && pageNum - 1 >= 0) {
+    // RTL 下左侧拖动的是“下一页”，右侧拖动的是“上一页”
+    const dragPreviousPage = revertDirection
+      ? touch.screenX > window.innerWidth / 2
+      : touch.screenX < window.innerWidth / 2;
+    if (dragPreviousPage && pageNum - 1 >= 0) {
       flips[pageNum - 1].dragging = true;
-    } else if (
-      touch.screenX > window.screen.width / 2 &&
-      pageNum + 1 < flips.length
-    ) {
+    } else if (!dragPreviousPage && pageNum + 1 < flips.length) {
       flips[pageNum].dragging = true;
     }
 
@@ -195,17 +210,21 @@ export const addPageAnimation = (
     const touch = event.changedTouches?.[0];
     if (!touch) return;
     touchEndX = touch.screenX;
+    // mouse.x 此时为屏幕坐标（正值），RTL 下方向与 LTR 相反
+    const dragToNext = revertDirection
+      ? mouse.x > (PAGE_WIDTH / 4) * 1 && touchEndX - touchStartX > 0
+      : mouse.x < (PAGE_WIDTH / 4) * 3 && touchEndX - touchStartX < 0;
+    const dragToPrev = revertDirection
+      ? mouse.x < (PAGE_WIDTH / 4) * 3 && touchEndX - touchStartX < 0
+      : mouse.x > (PAGE_WIDTH / 4) * 1 && touchEndX - touchStartX > 0;
     for (var i = 0; i < flips.length; i++) {
       // If this flip was being dragged we animate to its destination
       if (flips[i].dragging) {
         // Figure out which page we should go to next depending on the flip direction
-        if (mouse.x < (PAGE_WIDTH / 4) * 3 && touchEndX - touchStartX < 0) {
+        if (dragToNext) {
           flips[i].target = -1;
           pageNum = Math.min(pageNum + 1, flips.length);
-        } else if (
-          mouse.x > (PAGE_WIDTH / 4) * 1 &&
-          touchEndX - touchStartX > 0
-        ) {
+        } else if (dragToPrev) {
           flips[i].target = 1;
           pageNum = Math.max(pageNum - 1, 0);
         } else {
@@ -228,13 +247,24 @@ export const addPageAnimation = (
     // 按缩放比例缩小绘图坐标，减少实际像素绘制量
     context.save();
     context.setTransform(CANVAS_SCALE, 0, 0, CANVAS_SCALE, 0, 0);
-    context.clearRect(0, 0, BOOK_WIDTH + CANVAS_PADDING * 2, BOOK_HEIGHT + CANVAS_PADDING * 2);
+    context.clearRect(
+      0,
+      0,
+      BOOK_WIDTH + CANVAS_PADDING * 2,
+      BOOK_HEIGHT + CANVAS_PADDING * 2
+    );
+
+    var settled = true;
 
     for (var i = 0; i < flips.length; i++) {
       var flip = flips[i];
 
       if (flip.dragging) {
-        flip.target = Math.max(Math.min(mouse.x / PAGE_WIDTH, 1), -1);
+        // RTL：折痕已绕中线镜像，进度映射取反并偏移，使折痕跟随手指
+        const dragProgress = revertDirection
+          ? 1 - 2 * (mouse.x / PAGE_WIDTH)
+          : mouse.x / PAGE_WIDTH;
+        flip.target = Math.max(Math.min(dragProgress, 1), -1);
       }
 
       flip.progress += (flip.target - flip.progress) * 0.2;
@@ -242,10 +272,20 @@ export const addPageAnimation = (
       // If the flip is being dragged or is somewhere in the middle of the book, render it
       if (flip.dragging || Math.abs(flip.progress) < 0.997) {
         drawFlip(flip);
+        settled = false;
       }
     }
     // 恢复之前的变换状态
     context.restore();
+
+    // 翻页动画收敛后向宿主派发 flipend 事件，
+    // 导航层用它立即隐藏遮罩并解锁滚轮，避免固定等待 1000ms
+    if (mimicalBusy && settled) {
+      mimicalBusy = false;
+      window.dispatchEvent(new Event(MIMICAL_FLIP_END_EVENT));
+    } else if (!settled) {
+      mimicalBusy = true;
+    }
   }
 
   function drawFlip(flip) {
@@ -274,6 +314,14 @@ export const addPageAnimation = (
 
     context.save();
     context.translate(CANVAS_PADDING + BOOK_WIDTH / 2, PAGE_Y + CANVAS_PADDING);
+    // RTL：整张折页（折线 + 纸面 + 阴影）绕书页中线水平镜像。
+    // 不能镜像 #book 外层 DOM：书脊位于屏幕左缘，镜像会把折页反射到
+    // 屏幕外的左半边；这里在绘制层整体镜像，折页才能留在屏幕内，
+    // 且纸面朝向正确，避免上一页翻转时整页被空白纸面遮挡。
+    if (revertDirection) {
+      context.translate(PAGE_WIDTH, 0);
+      context.scale(-1, 1);
+    }
 
     // Draw a sharp shadow on the left side of the page
     context.strokeStyle =
@@ -434,7 +482,9 @@ export const addPageAnimation = (
         clearInterval(flipRenderTimer);
         flipRenderTimer = null;
       }
-      const canvasEl = document.getElementById("pageflip-canvas") as HTMLCanvasElement;
+      const canvasEl = document.getElementById(
+        "pageflip-canvas"
+      ) as HTMLCanvasElement;
       if (canvasEl) {
         canvasEl.style.willChange = "";
         canvasEl.style.transform = "";

@@ -26,6 +26,7 @@ import {
 } from "../utils/navigationUtil.js";
 import rangy from "rangy/lib/rangy-core.js";
 import "rangy/lib/rangy-textrange";
+import { getSectionGap } from "../utils/common.js";
 declare var window: any;
 class PdfRender extends GeneralRender {
   pdfBuffer: ArrayBuffer;
@@ -341,8 +342,7 @@ class PdfRender extends GeneralRender {
     let doc = this.getDocument();
     if (!doc) return;
     let scale = this.readerMode === "double" ? 2 : 1;
-    let section = Math.floor(doc.body.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(doc.body.clientWidth);
 
     let subIframe = doc.querySelectorAll("iframe")[0];
     let iframeHeight = subIframe?.getBoundingClientRect().height;
@@ -611,9 +611,6 @@ class PdfRender extends GeneralRender {
     return (await this.visibleText()).join(" ");
   }
   async record(): Promise<void> {
-    if (this.animation !== "none" && this.isMobile !== "yes") {
-      await new Promise((r) => setTimeout(r, 1000));
-    }
     let doc = this.getDocument();
     if (!doc) return;
     await this.handlePDFRecord(doc);
@@ -1192,19 +1189,6 @@ class PdfRender extends GeneralRender {
       docLayer.style.filter = "invert(1) hue-rotate(180deg) contrast(0.95)";
     }
     if (
-      this.backgroundColor === "rgba(233, 216, 188,1)" &&
-      this.isScannedPDF === "yes"
-    ) {
-      docLayer.style.filter = "sepia(100%) contrast(0.95) brightness(0.95)";
-    }
-    if (
-      this.backgroundColor === "rgba(197, 231, 207,1)" &&
-      this.isScannedPDF === "yes"
-    ) {
-      docLayer.style.filter =
-        "sepia(30%) hue-rotate(60deg) saturate(120%) brightness(95%)";
-    }
-    if (
       this.pdfCrop.top > 0 ||
       this.pdfCrop.left > 0 ||
       this.pdfCrop.right > 0
@@ -1302,8 +1286,7 @@ class PdfRender extends GeneralRender {
     let viewHeight = this.element.clientHeight;
     if (this.readerMode === "double") {
       let scale = this.readerMode === "double" ? 2 : 1;
-      let section = Math.floor(this.element.clientWidth / 12);
-      let gap = section % 2 === 0 ? section : section - 1;
+      let gap = getSectionGap(this.element.clientWidth);
       viewWidth = (viewWidth - gap) / scale;
     }
     let scale = Math.min(viewWidth / width, viewHeight / height);

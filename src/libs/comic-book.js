@@ -40,10 +40,12 @@ export const makeComicBook = ({ entries, loadBlob, getSize }, file) => {
     ".jfif",
     ".jpe",
     ".heic",
+    ".avif",
+    ".heif",
   ];
   const files = entries
     .map((entry) => entry.filename)
-    .filter((name) => exts.some((ext) => name.endsWith(ext)))
+    .filter((name) => exts.some((ext) => name.toLowerCase().endsWith(ext)))
     .sort((a, b) =>
       a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
     );
@@ -56,6 +58,7 @@ export const makeComicBook = ({ entries, loadBlob, getSize }, file) => {
   book.sections = files.map((name, index) => ({
     id: name,
     load: () => load(name),
+    loadImage: () => loadBlob(name),
     unload: () => unload(name),
     size: getSize(name),
   }));

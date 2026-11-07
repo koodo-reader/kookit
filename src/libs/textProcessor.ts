@@ -29,11 +29,67 @@ let startWithChars = [
   "章节目录",
   "尾声",
   "聲明",
+  "引子",
+  "序言",
+  "题记",
+  "开篇",
+  "开篇词",
+  "卷首",
+  "卷首语",
+  "引言",
+  "导言",
+  "入话",
+  "作者的话",
+  "写在前面",
+  "重要声明",
+  "免责声明",
+  "版权声明",
+  "致读者",
+  "特别说明",
+  "终章",
+  "大结局",
+  "完结感言",
+  "完结篇",
+  "写在后面的话",
+  "作者有话说",
+  "感言",
+  "番外",
+  "番外篇",
+  "外传",
+  "特别篇",
+  "特别篇目",
+  "附录",
+  "小剧场",
+  "彩蛋",
   "寫在前面的話",
   "後記",
   "後序",
   "章節目錄",
   "尾聲",
+  "題記",
+  "開篇",
+  "開篇詞",
+  "卷首語",
+  "導言",
+  "入話",
+  "作者的話",
+  "寫在前面",
+  "重要聲明",
+  "免責聲明",
+  "版權聲明",
+  "致讀者",
+  "特別說明",
+  "終章",
+  "大結局",
+  "完結感言",
+  "完結篇",
+  "寫在後面的話",
+  "作者有話說",
+  "外傳",
+  "特別篇",
+  "特別篇目",
+  "附錄",
+  "小劇場",
 ];
 let startWithNumAndChars = [" ", "　", "、", "·", ".", "：", ":"];
 export const findLastIndex = (arr: any[], callback: (item: any) => boolean) => {
@@ -53,6 +109,10 @@ export const txtToHtml = (
   if (lines.length === 1) {
     lines = text.split("\r");
   }
+  // 丢弃文件开头的纯空白行，避免空白内容脱离第一个章节标题单独成章
+  while (lines.length > 0 && lines[0].trim() === "") {
+    lines.shift();
+  }
 
   const htmlParts: string[] = []; // Use an array to store HTML parts
   let isRefresh = false;
@@ -66,6 +126,11 @@ export const txtToHtml = (
   if (noTitle) {
     //分章方式改成每500行分一章，且不进行标题识别
     let chapterIndex = 0;
+    if (lines.length === 0) {
+      // 纯空白行文件，避免生成空 HTML 导致 noTitle 兜底无限递归
+      htmlParts.push(`<h1 class="hide">Chapter 0</h1>`);
+      chapterIndex = 1;
+    }
     for (let i = 0; i < lines.length; i += 500) {
       const chapterLines = lines.slice(i, i + 500);
       htmlParts.push(`<h1 class="hide">Chapter ${chapterIndex}</h1>`); // Push chapter title to array
@@ -155,16 +220,35 @@ export const txtToHtml = (
     }
   } else {
     // --- Loop for Full File (if not large or no bookLocation) ---
+    let lastTitleIndex = -1;
+    let hasContentSinceTitle = false;
     for (const item of lines) {
       if (item && isTitle(item, parserRegex)) {
+        if (lastTitleIndex !== -1 && !hasContentSinceTitle) {
+          // 上一个章节只有标题没有正文，降级为正文段落，剔除出目录
+          htmlParts[lastTitleIndex] = `<p>${htmlParts[lastTitleIndex].slice(
+            4,
+            -5
+          )}</p>`;
+        }
+        lastTitleIndex = htmlParts.length;
         htmlParts.push(`<h1>${item}</h1>`); // Push to array
+        hasContentSinceTitle = false;
       } else {
         if (item.trim() === "") {
           htmlParts.push(`<p class="hide">${item}</p>`); // Push line break for empty lines
           continue; // Skip further processing for empty lines
         }
         htmlParts.push(`<p>${item}</p>`); // Push to array
+        hasContentSinceTitle = true;
       }
+    }
+    if (lastTitleIndex !== -1 && !hasContentSinceTitle) {
+      // 文件末尾最后一个标题只有标题没有正文，降级为正文段落，剔除出目录
+      htmlParts[lastTitleIndex] = `<p>${htmlParts[lastTitleIndex].slice(
+        4,
+        -5
+      )}</p>`;
     }
   }
 

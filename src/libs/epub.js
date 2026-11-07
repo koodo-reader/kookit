@@ -207,6 +207,7 @@ const getMetadata = (opf) => {
       ];
     })
   );
+  metadata.isbn = getISBN(opf);
 
   const getProperties = (prefix) =>
     Object.fromEntries(
@@ -219,6 +220,7 @@ const getMetadata = (opf) => {
     );
   const rendition = getProperties("rendition:");
   const media = getProperties("media:");
+  metadata.layout = getLayout(opf, rendition);
   return { metadata, rendition, media };
 };
 
@@ -341,6 +343,122 @@ const getIdentifier = (opf) =>
     opf.getElementById(opf.documentElement.getAttribute("unique-identifier")) ??
       opf.getElementsByTagNameNS(NS.DC, "identifier")[0]
   );
+
+const isISBN10 = (value) => /^\d{9}[\dX]$/.test(value);
+const isISBN13 = (value) => /^97[89]\d{10}$/.test(value);
+const isISBN = (value) => isISBN10(value) || isISBN13(value);
+
+const isbnChecksum = (value) => {
+  if (isISBN13(value)) {
+    const sum = value
+      .slice(0, 12)
+      .split("")
+      .reduce((acc, digit, i) => acc + Number(digit) * (i % 2 ? 3 : 1), 0);
+    return (10 - (sum % 10)) % 10 === Number(value[12]);
+  }
+  if (isISBN10(value)) {
+    const sum = value
+      .split("")
+      .reduce(
+        (acc, digit, i) =>
+          acc + (digit === "X" ? 10 : Number(digit)) * (10 - i),
+        0
+      );
+    return sum % 11 === 0;
+  }
+  return false;
+};
+
+// strip common prefixes, annotations and separators from an ISBN value
+const normalizeISBN = (value) =>
+  (value ?? "")
+    .replace(/[([][^)\]]*[)\]]/g, " ")
+    .replace(/^\s*urn:isbn:/i, "")
+    .replace(/^\s*isbn(?:[-\s]?(?:10|13))?\s*[:：]?\s*/i, "")
+    .replace(/[-\s\u2010-\u2015]/g, "")
+    .toUpperCase();
+
+// legacy OPF meta content, e.g. <meta name="fixed-layout" content="true"/>
+const getMetaContent = (opf, name) => {
+  for (const el of opf.getElementsByTagNameNS(NS.OPF, "meta")) {
+    if ((el.getAttribute("name") ?? "").toLowerCase() !== name.toLowerCase())
+      continue;
+    return getElementText(el) || el.getAttribute("content");
+  }
+  return null;
+};
+
+// EPUB3 uses rendition:layout, older books use fixed-layout / rendition:layout meta
+const getLayout = (opf, rendition) => {
+  for (const value of [
+    rendition.layout,
+    getMetaContent(opf, "rendition:layout"),
+    getMetaContent(opf, "fixed-layout"),
+  ]) {
+    if (/^pre-paginated$/i.test(value ?? "")) return "pre-paginated";
+    if (/^reflowable$/i.test(value ?? "")) return "reflowable";
+    if (/^(true|yes|1)$/i.test(value ?? "")) return "pre-paginated";
+  }
+  return "reflowable";
+};
+
+const getISBN = (opf) => {
+  const $$meta = Array.from(opf.getElementsByTagNameNS(NS.OPF, "meta"));
+  // EPUB3: <meta refines="#id" property="identifier-type">ISBN</meta>
+  // or onix:codelist5 values 02 (ISBN-10) / 15 (ISBN-13)
+  const isbnRefines = new Set(
+    $$meta
+      .filter((meta) => {
+        if (meta.getAttribute("property") !== "identifier-type") return false;
+        const type = getElementText(meta) ?? "";
+        const scheme =
+          meta.getAttribute("scheme") ??
+          meta.getAttributeNS(NS.OPF, "scheme") ??
+          "";
+        return (
+          /isbn/i.test(type) ||
+          /isbn/i.test(scheme) ||
+          /^(02|15)$/.test(type.trim())
+        );
+      })
+      .map((meta) => (meta.getAttribute("refines") ?? "").replace(/^#/, ""))
+      .filter(Boolean)
+  );
+
+  const candidates = [];
+  for (const el of opf.getElementsByTagNameNS(NS.DC, "identifier")) {
+    const raw = getElementText(el) ?? "";
+    const scheme =
+      el.getAttributeNS(NS.OPF, "scheme") ?? el.getAttribute("scheme") ?? "";
+    const id = el.getAttribute("id") ?? "";
+    const hinted = /isbn/i.test(scheme) || /isbn/i.test(id) || isbnRefines.has(id);
+    // some OPFs list multiple identifiers separated by commas/semicolons
+    for (const part of raw.split(/[,;，；]/)) {
+      const value = normalizeISBN(part);
+      if (!isISBN(value)) continue;
+      // prefer explicitly labelled identifiers, valid checksums, then ISBN-13
+      candidates.push({
+        value,
+        score:
+          (hinted ? 4 : 0) +
+          (isbnChecksum(value) ? 2 : 0) +
+          (isISBN13(value) ? 1 : 0),
+      });
+    }
+  }
+  if (candidates.length) {
+    candidates.sort((a, b) => b.score - a.score);
+    return candidates[0].value;
+  }
+
+  // legacy OPF fallback: <meta name="ISBN" content="..."/>
+  for (const meta of $$meta) {
+    if (!/isbn/i.test(meta.getAttribute("name") ?? "")) continue;
+    const value = normalizeISBN(meta.getAttribute("content") ?? "");
+    if (isISBN(value)) return value;
+  }
+  return null;
+};
 
 // https://www.w3.org/publishing/epub32/epub-ocf.html#sec-resource-obfuscation
 const deobfuscate = async (key, length, blob) => {
@@ -929,6 +1047,8 @@ export class EPUB {
       sortAs: title?.fileAs,
       language: metadata?.language,
       identifier: getIdentifier(opf),
+      isbn: metadata?.isbn,
+      layout: metadata?.layout,
       description: metadata?.description?.value,
       publisher: metadata?.publisher?.value,
       published: metadata?.date,

@@ -1,7 +1,3 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Commands
 
 ```bash
@@ -11,6 +7,7 @@ yarn clean        # 清理 build/dist/docs 目录
 ```
 
 **构建输出目标**（在 `rollup.config.js` 中硬编码为本地路径）：
+
 - 桌面版 ES 模块 → `D:\Project\koodo-reader\src\assets\lib\kookit.min.js`
 - 移动版 UMD → `D:\Project\koodo-reader-expo\assets\lib\kookit.min.txt`
 - 移动版 ES 模块 → `D:\Project\koodo-reader-expo\assets\lib\kookit-mobile.min.js`
@@ -77,21 +74,21 @@ outerDoc.body (CSS columns, overflow-x: hidden)
 
 ### 双端构建差异
 
-| 特性 | 桌面（`src/index.ts`）| 移动（`src/mobile.ts`）|
-|------|-----------------------|------------------------|
-| 构建格式 | ES module（external 依赖）| UMD（全量打包）+ Babel 转译 |
-| 缓存 | `src/libs/cache.ts` | `src/libs/cache-mobile.ts` |
-| ZIP 库 | JSZip / fflate / @zip.js（三重容错）| 同左 |
+| 特性     | 桌面（`src/index.ts`）               | 移动（`src/mobile.ts`）     |
+| -------- | ------------------------------------ | --------------------------- |
+| 构建格式 | ES module（external 依赖）           | UMD（全量打包）+ Babel 转译 |
+| 缓存     | `src/libs/cache.ts`                  | `src/libs/cache-mobile.ts`  |
+| ZIP 库   | JSZip / fflate / @zip.js（三重容错） | 同左                        |
 
 ### 主要工具文件
 
-| 文件 | 职责 |
-|------|------|
-| `src/utils/layoutUtil.ts` | iframe 创建、字体注入、列布局计算 |
-| `src/utils/navigationUtil.ts` | 章节导航、CFI 定位、滚动处理 |
-| `src/utils/pdfUtil.ts` | PDF 容器/iframe 创建、搜索、高亮、位置管理 |
-| `src/utils/touchUtil.ts` | Android/iOS 触摸/滑动/选文事件 |
-| `src/utils/noteUtil.ts` | 高亮笔记的渲染与清除 |
-| `src/utils/animationUtil.ts` | 仿真翻书（mimical）动画 |
-| `src/libs/cfi.ts` | EPUB CFI 解析与生成 |
-| `src/libs/zh-convert.ts` | 中文繁简转换（120KB+，勿随意修改） |
+| 文件                          | 职责                                       |
+| ----------------------------- | ------------------------------------------ |
+| `src/utils/layoutUtil.ts`     | iframe 创建、字体注入、列布局计算          |
+| `src/utils/navigationUtil.ts` | 章节导航、CFI 定位、滚动处理               |
+| `src/utils/pdfUtil.ts`        | PDF 容器/iframe 创建、搜索、高亮、位置管理 |
+| `src/utils/touchUtil.ts`      | Android/iOS 触摸/滑动/选文事件             |
+| `src/utils/noteUtil.ts`       | 高亮笔记的渲染与清除                       |
+| `src/utils/animationUtil.ts`  | 仿真翻书（mimical）动画                    |
+| `src/libs/cfi.ts`             | EPUB CFI 解析与生成                        |
+| `src/libs/zh-convert.ts`      | 中文繁简转换（120KB+，勿随意修改）         |

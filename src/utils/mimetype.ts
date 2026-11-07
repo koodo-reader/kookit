@@ -5,6 +5,9 @@ export const mimetype = {
   jpeg: "image/jpeg",
   gif: "image/gif",
   webp: "image/webp",
+  avif: "image/avif",
+  heic: "image/heic",
+  heif: "image/heif",
   zip: "application/zip",
   rar: "application/x-rar-compressed",
   "7z": "application/x-7z-compressed",
@@ -14,6 +17,11 @@ export const mimetype = {
   xml: "text/xml",
   xhtml: "application/xhtml+xml",
   css: "text/css",
+  bmp: "image/bmp",
+  ico: "image/x-icon",
+  chm: "application/vnd.ms-htmlhelp",
+  mht: "application/x-mimearchive",
+  mhtml: "application/x-mimearchive",
 };
 export const mimetypeReverse = {
   "image/svg+xml": "svg",
@@ -21,6 +29,9 @@ export const mimetypeReverse = {
   "image/jpeg": "jpg",
   "image/gif": "gif",
   "image/webp": "webp",
+  "image/avif": "avif",
+  "image/heic": "heic",
+  "image/heif": "heif",
   "application/zip": "zip",
   "application/x-rar-compressed": "rar",
   "application/x-7z-compressed": "7z",
@@ -29,6 +40,10 @@ export const mimetypeReverse = {
   "text/xml": "xml",
   "application/xhtml+xml": "xhtml",
   "text/css": "css",
+  "image/bmp": "bmp",
+  "image/x-icon": "ico",
+  "application/vnd.ms-htmlhelp": "chm",
+  "application/x-mimearchive": "mhtml",
 };
 export const removeExtraQuestionMark = (html: any) => {
   return html

@@ -1,6 +1,49 @@
 const trim = (str) => str?.trim()?.replace(/\s{2,}/g, " ");
 const getElementText = (el) => trim(el?.textContent);
 
+const isISBN10 = (value) => /^\d{9}[\dX]$/.test(value);
+const isISBN13 = (value) => /^97[89]\d{10}$/.test(value);
+const isISBN = (value) => isISBN10(value) || isISBN13(value);
+
+const isbnChecksum = (value) => {
+  if (isISBN13(value)) {
+    const sum = value
+      .slice(0, 12)
+      .split("")
+      .reduce((acc, digit, i) => acc + Number(digit) * (i % 2 ? 3 : 1), 0);
+    return (10 - (sum % 10)) % 10 === Number(value[12]);
+  }
+  if (isISBN10(value)) {
+    const sum = value
+      .split("")
+      .reduce(
+        (acc, digit, i) =>
+          acc + (digit === "X" ? 10 : Number(digit)) * (10 - i),
+        0
+      );
+    return sum % 11 === 0;
+  }
+  return false;
+};
+
+const normalizeISBN = (value) =>
+  (value ?? "")
+    .replace(/[([][^)\]]*[)\]]/g, " ")
+    .replace(/^\s*urn:isbn:/i, "")
+    .replace(/^\s*isbn(?:[-\s]?(?:10|13))?\s*[:：]?\s*/i, "")
+    .replace(/[-\s\u2010-\u2015]/g, "")
+    .toUpperCase();
+
+const getISBN = (els, strict = false) => {
+  for (const el of els) {
+    for (const part of (getElementText(el) ?? "").split(/[,;，；]/)) {
+      const value = normalizeISBN(part);
+      if (isISBN(value) && (!strict || isbnChecksum(value))) return value;
+    }
+  }
+  return null;
+};
+
 const NS = {
   XLINK: "http://www.w3.org/1999/xlink",
   EPUB: "http://www.idpf.org/2007/ops",
@@ -264,6 +307,9 @@ export const makeFB2 = async (blob) => {
   book.metadata = {
     title: getElementText($("title-info book-title")),
     identifier: getElementText($("document-info id")),
+    isbn:
+      getISBN($$("publish-info isbn")) ??
+      getISBN($$("document-info id"), true),
     language: getElementText($("title-info lang")),
     author: $$("title-info author").map(getPerson),
     translator: $$("title-info translator").map(getPerson),
