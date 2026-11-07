@@ -1,10 +1,6 @@
 import Chinese from "../libs/zh-convert";
 import { processDocumentBody } from "./bionicUtil";
-import {
-  getSectionGap,
-  getStylePxNumber,
-  isElectron,
-} from "./common";
+import { getSectionGap, getStylePxNumber, isElectron } from "./common";
 import { getBlockElement, isParentBlock } from "./common";
 import { applyTextRules } from "./textRuleUtil";
 declare var window: any;
@@ -19,9 +15,7 @@ export const getMaxHorizontalScroll = (scroller: HTMLElement): number => {
   return Math.max(0, scroller.scrollWidth - scroller.clientWidth);
 };
 // RTL 滚动容器的 scrollLeft 为负值，这里统一换算成从第一页开始的逻辑偏移
-export const getLogicalHorizontalScroll = (
-  scroller: HTMLElement
-): number => {
+export const getLogicalHorizontalScroll = (scroller: HTMLElement): number => {
   const scrollLeft = convertStyleNum(scroller.scrollLeft as any);
   return isRevertDirection() ? -scrollLeft : scrollLeft;
 };
@@ -53,7 +47,6 @@ export const applyRevertDirectionStyle = (doc: Document) => {
   // 分页列布局在 html 上，滚动容器的方向必须与列顺序一致，
   // 否则 RTL 下 scrollLeft 为负值但列仍按 LTR 排列，翻页会滚到空白区域
   style.textContent =
-    'html[data-kookit-revert-direction="yes"],' +
     'html[data-kookit-revert-direction="yes"] body{direction:rtl !important;}' +
     'html[data-kookit-revert-direction="yes"] body>*:not([dir]){direction:ltr;}';
   (doc.head || doc.documentElement).appendChild(style);
@@ -367,16 +360,16 @@ export const progressInfo = (
                 doc.body.scrollWidth / (doc.body.clientWidth + gap) + ""
               )
             ) * 2,
-      currentPage:
-        readerMode === "scroll"
-          ? Math.floor(element.scrollTop / (element.clientHeight - 50)) + 1
-          : Math.round(
-              parseFloat(
-                getLogicalHorizontalScroll(doc.body) /
-                  (doc.body.clientWidth + gap) +
-                  ""
-              )
-            ) + 1,
+    currentPage:
+      readerMode === "scroll"
+        ? Math.floor(element.scrollTop / (element.clientHeight - 50)) + 1
+        : Math.round(
+            parseFloat(
+              getLogicalHorizontalScroll(doc.body) /
+                (doc.body.clientWidth + gap) +
+                ""
+            )
+          ) + 1,
   };
 };
 const fetchHighlightAsset = async (path: string) => {
