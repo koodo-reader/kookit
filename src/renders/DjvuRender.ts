@@ -253,8 +253,8 @@ class DjvuRender extends ComicRender {
       subDoc.documentElement.style.height = "100%";
       subDoc.body.innerHTML = "";
 
-      // 页面容器：图片用 object-fit 自适应居中，文本/注释层按同样的
-      // contain 适配结果换算成视口像素后叠加，两者缩放完全一致
+      // 页面容器：图片用 object-fit:contain 自适应，文本/注释层用同样比例的
+      // SVG（preserveAspectRatio=xMidYMid meet），两者缩放完全一致
       const wrapper = subDoc.createElement("div");
       wrapper.setAttribute("data-djvu-page", "1");
       wrapper.style.cssText =
