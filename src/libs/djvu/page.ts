@@ -96,35 +96,6 @@ const flipRows = (
   return out;
 };
 
-// 前景放大：按整数倍复制像素。由于 DjVu 行序自下而上，
-// 复制块的边界与图像下边缘对齐，而不是简单按比例取整
-const upsampleForeground = (
-  rgb: Uint8Array,
-  srcW: number,
-  srcH: number,
-  dstW: number,
-  dstH: number,
-  pms: number
-): Uint8Array => {
-  const out = new Uint8Array(dstW * dstH * 3);
-  for (let y = 0; y < dstH; y++) {
-    let srcRow = Math.floor((dstH - 1 - y) / pms);
-    if (srcRow > srcH - 1) srcRow = srcH - 1;
-    srcRow = (srcH - 1 - srcRow) * srcW * 3;
-    const dstRow = y * dstW * 3;
-    for (let x = 0; x < dstW; x++) {
-      let srcCol = Math.floor(x / pms);
-      if (srcCol > srcW - 1) srcCol = srcW - 1;
-      const s = srcRow + srcCol * 3;
-      const d = dstRow + x * 3;
-      out[d] = rgb[s];
-      out[d + 1] = rgb[s + 1];
-      out[d + 2] = rgb[s + 2];
-    }
-  }
-  return out;
-};
-
 // 背景放大：先按自下而上的行序翻转，再缩放，最后翻回（见 §10 背景分量）
 const upsampleBackground = (
   rgb: Uint8Array,
@@ -239,6 +210,71 @@ const scaleBackground = (
     }
   }
   return out;
+};
+
+// 背景放大的直接 RGBA 版本：把 flipRows + scaleBackground + flipRows
+// 三次全页遍历合并成一次。数学与旧路径完全一致，只是省掉两份整页缓冲。
+const scaleBackgroundToRgba = (
+  rgb: Uint8Array,
+  srcW: number,
+  srcH: number,
+  dstW: number,
+  dstH: number,
+  red: number,
+  rgba: Uint8ClampedArray
+): void => {
+  const hcoord = new Int32Array(dstW);
+  const vcoord = new Int32Array(dstH);
+  prepareCoord(hcoord, srcW, dstW, 1, red);
+  prepareCoord(vcoord, srcH, dstH, 1, red);
+  const redXmin = Math.max(0, hcoord[0] >> FRACBITS);
+  const redYmin = Math.max(0, vcoord[0] >> FRACBITS);
+  const redXmax = Math.min(
+    srcW,
+    ((hcoord[dstW - 1] + FRACSIZE - 1) >> FRACBITS) + 1
+  );
+  const redYmax = Math.min(
+    srcH,
+    ((vcoord[dstH - 1] + FRACSIZE - 1) >> FRACBITS) + 1
+  );
+  const bufW = Math.max(1, redXmax - redXmin);
+  const line = new Int32Array(bufW * 3);
+  for (let yOut = 0; yOut < dstH; yOut++) {
+    const y = dstH - 1 - yOut;
+    const fy = vcoord[y];
+    const fracY = fy & FRACMASK;
+    const fy1raw = fy >> FRACBITS;
+    const fy1 = Math.max(fy1raw, redYmin);
+    const fy2 = Math.min(fy1raw + 1, redYmax - 1);
+    // vcoord 作用在翻转过（自下而上）的源图上，这里直接映射回原图行
+    const row1 = (srcH - 1 - fy1) * srcW * 3;
+    const row2 = (srcH - 1 - fy2) * srcW * 3;
+    const vdeltas = fracY * 512;
+    for (let i = 0; i < bufW; i++) {
+      const s = (redXmin + i) * 3;
+      for (let c = 0; c < 3; c++) {
+        const l = rgb[row1 + s + c];
+        const u = rgb[row2 + s + c];
+        line[i * 3 + c] = l + INTERP[vdeltas + 256 + (u - l)];
+      }
+    }
+    const dstRow = yOut * dstW;
+    for (let x = 0; x < dstW; x++) {
+      const n = hcoord[x];
+      const fracX = n & FRACMASK;
+      const col = (n >> FRACBITS) - redXmin;
+      const sx0 = col < 0 ? 0 : Math.min(col, bufW - 1);
+      const sx1 = col < 0 ? 0 : Math.min(col + 1, bufW - 1);
+      const hdeltas = fracX * 512;
+      const d = (dstRow + x) * 4;
+      for (let c = 0; c < 3; c++) {
+        const l = line[sx0 * 3 + c];
+        const u = line[sx1 * 3 + c];
+        rgba[d + c] = l + INTERP[hdeltas + 256 + (u - l)];
+      }
+      rgba[d + 3] = 255;
+    }
+  }
 };
 
 export const rotateRgba = (
@@ -382,67 +418,92 @@ export class DjvuPageDecoder {
     const size = width * height;
     const rgba = new Uint8ClampedArray(size * 4);
 
-    // 背景（BG44/BGjp，放大到页面尺寸；缺省为白色）
-    let bg: Uint8Array;
-    if (this.state.background) {
-      bg = upsampleBackground(
-        this.state.background.rgb,
-        this.state.background.width,
-        this.state.background.height,
+    // 背景（BG44/BGjp，放大到页面尺寸；缺省为白色）。
+    // 有效整数缩放时直接写入 RGBA，省掉两份整页中间缓冲。
+    const bgSource = this.state.background || this.state.jpegBackground;
+    if (bgSource && bgSource.width && bgSource.height) {
+      const red = computeRed(
         width,
-        height
+        height,
+        bgSource.width,
+        bgSource.height
       );
-    } else if (this.state.jpegBackground && this.state.jpegBackground.width) {
-      bg = upsampleBackground(
-        this.state.jpegBackground.rgb,
-        this.state.jpegBackground.width,
-        this.state.jpegBackground.height,
-        width,
-        height
-      );
+      if (red >= 1 && red < 16) {
+        scaleBackgroundToRgba(
+          bgSource.rgb,
+          bgSource.width,
+          bgSource.height,
+          width,
+          height,
+          red,
+          rgba
+        );
+      } else {
+        const bg = upsampleBackground(
+          bgSource.rgb,
+          bgSource.width,
+          bgSource.height,
+          width,
+          height
+        );
+        for (let i = 0; i < size; i++) {
+          rgba[i * 4] = bg[i * 3];
+          rgba[i * 4 + 1] = bg[i * 3 + 1];
+          rgba[i * 4 + 2] = bg[i * 3 + 2];
+          rgba[i * 4 + 3] = 255;
+        }
+      }
     } else {
-      bg = new Uint8Array(size * 3).fill(255);
+      rgba.fill(255);
     }
 
     const mask = this.state.mask;
     if (!mask) {
-      for (let i = 0; i < size; i++) {
-        rgba[i * 4] = bg[i * 3];
-        rgba[i * 4 + 1] = bg[i * 3 + 1];
-        rgba[i * 4 + 2] = bg[i * 3 + 2];
-        rgba[i * 4 + 3] = 255;
-      }
+      // 背景已经写在 rgba 中
     } else {
       // 前景颜色：FG44（复制放大）→ 逐像素；FGbz → 按 blit 的调色板颜色；否则黑色
-      let fg: Uint8Array | null = null;
       const fgSource = this.state.foreground || this.state.jpegForeground;
+      let fgRgb: Uint8Array | null = null;
+      let fgRowOffsets: Int32Array | null = null;
+      let fgColOffsets: Int32Array | null = null;
       if (fgSource) {
         const red = computeRed(width, height, fgSource.width, fgSource.height);
         // 前景与页面的整数缩小系数只允许 1..12（三层模型约定），
         // 超出范围时忽略前景层
         if (red >= 1 && red <= 12) {
-          fg = upsampleForeground(
-            fgSource.rgb,
-            fgSource.width,
-            fgSource.height,
-            width,
-            height,
-            red
-          );
+          fgRgb = fgSource.rgb;
+          fgRowOffsets = new Int32Array(height);
+          fgColOffsets = new Int32Array(width);
+          const fw = fgSource.width;
+          const fh = fgSource.height;
+          for (let y = 0; y < height; y++) {
+            let srcRow = Math.floor((height - 1 - y) / red);
+            if (srcRow > fh - 1) srcRow = fh - 1;
+            fgRowOffsets[y] = (fh - 1 - srcRow) * fw * 3;
+          }
+          for (let x = 0; x < width; x++) {
+            let srcCol = Math.floor(x / red);
+            if (srcCol > fw - 1) srcCol = fw - 1;
+            fgColOffsets[x] = srcCol * 3;
+          }
         }
       }
-      if (fg) {
-        for (let i = 0; i < size; i++) {
-          const useFg = mask.bits[i] !== 0;
-          rgba[i * 4] = useFg ? fg[i * 3] : bg[i * 3];
-          rgba[i * 4 + 1] = useFg ? fg[i * 3 + 1] : bg[i * 3 + 1];
-          rgba[i * 4 + 2] = useFg ? fg[i * 3 + 2] : bg[i * 3 + 2];
-          rgba[i * 4 + 3] = 255;
+      if (fgRgb && fgRowOffsets && fgColOffsets) {
+        // 只覆盖掩码黑像素，背景保持 rgba 里已经写好的值
+        for (let y = 0; y < height; y++) {
+          const fgRow = fgRowOffsets[y];
+          const rowStart = y * width;
+          for (let x = 0; x < width; x++) {
+            const i = rowStart + x;
+            if (!mask.bits[i]) continue;
+            const s = fgRow + fgColOffsets[x];
+            rgba[i * 4] = fgRgb[s];
+            rgba[i * 4 + 1] = fgRgb[s + 1];
+            rgba[i * 4 + 2] = fgRgb[s + 2];
+          }
         }
       } else if (this.state.fgbz && this.jb2Image) {
         // 每个 blit 的黑色像素使用其调色板颜色（后绘制的 blit 覆盖先前的）
-        const colors = new Uint8Array(size * 3);
-        const marked = new Uint8Array(size);
         const { palette, colorIndex } = this.state.fgbz;
         const image = this.jb2Image;
         const blitCount = Math.min(image.blits.length, colorIndex.length);
@@ -460,40 +521,27 @@ export class DjvuPageDecoder {
             const imageRow = blit.bottom + y;
             const row = height - 1 - imageRow;
             if (row < 0 || row >= height) continue;
-            const rowStart = row * width;
+            const rowStart = 4 * row * width;
             const src = bm.rowOffset(y);
             for (let x = 0; x < bm.columns; x++) {
               if (!bm.data[src + x]) continue;
               const column = blit.left + x;
               if (column < 0 || column >= width) continue;
-              const o = rowStart + column;
-              marked[o] = 1;
-              colors[o * 3] = r;
-              colors[o * 3 + 1] = g;
-              colors[o * 3 + 2] = bl;
+              const o = rowStart + column * 4;
+              rgba[o] = r;
+              rgba[o + 1] = g;
+              rgba[o + 2] = bl;
             }
           }
         }
-        for (let i = 0; i < size; i++) {
-          if (mask.bits[i] && marked[i]) {
-            rgba[i * 4] = colors[i * 3];
-            rgba[i * 4 + 1] = colors[i * 3 + 1];
-            rgba[i * 4 + 2] = colors[i * 3 + 2];
-          } else {
-            rgba[i * 4] = bg[i * 3];
-            rgba[i * 4 + 1] = bg[i * 3 + 1];
-            rgba[i * 4 + 2] = bg[i * 3 + 2];
-          }
-          rgba[i * 4 + 3] = 255;
-        }
       } else {
-        // 纯位图：掩码为黑，其余为背景
+        // 纯位图：掩码为黑，其余保持背景
         for (let i = 0; i < size; i++) {
-          const black = mask.bits[i] !== 0;
-          rgba[i * 4] = black ? 0 : bg[i * 3];
-          rgba[i * 4 + 1] = black ? 0 : bg[i * 3 + 1];
-          rgba[i * 4 + 2] = black ? 0 : bg[i * 3 + 2];
-          rgba[i * 4 + 3] = 255;
+          if (mask.bits[i]) {
+            rgba[i * 4] = 0;
+            rgba[i * 4 + 1] = 0;
+            rgba[i * 4 + 2] = 0;
+          }
         }
       }
     }
