@@ -138,7 +138,7 @@ export const handleScrollPDFPosition = async (
   if (!targetNode) return;
 
   if (readerMode !== "scroll") {
-    const scroller = getPageScroller(doc);
+    const scroller = (doc.body as HTMLElement) || getPageScroller(doc);
     const pageSize = scroller.clientWidth;
     const gap = getSectionGap(pageSize);
     const axis = createScrollAxis(
@@ -435,11 +435,21 @@ export const handleIOSScrollPage = async (
   const step = delta > 0 ? -1 : delta < 0 ? 1 : 0;
   if (!step) return;
   const pagesPerView = readerMode === "double" ? 2 : 1;
-  await handleScrollPDFPosition(
-    chapterDocIndex + step * pagesPerView,
-    readerMode,
-    doc
-  );
+  const targetIndex = chapterDocIndex + step * pagesPerView;
+  // iOS WKWebView 对 body + CSS columns 的 scrollTo/scrollLeft 支持不稳定，
+  // 单页模式优先使用 scrollIntoView（旧版 iOS 单页路径一直采用该方式）。
+  if (readerMode === "single") {
+    const targetNode = doc.getElementById("pdf-container-" + targetIndex);
+    if (targetNode) {
+      const scroller = (doc.body as HTMLElement) || getPageScroller(doc);
+      const before = scroller.scrollLeft;
+      targetNode.scrollIntoView();
+      if (Math.abs(scroller.scrollLeft - before) > 0.5) {
+        return;
+      }
+    }
+  }
+  await handleScrollPDFPosition(targetIndex, readerMode, doc);
 };
 export const convertPageToImage = async (page) => {
   const desiredWidth = 800;

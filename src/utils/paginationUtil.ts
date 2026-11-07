@@ -151,6 +151,16 @@ export const scrollToLogical = (
   behavior: ScrollBehavior = "auto"
 ): void => {
   const { left, top } = getScrollPosition(axis, logicalOffset);
+  // 翻页定位优先使用属性赋值：iOS WKWebView 对 element.scrollTo(options)
+  // 在 CSS columns / overflow:hidden 的容器上可能静默失效。
+  if (behavior === "auto") {
+    if (axis.vertical) {
+      axis.scroller.scrollTop = top;
+    } else {
+      axis.scroller.scrollLeft = left;
+    }
+    return;
+  }
   try {
     axis.scroller.scrollTo({ left, top, behavior });
   } catch {
