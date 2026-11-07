@@ -123,7 +123,7 @@ interface DecodedZone {
 
 const decodeZone = (
   view: ByteView,
-  fullText: string,
+  textBytes: Uint8Array,
   maxText: number,
   parent: { rect: ZoneRect; textStart: number } | null,
   prev: DecodedZone | null
@@ -176,12 +176,20 @@ const decodeZone = (
     y,
     width: Math.max(0, width),
     height: Math.max(0, height),
-    text: fullText.substring(textStart, textStart + textLength),
+    // DjVu 的 text_start/text_length 是 UTF-8 字节偏移，不是 JS 字符下标；
+    // 非 ASCII 文本必须按字节切片，否则后续 zone 会整体错位。
+    text: decodeUtf8(textBytes.subarray(textStart, textStart + textLength)),
     children: [],
   };
   let prevChild: DecodedZone | null = null;
   for (let i = 0; i < childCount; i++) {
-    const child = decodeZone(view, fullText, maxText, { rect, textStart }, prevChild);
+    const child = decodeZone(
+      view,
+      textBytes,
+      maxText,
+      { rect, textStart },
+      prevChild
+    );
     zone.children.push(child.zone);
     prevChild = child;
   }
@@ -195,13 +203,14 @@ export const decodeDjVuText = (data: Uint8Array): DjvuTextLayer => {
   if (textSize + 3 > data.length) {
     throw new Error("DjVu text: corrupt chunk");
   }
-  const text = decodeUtf8(data.subarray(3, 3 + textSize));
+  const textBytes = data.subarray(3, 3 + textSize);
+  const text = decodeUtf8(textBytes);
   const layer: DjvuTextLayer = { text, zones: [] };
   // 版本字节（当前为 1）；老文件可能没有 zone 数据
   if (3 + textSize >= data.length) return layer;
   const view = new ByteView(data, 3 + textSize + 1);
   try {
-    const root = decodeZone(view, text, textSize, null, null);
+    const root = decodeZone(view, textBytes, textSize, null, null);
     layer.zones = root.zone.children;
   } catch (error) {
     // zone 结构损坏时退化为纯文本
