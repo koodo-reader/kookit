@@ -1,6 +1,13 @@
 ﻿import rangy from "rangy/lib/rangy-core.js";
 import { createSelectionAutoTurn } from "./selectionAutoTurn";
-import { isRevertDirection } from "./layoutUtil";
+import { isRevertDirection, isVerticalLayout } from "./layoutUtil";
+import {
+  createScrollAxis,
+  getCurrentPage,
+  getLogicalScroll,
+  getPageScroller,
+  getScrollPosition,
+} from "./paginationUtil";
 
 import { getSectionGap, PAGE_TURN_DURATION } from "./common";
 declare var window: any;
@@ -63,11 +70,17 @@ export const slideAnimateTo = (
   render: any,
   gap: number
 ) => {
-  let pageWidth = element.clientWidth + gap;
   let tempDoc = isPaginatedFormat(format) ? outerDoc : doc;
-  const revertDirection = isRevertDirection();
-  const toLogical = (value: number) => (revertDirection ? -value : value);
-  const toScroll = (value: number) => (revertDirection ? -value : value);
+  const vertical = isVerticalLayout();
+  const pageSize = vertical ? element.clientHeight : element.clientWidth;
+  const pageGap = vertical ? getSectionGap(pageSize) : gap;
+  const scroller = getPageScroller(tempDoc, vertical);
+  const axis = createScrollAxis(
+    scroller,
+    isRevertDirection(),
+    vertical,
+    pageSize + pageGap
+  );
 
   // Stop any ongoing touch-move dragging immediately so onTouchMove
   // no longer modifies scrollLeft while the animation is running.
@@ -79,57 +92,89 @@ export const slideAnimateTo = (
     window.scrollAnimationId = null;
   }
 
-  const maxScroll = Math.max(0, tempDoc.body.scrollWidth - element.clientWidth);
-  const logicalScrollLeft = toLogical(tempDoc.body.scrollLeft);
+  const logicalScroll = getLogicalScroll(axis);
 
-  if (maxScroll - logicalScrollLeft < 10 && direction === "right") {
+  if (axis.maxScroll - logicalScroll < 10 && direction === "right") {
     render.next();
     return;
   }
-  if (logicalScrollLeft <= 0.5 && direction === "left") {
+  if (logicalScroll <= 0.5 && direction === "left") {
     render.prev();
     return;
   }
 
-  // Improved snapping logic（统一在逻辑偏移空间计算）
-  let snapLogical;
-  const currentPage = Math.round(logicalScrollLeft / pageWidth);
-
+  // 统一在逻辑偏移空间计算目标页
+  const currentPage = getCurrentPage(axis);
+  let targetPage = currentPage;
   if (direction === "left") {
-    snapLogical = (currentPage - 1) * pageWidth;
+    targetPage = Math.max(0, currentPage - 1);
   } else if (direction === "right") {
-    snapLogical = (currentPage + 1) * pageWidth;
-  } else {
-    snapLogical = currentPage * pageWidth;
+    targetPage = Math.min(axis.pageCount - 1, currentPage + 1);
   }
 
-  // Clamp to valid range. For the last page the body may not be an exact
-  // multiple of pageWidth, so if the remaining content after snapLogical is
-  // less than a full page we snap all the way to the end in one step.
-  if (snapLogical >= maxScroll || maxScroll - snapLogical < pageWidth + gap) {
-    snapLogical = maxScroll;
+  let snapLogical = targetPage * axis.stride;
+  // 最后一页可能不是 stride 的整数倍，直接吸附到最大滚动位置
+  if (
+    snapLogical >= axis.maxScroll ||
+    axis.maxScroll - snapLogical < axis.stride
+  ) {
+    snapLogical = axis.maxScroll;
   }
-  snapLogical = Math.max(0, snapLogical);
-  const snapX = toScroll(snapLogical);
+  snapLogical = Math.max(0, Math.min(snapLogical, axis.maxScroll));
 
-  const startLeft = tempDoc.body.scrollLeft;
-  const distance = snapX - startLeft;
+  const snap = getScrollPosition(axis, snapLogical);
+  const startPosition = vertical ? scroller.scrollTop : scroller.scrollLeft;
+  const targetPosition = vertical ? snap.top : snap.left;
+  const distance = targetPosition - startPosition;
 
-  // 如果无需滚动，直接返回
   if (Math.abs(distance) < 0.5) {
     render.record();
     return;
   }
 
   const duration = PAGE_TURN_DURATION;
-
   const body = tempDoc.body;
   window.isSwiping = true;
 
-  const useTransform = body.scrollWidth <= SLIDE_TRANSFORM_THRESHOLD;
+  const finish = () => {
+    render.record();
+    isDragging = false;
+    window.isSwiping = false;
+  };
+
+  const applyFinal = () => {
+    if (vertical) {
+      scroller.scrollTop = snap.top;
+    } else {
+      scroller.scrollLeft = snap.left;
+    }
+    const actual = vertical ? scroller.scrollTop : scroller.scrollLeft;
+    // WebKit 在 transform 被清除的同一任务里可能仍使用旧的滚动范围，
+    // 导致最终赋值被 clamp；下一帧再补一次。
+    if (Math.abs(actual - targetPosition) > 0.5) {
+      requestAnimationFrame(() => {
+        if (vertical) {
+          scroller.scrollTop = snap.top;
+        } else {
+          scroller.scrollLeft = snap.left;
+        }
+        finish();
+      });
+      return;
+    }
+    finish();
+  };
+
+  // transform 方案只保留给 LTR 桌面端；RTL/移动端/竖排统一使用原生滚动，
+  // 避免 WebKit 上对滚动根做 transform 后出现空白或回弹。
+  const useTransform =
+    !vertical &&
+    !axis.rtl &&
+    render.isMobile !== "yes" &&
+    scroller.scrollWidth <= SLIDE_TRANSFORM_THRESHOLD;
 
   if (!useTransform) {
-    // 原生滚动方案：rAF 驱动 scrollLeft，滚动只绘制视口内容，
+    // 原生滚动方案：rAF 驱动 scrollLeft/scrollTop，滚动只绘制视口内容，
     // 性能与页面元素数量无关，适合内容庞大的章节
     body.style.willChange = "scroll-position";
 
@@ -137,12 +182,8 @@ export const slideAnimateTo = (
     const cleanup = () => {
       if (resolved) return;
       resolved = true;
-
       body.style.willChange = "";
-      body.scrollLeft = snapX;
-      render.record();
-      isDragging = false;
-      window.isSwiping = false;
+      applyFinal();
     };
 
     let startTime: number | null = null;
@@ -151,7 +192,12 @@ export const slideAnimateTo = (
       if (resolved) return;
       if (startTime === null) startTime = now;
       const progress = Math.min(1, (now - startTime) / duration);
-      body.scrollLeft = startLeft + distance * easeOutCubic(progress);
+      const value = startPosition + distance * easeOutCubic(progress);
+      if (vertical) {
+        scroller.scrollTop = value;
+      } else {
+        scroller.scrollLeft = value;
+      }
       if (progress < 1) {
         window.scrollAnimationId = requestAnimationFrame(step);
       } else {
@@ -163,7 +209,7 @@ export const slideAnimateTo = (
   }
 
   // transform 方案：把整份文档作为单个合成层平移，合成开销固定，
-  // 元素较少时相比逐帧重绘更顺滑
+  // 元素较少时相比逐帧重绘更顺滑。仅 LTR 水平翻页使用。
   const docElement = tempDoc.documentElement;
 
   docElement.style.willChange = "transform";
@@ -183,22 +229,7 @@ export const slideAnimateTo = (
     docElement.style.willChange = "";
     docElement.style.transform = "";
     docElement.style.transition = "";
-
-    body.scrollLeft = snapX;
-
-    if (Math.abs(body.scrollLeft - snapX) > 0.5) {
-      requestAnimationFrame(() => {
-        body.scrollLeft = snapX;
-        render.record();
-        isDragging = false;
-        window.isSwiping = false;
-      });
-      return;
-    }
-
-    render.record();
-    isDragging = false;
-    window.isSwiping = false;
+    applyFinal();
   };
 
   const onTransitionEnd = (e: TransitionEvent) => {
@@ -653,8 +684,6 @@ export const addAndroidTouchEvent = (
     ) {
       isDragging = true;
       lastTouchX = touchCurrentX;
-      // Apply hardware acceleration to the body
-      doc.body.style.transform = "translateZ(0)";
       if (animation === "mimical" && readerMode !== "scroll") {
         let bookDiv = document.getElementById("book");
         if (bookDiv) {
@@ -673,8 +702,17 @@ export const addAndroidTouchEvent = (
       // Calculate the delta since last move event
       const deltaX = touchCurrentX - lastTouchX;
 
-      const currentScrollLeft = tempDoc.body.scrollLeft;
-      tempDoc.body.scrollLeft = currentScrollLeft - deltaX;
+      const scroller = getPageScroller(tempDoc);
+      const maxScroll = Math.max(
+        0,
+        scroller.scrollWidth - scroller.clientWidth
+      );
+      const minScroll = revertDirection ? -maxScroll : 0;
+      const maxScrollValue = revertDirection ? 0 : maxScroll;
+      scroller.scrollLeft = Math.max(
+        minScroll,
+        Math.min(maxScrollValue, scroller.scrollLeft - deltaX)
+      );
 
       // Update last position
       lastTouchX = touchCurrentX;
@@ -857,8 +895,9 @@ export const addAndroidTouchEvent = (
       if (readerMode === "scroll") return;
       selectionAutoTurn?.onSelectStart();
       if (format === "PDF") {
-        scrollLeft = doc.body.scrollLeft;
-        scrollTop = doc.body.scrollTop;
+        const scroller = getPageScroller(doc);
+        scrollLeft = scroller.scrollLeft;
+        scrollTop = scroller.scrollTop;
       }
     },
     false
@@ -890,11 +929,12 @@ export const addAndroidTouchEvent = (
       if (selectionAutoTurn) {
         selectionAutoTurn.onSelectionChange();
       } else {
-        if (scrollLeft > 0) {
-          doc.body.scrollLeft = scrollLeft;
+        const scroller = getPageScroller(doc);
+        if (scroller.scrollLeft !== scrollLeft) {
+          scroller.scrollLeft = scrollLeft;
         }
-        if (scrollTop > 0) {
-          doc.body.scrollTop = scrollTop;
+        if (scroller.scrollTop !== scrollTop) {
+          scroller.scrollTop = scrollTop;
         }
       }
       selectionCount++;
@@ -920,11 +960,10 @@ export const addAndroidTouchEvent = (
         selectionAutoTurn.applyScrollPin();
       } else {
         const selectedText = iWin.getSelection().toString().trim();
-        if (selectedText && scrollLeft > 0) {
-          doc.body.scrollLeft = scrollLeft;
-        }
-        if (selectedText && scrollTop > 0) {
-          doc.body.scrollTop = scrollTop;
+        if (selectedText) {
+          const scroller = getPageScroller(doc);
+          scroller.scrollLeft = scrollLeft;
+          scroller.scrollTop = scrollTop;
         }
       }
     }
@@ -1288,8 +1327,17 @@ export const addAppleTouchEvent = (
       const deltaX = touchCurrentX - lastTouchX;
 
       // Use transform instead of scrollBy for smoother rendering
-      const currentScrollLeft = tempDoc.body.scrollLeft;
-      tempDoc.body.scrollLeft = currentScrollLeft - deltaX;
+      const scroller = getPageScroller(tempDoc);
+      const maxScroll = Math.max(
+        0,
+        scroller.scrollWidth - scroller.clientWidth
+      );
+      const minScroll = revertDirection ? -maxScroll : 0;
+      const maxScrollValue = revertDirection ? 0 : maxScroll;
+      scroller.scrollLeft = Math.max(
+        minScroll,
+        Math.min(maxScrollValue, scroller.scrollLeft - deltaX)
+      );
 
       // Update last position
       lastTouchX = touchCurrentX;

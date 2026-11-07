@@ -7,6 +7,11 @@ import {
 } from "./common";
 import { getBlockElement, isParentBlock } from "./common";
 import { applyTextRules } from "./textRuleUtil";
+import {
+  getCurrentPage,
+  getPageScroller,
+  getPaginationContext,
+} from "./paginationUtil";
 declare var window: any;
 export const isVerticalLayout = (): boolean => {
   return window.textOrientation === "vertical";
@@ -15,45 +20,50 @@ export const isVerticalLayout = (): boolean => {
 export const isRevertDirection = (): boolean => {
   return window.revertDirection === "yes" && !isVerticalLayout();
 };
-export const getMaxHorizontalScroll = (scroller: HTMLElement): number => {
-  return Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+export const clearRevertDirectionStyle = (doc: Document) => {
+  doc.documentElement.removeAttribute("data-kookit-revert-direction");
+  doc.documentElement.removeAttribute("data-kookit-authored-direction");
+  doc.documentElement.style.removeProperty("direction");
+  doc.body?.style.removeProperty("direction");
+  doc.getElementById("kookit-revert-direction-style")?.remove();
 };
-// RTL 滚动容器的 scrollLeft 为负值，这里统一换算成从第一页开始的逻辑偏移
-export const getLogicalHorizontalScroll = (
-  scroller: HTMLElement
-): number => {
-  const scrollLeft = convertStyleNum(scroller.scrollLeft as any);
-  return isRevertDirection() ? -scrollLeft : scrollLeft;
-};
-export const getScrollLeftForLogical = (
-  scroller: HTMLElement,
-  logicalOffset: number
-): number => {
-  const maxScroll = getMaxHorizontalScroll(scroller);
-  const target = Math.max(0, Math.min(logicalOffset, maxScroll));
-  return isRevertDirection() ? -target : target;
-};
-// 把 getActualOffsetLeft 得到的内容偏移换算为可直接传给 scrollTo 的 scrollLeft。
-// LTR 下两者相同；RTL 下内容偏移恒为非负，而目标 scrollLeft 为“内容偏移 - 最大滚动量”。
-// 保留本函数是为了让调用方继续沿用 getActualOffsetLeft，不改变 LTR 行为。
-export const getScrollLeftForContentOffset = (
-  scroller: HTMLElement,
-  contentOffset: number
-): number => {
-  const maxScroll = getMaxHorizontalScroll(scroller);
-  const logical = Math.max(0, Math.min(contentOffset, maxScroll));
-  return isRevertDirection() ? logical - maxScroll : logical;
-};
-export const applyRevertDirectionStyle = (doc: Document) => {
-  if (!isRevertDirection()) return;
+// RTL 只改变翻页方向，不应改写书籍自身的书写方向：
+// - direction 同时写到 html 和 body，确保 standards/quirks 两种模式下
+//   column 顺序与 scrollLeft 坐标系一致；
+// - body 的直接子元素恢复为书籍原始方向，正文仍按书籍排版。
+export const applyRevertDirectionStyle = (
+  doc: Document,
+  authoredDirection?: string
+) => {
+  if (!isRevertDirection()) {
+    clearRevertDirectionStyle(doc);
+    return;
+  }
+  const storedDirection = doc.documentElement.getAttribute(
+    "data-kookit-authored-direction"
+  );
+  const authored =
+    authoredDirection ||
+    storedDirection ||
+    doc.body?.getAttribute("dir") ||
+    "ltr";
   doc.documentElement.setAttribute("data-kookit-revert-direction", "yes");
-  if (doc.getElementById("kookit-revert-direction-style")) return;
-  const style = doc.createElement("style");
-  style.id = "kookit-revert-direction-style";
+  doc.documentElement.setAttribute(
+    "data-kookit-authored-direction",
+    authored
+  );
+  const styleId = "kookit-revert-direction-style";
+  let style = doc.getElementById(styleId) as HTMLStyleElement | null;
+  if (!style) {
+    style = doc.createElement("style");
+    style.id = styleId;
+    (doc.head || doc.documentElement).appendChild(style);
+  }
   style.textContent =
+    'html[data-kookit-revert-direction="yes"],' +
     'html[data-kookit-revert-direction="yes"] body{direction:rtl !important;}' +
-    'html[data-kookit-revert-direction="yes"] body>*:not([dir]){direction:ltr;}';
-  (doc.head || doc.documentElement).appendChild(style);
+    'html[data-kookit-revert-direction="yes"] body>*:not([dir])' +
+    `{direction:${authored};}`;
 };
 export const convertStyleNum = (value: number) => {
   if (!value) return 0;
@@ -118,8 +128,9 @@ export const handleIframeHeight = async (
       } else {
         let gap = getSectionGap(element.clientWidth);
         let pageWidth = (element.clientWidth + gap) / 2;
+        const scroller = getPageScroller(doc, false);
         if (
-          ((doc.body.scrollWidth - doc.body.clientWidth) / pageWidth) % 2 ===
+          ((scroller.scrollWidth - scroller.clientWidth) / pageWidth) % 2 ===
           1
         ) {
           let tailElem = document.createElement("div");
@@ -322,58 +333,20 @@ export const progressInfo = (
   doc: Document,
   element: any
 ) => {
-  const vertical = isVerticalLayout() && readerMode !== "scroll";
-  if (vertical) {
-    let gap = getSectionGap(element.clientHeight);
+  if (readerMode === "scroll") {
     return {
-      totalPage:
-        readerMode === "single"
-          ? Math.round(
-              parseFloat(
-                doc.body.scrollHeight / (doc.body.clientHeight + gap) + ""
-              )
-            )
-          : Math.round(
-              parseFloat(
-                doc.body.scrollHeight / (doc.body.clientHeight + gap) + ""
-              )
-            ) * 2,
+      totalPage: Math.floor(
+        element.scrollHeight / (element.clientHeight - 50)
+      ),
       currentPage:
-        Math.round(
-          parseFloat(
-            convertStyleNum(doc.body.scrollTop) /
-              (doc.body.clientHeight + gap) +
-              ""
-          )
-        ) + 1,
+        Math.floor(element.scrollTop / (element.clientHeight - 50)) + 1,
     };
   }
-  let gap = getSectionGap(element.clientWidth);
+  const ctx = getPaginationContext(element, doc, readerMode);
   return {
     totalPage:
-      readerMode === "scroll"
-        ? Math.floor(element.scrollHeight / (element.clientHeight - 50))
-        : readerMode === "single"
-          ? Math.round(
-              parseFloat(
-                doc.body.scrollWidth / (doc.body.clientWidth + gap) + ""
-              )
-            )
-          : Math.round(
-              parseFloat(
-                doc.body.scrollWidth / (doc.body.clientWidth + gap) + ""
-              )
-            ) * 2,
-      currentPage:
-        readerMode === "scroll"
-          ? Math.floor(element.scrollTop / (element.clientHeight - 50)) + 1
-          : Math.round(
-              parseFloat(
-                getLogicalHorizontalScroll(doc.body) /
-                  (doc.body.clientWidth + gap) +
-                  ""
-              )
-            ) + 1,
+      readerMode === "single" ? ctx.pageCount : ctx.pageCount * 2,
+    currentPage: getCurrentPage(ctx) + 1,
   };
 };
 const fetchHighlightAsset = async (path: string) => {

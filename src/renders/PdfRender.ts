@@ -15,7 +15,6 @@ import {
   getPDFVisibleText,
   getTextFromPDFPage,
   handleHighlightPDFNode,
-  handleIOSScrollPage,
   handlePDFLayout,
   handleScrollPDFPosition,
   isPDFScrolledIntoView,
@@ -454,29 +453,15 @@ class PdfRender extends GeneralRender {
         behavior: "smooth",
       });
     } else {
-      if (platform === "ios") {
-        await handleIOSScrollPage(
-          this.element,
-          this.animation,
-          1,
-          doc,
-          this.flipToNextPage,
-          this.flipToPrevPage,
-          this.isMobile,
-          parseInt(this.tempLocation.chapterDocIndex || "0"),
-          this.readerMode
-        );
-      } else {
-        await handleScrollPage(
-          this.element,
-          this.animation,
-          1,
-          doc,
-          this.flipToNextPage,
-          this.flipToPrevPage,
-          this.isMobile
-        );
-      }
+      await handleScrollPage(
+        this.element,
+        this.animation,
+        1,
+        doc,
+        this.flipToNextPage,
+        this.flipToPrevPage,
+        this.isMobile
+      );
 
       await this.renderPdfPage(
         parseInt(this.tempLocation.chapterDocIndex) -
@@ -501,29 +486,15 @@ class PdfRender extends GeneralRender {
       });
     } else {
       // single and double readerMode under normal condition
-      if (platform === "ios") {
-        await handleIOSScrollPage(
-          this.element,
-          this.animation,
-          -1,
-          doc,
-          this.flipToNextPage,
-          this.flipToPrevPage,
-          this.isMobile,
-          parseInt(this.tempLocation.chapterDocIndex || "0"),
-          this.readerMode
-        );
-      } else {
-        await handleScrollPage(
-          this.element,
-          this.animation,
-          -1,
-          doc,
-          this.flipToNextPage,
-          this.flipToPrevPage,
-          this.isMobile
-        );
-      }
+      await handleScrollPage(
+        this.element,
+        this.animation,
+        -1,
+        doc,
+        this.flipToNextPage,
+        this.flipToPrevPage,
+        this.isMobile
+      );
 
       await this.renderPdfPage(
         parseInt(this.tempLocation.chapterDocIndex) +

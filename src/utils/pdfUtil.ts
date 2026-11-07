@@ -1,11 +1,13 @@
 import ChapterDoc from "../model/chapterDoc";
 import {
   applyRevertDirectionStyle,
-  convertStyleNum,
-  getActualOffsetLeft,
-  getScrollLeftForLogical,
   isRevertDirection,
 } from "./layoutUtil";
+import {
+  createScrollAxis,
+  getPageScroller,
+  scrollToPage,
+} from "./paginationUtil";
 import { playMimicalFlip } from "./navigationUtil";
 import {
   detectLocalLanguage,
@@ -136,23 +138,18 @@ export const handleScrollPDFPosition = async (
   if (!targetNode) return;
 
   if (readerMode !== "scroll") {
-    if (isRevertDirection()) {
-      // RTL 下容器按索引逆序排列，直接按“每屏几页”计算目标偏移
-      let gap = getSectionGap(doc.body.clientWidth);
-      const stride = doc.body.clientWidth + gap;
-      const pagesPerView = readerMode === "double" ? 2 : 1;
-      const viewIndex = Math.floor(chapterDocIndex / pagesPerView);
-      doc.body.scrollTo(getScrollLeftForLogical(doc.body, viewIndex * stride), 0);
-      return;
-    }
-    let left = targetNode
-      ? getActualOffsetLeft(targetNode) -
-        convertStyleNum(
-          targetNode.marginLeft ||
-            parseFloat(getComputedStyle(targetNode).marginLeft)
-        )
-      : 0;
-    doc.body.scrollTo(left, 0);
+    const scroller = getPageScroller(doc);
+    const pageSize = scroller.clientWidth;
+    const gap = getSectionGap(pageSize);
+    const axis = createScrollAxis(
+      scroller,
+      isRevertDirection(),
+      false,
+      pageSize + gap
+    );
+    const pagesPerView = readerMode === "double" ? 2 : 1;
+    const viewIndex = Math.floor(chapterDocIndex / pagesPerView);
+    scrollToPage(axis, viewIndex);
   } else {
     targetNode.scrollIntoView();
   }
@@ -434,44 +431,15 @@ export const handleIOSScrollPage = async (
   chapterDocIndex: number,
   readerMode: string
 ) => {
-  let gap = getSectionGap(doc.body.clientWidth);
-  const width = doc.body.clientWidth;
-  const revertDirection = isRevertDirection();
   playMimicalFlip(animation, isMobile, delta, flipToNextPage, flipToPrevPage);
-
-  if (delta > 0) {
-    // previous page
-    if (readerMode === "single") {
-      if (revertDirection) {
-        await handleScrollPDFPosition(chapterDocIndex - 1, readerMode, doc);
-        return;
-      }
-      let subContainer = doc.querySelector(
-        "#pdf-container-" + (chapterDocIndex - 1)
-      );
-      if (subContainer) {
-        subContainer.scrollIntoView();
-      }
-    } else {
-      doc.body.scrollBy(revertDirection ? (width + gap) / 2 : -(width + gap) / 2, 0);
-    }
-  } else if (delta < 0) {
-    // next page
-    if (readerMode === "single") {
-      if (revertDirection) {
-        await handleScrollPDFPosition(chapterDocIndex + 1, readerMode, doc);
-        return;
-      }
-      let subContainer = doc.querySelector(
-        "#pdf-container-" + (chapterDocIndex + 1)
-      );
-      if (subContainer) {
-        subContainer.scrollIntoView();
-      }
-    } else {
-      doc.body.scrollBy(revertDirection ? -(width + gap) / 2 : (width + gap) / 2, 0);
-    }
-  }
+  const step = delta > 0 ? -1 : delta < 0 ? 1 : 0;
+  if (!step) return;
+  const pagesPerView = readerMode === "double" ? 2 : 1;
+  await handleScrollPDFPosition(
+    chapterDocIndex + step * pagesPerView,
+    readerMode,
+    doc
+  );
 };
 export const convertPageToImage = async (page) => {
   const desiredWidth = 800;

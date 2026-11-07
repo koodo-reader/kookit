@@ -14,7 +14,6 @@ import JSZip from "jszip";
 import { getSectionGap, isElectron } from "../utils/common";
 import {
   createPDFIframe,
-  handleIOSScrollPage,
   handlePDFLayout,
   handleScrollPDFPosition,
   isPDFScrolledIntoView,
@@ -746,29 +745,15 @@ class ComicRender extends GeneralRender {
       // 平滑滚动尚未结束前 record 会读到旧位置，等待滚动结束再定位
       await this.waitForScrollEnd();
     } else {
-      if (platform === "ios") {
-        await handleIOSScrollPage(
-          this.element,
-          this.animation,
-          1,
-          doc,
-          this.flipToNextPage,
-          this.flipToPrevPage,
-          this.isMobile,
-          parseInt(this.tempLocation.chapterDocIndex || "0"),
-          this.readerMode
-        );
-      } else {
-        await handleScrollPage(
-          this.element,
-          this.animation,
-          1,
-          doc,
-          this.flipToNextPage,
-          this.flipToPrevPage,
-          this.isMobile
-        );
-      }
+      await handleScrollPage(
+        this.element,
+        this.animation,
+        1,
+        doc,
+        this.flipToNextPage,
+        this.flipToPrevPage,
+        this.isMobile
+      );
       await this.renderComicPage(
         parseInt(this.tempLocation.chapterDocIndex) -
           (this.readerMode === "double" ? 2 : 1)
@@ -791,29 +776,15 @@ class ComicRender extends GeneralRender {
       // 平滑滚动尚未结束前 record 会读到旧位置，等待滚动结束再定位
       await this.waitForScrollEnd();
     } else {
-      if (platform === "ios") {
-        await handleIOSScrollPage(
-          this.element,
-          this.animation,
-          -1,
-          doc,
-          this.flipToNextPage,
-          this.flipToPrevPage,
-          this.isMobile,
-          parseInt(this.tempLocation.chapterDocIndex || "0"),
-          this.readerMode
-        );
-      } else {
-        await handleScrollPage(
-          this.element,
-          this.animation,
-          -1,
-          doc,
-          this.flipToNextPage,
-          this.flipToPrevPage,
-          this.isMobile
-        );
-      }
+      await handleScrollPage(
+        this.element,
+        this.animation,
+        -1,
+        doc,
+        this.flipToNextPage,
+        this.flipToPrevPage,
+        this.isMobile
+      );
       await this.renderComicPage(
         parseInt(this.tempLocation.chapterDocIndex) +
           (this.readerMode === "double" ? 2 : 1)

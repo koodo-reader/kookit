@@ -5,15 +5,21 @@ import {
   convertStyleNum,
   getActualOffsetLeft,
   getActualOffsetTop,
-  getLogicalHorizontalScroll,
-  getMaxHorizontalScroll,
-  getScrollLeftForContentOffset,
-  getScrollLeftForLogical,
   getSelectedElement,
   handleOneChapterDoc,
   isVerticalLayout,
   progressInfo,
 } from "../utils/layoutUtil";
+import {
+  getPaginationContext,
+  getReadingOffset,
+  getScrollPosition,
+  isAtEnd,
+  isAtStart,
+  scrollToLogical,
+  scrollToPage,
+  scrollToReadingOffset,
+} from "../utils/paginationUtil";
 import {
   getCloestBlock,
   getSearchResult,
@@ -111,6 +117,8 @@ class GeneralRender extends EventEmitter {
   estimatedSizePerPage: number | null = null;
   speedReadingSpeed: number = 300;
   revertDirection: string = "no";
+  // 章节切换期间忽略重复翻页，避免移动端快速连点并发渲染同一章节
+  isChapterRendering: boolean = false;
   platform: string = "web";
   isAllowScript: string = "no";
   touchEventSet: any;
@@ -347,31 +355,35 @@ class GeneralRender extends EventEmitter {
     );
     if (audioNodes.length > 0) {
       let targetNode: any = audioNodes[0];
-      let left = targetNode
-        ? getScrollLeftForContentOffset(
-            doc.body,
-            getActualOffsetLeft(targetNode) -
-              convertStyleNum(
-                targetNode.marginLeft ||
-                  parseFloat(getComputedStyle(targetNode).marginLeft)
-              )
-          )
-        : 0;
-      let top = targetNode
-        ? getActualOffsetTop(targetNode) -
-          convertStyleNum(
-            targetNode.marginTop ||
-              parseFloat(getComputedStyle(targetNode).marginTop)
-          )
-        : 0;
-      if (this.readerMode !== "scroll") {
-        if (this.isVertical()) {
-          doc.body.scrollTo(0, top);
-        } else {
-          doc.body.scrollTo(left, 0);
-        }
-      } else {
+      if (this.readerMode === "scroll") {
+        let top = targetNode
+          ? getActualOffsetTop(targetNode) -
+            convertStyleNum(
+              targetNode.marginTop ||
+                parseFloat(getComputedStyle(targetNode).marginTop)
+            )
+          : 0;
         this.element.scrollTo(0, top);
+      } else {
+        const ctx = getPaginationContext(
+          this.element,
+          doc,
+          this.readerMode
+        );
+        let offset = targetNode
+          ? getReadingOffset(ctx, targetNode.getBoundingClientRect()) -
+            convertStyleNum(
+              (this.isVertical()
+                ? targetNode.marginTop
+                : targetNode.marginLeft) ||
+                parseFloat(
+                  getComputedStyle(targetNode)[
+                    this.isVertical() ? "marginTop" : "marginLeft"
+                  ]
+                )
+            )
+          : 0;
+        scrollToReadingOffset(ctx, offset);
       }
     }
     if (this.animation !== "none" && this.isMobile !== "yes") {
@@ -399,47 +411,18 @@ class GeneralRender extends EventEmitter {
     } else {
       const doc = this.getDocument();
       if (!doc) return;
+      const ctx = getPaginationContext(this.element, doc, this.readerMode);
       const sliding = this.animation === "sliding" && this.isMobile !== "yes";
-      const scrollToPage = async (left: number, top: number) => {
-        if (sliding) {
-          await animateScrollTo(doc.body, left, top);
-        } else {
-          doc.body.scrollTo({ left, top, behavior: "auto" });
-        }
-      };
-      if (this.isVertical()) {
-        let gap = getSectionGap(this.element.clientHeight);
-        const height = this.element.clientHeight;
-        const scrollDistance = height + gap;
-        if (this.readerMode === "double") {
-          targetPage =
-            (targetPage % 2 === 0 ? targetPage - 2 : targetPage - 1) / 2;
-        } else {
-          targetPage = targetPage - 1;
-        }
-        if (targetPage < 0) {
-          targetPage = 0;
-        }
-        const targetScrollTop = targetPage * scrollDistance;
-        await scrollToPage(0, targetScrollTop);
+      let page =
+        this.readerMode === "double"
+          ? Math.floor((targetPage - 1) / 2)
+          : targetPage - 1;
+      page = Math.max(0, page);
+      if (sliding) {
+        const { left, top } = getScrollPosition(ctx, page * ctx.stride);
+        await animateScrollTo(ctx.scroller, left, top);
       } else {
-        let gap = getSectionGap(this.element.clientWidth);
-        const width = this.element.clientWidth;
-        const scrollDistance = width + gap;
-        if (this.readerMode === "double") {
-          targetPage =
-            (targetPage % 2 === 0 ? targetPage - 2 : targetPage - 1) / 2;
-        } else {
-          targetPage = targetPage - 1;
-        }
-        if (targetPage < 0) {
-          targetPage = 0;
-        }
-        const targetScrollLeft = getScrollLeftForLogical(
-          doc.body,
-          targetPage * scrollDistance
-        );
-        await scrollToPage(targetScrollLeft, 0);
+        scrollToPage(ctx, page);
       }
     }
     await this.record();
@@ -719,30 +702,30 @@ class GeneralRender extends EventEmitter {
       return;
     }
     let targetNode = getCloestBlock(node, this.element, this.readerMode);
-    let left = targetNode
-      ? getScrollLeftForContentOffset(
-          doc.body,
-          getActualOffsetLeft(targetNode) -
-            convertStyleNum(
-              targetNode.marginLeft ||
-                parseFloat(getComputedStyle(targetNode).marginLeft)
-            )
-        )
-      : 0;
-    let top = targetNode
-      ? getActualOffsetTop(targetNode) -
-        convertStyleNum(
-          targetNode.marginTop ||
-            parseFloat(getComputedStyle(targetNode).marginTop)
-        )
-      : 0;
     if (this.readerMode !== "scroll") {
-      if (this.isVertical()) {
-        doc.body.scrollTo(0, top);
-      } else {
-        doc.body.scrollTo(left, 0);
-      }
+      const ctx = getPaginationContext(this.element, doc, this.readerMode);
+      const offset = targetNode
+        ? getReadingOffset(ctx, targetNode.getBoundingClientRect()) -
+          convertStyleNum(
+            (this.isVertical()
+              ? targetNode.marginTop
+              : targetNode.marginLeft) ||
+              parseFloat(
+                getComputedStyle(targetNode)[
+                  this.isVertical() ? "marginTop" : "marginLeft"
+                ]
+              )
+          )
+        : 0;
+      scrollToReadingOffset(ctx, offset);
     } else {
+      let top = targetNode
+        ? getActualOffsetTop(targetNode) -
+          convertStyleNum(
+            targetNode.marginTop ||
+              parseFloat(getComputedStyle(targetNode).marginTop)
+          )
+        : 0;
       this.element.scrollTo(0, top);
     }
     await this.record();
@@ -799,29 +782,14 @@ class GeneralRender extends EventEmitter {
   locateParagraph(el: HTMLElement) {
     let doc = this.getDocument();
     if (!doc || !doc.body || !el) return;
-    let left = getActualOffsetLeft(el);
-    let top = getActualOffsetTop(el);
     if (this.readerMode !== "scroll") {
-      // 页宽/页高计算与 handleScrollPage 保持一致，并对齐到页网格
-      if (this.isVertical()) {
-        let gap = getSectionGap(this.element.clientHeight);
-        let scrollDistance = this.element.clientHeight + gap;
-        doc.body.scrollTo(
-          0,
-          Math.max(0, Math.round(top / scrollDistance)) * scrollDistance
-        );
-      } else {
-        let gap = getSectionGap(this.element.clientWidth);
-        let scrollDistance = this.element.clientWidth + gap;
-        let targetLeft =
-          Math.max(0, Math.round(left / scrollDistance)) * scrollDistance;
-        doc.body.scrollTo(
-          getScrollLeftForContentOffset(doc.body, targetLeft),
-          0
-        );
-      }
+      const ctx = getPaginationContext(this.element, doc, this.readerMode);
+      const offset = getReadingOffset(ctx, el.getBoundingClientRect());
+      const target =
+        Math.max(0, Math.round(offset / ctx.stride)) * ctx.stride;
+      scrollToLogical(ctx, target);
     } else {
-      this.element.scrollTo(0, top);
+      this.element.scrollTo(0, getActualOffsetTop(el));
     }
     this.record();
   }
@@ -843,58 +811,86 @@ class GeneralRender extends EventEmitter {
       const handled = await this.paragraphModeManager.handleChange(-1);
       if (handled) return;
     }
-    if (
-      (this.readerMode === "scroll" &&
-        convertStyleNum(this.element.scrollTop) === 0) ||
-      (this.isVertical() && convertStyleNum(doc.body.scrollTop) === 0) ||
-      (this.readerMode !== "scroll" &&
-        !this.isVertical() &&
-        convertStyleNum(doc.body.scrollLeft) === 0)
-    ) {
-      if (this.tempLocation.chapterDocIndex === "0") {
-        return;
-      }
-      await handlePrevChapter(
-        this.element,
-        this.flatChapter(this.chapterList),
-        this.chapterDocList,
-        this.readerMode,
-        this.format,
-        this.tempLocation,
-        doc,
-        iframe
-      );
-      let chapterDocIndex = parseInt(this.tempLocation.chapterDocIndex || "-1");
-      if (chapterDocIndex > -1) {
-        if (this.readerMode === "scroll") {
-          this.element.scrollTo(0, doc.body.scrollHeight);
-        } else if (this.isVertical()) {
-          doc.body.scrollTo(0, doc.body.scrollHeight);
-        } else {
-          doc.body.scrollTo(
-            getScrollLeftForLogical(doc.body, getMaxHorizontalScroll(doc.body)),
-            0
-          );
+    if (this.readerMode === "scroll") {
+      if (convertStyleNum(this.element.scrollTop) === 0) {
+        if (this.tempLocation.chapterDocIndex === "0") {
+          return;
         }
+        if (this.isChapterRendering) return;
+        this.isChapterRendering = true;
+        try {
+          await handlePrevChapter(
+            this.element,
+            this.flatChapter(this.chapterList),
+            this.chapterDocList,
+            this.readerMode,
+            this.format,
+            this.tempLocation,
+            doc,
+            iframe
+          );
+          let chapterDocIndex = parseInt(
+            this.tempLocation.chapterDocIndex || "-1"
+          );
+          if (chapterDocIndex > -1) {
+            this.element.scrollTo(0, doc.body.scrollHeight);
+          }
+          this.trigger("rendered");
+        } finally {
+          this.isChapterRendering = false;
+        }
+      } else {
+        this.element.scrollBy({
+          left: 0,
+          top: -(this.element.clientHeight - 50),
+          behavior: "smooth",
+        });
       }
-      this.trigger("rendered");
-    } else if (this.readerMode === "scroll") {
-      // scroll readerMode under normal condition
-      this.element.scrollBy({
-        left: 0,
-        top: -(this.element.clientHeight - 50),
-        behavior: "smooth",
-      });
     } else {
-      await handleScrollPage(
-        this.element,
-        this.animation,
-        1,
-        doc,
-        this.flipToNextPage,
-        this.flipToPrevPage,
-        this.isMobile
-      );
+      const ctx = getPaginationContext(this.element, doc, this.readerMode);
+      if (isAtStart(ctx)) {
+        if (this.tempLocation.chapterDocIndex === "0") {
+          return;
+        }
+        if (this.isChapterRendering) return;
+        this.isChapterRendering = true;
+        try {
+          await handlePrevChapter(
+            this.element,
+            this.flatChapter(this.chapterList),
+            this.chapterDocList,
+            this.readerMode,
+            this.format,
+            this.tempLocation,
+            doc,
+            iframe
+          );
+          let chapterDocIndex = parseInt(
+            this.tempLocation.chapterDocIndex || "-1"
+          );
+          if (chapterDocIndex > -1) {
+            const newCtx = getPaginationContext(
+              this.element,
+              doc,
+              this.readerMode
+            );
+            scrollToPage(newCtx, newCtx.pageCount - 1);
+          }
+          this.trigger("rendered");
+        } finally {
+          this.isChapterRendering = false;
+        }
+      } else {
+        await handleScrollPage(
+          this.element,
+          this.animation,
+          1,
+          doc,
+          this.flipToNextPage,
+          this.flipToPrevPage,
+          this.isMobile
+        );
+      }
     }
     await this.record();
   }
@@ -916,40 +912,33 @@ class GeneralRender extends EventEmitter {
       const handled = await this.paragraphModeManager.handleChange(1);
       if (handled) return;
     }
-    if (
-      (this.isVertical() &&
+    if (this.readerMode === "scroll") {
+      const atBottom =
         Math.abs(
-          doc.body.scrollHeight -
-            convertStyleNum(doc.body.scrollTop) -
-            doc.body.clientHeight
-        ) < 50) ||
-      (Math.abs(
-        getMaxHorizontalScroll(doc.body) - getLogicalHorizontalScroll(doc.body)
-      ) < 50 &&
-        this.readerMode !== "scroll" &&
-        !this.isVertical()) ||
-      (Math.abs(
-        this.element.scrollHeight -
-          convertStyleNum(this.element.scrollTop) -
-          this.element.clientHeight
-      ) < 20 &&
-        this.readerMode === "scroll")
-    ) {
-      // if the last page
-      await handleNextChapter(
-        this.element,
-        this.flatChapter(this.chapterList),
-        this.chapterDocList,
-        this.readerMode,
-        this.format,
-        this.tempLocation,
-        doc,
-        iframe
-      );
-      this.trigger("rendered");
-      return;
-    } else if (this.readerMode === "scroll") {
-      // scroll readerMode under normal condition
+          this.element.scrollHeight -
+            convertStyleNum(this.element.scrollTop) -
+            this.element.clientHeight
+        ) < 20;
+      if (atBottom) {
+        if (this.isChapterRendering) return;
+        this.isChapterRendering = true;
+        try {
+          await handleNextChapter(
+            this.element,
+            this.flatChapter(this.chapterList),
+            this.chapterDocList,
+            this.readerMode,
+            this.format,
+            this.tempLocation,
+            doc,
+            iframe
+          );
+          this.trigger("rendered");
+        } finally {
+          this.isChapterRendering = false;
+        }
+        return;
+      }
       if (
         Math.abs(
           this.element.scrollHeight -
@@ -977,6 +966,27 @@ class GeneralRender extends EventEmitter {
         });
       }
     } else {
+      const ctx = getPaginationContext(this.element, doc, this.readerMode);
+      if (isAtEnd(ctx)) {
+        if (this.isChapterRendering) return;
+        this.isChapterRendering = true;
+        try {
+          await handleNextChapter(
+            this.element,
+            this.flatChapter(this.chapterList),
+            this.chapterDocList,
+            this.readerMode,
+            this.format,
+            this.tempLocation,
+            doc,
+            iframe
+          );
+          this.trigger("rendered");
+        } finally {
+          this.isChapterRendering = false;
+        }
+        return;
+      }
       // single and double readerMode under normal condition
       await handleScrollPage(
         this.element,
@@ -1008,35 +1018,47 @@ class GeneralRender extends EventEmitter {
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
-    await handlePrevChapter(
-      this.element,
-      this.flatChapter(this.chapterList),
-      this.chapterDocList,
-      this.readerMode,
-      this.format,
-      this.tempLocation,
-      doc,
-      iframe
-    );
-    await this.record();
-    this.trigger("rendered");
+    if (this.isChapterRendering) return;
+    this.isChapterRendering = true;
+    try {
+      await handlePrevChapter(
+        this.element,
+        this.flatChapter(this.chapterList),
+        this.chapterDocList,
+        this.readerMode,
+        this.format,
+        this.tempLocation,
+        doc,
+        iframe
+      );
+      await this.record();
+      this.trigger("rendered");
+    } finally {
+      this.isChapterRendering = false;
+    }
   }
   async nextChapter() {
     let doc = this.getDocument();
     let iframe = this.getIframe();
     if (!doc || !iframe) return;
-    await handleNextChapter(
-      this.element,
-      this.flatChapter(this.chapterList),
-      this.chapterDocList,
-      this.readerMode,
-      this.format,
-      this.tempLocation,
-      doc,
-      iframe
-    );
-    await this.record();
-    this.trigger("rendered");
+    if (this.isChapterRendering) return;
+    this.isChapterRendering = true;
+    try {
+      await handleNextChapter(
+        this.element,
+        this.flatChapter(this.chapterList),
+        this.chapterDocList,
+        this.readerMode,
+        this.format,
+        this.tempLocation,
+        doc,
+        iframe
+      );
+      await this.record();
+      this.trigger("rendered");
+    } finally {
+      this.isChapterRendering = false;
+    }
   }
   async visibleText() {
     let doc = this.getDocument();

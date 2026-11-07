@@ -5,6 +5,8 @@
 // rely on the same top-left / bottom-right corners for cross-page selection regardless
 // of the page-turn direction.
 
+import { getPageScroller } from "./paginationUtil";
+
 const AUTO_TURN_DWELL_MS = 500;
 // Fixed pixel radius around each corner for auto-turn detection.
 // Kept tight so normal selections ending in the lower-right of the page do not auto-turn.
@@ -112,6 +114,8 @@ export const createSelectionAutoTurn = (
   if (readerMode === "scroll" || format === "PDF") {
     return null;
   }
+
+  const getScroller = () => getPageScroller(doc);
 
   let autoTurnTimer: ReturnType<typeof setTimeout> | null = null;
   let engagedCorner: Corner | null = null;
@@ -271,8 +275,9 @@ export const createSelectionAutoTurn = (
       // br to continue selecting forward (next page), tl to go back (prev page)
       const turning = corner === "br" ? render.next() : render.prev();
       Promise.resolve(turning).finally(() => {
-        pinnedScrollLeft = doc.body.scrollLeft;
-        pinnedScrollTop = doc.body.scrollTop;
+        const scroller = getScroller();
+        pinnedScrollLeft = scroller.scrollLeft;
+        pinnedScrollTop = scroller.scrollTop;
         isAutoTurning = false;
         engagedCorner = corner;
         pointerOnlyUntilClear = true;
@@ -297,8 +302,9 @@ export const createSelectionAutoTurn = (
   };
 
   const onSelectStart = () => {
-    pinnedScrollLeft = doc.body.scrollLeft;
-    pinnedScrollTop = doc.body.scrollTop;
+    const scroller = getScroller();
+    pinnedScrollLeft = scroller.scrollLeft;
+    pinnedScrollTop = scroller.scrollTop;
     pointerPos = null;
     isTextSelected = false;
     pointerOnlyUntilClear = false;
@@ -311,8 +317,9 @@ export const createSelectionAutoTurn = (
     if (isValidSelection(sel)) {
       isTextSelected = true;
       if (pinnedScrollLeft === null) {
-        pinnedScrollLeft = doc.body.scrollLeft;
-        pinnedScrollTop = doc.body.scrollTop;
+        const scroller = getScroller();
+        pinnedScrollLeft = scroller.scrollLeft;
+        pinnedScrollTop = scroller.scrollTop;
       }
       if (!outerTouchCleanup) {
         attachOuterTouch();
@@ -349,12 +356,13 @@ export const createSelectionAutoTurn = (
     ) {
       return;
     }
-    if (doc.body.scrollLeft !== pinnedScrollLeft) {
-      doc.body.scrollLeft = pinnedScrollLeft;
+    const scroller = getScroller();
+    if (scroller.scrollLeft !== pinnedScrollLeft) {
+      scroller.scrollLeft = pinnedScrollLeft;
     }
     if (pinnedScrollTop !== null && pinnedScrollTop > 0) {
-      if (doc.body.scrollTop !== pinnedScrollTop) {
-        doc.body.scrollTop = pinnedScrollTop;
+      if (scroller.scrollTop !== pinnedScrollTop) {
+        scroller.scrollTop = pinnedScrollTop;
       }
     }
   };

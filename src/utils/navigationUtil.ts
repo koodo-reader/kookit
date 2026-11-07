@@ -1,17 +1,27 @@
 import ChapterDoc from "../model/chapterDoc";
 import {
-  convertComputedNum,
   convertStyleNum,
   getActualOffsetLeft,
   getActualOffsetTop,
-  getLogicalHorizontalScroll,
-  getScrollLeftForContentOffset,
-  getScrollLeftForLogical,
   handleIframeHeight,
   handleOneChapterDoc,
+  isRevertDirection,
   isVerticalLayout,
   progressInfo,
+  applyRevertDirectionStyle,
+  clearRevertDirectionStyle,
 } from "./layoutUtil";
+import {
+  createScrollAxis,
+  getCurrentPage,
+  getPageScroller,
+  getPaginationContext,
+  getReadingOffset,
+  getScrollPosition,
+  scrollToLogical,
+  scrollToPage,
+  waitForStablePagination,
+} from "./paginationUtil";
 import Chapter from "../model/chapter";
 import Chinese from "../libs/zh-convert";
 import _ from "underscore";
@@ -217,54 +227,31 @@ export const handleScrollPage = async (
 ) => {
   const vertical = isVerticalLayout();
   const sliding = animation === "sliding" && isMobile !== "yes";
-  const scrollToPage = async (left: number, top: number) => {
-    if (sliding) {
-      await animateScrollTo(doc.body, left, top);
-    } else {
-      doc.body.scrollTo({ left, top, behavior: "auto" });
-    }
-  };
+  const pageSize = vertical ? element.clientHeight : element.clientWidth;
+  const gap = getSectionGap(pageSize);
+  const scroller = getPageScroller(doc, vertical);
+  const axis = createScrollAxis(
+    scroller,
+    isRevertDirection(),
+    vertical,
+    pageSize + gap
+  );
   playMimicalFlip(animation, isMobile, delta, flipToNextPage, flipToPrevPage);
-  if (vertical) {
-    let gap = getSectionGap(element.clientHeight);
-    const height = element.clientHeight;
-    const currentScrollTop = doc.body.scrollTop;
-    const scrollDistance = height + gap;
-
-    if (delta > 0) {
-      const currentPage = Math.round(currentScrollTop / scrollDistance);
-      const targetPage = Math.max(0, currentPage - 1);
-      const targetScrollTop = targetPage * scrollDistance;
-      await scrollToPage(0, targetScrollTop);
-    } else if (delta < 0) {
-      const currentPage = Math.round(currentScrollTop / scrollDistance);
-      const targetPage = currentPage + 1;
-      const targetScrollTop = targetPage * scrollDistance;
-      await scrollToPage(0, targetScrollTop);
-    }
+  const currentPage = getCurrentPage(axis);
+  let targetPage = currentPage;
+  if (delta > 0) {
+    targetPage = Math.max(0, currentPage - 1);
+  } else if (delta < 0) {
+    targetPage = Math.min(axis.pageCount - 1, currentPage + 1);
+  }
+  if (sliding) {
+    const { left, top } = getScrollPosition(
+      axis,
+      targetPage * axis.stride
+    );
+    await animateScrollTo(scroller, left, top);
   } else {
-    let gap = getSectionGap(element.clientWidth);
-    const width = element.clientWidth;
-    const currentScrollLeft = getLogicalHorizontalScroll(doc.body);
-    const scrollDistance = width + gap;
-
-    if (delta > 0) {
-      const currentPage = Math.round(currentScrollLeft / scrollDistance);
-      const targetPage = Math.max(0, currentPage - 1);
-      const targetScrollLeft = getScrollLeftForLogical(
-        doc.body,
-        targetPage * scrollDistance
-      );
-      await scrollToPage(targetScrollLeft, 0);
-    } else if (delta < 0) {
-      const currentPage = Math.round(currentScrollLeft / scrollDistance);
-      const targetPage = currentPage + 1;
-      const targetScrollLeft = getScrollLeftForLogical(
-        doc.body,
-        targetPage * scrollDistance
-      );
-      await scrollToPage(targetScrollLeft, 0);
-    }
+    scrollToPage(axis, targetPage);
   }
 };
 const findValidChapter = (
@@ -479,9 +466,6 @@ export const handleRenderChapter = async (
   doc: Document,
   iframe: any
 ) => {
-  doc.body.innerHTML = "";
-  iframe.height = 0 + "px";
-  doc.body.scrollTo(0, 0);
   if (
     (chapterTitle && !chapterDocIndex) ||
     (chapterDocList[chapterDocIndex] &&
@@ -520,6 +504,10 @@ export const handleRenderChapter = async (
   );
   let bodyAttrs = getBodyAttributes(chapterText);
   const viewport = getViewportSize(chapterText);
+  // 先加载完新章节再清空旧内容，避免章节切换期间出现空白页。
+  clearRevertDirectionStyle(doc);
+  getPageScroller(doc).scrollTo(0, 0);
+  iframe.height = element.clientHeight + "px";
   doc.body.innerHTML = chapterText;
   // Apply body attrs without duplicating style on re-render
   if (bodyAttrs["class"]) {
@@ -531,6 +519,16 @@ export const handleRenderChapter = async (
     doc.body.setAttribute("id", bodyAttrs["id"]);
   } else {
     doc.body.removeAttribute("id");
+  }
+  if (bodyAttrs["dir"]) {
+    doc.body.setAttribute("dir", bodyAttrs["dir"]);
+  } else {
+    doc.body.removeAttribute("dir");
+  }
+  if (bodyAttrs["lang"]) {
+    doc.body.setAttribute("lang", bodyAttrs["lang"]);
+  } else {
+    doc.body.removeAttribute("lang");
   }
 
   let baseStyle = doc.body.getAttribute("style") || "";
@@ -585,6 +583,15 @@ export const handleRenderChapter = async (
   }
   await handleCssLink(doc);
   await handlePlainText(doc);
+  const authoredDirection =
+    bodyAttrs["dir"] ||
+    doc.defaultView?.getComputedStyle(doc.body).direction ||
+    "ltr";
+  if (readerMode !== "scroll") {
+    applyRevertDirectionStyle(doc, authoredDirection);
+  } else {
+    clearRevertDirectionStyle(doc);
+  }
   if (!chapterTitle) {
     //取前面最近的章节，且存在的标题
     let tempChapterDocIndex = chapterDocIndex;
@@ -612,6 +619,7 @@ export const handleRenderChapter = async (
   tempLocation.xpath = `/body/DocFragment[${chapterDocIndex + 1}]`;
   tempLocation.timestamp = parseInt(new Date().getTime() / 1000 + "");
   await handleIframeHeight(element, readerMode, format, iframe, doc);
+  await waitForStablePagination(doc);
   await handleScrollPosition(element, readerMode, "", "", "", "", doc);
 };
 
@@ -688,25 +696,9 @@ export const handleScrollPosition = async (
   page: string,
   doc: Document
 ) => {
-  let left = 0;
-  let top = 0;
   let targetNode: any = doc.body;
   const vertical = isVerticalLayout() && readerMode !== "scroll";
-  if (page && readerMode !== "scroll") {
-    if (vertical) {
-      let gap = getSectionGap(element.clientHeight);
-      let pageHeight = element.clientHeight + gap;
-      top = pageHeight * (parseInt(page) - 1);
-    } else {
-      let gap = getSectionGap(element.clientWidth);
-      const width = convertComputedNum(getComputedStyle(element).width);
-      let pageWidth = width + gap;
-      left = getScrollLeftForLogical(
-        doc.body,
-        pageWidth * (parseInt(page) - 1)
-      );
-    }
-  } else if (text) {
+  const findTextNode = () => {
     let nodeList = getBlockElement(doc.body);
     let targetNodeList = nodeList.filter((s, index) => {
       return (
@@ -729,73 +721,60 @@ export const handleScrollPosition = async (
       );
     });
     if (targetNodeList.length === 0) {
-      return;
+      return null;
     }
-    targetNode = getCloestBlock(targetNodeList[0], element, readerMode);
-    if (vertical) {
-      top = targetNode
-        ? getActualOffsetTop(targetNode) -
-          convertStyleNum(
-            targetNode.marginTop ||
-              parseFloat(getComputedStyle(targetNode).marginTop)
-          )
-        : text === "prevChapter"
-          ? doc.body.scrollHeight
-          : 0;
-    } else {
-      left = targetNode
-        ? getScrollLeftForContentOffset(
-            doc.body,
-            getActualOffsetLeft(targetNode) -
-              convertStyleNum(
-                targetNode.marginLeft ||
-                  parseFloat(getComputedStyle(targetNode).marginLeft)
-              )
-          )
-        : text === "prevChapter"
-          ? doc.body.scrollWidth
-          : 0;
-    }
-  } else if (href && href.indexOf("#") > -1) {
+    return getCloestBlock(targetNodeList[0], element, readerMode);
+  };
+  const findHrefNode = () => {
+    if (!href || href.indexOf("#") === -1) return null;
     let id = CSS.escape(href.split("#").reverse()[0]);
     if (!doc.body.querySelector("#" + CSS.escape(id))) {
-      return;
+      return null;
     }
-    targetNode = getCloestBlock(
+    return getCloestBlock(
       doc.body.querySelector("#" + CSS.escape(id)) || doc.body,
       element,
       readerMode
     );
-    if (vertical) {
-      top = targetNode
-        ? getActualOffsetTop(targetNode) -
-          convertStyleNum(
-            targetNode.marginTop ||
-              parseFloat(getComputedStyle(targetNode).marginTop)
-          )
-        : 0;
-    } else {
-      left = targetNode
-        ? getScrollLeftForContentOffset(
-            doc.body,
-            getActualOffsetLeft(targetNode) -
-              convertStyleNum(
-                targetNode.marginLeft ||
-                  parseFloat(getComputedStyle(targetNode).marginLeft)
-              )
-          )
-        : 0;
+  };
+  if (readerMode === "scroll") {
+    if (text) {
+      targetNode = findTextNode() || doc.body;
+    } else if (href) {
+      targetNode = findHrefNode() || doc.body;
     }
-  }
-  if (readerMode !== "scroll") {
-    if (vertical) {
-      doc.body.scrollTo(0, top);
-    } else {
-      doc.body.scrollTo(left, 0);
-    }
-  } else {
     targetNode.scrollIntoView();
+    return;
   }
+  const ctx = getPaginationContext(element, doc, readerMode);
+  const getNodeOffset = (node: HTMLElement) => {
+    const margin = vertical
+      ? (node as any).marginTop ||
+        parseFloat(getComputedStyle(node).marginTop)
+      : (node as any).marginLeft ||
+        parseFloat(getComputedStyle(node).marginLeft);
+    return (
+      getReadingOffset(ctx, node.getBoundingClientRect()) -
+      convertStyleNum(margin)
+    );
+  };
+  let offset = 0;
+  if (page) {
+    offset = ctx.stride * (parseInt(page) - 1);
+  } else if (text) {
+    targetNode = findTextNode();
+    if (!targetNode) {
+      return;
+    }
+    offset = getNodeOffset(targetNode);
+  } else if (href && href.indexOf("#") > -1) {
+    targetNode = findHrefNode();
+    if (!targetNode) {
+      return;
+    }
+    offset = getNodeOffset(targetNode);
+  }
+  scrollToLogical(ctx, offset);
 };
 
 export const getCloestBlock = (
@@ -803,50 +782,25 @@ export const getCloestBlock = (
   element: HTMLElement,
   readerMode: string
 ) => {
-  const vertical = isVerticalLayout() && readerMode !== "scroll";
   if (readerMode === "scroll") {
     return targetNode;
   }
-  if (vertical) {
-    let gap = getSectionGap(element.clientHeight);
-    let offsetTop =
-      getActualOffsetTop(targetNode) -
-      convertStyleNum(
-        (targetNode as any).marginTop ||
-          parseFloat(getComputedStyle(targetNode).marginTop)
-      );
-    if (
-      checkDivisibleInRange(
-        parseInt(offsetTop + ""),
-        (element.clientHeight + gap) / 2
-      )
-    ) {
-      return targetNode;
-    } else if (targetNode.parentElement) {
-      return getCloestBlock(targetNode.parentElement, element, readerMode);
-    } else {
-      return targetNode;
-    }
+  const doc = targetNode.ownerDocument;
+  const ctx = getPaginationContext(element, doc, readerMode);
+  const margin = ctx.vertical
+    ? (targetNode as any).marginTop ||
+      parseFloat(getComputedStyle(targetNode).marginTop)
+    : (targetNode as any).marginLeft ||
+      parseFloat(getComputedStyle(targetNode).marginLeft);
+  const offset =
+    getReadingOffset(ctx, targetNode.getBoundingClientRect()) -
+    convertStyleNum(margin);
+  if (checkDivisibleInRange(parseInt(offset + ""), ctx.stride / 2)) {
+    return targetNode;
+  } else if (targetNode.parentElement) {
+    return getCloestBlock(targetNode.parentElement, element, readerMode);
   } else {
-    let gap = getSectionGap(element.clientWidth);
-    let offsetLeft =
-      getActualOffsetLeft(targetNode) -
-      convertStyleNum(
-        (targetNode as any).marginLeft ||
-          parseFloat(getComputedStyle(targetNode).marginLeft)
-      );
-    if (
-      checkDivisibleInRange(
-        parseInt(offsetLeft + ""),
-        (element.clientWidth + gap) / 2
-      )
-    ) {
-      return targetNode;
-    } else if (targetNode.parentElement) {
-      return getCloestBlock(targetNode.parentElement, element, readerMode);
-    } else {
-      return targetNode;
-    }
+    return targetNode;
   }
 };
 const checkDivisibleInRange = (x: number, y: number): boolean => {
