@@ -50,7 +50,10 @@ export const applyRevertDirectionStyle = (doc: Document) => {
   if (doc.getElementById("kookit-revert-direction-style")) return;
   const style = doc.createElement("style");
   style.id = "kookit-revert-direction-style";
+  // 分页列布局在 html 上，滚动容器的方向必须与列顺序一致，
+  // 否则 RTL 下 scrollLeft 为负值但列仍按 LTR 排列，翻页会滚到空白区域
   style.textContent =
+    'html[data-kookit-revert-direction="yes"],' +
     'html[data-kookit-revert-direction="yes"] body{direction:rtl !important;}' +
     'html[data-kookit-revert-direction="yes"] body>*:not([dir]){direction:ltr;}';
   (doc.head || doc.documentElement).appendChild(style);
