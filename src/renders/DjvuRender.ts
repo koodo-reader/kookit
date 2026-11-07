@@ -279,18 +279,17 @@ class DjvuRender extends ComicRender {
         this.isGenerationCurrent(chapterDocIndex, generation) &&
         !!subDoc.body &&
         !!wrapper.parentNode;
-      let previewPainted = false;
+      let lastPaint = 0;
       for (;;) {
         const step = await decoder.decodeNext();
         if (step === null) break;
         if (!isAlive()) return;
-        // 每页最多一次预览合成 + 一次最终合成。原实现每 80ms/每个 BG44
-        // chunk 都会重新 compose 整页，彩色页面一页会重复 4~7 次。
-        if (!previewPainted && !decoder.isDone) {
+        const now = Date.now();
+        if (step === "mask" || now - lastPaint >= 80) {
           this.paintPage(canvas, decoder.composeToRgba());
-          previewPainted = true;
+          lastPaint = now;
+          await yieldToMainThread();
         }
-        await yieldToMainThread();
       }
       if (!isAlive()) return;
       this.paintPage(canvas, decoder.composeToRgba());
@@ -408,7 +407,11 @@ class DjvuRender extends ComicRender {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.putImageData(
-      new ImageData(image.rgba, image.width, image.height),
+      new ImageData(
+        new Uint8ClampedArray(image.rgba),
+        image.width,
+        image.height
+      ),
       0,
       0
     );
@@ -588,7 +591,6 @@ class DjvuRender extends ComicRender {
     if (lines.length === 0) return;
     const info = djvu.getPageInfo(chapterDocIndex);
     const SVG_NS = "http://www.w3.org/2000/svg";
-    const fragment = subDoc.createDocumentFragment();
     for (const line of lines) {
       // 一行一个 <text>，行内各词用 <tspan>：选区复制时不会逐词换行
       const text = subDoc.createElementNS(SVG_NS, "text");
@@ -604,7 +606,6 @@ class DjvuRender extends ComicRender {
       );
       text.setAttribute("x", String(first.x));
       text.setAttribute("y", String(first.y + first.height * 0.8));
-      const tspans = subDoc.createDocumentFragment();
       for (const word of line.words) {
         const rect = this.mapRect(
           word.x,
@@ -625,12 +626,10 @@ class DjvuRender extends ComicRender {
         tspan.setAttribute("fill", "transparent");
         tspan.setAttribute("style", "user-select:text;cursor:text;");
         tspan.textContent = word.zone.text;
-        tspans.appendChild(tspan);
+        text.appendChild(tspan);
       }
-      text.appendChild(tspans);
-      fragment.appendChild(text);
+      svg.appendChild(text);
     }
-    svg.appendChild(fragment);
   }
 
   // 注释层：透明 SVG 热区，带 href 属性以复用 touchUtil 的链接跳转机制
@@ -646,7 +645,6 @@ class DjvuRender extends ComicRender {
     }
     if (!annotations || annotations.length === 0) return;
     const info = djvu.getPageInfo(chapterDocIndex);
-    const fragment = subDoc.createDocumentFragment();
     for (const annotation of annotations) {
       if (!annotation.url) continue;
       const shape = annotation.shape;
@@ -669,9 +667,8 @@ class DjvuRender extends ComicRender {
       link.setAttribute("href", annotation.url);
       if (annotation.comment) link.setAttribute("title", annotation.comment);
       link.setAttribute("style", "cursor:pointer;");
-      fragment.appendChild(link);
+      svg.appendChild(link);
     }
-    svg.appendChild(fragment);
   }
 
   async handleUnloadComicChapter(chapterDocIndex: number) {
