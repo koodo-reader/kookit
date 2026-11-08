@@ -1,6 +1,9 @@
 // Corner-dwell auto page-turn during text selection (#1354 pattern from Readest).
 // The selection handle must rest in a screen corner for AUTO_TURN_DWELL_MS before
 // the page turns, so merely passing the corner mid-drag does not flip the page.
+// The corners are intentionally NOT mirrored in RTL mode: the user should be able to
+// rely on the same top-left / bottom-right corners for cross-page selection regardless
+// of the page-turn direction.
 
 const AUTO_TURN_DWELL_MS = 500;
 // Fixed pixel radius around each corner for auto-turn detection.
@@ -265,6 +268,7 @@ export const createSelectionAutoTurn = (
       }
 
       isAutoTurning = true;
+      // br to continue selecting forward (next page), tl to go back (prev page)
       const turning = corner === "br" ? render.next() : render.prev();
       Promise.resolve(turning).finally(() => {
         pinnedScrollLeft = doc.body.scrollLeft;

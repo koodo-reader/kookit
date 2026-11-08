@@ -1,4 +1,8 @@
 import { getBlockElement, isParentBlock } from "./common";
+import {
+  getMaxHorizontalScroll,
+  getScrollLeftForLogical,
+} from "./layoutUtil";
 
 // 遮罩内容区上下预留量：内容垂直居中后单侧空隙为该值一半，
 // 需不小于按钮组的最大占位（移动端 32+44=76px、scroll 模式底边-80px）并留缓冲
@@ -367,7 +371,13 @@ class ParagraphModeManager {
         if (this.getIsVertical()) {
           doc.body.scrollTo(0, direction > 0 ? doc.body.scrollHeight : 0);
         } else {
-          doc.body.scrollTo(direction > 0 ? doc.body.scrollWidth : 0, 0);
+          doc.body.scrollTo(
+            getScrollLeftForLogical(
+              doc.body,
+              direction > 0 ? getMaxHorizontalScroll(doc.body) : 0
+            ),
+            0
+          );
         }
       }
       if (direction > 0) {

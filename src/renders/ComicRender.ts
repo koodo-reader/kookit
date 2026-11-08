@@ -1,13 +1,17 @@
 import Chapter from "../model/chapter";
 import ChapterDoc from "../model/chapterDoc";
-import { createIframe } from "../utils/layoutUtil";
+import {
+  createIframe,
+  getActualOffsetLeft,
+  getActualOffsetTop,
+} from "../utils/layoutUtil";
 import GeneralParser from "../utils/generalParser";
 import { makeComicBook } from "../libs/comic-book";
 import GeneralRender from "./GeneralRender";
 import untar from "js-untar";
 import { getCache } from "../libs/cache.js";
 import JSZip from "jszip";
-import { isElectron } from "../utils/common";
+import { getSectionGap, isElectron } from "../utils/common";
 import {
   createPDFIframe,
   handleIOSScrollPage,
@@ -39,6 +43,7 @@ class ComicRender extends GeneralRender {
   scrollComicInterval: any = null;
   constructor(comicBuffer: ArrayBuffer, config: any) {
     super(config);
+    this.isPaginated = true;
     this.comicBuffer = comicBuffer;
     this.readerMode = config.readerMode;
     this.format = config.format;
@@ -109,6 +114,20 @@ class ComicRender extends GeneralRender {
       iframeContainer.className = "pdf-container";
       if (this.readerMode === "single") {
         iframeContainer.style.paddingTop = this.element.clientHeight + "px";
+      } else if (this.readerMode === "double") {
+        // double 模式容器高度不能超过可视区高度：宽高比取的是全书采样
+        // 模板值，宽屏上看高图时按比例算出的高度会超出 body（可视高度
+        // 一列）被 overflow 裁掉，导致图片底部不可见，超限时按可视高度
+        // letterbox，图片在 iframe 内经 object-fit:contain 仍完整显示
+        const gap = getSectionGap(doc.body.clientWidth);
+        const pageWidth = (doc.body.clientWidth - gap) / 2;
+        const containerHeight = Math.min(
+          pageWidth / aspectRatio,
+          this.element.clientHeight
+        );
+        iframeContainer.style.paddingTop = containerHeight + "px";
+        iframeContainer.style.marginBottom = "2%";
+        iframeContainer.style.overflow = "hidden";
       } else {
         iframeContainer.style.paddingTop = `${(1 / aspectRatio) * 100}%`;
         iframeContainer.style.marginBottom = "2%";
@@ -134,9 +153,7 @@ class ComicRender extends GeneralRender {
     const ratios: number[] = [];
     for (let i = 0; i < sampleCount; i++) {
       try {
-        const url = await this.book.sections[i].load();
-        const res = await fetch(url);
-        const imageBlob = await res.blob();
+        const imageBlob = await this.book.sections[i].loadImage();
         const meta = await this.getImageMeta(imageBlob);
         if (meta.width && meta.height) {
           ratios.push(Math.round((meta.width / meta.height) * 1000) / 1000);
@@ -193,12 +210,17 @@ class ComicRender extends GeneralRender {
   }
   async parse() {
     try {
-      if (isElectron()) {
-        if (this.format === "CBZ") {
+      // 流式加载依赖宿主注入 getZipEntries/getTarEntries 与磁盘路径，
+      // 导入期等场景宿主只传 buffer，此时回退到内存 loader（JSZip/untar）
+      if (isElectron() && this.filePath) {
+        if (this.format === "CBZ" && typeof this.getZipEntries === "function") {
           const loader: any = await this.makeZipStreamLoader(this.filePath);
           this.book = makeComicBook(loader, { name: this.filePath });
           return;
-        } else if (this.format === "CBT") {
+        } else if (
+          this.format === "CBT" &&
+          typeof this.getTarEntries === "function"
+        ) {
           const loader: any = await this.makeTarStreamLoader(this.filePath);
           this.book = makeComicBook(loader, { name: this.filePath });
           return;
@@ -219,10 +241,10 @@ class ComicRender extends GeneralRender {
       } else if (archiveType === "rar" || archiveType === "cbr") {
         this.rpc = await window.RPC.new("./lib/libunrar/worker.js", {
           loaded: function () {
-            console.info("loaded");
+            // ignore
           },
           progressShow: function (fileName, fileSize, progress) {
-            console.info(progress);
+            // ignore
           },
         });
         await new Promise((r) => setTimeout(r, 200));
@@ -861,9 +883,6 @@ class ComicRender extends GeneralRender {
     );
   }
   async record(): Promise<void> {
-    if (this.animation !== "none" && this.isMobile !== "yes") {
-      await new Promise((r) => setTimeout(r, 1000));
-    }
     let doc = this.getDocument();
     if (!doc) return;
     await this.handleComicRecord(doc);
@@ -934,35 +953,47 @@ class ComicRender extends GeneralRender {
       currentPage: parseInt(this.tempLocation.chapterDocIndex || "0") + 1,
     } as any;
   }
-  getPageSize() {
+  getPageSize(pageIndex?: number) {
     let doc: any = this.getDocument();
     if (!doc) return;
     let scale = this.readerMode === "double" ? 2 : 1;
-    let section = Math.floor(doc.body.clientWidth / 12);
-    let gap = section % 2 === 0 ? section : section - 1;
+    let gap = getSectionGap(doc.body.clientWidth);
     let subIframe = doc.querySelectorAll("iframe")[0];
     let iframeHeight = subIframe?.getBoundingClientRect().height;
+    // PPTX/XPS 等复用漫画结构的格式需要与 PDF 一致的位置信息来对齐选文菜单
+    let offsetTop = 0;
+    if (pageIndex !== undefined) {
+      let subContainer = doc.querySelector("#pdf-container-" + pageIndex);
+      if (subContainer) {
+        offsetTop = subContainer.getBoundingClientRect().top;
+      }
+    }
     return {
       width: doc.body.clientWidth,
       height: this.element.clientHeight,
+      left: getActualOffsetLeft(this.element),
+      top: getActualOffsetTop(this.element),
+      offsetTop: offsetTop,
+      scrollTop: this.element.scrollTop,
+      scrollLeft: this.element.scrollWidth / 2 - this.element.clientWidth / 2,
       sectionWidth: (doc.body.clientWidth - gap) / scale,
       sectionHeight: iframeHeight,
       gap: gap,
     } as any;
   }
-  async visibleText() {
+  async visibleText(): Promise<any[]> {
     return [];
   }
-  async audioText() {
+  async audioText(): Promise<any[]> {
     return await this.visibleText();
   }
-  async getRestAudioText(_count: number) {
+  async getRestAudioText(_count: number): Promise<any[]> {
     return [];
   }
   async chapterText() {
     return "";
   }
-  async doSearch(_keyword: string) {
+  async doSearch(_keyword: string): Promise<any[]> {
     return [];
   }
   async getImageList(chapterDocIndex?: number): Promise<string[]> {
@@ -980,7 +1011,10 @@ class ComicRender extends GeneralRender {
       if (isNaN(chapterDocIndex)) {
         chapterDocIndex = 0;
       }
-      if (chapterDocIndex < 0 || chapterDocIndex > this.chapterDocList.length - 1) {
+      if (
+        chapterDocIndex < 0 ||
+        chapterDocIndex > this.chapterDocList.length - 1
+      ) {
         return [];
       }
     }

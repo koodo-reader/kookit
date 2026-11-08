@@ -51,7 +51,7 @@ export default class {
   /**
    * Off
    */
-  off(_names) {
+  off(_names, callback?) {
     const that = this;
 
     // Errors
@@ -68,6 +68,21 @@ export default class {
       // Resolve name
       const name: any = that.resolveName(_name);
 
+      const resetCallbacks = (namespace: string) => {
+        if (!callback) {
+          delete that.callbacks[namespace][name.value];
+        } else {
+          that.callbacks[namespace][name.value] = that.callbacks[namespace][
+            name.value
+          ].filter((item) => item !== callback);
+          if (that.callbacks[namespace][name.value].length === 0) {
+            delete that.callbacks[namespace][name.value];
+          }
+        }
+        if (Object.keys(that.callbacks[namespace]).length === 0)
+          delete that.callbacks[namespace];
+      };
+
       // Remove namespace
       if (name.namespace !== "base" && name.value === "") {
         delete that.callbacks[name.namespace];
@@ -83,11 +98,7 @@ export default class {
               that.callbacks[namespace] instanceof Object &&
               that.callbacks[namespace][name.value] instanceof Array
             ) {
-              delete that.callbacks[namespace][name.value];
-
-              // Remove namespace if empty
-              if (Object.keys(that.callbacks[namespace]).length === 0)
-                delete that.callbacks[namespace];
+              resetCallbacks(namespace);
             }
           }
         }
@@ -97,11 +108,7 @@ export default class {
           that.callbacks[name.namespace] instanceof Object &&
           that.callbacks[name.namespace][name.value] instanceof Array
         ) {
-          delete that.callbacks[name.namespace][name.value];
-
-          // Remove namespace if empty
-          if (Object.keys(that.callbacks[name.namespace]).length === 0)
-            delete that.callbacks[name.namespace];
+          resetCallbacks(name.namespace);
         }
       }
     });
