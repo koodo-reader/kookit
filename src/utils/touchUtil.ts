@@ -103,9 +103,10 @@ export const slideAnimateTo = (
     snapLogical = currentPage * pageWidth;
   }
 
-  // Clamp to valid range. pageWidth 已包含页间距（stride），只有目标页之后
-  // 不足一整页（即目标就是最后一页）时才吸附到文档末尾，否则会跳过相邻页。
-  if (snapLogical >= maxScroll || maxScroll - snapLogical < pageWidth) {
+  // Clamp to valid range. 只有目标位置越过文档末端（或距末端不足 10px）时
+  // 才吸附到最大滚动位置；不能按“剩余不足一整页”判断，否则双页模式末屏
+  // 只占半屏时会把相邻页误判为末页而跳过。
+  if (snapLogical > maxScroll || maxScroll - snapLogical < 10) {
     snapLogical = maxScroll;
   }
   snapLogical = Math.max(0, snapLogical);
