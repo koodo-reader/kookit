@@ -103,10 +103,9 @@ export const slideAnimateTo = (
     snapLogical = currentPage * pageWidth;
   }
 
-  // Clamp to valid range. For the last page the body may not be an exact
-  // multiple of pageWidth, so if the remaining content after snapLogical is
-  // less than a full page we snap all the way to the end in one step.
-  if (snapLogical >= maxScroll || maxScroll - snapLogical < pageWidth + gap) {
+  // Clamp to valid range. pageWidth 已包含页间距（stride），只有目标页之后
+  // 不足一整页（即目标就是最后一页）时才吸附到文档末尾，否则会跳过相邻页。
+  if (snapLogical >= maxScroll || maxScroll - snapLogical < pageWidth) {
     snapLogical = maxScroll;
   }
   snapLogical = Math.max(0, snapLogical);
