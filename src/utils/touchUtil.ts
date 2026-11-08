@@ -129,9 +129,7 @@ export const slideAnimateTo = (
   // iOS WKWebView 对滚动根（documentElement/body）做 transform 后，
   // 清除 transform 时容易留下空白页，移动端 RTL 统一改用原生滚动动画
   const useTransform =
-    render.isMobile !== "yes" &&
-    !revertDirection &&
-    body.scrollWidth <= SLIDE_TRANSFORM_THRESHOLD;
+    !revertDirection && body.scrollWidth <= SLIDE_TRANSFORM_THRESHOLD;
 
   if (!useTransform) {
     // 原生滚动方案：rAF 驱动 scrollLeft，滚动只绘制视口内容，
