@@ -23,8 +23,8 @@ export const TEXT_COLOR_CATEGORIES: TextColorCategory[] = [
 export const DEFAULT_CATEGORY_COLORS_LIGHT: Record<TextColorCategory, string> =
   {
     quoted: "#7b2d8e",
-    bracketed: "#0e7490",
-    punctuation: "#fcd34d",
+    bracketed: "#5b6472",
+    punctuation: "#0e7490",
     symbol: "#b45309",
     number: "#1d4ed8",
     latin: "#be185d",
@@ -32,8 +32,8 @@ export const DEFAULT_CATEGORY_COLORS_LIGHT: Record<TextColorCategory, string> =
 
 export const DEFAULT_CATEGORY_COLORS_DARK: Record<TextColorCategory, string> = {
   quoted: "#d8b4fe",
-  bracketed: "#67e8f9",
-  punctuation: "#94a3b8",
+  bracketed: "#94a3b8",
+  punctuation: "#67e8f9",
   symbol: "#fcd34d",
   number: "#93c5fd",
   latin: "#f9a8d4",

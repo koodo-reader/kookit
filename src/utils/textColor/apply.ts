@@ -95,7 +95,9 @@ const wrapSegments = (
     }
     const span = doc.createElement("span");
     span.className = COLOR_CLASS;
-    span.setAttribute("style", `color:${color};`);
+    // 夜间模式与「覆盖文字颜色」会给 p/span 等注入 color !important，
+    // 行内样式必须同样 important 才能生效
+    span.style.setProperty("color", color, "important");
     const parent = target.parentNode;
     if (!parent) continue;
     parent.insertBefore(span, target);
