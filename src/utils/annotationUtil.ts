@@ -12,6 +12,7 @@ class AnnotationManager {
   shapeType: string = "rect";
   shapeColor: string = "#ff0000";
   shapeWidth: number = 2;
+  lineStyle: string = "solid";
   eraserWidth: number = 24;
   quickErase: string = "no";
   textSize: number = 24;
@@ -38,6 +39,7 @@ class AnnotationManager {
     this.shapeType = config.shapeType || "rect";
     this.shapeColor = config.shapeColor || "#ff0000";
     this.shapeWidth = config.shapeWidth || 2;
+    this.lineStyle = config.lineStyle || "solid";
     this.eraserWidth = config.eraserWidth != null ? config.eraserWidth : 24;
     this.quickErase = config.quickErase || "no";
     this.textSize = config.textSize != null ? config.textSize : 24;
@@ -73,6 +75,9 @@ class AnnotationManager {
     }
     if (config.shapeWidth) {
       this.setShapeWidth(config.shapeWidth);
+    }
+    if (config.lineStyle) {
+      this.setLineStyle(config.lineStyle);
     }
     if (config.eraserWidth) {
       this.setEraserWidth(config.eraserWidth);
@@ -197,6 +202,25 @@ class AnnotationManager {
         canvas.freeDrawingBrush.color = this.brushColor;
         canvas.freeDrawingBrush.width = this.brushWidth;
       }
+      // 线型只作用于画笔；荧光笔保持马克笔的实线语义
+      canvas.freeDrawingBrush.strokeDashArray =
+        this.annotationStyle === "brush"
+          ? this.getStrokeDashArray(this.brushWidth)
+          : null;
+      // fabric 默认只增量绘制最近一段路径，虚线/点线每次都会从段首重新起算，
+      // 预览时新旧虚线段错位叠加，看起来像多条线重叠。
+      // 有虚线时强制整条路径重绘，让绘制过程中的样式与最终结果一致。
+      if (!canvas.freeDrawingBrush._kookitNeedsFullRenderPatched) {
+        const originalNeedsFullRender =
+          canvas.freeDrawingBrush.needsFullRender;
+        canvas.freeDrawingBrush.needsFullRender = function () {
+          if (this.strokeDashArray && this.strokeDashArray.length > 0) {
+            return true;
+          }
+          return originalNeedsFullRender.call(this);
+        };
+        canvas.freeDrawingBrush._kookitNeedsFullRenderPatched = true;
+      }
     }
     canvas.isDrawingMode = drawing && !isShape && !isText && !isEraser;
     if (drawing) {
@@ -222,16 +246,30 @@ class AnnotationManager {
     }
   }
 
+  getStrokeDashArray(lineWidth: number): number[] | null {
+    const width = lineWidth > 0 ? lineWidth : 1;
+    if (this.lineStyle === "dashed") {
+      return [width * 3, width * 2];
+    }
+    if (this.lineStyle === "dotted") {
+      // 圆头线帽下用极短线段渲染出圆点
+      return [0.1, width * 2];
+    }
+    return null;
+  }
+
   createShapeObject(x1: number, y1: number, x2: number, y2: number): any {
     const fabricLib = window.fabric;
     if (!fabricLib) return null;
     const color = this.shapeColor;
     const width = this.shapeWidth;
+    const dashArray = this.getStrokeDashArray(width);
     const common: any = {
       stroke: color,
       strokeWidth: width,
       strokeLineCap: "round",
       strokeLineJoin: "round",
+      strokeDashArray: dashArray,
       fill: "transparent",
       selectable: true,
     };
@@ -276,6 +314,7 @@ class AnnotationManager {
           stroke: color,
           strokeWidth: width,
           strokeLineCap: "round",
+          strokeDashArray: dashArray,
           selectable: true,
         });
       case "arrow":
@@ -284,6 +323,7 @@ class AnnotationManager {
           strokeWidth: width,
           strokeLineCap: "round",
           strokeLineJoin: "round",
+          strokeDashArray: dashArray,
           fill: color,
           selectable: true,
         });
@@ -554,6 +594,7 @@ class AnnotationManager {
             strokeWidth: (obj.strokeWidth || 1) * avgScale,
             strokeLineCap: obj.strokeLineCap || "round",
             strokeLineJoin: obj.strokeLineJoin || "round",
+            strokeDashArray: obj.strokeDashArray,
             fill: "transparent",
             selectable: true,
           })
@@ -796,6 +837,11 @@ class AnnotationManager {
 
   setShapeWidth(width: number) {
     this.shapeWidth = width;
+    this.applyBrushToAll();
+  }
+
+  setLineStyle(lineStyle: string) {
+    this.lineStyle = lineStyle;
     this.applyBrushToAll();
   }
 
