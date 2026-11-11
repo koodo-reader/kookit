@@ -24,7 +24,7 @@ export const DEFAULT_CATEGORY_COLORS_LIGHT: Record<TextColorCategory, string> =
   {
     quoted: "#7b2d8e",
     bracketed: "#0e7490",
-    punctuation: "#5b6472",
+    punctuation: "#fcd34d",
     symbol: "#b45309",
     number: "#1d4ed8",
     latin: "#be185d",
