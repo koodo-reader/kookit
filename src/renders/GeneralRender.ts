@@ -168,7 +168,9 @@ class GeneralRender extends EventEmitter {
     }
     this.readerMode = config.readerMode;
     window.readerMode = config.readerMode;
-    this.animation = config.animation || "none";
+    // overlay 动画由外部阅读器实现，kookit 内部按无动画渲染
+    this.animation =
+      config.animation === "overlay" ? "none" : config.animation || "none";
     this.format = config.format;
     this.isPaginated = isPaginatedFormat(config.format);
     this.convertChinese = config.convertChinese;
