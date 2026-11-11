@@ -3,6 +3,7 @@ import { processDocumentBody } from "./bionicUtil";
 import { getSectionGap, getStylePxNumber, isElectron } from "./common";
 import { getBlockElement, isParentBlock } from "./common";
 import { applyTextRules } from "./textRuleUtil";
+import { applyTextColor } from "./textColor";
 declare var window: any;
 export const isVerticalLayout = (): boolean => {
   return window.textOrientation === "vertical";
@@ -507,6 +508,10 @@ export const transformText = async (doc: Document) => {
   }
   if (window.textRules && window.textRules.length > 0) {
     applyTextRules(doc, window.textRules);
+  }
+  // contentColor 始终存在；关闭时也要执行一次以清理旧着色
+  if (window.contentColor) {
+    applyTextColor(doc, window.contentColor);
   }
 };
 export const handleTextStyle = async (doc: Document) => {

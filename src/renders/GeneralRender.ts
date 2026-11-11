@@ -61,6 +61,11 @@ import {
   isParentBlock,
 } from "../utils/common";
 import SpeedReadingManager from "../utils/speedReadingUtil";
+import {
+  normalizeTextColorConfig,
+  type TextColorConfig,
+  type TextColorConfigInput,
+} from "../utils/textColor";
 import ReadingRulerManager from "../utils/readingRulerUtil";
 import ParagraphModeManager from "../utils/paragraphModeUtil";
 declare var window: any;
@@ -83,6 +88,7 @@ class GeneralRender extends EventEmitter {
   isIndent: string | undefined;
   bookLayout: string | undefined;
   textRules: TextRule[];
+  contentColor: TextColorConfig;
   codeHighlight: string | undefined;
   pageGap: string | undefined;
   isHyphenation: string | undefined;
@@ -153,6 +159,7 @@ class GeneralRender extends EventEmitter {
     bookLayout?: string;
     platform?: string;
     textRules?: TextRule[];
+    contentColor?: TextColorConfigInput;
     codeHighlight?: string;
     pageGap?: string;
   }) {
@@ -213,6 +220,11 @@ class GeneralRender extends EventEmitter {
     window.pageGap = this.pageGap;
     this.textRules = config.textRules || [];
     window.textRules = this.textRules;
+    this.contentColor = normalizeTextColorConfig(
+      config.contentColor,
+      this.isDarkMode === "yes"
+    );
+    window.contentColor = this.contentColor;
 
     //手机版环境已经有严格的安全限制，无需额外限制，PDF中无法执行代码，强行开启则无法渲染图书
     this.isAllowScript =

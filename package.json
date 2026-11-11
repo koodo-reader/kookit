@@ -26,7 +26,8 @@
     "predocs": "rimraf ./docs",
     "docs": "typedoc src --out docs",
     "clean": "rimraf ./build ./dist ./docs",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:text-color": "node --experimental-strip-types --test test/textColor.test.ts"
   },
   "devDependencies": {
     "@microsoft/api-extractor": "^7.18.7",
