@@ -11,6 +11,7 @@ import {
 // 绘制到页面 iframe 内的 canvas，分页/懒加载/卸载沿用漫画（ComicRender）的
 // 多 iframe 结构；解码按 chunk 分片进行并让出主线程，先出低质量预览再精修。
 class DjvuRender extends ComicRender {
+  isStartFromEvenSupported = false;
   djvu: DjvuFile | null = null;
   // 每页的渲染状态：generation 用于取消，painted 标记完成，task 记录在途任务
   private pageState: Map<

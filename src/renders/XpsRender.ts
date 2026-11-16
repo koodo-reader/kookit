@@ -10,6 +10,7 @@ import {
 // XPS 是固定版式文档，每个 FixedPage 解析后渲染为 SVG 挂进独立 iframe，
 // 分页/懒加载/卸载沿用漫画（ComicRender）的多 iframe 结构
 class XpsRender extends ComicRender {
+  isStartFromEvenSupported = false;
   xps: XpsFile | null = null;
   private renderingPages: Map<number, Promise<void>> = new Map();
   private loadedFonts: Set<string> = new Set();
