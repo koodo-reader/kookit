@@ -69,6 +69,29 @@ import {
 import ReadingRulerManager from "../utils/readingRulerUtil";
 import ParagraphModeManager from "../utils/paragraphModeUtil";
 declare var window: any;
+// 目录锚点在章节文件中的字节位置，用于估算同一文件内多个目录条目的起始页码
+const getAnchorByteOffset = (html: string, href: string) => {
+  const fragment = (href || "").split("#")[1];
+  if (!fragment) return 0;
+  let id = fragment;
+  try {
+    id = decodeURIComponent(fragment);
+  } catch (error) {
+    id = fragment;
+  }
+  let position = -1;
+  for (const pattern of [
+    `id="${id}"`,
+    `id='${id}'`,
+    `name="${id}"`,
+    `name='${id}'`,
+  ]) {
+    position = html.indexOf(pattern);
+    if (position > -1) break;
+  }
+  if (position < 0) return 0;
+  return new TextEncoder().encode(html.slice(0, position)).length;
+};
 export interface TextRule {
   id: string;
   type: "replace" | "delete";
@@ -114,6 +137,8 @@ class GeneralRender extends EventEmitter {
   isShowTotalPage: string = "no";
   chapterSizeCache: { sizes: number[]; pages: number[]; total: number } | null =
     null;
+  chapterPageMapCache: Record<string, number> | null = null;
+  chapterPageMapPromise: Promise<Record<string, number>> | null = null;
   estimatedSizePerPage: number | null = null;
   speedReadingSpeed: number = 300;
   revertDirection: string = "no";
@@ -1421,6 +1446,74 @@ class GeneralRender extends EventEmitter {
       return pages;
     }
     return [];
+  }
+  // 每个目录条目在整本书中的起始页码
+  async getChapterPageMap(): Promise<Record<string, number>> {
+    if (this.chapterPageMapCache) return this.chapterPageMapCache;
+    // 分页格式每一页都是独立的章节文件，直接使用 getPages() 的结果
+    if (isPaginatedFormat(this.format)) return {};
+    if (!this.chapterPageMapPromise) {
+      this.chapterPageMapPromise = this.computeChapterPageMap().then(
+        (pageMap) => {
+          this.chapterPageMapPromise = null;
+          if (Object.keys(pageMap).length > 0) {
+            this.chapterPageMapCache = pageMap;
+          }
+          return pageMap;
+        },
+        () => {
+          this.chapterPageMapPromise = null;
+          return {};
+        }
+      );
+    }
+    return this.chapterPageMapPromise;
+  }
+  async computeChapterPageMap(): Promise<Record<string, number>> {
+    const { pages } = this.getChapterSizes();
+    const sizePerPage = this.getEstimatedSizePerPage();
+    if (!pages.length || sizePerPage <= 1) return {};
+    if (this.flattenChapters.length === 0) {
+      this.flatChapter(this.chapterList);
+    }
+    const pageScale = this.readerMode === "double" ? 2 : 1;
+    const chapterDocMap = new Map<number, Chapter[]>();
+    this.flattenChapters.forEach((chapter) => {
+      const chapterDocIndex = parseInt(chapter.index + "");
+      if (isNaN(chapterDocIndex)) return;
+      const chapters = chapterDocMap.get(chapterDocIndex) || [];
+      chapters.push(chapter);
+      chapterDocMap.set(chapterDocIndex, chapters);
+    });
+    const pageMap: Record<string, number> = {};
+    for (const [chapterDocIndex, chapters] of chapterDocMap) {
+      const startPage = pages[chapterDocIndex] || 1;
+      // 同一文件内有多个目录条目时，按锚点位置估算章节在文件内的页码偏移
+      const hasAnchor =
+        chapters.length > 1 &&
+        chapters.some((chapter) => (chapter.href || "").includes("#"));
+      const chapterText = hasAnchor
+        ? await this.getChapterDocText(chapterDocIndex)
+        : "";
+      chapters.forEach((chapter) => {
+        const offset = chapterText
+          ? getAnchorByteOffset(chapterText, chapter.href)
+          : 0;
+        pageMap[chapter.href] =
+          startPage + Math.floor(offset / sizePerPage) * pageScale;
+      });
+    }
+    return pageMap;
+  }
+  async getChapterDocText(chapterDocIndex: number) {
+    const text = this.chapterDocList[chapterDocIndex]?.text;
+    if (!text) return "";
+    if (typeof text === "string") return text;
+    try {
+      return await handleOneChapterDoc(text, true);
+    } catch (error) {
+      return "";
+    }
   }
   async record() {
     let doc = this.getDocument();
