@@ -1450,6 +1450,55 @@ export const handleHighlightSearchNode = (
     walkAndProcess(node);
   });
 };
+// 文本规则（替换/删除/高亮）、连字符标记等会把一个段落拆成多个文本节点，
+// 因此按整块文本定位目标区间，再逐节点包裹，避免跨节点时找不到内容
+const wrapHighlightRange = (
+  root: Node,
+  text: string,
+  style: string,
+  doc: Document
+) => {
+  const textNodes: Text[] = [];
+  const offsets: number[] = [];
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  let content = "";
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text;
+    offsets.push(content.length);
+    textNodes.push(node);
+    content += node.textContent || "";
+  }
+
+  const start = content.indexOf(text);
+  if (start < 0) return;
+  const end = start + text.length;
+
+  for (let i = 0; i < textNodes.length; i++) {
+    const node = textNodes[i];
+    const nodeContent = node.textContent || "";
+    const nodeStart = offsets[i];
+    const from = Math.max(start, nodeStart);
+    const to = Math.min(end, nodeStart + nodeContent.length);
+    if (from >= to) continue;
+
+    const before = nodeContent.substring(0, from - nodeStart);
+    const matched = nodeContent.substring(from - nodeStart, to - nodeStart);
+    const after = nodeContent.substring(to - nodeStart);
+
+    const highlightSpan = doc.createElement("span");
+    highlightSpan.setAttribute("style", style);
+    highlightSpan.setAttribute("data-highlight", "true");
+    highlightSpan.setAttribute("class", "kookit-highlight-text");
+    highlightSpan.textContent = matched;
+
+    const fragment = doc.createDocumentFragment();
+    if (before) fragment.appendChild(doc.createTextNode(before));
+    fragment.appendChild(highlightSpan);
+    if (after) fragment.appendChild(doc.createTextNode(after));
+
+    node.parentNode?.replaceChild(fragment, node);
+  }
+};
 export const handleHighlightAudioNode = (
   text: string,
   style: string,
@@ -1482,49 +1531,7 @@ export const handleHighlightAudioNode = (
 
   // For the first matching node, highlight the text
   if (nodes.length > 0) {
-    // Function to process text nodes
-    const processNode = (node) => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        const content = node.textContent || "";
-        const index = content.indexOf(text);
-
-        if (index > -1) {
-          // Split the text node and insert the highlight
-          const before = content.substring(0, index);
-          const after = content.substring(index + text.length);
-
-          // Create span with the specified style
-          const highlightSpan = doc.createElement("span");
-          highlightSpan.setAttribute("style", style);
-          highlightSpan.setAttribute("data-highlight", "true");
-          highlightSpan.textContent = text;
-          highlightSpan.setAttribute("class", "kookit-highlight-text");
-          // Replace the original text node with three new nodes
-          const fragment = doc.createDocumentFragment();
-          if (before) fragment.appendChild(doc.createTextNode(before));
-          fragment.appendChild(highlightSpan);
-          if (after) fragment.appendChild(doc.createTextNode(after));
-
-          node.parentNode?.replaceChild(fragment, node);
-          return true; // Text was found and highlighted
-        }
-      }
-      return false; // No match in this node
-    };
-
-    // Process all child nodes recursively until we find a match
-    const walkAndProcess = (node) => {
-      if (processNode(node)) return true;
-
-      // Process children if this node didn't contain the text
-      const childNodes = Array.from(node.childNodes);
-      for (const child of childNodes) {
-        if (walkAndProcess(child)) return true;
-      }
-      return false;
-    };
-
-    walkAndProcess(nodes[0]);
+    wrapHighlightRange(nodes[0], text, style, doc);
   }
 };
 export const getSearchResult = async (
