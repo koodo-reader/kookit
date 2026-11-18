@@ -751,6 +751,14 @@ class Loader {
     const path = resolveURL(href, base);
     let item = this.manifest.find((item) => item.href === path);
     if (!item) {
+      // 有些书（如掌阅导出的 EPUB）正文里的资源路径与 manifest 中的大小写不一致
+      // （../images/x.jpg vs OEBPS/Images/x.jpg），再按小写匹配一次，避免资源加载为空
+      const lowerPath = path.toLowerCase();
+      item = this.manifest.find(
+        (item) => item.href.toLowerCase() === lowerPath
+      );
+    }
+    if (!item) {
       item = { href: path, mediaType: "" };
     }
     return this.loadItem(item, parents.concat(base));
