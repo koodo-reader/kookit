@@ -158,7 +158,11 @@ class DjvuRender extends ComicRender {
     if (!djvu) return null;
     try {
       const page = djvu.getPage(chapterDocIndex);
-      const decoder = new DjvuPageDecoder(page, djvu.getData());
+      const decoder = new DjvuPageDecoder(
+        page,
+        djvu.getData(),
+        djvu.getSharedDict(page)
+      );
       while (!decoder.isDone) {
         await decoder.decodeNext();
       }
@@ -215,7 +219,7 @@ class DjvuRender extends ComicRender {
     if (state.task) {
       return state.task;
     }
-    const task = this.renderPage(chapterDocIndex, subDoc, state);
+    const task = this.renderPage(chapterDocIndex, subIframe, subDoc, state);
     state.task = task;
     try {
       await task;
@@ -232,6 +236,7 @@ class DjvuRender extends ComicRender {
 
   private async renderPage(
     chapterDocIndex: number,
+    subIframe: any,
     subDoc: any,
     state: { generation: number; painted: boolean; task: Promise<void> | null }
   ) {
@@ -246,7 +251,10 @@ class DjvuRender extends ComicRender {
       const rotated = page.info.rotation % 2 === 1;
       const displayWidth = rotated ? page.info.height : page.info.width;
       const displayHeight = rotated ? page.info.width : page.info.height;
-
+      // 合成分辨率按显示尺寸决定（而不是扫描原图分辨率），详见 getRenderScale
+      const scale = this.getRenderScale(displayWidth, displayHeight, subIframe);
+      const bitmapWidth = Math.max(1, Math.round(displayWidth * scale));
+      const bitmapHeight = Math.max(1, Math.round(displayHeight * scale));
       // 每次渲染都重建页面 DOM，避免残留上一次的半成品或旧内容
       subDoc.body.style.margin = "0";
       subDoc.body.style.height = "100%";
@@ -263,8 +271,8 @@ class DjvuRender extends ComicRender {
       const canvas = subDoc.createElement("canvas");
       canvas.style.cssText =
         "position:absolute;top:0;left:0;right:0;bottom:0;margin:auto;max-width:100%;max-height:100%;display:block;";
-      canvas.width = displayWidth;
-      canvas.height = displayHeight;
+      canvas.width = bitmapWidth;
+      canvas.height = bitmapHeight;
       const canvasCtx = canvas.getContext("2d");
       if (canvasCtx) {
         // 先铺白底，渲染过程中也不会出现透明空洞
@@ -274,7 +282,11 @@ class DjvuRender extends ComicRender {
       wrapper.appendChild(canvas);
       subDoc.body.appendChild(wrapper);
 
-      const decoder = new DjvuPageDecoder(page, djvu.getData());
+      const decoder = new DjvuPageDecoder(
+        page,
+        djvu.getData(),
+        djvu.getSharedDict(page)
+      );
       // 存活判定以页面容器为准：图片替换 canvas 之后容器仍然存在
       const isAlive = () =>
         this.isGenerationCurrent(chapterDocIndex, generation) &&
@@ -282,18 +294,26 @@ class DjvuRender extends ComicRender {
         !!wrapper.parentNode;
       let lastPaint = 0;
       for (;;) {
+        // 开始解码新的一块之前先确认页面还在用（可能已被卸载）
+        if (!isAlive()) return;
         const step = await decoder.decodeNext();
         if (step === null) break;
         if (!isAlive()) return;
-        const now = Date.now();
-        if (step === "mask" || now - lastPaint >= 80) {
-          this.paintPage(canvas, decoder.composeToRgba());
-          lastPaint = now;
-          await yieldToMainThread();
+        // 掩码出来时先出一帧（白底 + 文字），后续背景层限时限次重画。
+        // iOS 上每重画一次都要重建一次 IW44 背景，只保留掩码帧和最终帧
+        if (
+          step === "mask" ||
+          (this.platform !== "ios" && Date.now() - lastPaint >= 200)
+        ) {
+          this.paintPage(canvas, decoder.composeToRgba(scale));
+          lastPaint = Date.now();
         }
+        // 每解完一块就让出主线程：一大页的 IW44 逐层解码在 iPad 上要几百
+        // 毫秒到几秒，不留空隙的话整个 WebView 在这期间完全无法响应操作
+        await yieldToMainThread();
       }
       if (!isAlive()) return;
-      this.paintPage(canvas, decoder.composeToRgba());
+      this.paintPage(canvas, decoder.composeToRgba(scale));
 
       // 文本与注释叠加层
       const svg = subDoc.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -389,6 +409,9 @@ class DjvuRender extends ComicRender {
       if (canvas.parentNode) {
         canvas.remove();
       }
+      // 主动释放 canvas 的位图后援（iOS 上等 GC 回收很慢）
+      canvas.width = 0;
+      canvas.height = 0;
     };
     image.onerror = () => {
       image.remove();
@@ -400,6 +423,41 @@ class DjvuRender extends ComicRender {
     wrapper.insertBefore(image, canvas);
   }
 
+  // 页面位图的合成分辨率：按 iframe 的实际显示尺寸（CSS 像素 × 像素比）决定，
+  // 而不是 DjVu 扫描原图的分辨率。扫描件常在 300dpi 以上（单页 8MP），按原图
+  // 合成时一页要同时存在 RGBA、背景、前景、旋转等多份整页缓冲（合计上百 MB），
+  // iOS 的 WebContent 进程撑不住，滑几页就会因内存压力整页卡死；Android/桌面内存
+  // 上限宽松才看不出问题。缩小显示时按输出尺寸合成，字迹仍然按覆盖度抗锯齿。
+  private getRenderScale(
+    displayWidth: number,
+    displayHeight: number,
+    subIframe: any
+  ) {
+    const pagePixels = displayWidth * displayHeight;
+    if (!(pagePixels > 0)) return 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const viewWidth =
+      subIframe?.clientWidth ||
+      this.element?.clientWidth ||
+      window.innerWidth ||
+      displayWidth;
+    const viewHeight =
+      subIframe?.clientHeight ||
+      this.element?.clientHeight ||
+      window.innerHeight ||
+      displayHeight;
+    let scale = Math.min(
+      (viewWidth * dpr) / displayWidth,
+      (viewHeight * dpr) / displayHeight
+    );
+    // 再按总像素数兜底：超长页 / 大屏设备上不让分辨率无上限膨胀。
+    // iOS 上合成、编码、解码后的位图都吃内存也吃主线程时间，上限按 iPhone
+    // 1MP / iPad 实际取到的 1.6MP 量级足够（约 1.3 倍 CSS 像素，比 PDF 清晰）
+    const maxPixels = this.platform === "ios" ? 1600000 : 8000000;
+    scale = Math.min(scale, Math.sqrt(maxPixels / pagePixels), 1);
+    return Math.max(scale, 0.1);
+  }
+
   private paintPage(canvas: HTMLCanvasElement, image: DjvuPageImage) {
     if (canvas.width !== image.width || canvas.height !== image.height) {
       canvas.width = image.width;
@@ -407,12 +465,9 @@ class DjvuRender extends ComicRender {
     }
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    // 直接包装合成结果，不再复制一份整页缓冲
     ctx.putImageData(
-      new ImageData(
-        new Uint8ClampedArray(image.rgba),
-        image.width,
-        image.height
-      ),
+      new ImageData(image.rgba, image.width, image.height),
       0,
       0
     );
@@ -691,8 +746,17 @@ class DjvuRender extends ComicRender {
       this.pageImageUrls.delete(chapterDocIndex);
     }
     const subDoc = this.getSubDocument(chapterDocIndex);
-    if (subDoc && subDoc.body.innerHTML) {
-      subDoc.body.innerHTML = "";
+    if (subDoc) {
+      // 先释放 canvas 位图，再清空 DOM
+      const canvases = subDoc.querySelectorAll("canvas");
+      for (let i = 0; i < canvases.length; i++) {
+        const canvas = canvases[i] as HTMLCanvasElement;
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+      if (subDoc.body && subDoc.body.innerHTML) {
+        subDoc.body.innerHTML = "";
+      }
     }
   }
 
