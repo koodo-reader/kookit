@@ -78,6 +78,21 @@ export const getActualOffsetTop = (child: HTMLElement): number => {
   }
   return 0;
 };
+// 内容节点相对滚动容器（body 内容区）的偏移。
+// getActualOffsetLeft/Top 只计算到最近的 offsetParent，表格单元格、定位包裹层里的
+// 节点会丢掉外层的分页列偏移，导致按文本定位时误判为第 0 页。
+export const getContentOffsetLeft = (child: HTMLElement): number => {
+  if (!child) return 0;
+  const childRect = child.getBoundingClientRect();
+  const bodyRect = child.ownerDocument?.body?.getBoundingClientRect();
+  return childRect.left - (bodyRect ? bodyRect.left : 0);
+};
+export const getContentOffsetTop = (child: HTMLElement): number => {
+  if (!child) return 0;
+  const childRect = child.getBoundingClientRect();
+  const bodyRect = child.ownerDocument?.body?.getBoundingClientRect();
+  return childRect.top - (bodyRect ? bodyRect.top : 0);
+};
 export const handleIframeHeight = async (
   element: HTMLElement,
   readerMode: string,

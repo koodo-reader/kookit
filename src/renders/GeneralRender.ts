@@ -5,6 +5,8 @@ import {
   convertStyleNum,
   getActualOffsetLeft,
   getActualOffsetTop,
+  getContentOffsetLeft,
+  getContentOffsetTop,
   getLogicalHorizontalScroll,
   getMaxHorizontalScroll,
   getScrollLeftForContentOffset,
@@ -389,7 +391,7 @@ class GeneralRender extends EventEmitter {
       let left = targetNode
         ? getScrollLeftForContentOffset(
             doc.body,
-            getActualOffsetLeft(targetNode) -
+            getContentOffsetLeft(targetNode) -
               convertStyleNum(
                 targetNode.marginLeft ||
                   parseFloat(getComputedStyle(targetNode).marginLeft)
@@ -397,7 +399,7 @@ class GeneralRender extends EventEmitter {
           )
         : 0;
       let top = targetNode
-        ? getActualOffsetTop(targetNode) -
+        ? getContentOffsetTop(targetNode) -
           convertStyleNum(
             targetNode.marginTop ||
               parseFloat(getComputedStyle(targetNode).marginTop)
@@ -761,7 +763,7 @@ class GeneralRender extends EventEmitter {
     let left = targetNode
       ? getScrollLeftForContentOffset(
           doc.body,
-          getActualOffsetLeft(targetNode) -
+          getContentOffsetLeft(targetNode) -
             convertStyleNum(
               targetNode.marginLeft ||
                 parseFloat(getComputedStyle(targetNode).marginLeft)
@@ -769,7 +771,7 @@ class GeneralRender extends EventEmitter {
         )
       : 0;
     let top = targetNode
-      ? getActualOffsetTop(targetNode) -
+      ? getContentOffsetTop(targetNode) -
         convertStyleNum(
           targetNode.marginTop ||
             parseFloat(getComputedStyle(targetNode).marginTop)
@@ -838,8 +840,8 @@ class GeneralRender extends EventEmitter {
   locateParagraph(el: HTMLElement) {
     let doc = this.getDocument();
     if (!doc || !doc.body || !el) return;
-    let left = getActualOffsetLeft(el);
-    let top = getActualOffsetTop(el);
+    let left = getContentOffsetLeft(el);
+    let top = getContentOffsetTop(el);
     if (this.readerMode !== "scroll") {
       // 页宽/页高计算与 handleScrollPage 保持一致，并对齐到页网格
       if (this.isVertical()) {
