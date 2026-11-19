@@ -1,4 +1,4 @@
-import { isRevertDirection } from "./layoutUtil";
+import { isRevertInput } from "./layoutUtil";
 
 function createBookElement(sectionCount) {
   let tempDiv = document.getElementById("book");
@@ -87,7 +87,7 @@ export const addPageAnimation = (
   }
   flipAnimating = false;
 
-  const revertDirection = isRevertDirection();
+  const revertDirection = isRevertInput();
   createBookElement(Math.max(1, Math.floor(totalPage) + 1));
   var WINDOW_WIDTH = window.innerWidth;
   var WINDOW_HEIGHT = window.innerHeight;

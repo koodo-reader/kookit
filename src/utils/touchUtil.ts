@@ -1,6 +1,6 @@
 ﻿import rangy from "rangy/lib/rangy-core.js";
 import { createSelectionAutoTurn } from "./selectionAutoTurn";
-import { isRevertDirection } from "./layoutUtil";
+import { isRevertDirection, isRevertInput } from "./layoutUtil";
 
 import { getSectionGap, PAGE_TURN_DURATION } from "./common";
 declare var window: any;
@@ -392,7 +392,7 @@ export const addAndroidTouchEvent = (
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
   let gap = getSectionGap(element.clientWidth);
   let pageWidth = element.clientWidth + gap;
-  const revertDirection = isRevertDirection();
+  const revertDirection = isRevertInput();
   const selectionAutoTurn = createSelectionAutoTurn({
     element,
     iframe,
@@ -954,7 +954,7 @@ export const addAppleTouchEvent = (
   let swipeThreshold = 30; // Minimum distance in pixels to be considered a swipe
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
   let gap = getSectionGap(element.clientWidth);
-  const revertDirection = isRevertDirection();
+  const revertDirection = isRevertInput();
   const selectionAutoTurn = createSelectionAutoTurn({
     element,
     iframe,

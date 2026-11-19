@@ -12,6 +12,12 @@ export const isVerticalLayout = (): boolean => {
 export const isRevertDirection = (): boolean => {
   return window.revertDirection === "yes" && !isVerticalLayout();
 };
+// 方向映射（点按区域、滑动方向、折页镜像）：竖排下同样跟随该设置。
+// 竖排的翻页是纵向的，不能套用 RTL 的横向滚动坐标换算，
+// 所以这类调用点要用本函数，而不是 isRevertDirection。
+export const isRevertInput = (): boolean => {
+  return window.revertDirection === "yes";
+};
 export const getMaxHorizontalScroll = (scroller: HTMLElement): number => {
   return Math.max(0, scroller.scrollWidth - scroller.clientWidth);
 };
