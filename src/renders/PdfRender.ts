@@ -48,6 +48,9 @@ class PdfRender extends GeneralRender {
   enablePDFSelectionOptimization: string = "no";
   scrollPDFInterval: any = null;
   templateChapterDocIndex: number = 0;
+
+  pageDimensionCache: Map<number, { width: number; height: number }> =
+    new Map();
   platform: string;
   pdfTextLineHeightRecord: Record<string, number> = {};
   pdfTextLineHeightFixed: number | null = null;
@@ -125,16 +128,19 @@ class PdfRender extends GeneralRender {
       } else {
         createIframe(element, this.isAllowScript);
       }
-      let viewport: any;
+      let viewport: any = null;
       let templateIndex: number = 0;
-      // 分层采样策略：最小化getDimension调用
-
+      // 分层采样策略：只抽样少量页面作为初始模板尺寸，避免逐页读取全书尺寸
       let maxFrequencyItem = await this.getTemplateChapterDoc();
       viewport = maxFrequencyItem.dimension;
       templateIndex = maxFrequencyItem.index;
-
+      console.log(
+        "PDF template chapter index:",
+        templateIndex,
+        "viewport:",
+        viewport
+      );
       this.templateChapterDocIndex = templateIndex;
-      // Set templateChapterDocIndex based on the viewport evaluation result
       let doc: any = this.getDocument();
       if (!doc) return;
       await createPDFContainer(
@@ -144,6 +150,14 @@ class PdfRender extends GeneralRender {
         this.readerMode,
         this.pdfCrop
       );
+      // 滚动模式下容器高度占位由模板页比例决定，这里先同步外层 iframe 高度，
+      // 后续每页渲染时会按真实宽高比修正容器高度并重新同步
+      if (this.readerMode === "scroll") {
+        let iframe = this.getIframe();
+        if (iframe) {
+          iframe.height = doc.body.scrollHeight + 300 + "px";
+        }
+      }
       let scrollTimeout: any = null;
       if (this.readerMode === "scroll") {
         this.element.addEventListener("scroll", (e) => {
@@ -189,7 +203,7 @@ class PdfRender extends GeneralRender {
     const keyViewports = await Promise.all(
       keyIndices.map(async (index) => ({
         index,
-        dimension: await this.chapterDocList[index].text.getDimension(),
+        dimension: await this.getPageDimension(index),
       }))
     );
 
@@ -275,6 +289,56 @@ class PdfRender extends GeneralRender {
     }
 
     return maxFrequencyItem;
+  }
+  async getPageDimension(chapterDocIndex: number) {
+    if (
+      chapterDocIndex < 0 ||
+      chapterDocIndex >= this.chapterDocList.length
+    ) {
+      return { width: 0, height: 0 };
+    }
+    let cached = this.pageDimensionCache.get(chapterDocIndex);
+    if (cached) {
+      return cached;
+    }
+    let dimension: { width: number; height: number } | null = null;
+    try {
+      dimension =
+        await this.chapterDocList[chapterDocIndex].text.getDimension();
+    } catch (error) {
+      console.warn(error, "Failed to get size of PDF page", chapterDocIndex);
+    }
+    if (!dimension || !dimension.width || !dimension.height) {
+      return { width: 0, height: 0 };
+    }
+    this.pageDimensionCache.set(chapterDocIndex, dimension);
+    return dimension;
+  }
+  async updatePDFContainerHeight(chapterDocIndex: number) {
+    if (this.readerMode !== "scroll") return;
+    let doc = this.getDocument();
+    if (!doc) return;
+    let container = doc.getElementById(
+      "pdf-container-" + chapterDocIndex
+    ) as HTMLElement | null;
+    if (!container) return;
+    let { width, height } = await this.getPageDimension(chapterDocIndex);
+    if (!width || !height) return;
+    const cropRatio = (100 - this.pdfCrop.bottom - this.pdfCrop.top) / 100;
+    const paddingTop = `${(1 / (width / height)) * cropRatio * 100}%`;
+    if (container.style.paddingTop === paddingTop) return;
+    let oldHeight = container.getBoundingClientRect().height;
+    container.style.paddingTop = paddingTop;
+    let containerRect = container.getBoundingClientRect();
+    let delta = containerRect.height - oldHeight;
+    // 上方页面的高度变化会把当前阅读位置顶走，补偿滚动量保持视觉稳定
+    if (delta !== 0 && containerRect.bottom <= this.element.scrollTop) {
+      this.element.scrollTop += delta;
+    }
+    let iframe = this.getIframe();
+    if (iframe && doc.body.scrollHeight + 300 > iframe.clientHeight) {
+      iframe.height = doc.body.scrollHeight + 300 + "px";
+    }
   }
   async autoScrollPDF(isStart: string) {
     let doc = this.getDocument();
@@ -796,7 +860,7 @@ class PdfRender extends GeneralRender {
     var selectionRects = subDoc.getSelection()!.getRangeAt(0).getClientRects();
 
     let page = await this.chapterDocList[pageIndex].text.getPage();
-    let scale = await this.getPdfScale();
+    let scale = await this.getPdfScale(pageIndex);
     var viewport = page.getViewport({ scale: scale });
     let canvas = subDoc.querySelector("canvas");
     var pageRect: any = canvas?.getClientRects()[0];
@@ -870,7 +934,7 @@ class PdfRender extends GeneralRender {
         continue;
       }
       let page = await this.chapterDocList[pageIndex].text.getPage();
-      let scale = await this.getPdfScale();
+      let scale = await this.getPdfScale(pageIndex);
       try {
         showPDFHighlight(
           selected,
@@ -927,7 +991,7 @@ class PdfRender extends GeneralRender {
     let selected = JSON.parse(item.range);
     var pageIndex = parseInt(selected.page + "");
     let page = await this.chapterDocList[pageIndex].text.getPage();
-    let scale = await this.getPdfScale();
+    let scale = await this.getPdfScale(pageIndex);
     showPDFHighlight(
       selected,
       item.color,
@@ -1172,7 +1236,8 @@ class PdfRender extends GeneralRender {
     ).then((r) => r.blob());
     let chapterText = await blob.text();
     subDoc.body.innerHTML = chapterText;
-    let scale = await this.getPdfScale();
+    let scale = await this.getPdfScale(chapterDocIndex);
+    await this.updatePDFContainerHeight(chapterDocIndex);
     await this.chapterDocList[chapterDocIndex].text.render(
       subDoc,
       scale,
@@ -1268,19 +1333,29 @@ class PdfRender extends GeneralRender {
   activateFabricDocument(chapterDocIndex: number) {
     this.annotationManager.activateFabricDocument(chapterDocIndex);
   }
-  getPdfScale = async () => {
+  getPdfScale = async (chapterDocIndex?: number) => {
+    if (this.readerMode === "scroll") {
+      // 滚动模式下各页宽高比可能不同，按当前页自己的尺寸计算缩放，
+      // 保证每页都按真实比例铺满容器宽度；不做全局缓存，避免页面间互相污染
+      let pageIndex =
+        chapterDocIndex !== undefined
+          ? chapterDocIndex
+          : this.templateChapterDocIndex;
+      let doc = this.getDocument();
+      if (!doc) return 1;
+      let { width } = await this.getPageDimension(pageIndex);
+      let viewWidth = doc.body.clientWidth - 10;
+      if (!width || width <= 0 || viewWidth <= 0) return 1;
+      return viewWidth / width;
+    }
     if (this.pdfScale && this.pdfScale > 0) {
       return this.pdfScale;
     }
     let doc = this.getDocument();
-    if (this.readerMode === "scroll") {
-      doc = this.getSubDocument(this.templateChapterDocIndex);
-    }
     if (!doc) return 1;
-    let { width, height } =
-      await this.chapterDocList[
-        this.templateChapterDocIndex
-      ].text.getDimension();
+    let { width, height } = await this.getPageDimension(
+      this.templateChapterDocIndex
+    );
 
     let viewWidth = doc.body.clientWidth;
     let viewHeight = this.element.clientHeight;
@@ -1290,10 +1365,6 @@ class PdfRender extends GeneralRender {
       viewWidth = (viewWidth - gap) / scale;
     }
     let scale = Math.min(viewWidth / width, viewHeight / height);
-    if (this.readerMode === "scroll") {
-      viewWidth = viewWidth - 10;
-      scale = viewWidth / width;
-    }
     this.pdfScale = scale;
     return scale;
   };

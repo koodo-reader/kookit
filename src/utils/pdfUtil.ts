@@ -76,9 +76,9 @@ export const createPDFContainer = async (
       const aspectRatio = viewport?.width / viewport?.height || 0.75; // Default to 3:4 if viewport unknown
       iframeContainer.style.paddingTop = `${(1 / aspectRatio) * 100}%`;
     } else if (readerMode === "scroll") {
-      let scrollViewport = await chapterDocList[index].text.getDimension();
-      const aspectRatio =
-        scrollViewport?.width / scrollViewport?.height || 0.75; // Default to 3:4 if viewport unknown
+      // 先按模板页比例统一占位高度，避免初始化时逐页读取所有页面的尺寸，
+      // 每页的真实宽高比在渲染该页时由 updatePDFContainerHeight 修正
+      const aspectRatio = viewport?.width / viewport?.height || 0.75; // Default to 3:4 if viewport unknown
       const cropRatio = (100 - pdfCrop.bottom - pdfCrop.top) / 100;
 
       iframeContainer.style.paddingTop = `${(1 / aspectRatio) * cropRatio * 100}%`;
