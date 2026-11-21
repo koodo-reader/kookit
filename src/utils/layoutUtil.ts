@@ -45,6 +45,29 @@ export const getScrollLeftForContentOffset = (
   const logical = Math.max(0, Math.min(contentOffset, maxScroll));
   return isRevertDirection() ? logical - maxScroll : logical;
 };
+// 双页模式下，阅读位置可能被记录为跨页右半页的段落起始偏移：当左半页整页都是
+// 上一段的续文时，首个可见块会落在右半页。若直接按该偏移定位，视口会从右半页
+// 开始，整屏内容比记录时左移一页，表现为重新打开书籍后进度落后一页。
+// 这里把落在右半页的滚动偏移回退到所在跨页的起点。
+// 入参是换算后的物理滚动量（RTL 下为负值），翻页位置恒为 spreadStep 的整数倍，
+// 右半页位置的余数恰好是 spreadStep 的一半，因此不受翻页方向影响。
+export const snapScrollOffsetToSpreadStart = (
+  element: HTMLElement,
+  readerMode: string,
+  scrollOffset: number
+): number => {
+  if (readerMode !== "double" || !element) return scrollOffset;
+  const vertical = isVerticalLayout();
+  const dimension = vertical ? element.clientHeight : element.clientWidth;
+  const gap = getSectionGap(dimension);
+  const spreadStep = dimension + gap;
+  if (spreadStep <= 0) return scrollOffset;
+  const columnStep = spreadStep / 2;
+  const remainder = ((scrollOffset % spreadStep) + spreadStep) % spreadStep;
+  return Math.abs(remainder - columnStep) < 10
+    ? scrollOffset - columnStep
+    : scrollOffset;
+};
 export const applyRevertDirectionStyle = (doc: Document) => {
   if (!isRevertDirection()) return;
   doc.documentElement.setAttribute("data-kookit-revert-direction", "yes");
@@ -537,6 +560,16 @@ export const transformText = async (doc: Document) => {
 };
 export const handleTextStyle = async (doc: Document) => {
   await transformText(doc);
+};
+// 章节自带字体的加载会改变行高与列数；若在字体就绪前测量段落偏移，
+// 恢复阅读位置时会按旧布局定位，表现为进度比实际落后一页。
+export const waitForFontsReady = async (doc: Document) => {
+  const fonts: any = (doc as any).fonts;
+  if (!fonts || !fonts.ready) return;
+  await Promise.race([
+    fonts.ready,
+    new Promise((resolve) => setTimeout(resolve, 1000)),
+  ]);
 };
 export const getImageMeta = async (url) => {
   const img = new Image();

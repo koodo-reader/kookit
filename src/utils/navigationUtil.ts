@@ -12,7 +12,9 @@ import {
   handleIframeHeight,
   handleOneChapterDoc,
   isVerticalLayout,
+  waitForFontsReady,
   progressInfo,
+  snapScrollOffsetToSpreadStart,
 } from "./layoutUtil";
 import Chapter from "../model/chapter";
 import Chinese from "../libs/zh-convert";
@@ -587,6 +589,7 @@ export const handleRenderChapter = async (
   }
   await handleCssLink(doc);
   await handlePlainText(doc);
+  await waitForFontsReady(doc);
   if (!chapterTitle) {
     //取前面最近的章节，且存在的标题
     let tempChapterDocIndex = chapterDocIndex;
@@ -643,30 +646,22 @@ export const handleCssLink = async (doc) => {
   if (linkList.length === 0) {
     return;
   }
-  let styleSheetPromises: any = [];
-  for (let index = 0; index < linkList.length; index++) {
-    const link: any = linkList[index];
-    if (!link.href.endsWith("null")) {
-      styleSheetPromises.push(
-        new Promise((resolve, reject) => {
-          link.addEventListener("load", resolve);
-        })
-      );
-    }
-  }
-  try {
-    await Promise.race([
-      Promise.all(styleSheetPromises),
-      new Promise((resolve, reject) => {
-        setTimeout(() => {
-          // reject(new Error("Timeout"));
-          resolve("css load timeout");
-        }, 10);
-      }),
-    ]);
-  } catch (err) {
-    console.error(err);
-  }
+  // 样式表未加载完就测量段落偏移，会按旧列布局定位，导致进度偏出一页，
+  // 因此这里等 load/error 事件（已加载过的通过 link.sheet 直接跳过），
+  // 异常样式表最多等待 500ms，不阻塞章节渲染。
+  await Promise.all(
+    linkList.map((link: any) => {
+      if (!link.href || link.href.endsWith("null") || link.sheet) {
+        return Promise.resolve();
+      }
+      return new Promise((resolve) => {
+        const done = () => resolve("");
+        link.addEventListener("load", done, { once: true });
+        link.addEventListener("error", done, { once: true });
+        setTimeout(done, 500);
+      });
+    })
+  );
 };
 export const handlePlainText = async (doc) => {
   //给body中不被任何标签包裹的文本加上p标签
@@ -791,8 +786,10 @@ export const handleScrollPosition = async (
   }
   if (readerMode !== "scroll") {
     if (vertical) {
+      top = snapScrollOffsetToSpreadStart(element, readerMode, top);
       doc.body.scrollTo(0, top);
     } else {
+      left = snapScrollOffsetToSpreadStart(element, readerMode, left);
       doc.body.scrollTo(left, 0);
     }
   } else {
@@ -867,8 +864,8 @@ export const handleRecord = async (
   tempLocation: any,
   doc: Document,
   targetNode: HTMLElement | null
-) => {
-  if (lock) return;
+): Promise<boolean> => {
+  if (lock) return false;
   let nodeList = getBlockElement(doc.body);
   let visibleNode = nodeList.filter(
     (s) =>
@@ -926,6 +923,7 @@ export const handleRecord = async (
   setTimeout(() => {
     lock = false;
   }, 100);
+  return true;
 };
 export const isCurrentNodeFarFromParrent = (
   targetNode: HTMLElement,

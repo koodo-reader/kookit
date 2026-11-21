@@ -15,6 +15,7 @@ import {
   handleOneChapterDoc,
   isVerticalLayout,
   progressInfo,
+  snapScrollOffsetToSpreadStart,
 } from "../utils/layoutUtil";
 import {
   getCloestBlock,
@@ -779,8 +780,18 @@ class GeneralRender extends EventEmitter {
       : 0;
     if (this.readerMode !== "scroll") {
       if (this.isVertical()) {
+        top = snapScrollOffsetToSpreadStart(
+          this.element,
+          this.readerMode,
+          top
+        );
         doc.body.scrollTo(0, top);
       } else {
+        left = snapScrollOffsetToSpreadStart(
+          this.element,
+          this.readerMode,
+          left
+        );
         doc.body.scrollTo(left, 0);
       }
     } else {
@@ -1520,7 +1531,19 @@ class GeneralRender extends EventEmitter {
   async record() {
     let doc = this.getDocument();
     if (!doc) return;
-    await handleRecord(
+    const recorded = await this.recordPosition(doc);
+    if (!recorded) {
+      // handleRecord 有 100ms 节流，快速翻页时最后一次位置会被丢弃，
+      // 保存的进度就会比实际落后 1~2 页；等节流窗口结束后补录一次
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      doc = this.getDocument();
+      if (!doc) return;
+      await this.recordPosition(doc);
+    }
+    this.trigger("page-changed");
+  }
+  private async recordPosition(doc: Document) {
+    return await handleRecord(
       this.element,
       this.readerMode,
       this.flatChapter(this.chapterList),
@@ -1529,7 +1552,6 @@ class GeneralRender extends EventEmitter {
       doc,
       null
     );
-    this.trigger("page-changed");
   }
   getPosition() {
     return this.tempLocation;
