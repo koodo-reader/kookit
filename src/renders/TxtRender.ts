@@ -48,7 +48,10 @@ class TxtRender extends GeneralRender {
     this.chapterList = await parser.getChapter(this.book.toc);
     this.chapterDocList = await parser.getChapterDoc();
     await this.record();
+    // 目录在 refreshContent 后会重建，按旧目录算出的页码映射必须一并失效
     this.chapterSizeCache = null;
+    this.chapterPageMapCache = null;
+    this.chapterPageMapPromise = null;
     return this.chapterList;
   }
   async preCache() {
