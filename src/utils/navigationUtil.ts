@@ -471,6 +471,15 @@ const convertBlobToDataURL = async (blobUrl) => {
     reader.readAsDataURL(blob);
   });
 };
+// 目录里的章节名和正文标题可能只差空白（例如「第 八 章　　往事不可追」
+// 和「第八章　往事不可追」），匹配章节时忽略空白差异
+const isSameChapterLabel = (label: string, title: string) => {
+  if (!label || !title) return false;
+  return (
+    label.trim() === title.trim() ||
+    label.replace(/\s/g, "") === title.replace(/\s/g, "")
+  );
+};
 export const handleRenderChapter = async (
   chapterDocIndex: number,
   chapterTitle: string,
@@ -488,15 +497,18 @@ export const handleRenderChapter = async (
   doc.body.scrollTo(0, 0);
   if (
     (chapterTitle && !chapterDocIndex) ||
-    (chapterDocList[chapterDocIndex] &&
-      chapterDocList[chapterDocIndex].label &&
-      chapterTitle &&
-      chapterTitle !== chapterDocList[chapterDocIndex].label &&
-      chapterHref.indexOf("#") === -1)
+    (chapterTitle &&
+      (!chapterDocList[chapterDocIndex] ||
+        (chapterDocList[chapterDocIndex].label &&
+          !isSameChapterLabel(
+            chapterDocList[chapterDocIndex].label,
+            chapterTitle
+          ) &&
+          chapterHref.indexOf("#") === -1)))
   ) {
-    let tempChapterDocIndex = _.findLastIndex(chapterDocList, {
-      label: chapterTitle,
-    });
+    let tempChapterDocIndex = _.findLastIndex(chapterDocList, (chapter) =>
+      isSameChapterLabel(chapter.label, chapterTitle)
+    );
     if (tempChapterDocIndex !== -1) {
       chapterDocIndex = tempChapterDocIndex;
     }

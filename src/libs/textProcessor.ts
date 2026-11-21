@@ -115,6 +115,7 @@ export const txtToHtml = (
   }
 
   const htmlParts: string[] = []; // Use an array to store HTML parts
+  let prependHtml = ""; // 占位章节必须排在切片内容前面，单独拼接避免参数过多
   let isRefresh = false;
   let noTitle = false;
   if (bookLocation && bookLocation.refresh) {
@@ -155,10 +156,31 @@ export const txtToHtml = (
       bookLocation.text = bookLocation.chapterTitle || "";
     }
     // --- Slicing and Title Identification Logic ---
-    let targetLineIndex = lines.findIndex((item) => {
-      // Optimization: cleanText called only once here if needed often
-      return cleanText(item) === cleanText(bookLocation.text);
-    });
+    // 章节名在书首的目录里也会出现一次，直接取首个匹配会让切片中心落回书首。
+    // 先定位保存位置所属章节的标题行（最后一次出现的位置即正文标题），再取离它
+    // 最近的正文匹配，避免目录行把切片带偏
+    const cleanedLocationText = cleanText(bookLocation.text);
+    const cleanedChapterTitle = cleanText(bookLocation.chapterTitle || "");
+    let titleLineIndex = -1;
+    if (cleanedChapterTitle) {
+      titleLineIndex = findLastIndex(lines, (item) => {
+        return item && cleanText(item) === cleanedChapterTitle;
+      });
+    }
+    let targetLineIndex = -1;
+    let closestDistance = Infinity;
+    for (let index = 0; index < lines.length; index++) {
+      if (cleanText(lines[index]) !== cleanedLocationText) continue;
+      if (titleLineIndex === -1) {
+        targetLineIndex = index;
+        break;
+      }
+      const distance = Math.abs(index - titleLineIndex);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        targetLineIndex = index;
+      }
+    }
     if (targetLineIndex === -1) {
       targetLineIndex = 0;
     }
@@ -181,42 +203,60 @@ export const txtToHtml = (
       titlesInSlice.map((title) => cleanText(title))
     );
 
-    let targetTitleIndex = findLastIndex(titlesInSlice, (item) => {
-      return cleanText(item) === cleanText(bookLocation.chapterTitle);
+    // --- Main Loop for Relevant Lines ---
+    // 章节标题的判定必须和整篇解析一致：只有后面跟着正文的标题才算章节，
+    // 连续出现的标题（例如正文前的章节目录）降级成正文段落。否则分段解析出的
+    // 章节序号会和整篇解析错位：目录条目会变成一个个只有标题的空章节，
+    // 刷新目录后旧序号还会指向别的章节，导致翻到章节末尾无法进入下一章。
+    const chapterTitleList: string[] = [];
+    let lastTitleIndex = -1;
+    let hasContentSinceTitle = false;
+    for (const item of relevantLines) {
+      const cleanedItem = cleanText(item); // Clean once per line
+      // Use the Set for O(1) average lookup
+      if (cleanedItem && cleanedTitlesSet.has(cleanedItem)) {
+        if (lastTitleIndex !== -1 && !hasContentSinceTitle) {
+          // 上一个标题只有标题没有正文，降级为正文段落，剔除出目录
+          htmlParts[lastTitleIndex] = `<p>${htmlParts[lastTitleIndex].slice(
+            4,
+            -5
+          )}</p>`;
+          chapterTitleList.pop();
+        }
+        lastTitleIndex = htmlParts.length;
+        htmlParts.push(`<h1>${cleanedItem}</h1>`); // Push to array
+        chapterTitleList.push(cleanedItem);
+        hasContentSinceTitle = false;
+      } else if (item.trim() === "") {
+        htmlParts.push(`<p class="hide">${item}</p>`); // Push line break for empty lines
+      } else {
+        // Avoid cleaning again if not necessary, use original item for content
+        htmlParts.push(`<p>${item}</p>`); // Push to array
+        hasContentSinceTitle = true;
+      }
+    }
+
+    // --- Prepending Logic (if needed) ---
+    // 这里的占位章节用来把切片里的章节序号对齐到整篇解析的序号，
+    // 切片开头的正文会并入最后一个占位章节，只有切片从文件开头开始时
+    // 那段正文才是完整的第一章，不需要占位
+    let targetTitleIndex = findLastIndex(chapterTitleList, (item) => {
+      return item === cleanText(bookLocation.chapterTitle);
     });
     if (targetTitleIndex === -1) {
       targetTitleIndex = 0;
     }
-
-    // --- Prepending Logic (if needed) ---
-    // This part seems related to chapter indexing, ensure it uses the correct indices based on the slice
-    if (targetTitleIndex < parseInt(bookLocation.chapterDocIndex || "0") - 1) {
-      let prependLength =
-        parseInt(bookLocation.chapterDocIndex || "0") - targetTitleIndex;
-      if (prependLength > 0) {
-        for (let i = 0; i < prependLength; i++) {
-          // Push to array instead of concatenating
-          htmlParts.push(`<h1>Prepend ${i}</h1>`);
-          htmlParts.push(`<p>Text ${i}</p>`);
-        }
+    const prependLength =
+      parseInt(bookLocation.chapterDocIndex || "0") -
+      targetTitleIndex -
+      (startIndex === 0 ? 1 : 0);
+    if (prependLength > 0) {
+      const prependParts: string[] = [];
+      for (let i = 0; i < prependLength; i++) {
+        prependParts.push(`<h1>Prepend ${i}</h1>`);
+        prependParts.push(`<p>Text ${i}</p>`);
       }
-    }
-
-    // --- Main Loop for Relevant Lines ---
-    for (const item of relevantLines) {
-      // Iterate over the sliced array
-      const cleanedItem = cleanText(item); // Clean once per line
-      // Use the Set for O(1) average lookup
-      if (cleanedItem && cleanedTitlesSet.has(cleanedItem)) {
-        htmlParts.push(`<h1>${cleanedItem}</h1>`); // Push to array
-      } else {
-        if (item.trim() === "") {
-          htmlParts.push(`<p class="hide">${item}</p>`); // Push line break for empty lines
-          continue; // Skip further processing for empty lines
-        }
-        // Avoid cleaning again if not necessary, use original item for content
-        htmlParts.push(`<p>${item}</p>`); // Push to array
-      }
+      prependHtml = prependParts.join("");
     }
   } else {
     // --- Loop for Full File (if not large or no bookLocation) ---
@@ -253,7 +293,7 @@ export const txtToHtml = (
   }
 
   // Join the array at the end
-  const finalHtml = htmlParts.join("");
+  const finalHtml = prependHtml + htmlParts.join("");
 
   if (finalHtml && finalHtml.includes("<h1")) {
     return finalHtml;
