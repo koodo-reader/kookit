@@ -134,12 +134,6 @@ class PdfRender extends GeneralRender {
       let maxFrequencyItem = await this.getTemplateChapterDoc();
       viewport = maxFrequencyItem.dimension;
       templateIndex = maxFrequencyItem.index;
-      console.log(
-        "PDF template chapter index:",
-        templateIndex,
-        "viewport:",
-        viewport
-      );
       this.templateChapterDocIndex = templateIndex;
       let doc: any = this.getDocument();
       if (!doc) return;
@@ -291,10 +285,7 @@ class PdfRender extends GeneralRender {
     return maxFrequencyItem;
   }
   async getPageDimension(chapterDocIndex: number) {
-    if (
-      chapterDocIndex < 0 ||
-      chapterDocIndex >= this.chapterDocList.length
-    ) {
+    if (chapterDocIndex < 0 || chapterDocIndex >= this.chapterDocList.length) {
       return { width: 0, height: 0 };
     }
     let cached = this.pageDimensionCache.get(chapterDocIndex);
