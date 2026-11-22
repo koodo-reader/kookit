@@ -100,6 +100,57 @@ export const findLastIndex = (arr: any[], callback: (item: any) => boolean) => {
   }
   return -1;
 };
+// 同名章节可能出现在书首目录、不同分卷里。按整篇解析的规则统计每一处标题
+// 将生成的章节序号（开头无标题的一段会单独成章，连续出现的标题只有最后
+// 一个存活），再挑出与保存的 chapterDocIndex 最接近的一处标题。
+export const findChapterTitleLine = (
+  lines: string[],
+  candidates: number[],
+  chapterDocIndex: number,
+  hasPreambleChapter: boolean,
+  isChapterTitle: (item: string) => boolean
+) => {
+  let chapterCount = hasPreambleChapter ? 1 : 0;
+  let pendingChapterIndex = chapterCount;
+  let hasPendingTitle = false;
+  let result = -1;
+  let resultDistance = Infinity;
+  let candidatePointer = 0;
+  const lastCandidate = candidates[candidates.length - 1];
+  for (let lineIndex = 0; lineIndex <= lastCandidate; lineIndex++) {
+    const item = lines[lineIndex];
+    const isCandidate = candidates[candidatePointer] === lineIndex;
+    if (isCandidate) {
+      candidatePointer++;
+    }
+    if (isChapterTitle(item)) {
+      if (!hasPendingTitle) {
+        pendingChapterIndex = chapterCount;
+      }
+      hasPendingTitle = true;
+      if (isCandidate) {
+        const distance = Math.abs(pendingChapterIndex - chapterDocIndex);
+        // 序号相同时取靠后的标题：连续标题里只有最后一个会生成章节
+        if (
+          distance < resultDistance ||
+          (distance === resultDistance && lineIndex > result)
+        ) {
+          resultDistance = distance;
+          result = lineIndex;
+        }
+      }
+    } else if (item.trim() !== "" && hasPendingTitle) {
+      // 正文出现后，前面的标题才真正生成章节，序号随之递增
+      chapterCount = pendingChapterIndex + 1;
+      hasPendingTitle = false;
+      // 已经找到匹配项，后面的候选只会离保存的序号更远，可以提前结束
+      if (result !== -1 && chapterCount > chapterDocIndex) {
+        break;
+      }
+    }
+  }
+  return result;
+};
 export const txtToHtml = (
   text: string,
   parserRegex: string,
@@ -156,30 +207,86 @@ export const txtToHtml = (
       bookLocation.text = bookLocation.chapterTitle || "";
     }
     // --- Slicing and Title Identification Logic ---
-    // 章节名在书首的目录里也会出现一次，直接取首个匹配会让切片中心落回书首。
-    // 先定位保存位置所属章节的标题行（最后一次出现的位置即正文标题），再取离它
-    // 最近的正文匹配，避免目录行把切片带偏
+    // 章节名可能在书首目录、不同分卷里重复出现，只取最后一次出现会把切片
+    // 带到别的分卷。先收集所有同名标题，再用保存的章节序号判断哪一处属于
+    // 当前章节，最后取离它最近的正文匹配。
     const cleanedLocationText = cleanText(bookLocation.text);
     const cleanedChapterTitle = cleanText(bookLocation.chapterTitle || "");
     let titleLineIndex = -1;
-    if (cleanedChapterTitle) {
-      titleLineIndex = findLastIndex(lines, (item) => {
-        return item && cleanText(item) === cleanedChapterTitle;
-      });
-    }
     let targetLineIndex = -1;
-    let closestDistance = Infinity;
-    for (let index = 0; index < lines.length; index++) {
-      if (cleanText(lines[index]) !== cleanedLocationText) continue;
-      if (titleLineIndex === -1) {
-        targetLineIndex = index;
-        break;
+    if (cleanedChapterTitle) {
+      const chapterTitleLineIndexes: number[] = [];
+      const locationLineIndexes: number[] = [];
+      for (let index = 0; index < lines.length; index++) {
+        const cleanedLine = cleanText(lines[index]);
+        if (lines[index] && cleanedLine === cleanedChapterTitle) {
+          chapterTitleLineIndexes.push(index);
+        }
+        if (cleanedLocationText && cleanedLine === cleanedLocationText) {
+          locationLineIndexes.push(index);
+        }
       }
-      const distance = Math.abs(index - titleLineIndex);
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        targetLineIndex = index;
+      if (chapterTitleLineIndexes.length === 1) {
+        titleLineIndex = chapterTitleLineIndexes[0];
+      } else if (chapterTitleLineIndexes.length > 1) {
+        const titleRegex = parserRegex ? new RegExp(parserRegex) : null;
+        const isChapterTitle = (item: string) => {
+          if (!item) return false;
+          if (!titleRegex) return !!isTitle(item);
+          titleRegex.lastIndex = 0;
+          return titleRegex.test(item);
+        };
+        // 第一个存活标题之前的行会形成一个无标题章节，其后序号顺延；
+        // 开头连续出现的标题只有最后一个存活，前面会被降级成正文
+        let hasPreambleChapter = !isChapterTitle(lines[0]);
+        if (!hasPreambleChapter) {
+          for (let index = 1; index < lines.length; index++) {
+            if (isChapterTitle(lines[index])) {
+              hasPreambleChapter = true;
+              break;
+            }
+            if (lines[index].trim() !== "") break;
+          }
+        }
+        titleLineIndex = findChapterTitleLine(
+          lines,
+          chapterTitleLineIndexes,
+          parseInt(bookLocation.chapterDocIndex, 10),
+          hasPreambleChapter,
+          isChapterTitle
+        );
+        if (titleLineIndex === -1) {
+          // 章节序号缺失或标题判定规则变化时，保持原来的兜底行为
+          titleLineIndex =
+            chapterTitleLineIndexes[chapterTitleLineIndexes.length - 1];
+        }
       }
+      if (locationLineIndexes.length === 0) {
+        // 正文没匹配到（例如阅读记录已过期）时，以章节标题为中心切片
+        targetLineIndex = titleLineIndex;
+      } else if (titleLineIndex === -1) {
+        targetLineIndex = locationLineIndexes[0];
+      } else {
+        let closestDistance = Infinity;
+        for (const index of locationLineIndexes) {
+          // 保存的正文应该位于章节标题之后，标题之前的同名内容属于上一章
+          if (index < titleLineIndex) continue;
+          const distance = index - titleLineIndex;
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            targetLineIndex = index;
+          }
+        }
+        if (targetLineIndex === -1) {
+          // 正文只匹配到标题之前（阅读记录可能已过期）时，以标题为准
+          targetLineIndex = titleLineIndex;
+        }
+      }
+    } else {
+      // 没有章节标题时无需对齐，取第一处匹配即可（避免扫描整本大文件）
+      targetLineIndex = lines.findIndex(
+        (item) => cleanText(item) === cleanedLocationText
+      );
     }
     if (targetLineIndex === -1) {
       targetLineIndex = 0;
@@ -209,9 +316,11 @@ export const txtToHtml = (
     // 章节序号会和整篇解析错位：目录条目会变成一个个只有标题的空章节，
     // 刷新目录后旧序号还会指向别的章节，导致翻到章节末尾无法进入下一章。
     const chapterTitleList: string[] = [];
+    const chapterTitleLineList: number[] = [];
     let lastTitleIndex = -1;
     let hasContentSinceTitle = false;
-    for (const item of relevantLines) {
+    for (let index = 0; index < relevantLines.length; index++) {
+      const item = relevantLines[index];
       const cleanedItem = cleanText(item); // Clean once per line
       // Use the Set for O(1) average lookup
       if (cleanedItem && cleanedTitlesSet.has(cleanedItem)) {
@@ -222,10 +331,12 @@ export const txtToHtml = (
             -5
           )}</p>`;
           chapterTitleList.pop();
+          chapterTitleLineList.pop();
         }
         lastTitleIndex = htmlParts.length;
         htmlParts.push(`<h1>${cleanedItem}</h1>`); // Push to array
         chapterTitleList.push(cleanedItem);
+        chapterTitleLineList.push(startIndex + index);
         hasContentSinceTitle = false;
       } else if (item.trim() === "") {
         htmlParts.push(`<p class="hide">${item}</p>`); // Push line break for empty lines
@@ -240,9 +351,13 @@ export const txtToHtml = (
     // 这里的占位章节用来把切片里的章节序号对齐到整篇解析的序号，
     // 切片开头的正文会并入最后一个占位章节，只有切片从文件开头开始时
     // 那段正文才是完整的第一章，不需要占位
-    let targetTitleIndex = findLastIndex(chapterTitleList, (item) => {
-      return item === cleanText(bookLocation.chapterTitle);
-    });
+    // 用标题所在行定位切片内的章节序号，避免切片里也有同名标题时取错
+    let targetTitleIndex = chapterTitleLineList.indexOf(titleLineIndex);
+    if (targetTitleIndex === -1) {
+      targetTitleIndex = findLastIndex(chapterTitleList, (item) => {
+        return item === cleanedChapterTitle;
+      });
+    }
     if (targetTitleIndex === -1) {
       targetTitleIndex = 0;
     }
@@ -306,12 +421,7 @@ export const cleanText = (str) => {
     .trim()
     .replace(/(\r\n|\n|\r|\t)/gm, "")
     .substring(0, 100)
-    .split("")
-    .filter(
-      (item: string) =>
-        item !== "=" && item !== "-" && item !== "_" && item !== "+"
-    )
-    .join("");
+    .replace(/[=\-_+]/g, "");
 };
 export const isTitle = (line: any, parserRegex: string = "") => {
   if (parserRegex) {

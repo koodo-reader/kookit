@@ -496,7 +496,16 @@ export const handleRenderChapter = async (
   iframe.height = 0 + "px";
   doc.body.scrollTo(0, 0);
   if (
-    (chapterTitle && !chapterDocIndex) ||
+    // 序号为 0 时只有标题和首章对不上才按标题重找，避免同名章节
+    // （例如不同分卷都叫“第一章”）被重定向到最后一处
+    (chapterTitle &&
+      !chapterDocIndex &&
+      (!chapterDocList[chapterDocIndex] ||
+        !chapterDocList[chapterDocIndex].label ||
+        !isSameChapterLabel(
+          chapterDocList[chapterDocIndex].label,
+          chapterTitle
+        ))) ||
     (chapterTitle &&
       (!chapterDocList[chapterDocIndex] ||
         (chapterDocList[chapterDocIndex].label &&
