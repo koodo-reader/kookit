@@ -59,7 +59,9 @@ function createBookElement(sectionCount) {
         margin: 0;
       }
     `;
+  document.getElementById("pageflip-style")?.remove();
   let style = document.createElement("style");
+  style.id = "pageflip-style";
   style.innerHTML = css;
   document.head.appendChild(style);
 }

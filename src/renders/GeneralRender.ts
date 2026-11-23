@@ -930,6 +930,9 @@ class GeneralRender extends EventEmitter {
         }
       }
       this.trigger("rendered");
+      // 章节交界：按新章节的页数重建仿真翻页动画，
+      // 否则 flips 数组仍是旧章节的长度，翻几页后动画静默失效
+      this.addPageAnimation();
     } else if (this.readerMode === "scroll") {
       // scroll readerMode under normal condition
       this.element.scrollBy({
@@ -999,6 +1002,8 @@ class GeneralRender extends EventEmitter {
         iframe
       );
       this.trigger("rendered");
+      // 章节交界：按新章节的页数重建仿真翻页动画
+      this.addPageAnimation();
       return;
     } else if (this.readerMode === "scroll") {
       // scroll readerMode under normal condition
@@ -1072,6 +1077,8 @@ class GeneralRender extends EventEmitter {
     );
     await this.record();
     this.trigger("rendered");
+    // 章节跳转后重建仿真翻页动画（与 next/prev 的章节交界分支同理）
+    this.addPageAnimation();
   }
   async nextChapter() {
     let doc = this.getDocument();
@@ -1089,6 +1096,8 @@ class GeneralRender extends EventEmitter {
     );
     await this.record();
     this.trigger("rendered");
+    // 章节跳转后重建仿真翻页动画（与 next/prev 的章节交界分支同理）
+    this.addPageAnimation();
   }
   async visibleText() {
     let doc = this.getDocument();
