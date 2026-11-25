@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { tokenizeText } from "../src/utils/textColor/tokenizer.ts";
+import {
+  isLatinDominant,
+  tokenizeText,
+} from "../src/utils/textColor/tokenizer.ts";
 import { buildWordMatcher, findWordMatches } from "../src/utils/textColor/words.ts";
 import {
   DEFAULT_CATEGORY_COLORS_DARK,
@@ -131,4 +134,60 @@ test("配置归一化：暗色主题使用暗色默认值", () => {
     config.categories.latin.color,
     DEFAULT_CATEGORY_COLORS_DARK.latin
   );
+});
+
+test("拉丁主导判定：纯英文正文为 true", () => {
+  assert.equal(isLatinDominant('"Hello there," he said.'), true);
+});
+
+test("拉丁主导判定：带变音符的拉丁文为 true", () => {
+  assert.equal(isLatinDominant("C'est très élégant, n'est-ce pas?"), true);
+});
+
+test("拉丁主导判定：中文夹英文为 false", () => {
+  assert.equal(isLatinDominant("他说这是第3章的一本关于 React 的书"), false);
+});
+
+test("拉丁主导判定：重英文技术段落仍为 false（钉住 0.9 阈值）", () => {
+  // 拉丁字母 22 / 全部字母 27 ≈ 0.81，必须保留嵌入英文着色
+  assert.equal(isLatinDominant("使用 React 的 useState hook 管理 state"), false);
+});
+
+test("拉丁主导判定：无字母块为 false", () => {
+  assert.equal(isLatinDominant("1234 !!! …… 《书名》"), false);
+});
+
+// 以下用例模拟 apply 层门控后的调用形状：英文正文块传入
+// enabled: { latin: false }，验证英文书的最终着色行为
+test("英文块门控：引号内对话为 quoted，叙述不上色", () => {
+  const runs = tokenizeText('"Hello," he said.', {
+    enabled: { latin: false },
+  });
+  assert.deepEqual(runs, [
+    { start: 0, end: 1, category: "punctuation" },
+    { start: 1, end: 6, category: "quoted" },
+    { start: 6, end: 8, category: "punctuation" },
+    { start: 16, end: 17, category: "punctuation" },
+  ]);
+});
+
+test("中文块不受影响：引号内英文保持 latin", () => {
+  const runs = tokenizeText("他说：“OK”");
+  assert.deepEqual(runs, [
+    { start: 2, end: 4, category: "punctuation" },
+    { start: 4, end: 6, category: "latin" },
+    { start: 6, end: 7, category: "punctuation" },
+  ]);
+});
+
+test("英文块门控：数字与括号内容仍着色", () => {
+  const runs = tokenizeText("Chapter 3 (see note)", {
+    enabled: { latin: false },
+  });
+  assert.deepEqual(runs, [
+    { start: 8, end: 9, category: "number" },
+    { start: 10, end: 11, category: "punctuation" },
+    { start: 11, end: 19, category: "bracketed" },
+    { start: 19, end: 20, category: "punctuation" },
+  ]);
 });

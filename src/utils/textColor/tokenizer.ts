@@ -56,9 +56,10 @@ const LATIN = propertyMatcher("^\\p{Script=Latin}$");
 const SYMBOL = propertyMatcher("^\\p{S}$");
 const PUNCTUATION = propertyMatcher("^\\p{P}$");
 const MARK = propertyMatcher("^\\p{M}$");
+const LETTER = propertyMatcher("^\\p{L}$");
 
 const supportsUnicodeProperties = Boolean(
-  NUMBER && LATIN && SYMBOL && PUNCTUATION && MARK
+  NUMBER && LATIN && SYMBOL && PUNCTUATION && MARK && LETTER
 );
 
 /** 极简 ASCII 兜底：运行环境不支持 Unicode 属性时使用 */
@@ -105,6 +106,42 @@ const classify = (char: string): Classified => {
   classifyCache.set(char, result);
   return result;
 };
+
+/**
+ * 拉丁字母占全部字母的比例达到该阈值的文本块视为「英文正文块」。
+ * 嵌入外语词着色仅为 CJK 正文设计：英文正文的每个字母都是拉丁字母，
+ * 全部着色等于整本书上色。取 0.9：中文技术段落（大量夹英文）实测
+ * 可达 0.8 左右，必须保留着色；英文正文恒在 0.95 以上。
+ */
+const LATIN_DOMINANT_RATIO = 0.9;
+
+/**
+ * 判断一个文本块是否以拉丁字母为主。无字母或引擎不支持
+ * Unicode 属性时返回 false（保守不降级）。
+ * 仅供 apply 层做逐块门控使用，不导出到 index.ts 公开 API。
+ */
+export function isLatinDominant(text: string): boolean {
+  if (!supportsUnicodeProperties) return false;
+  let latin = 0;
+  let total = 0;
+  // for..of 按码点迭代，代理对（扩展区汉字等）计为一个字符
+  for (const char of text) {
+    const code = char.charCodeAt(0);
+    if (code < 0x80) {
+      // ASCII 快路径，跳过逐字符正则
+      if ((code >= 0x41 && code <= 0x5a) || (code >= 0x61 && code <= 0x7a)) {
+        latin++;
+        total++;
+      }
+      continue;
+    }
+    if (LETTER!(char)) {
+      total++;
+      if (LATIN!(char)) latin++;
+    }
+  }
+  return total > 0 && latin / total >= LATIN_DOMINANT_RATIO;
+}
 
 /**
  * 把一段纯文本切分成类别区间。

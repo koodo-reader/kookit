@@ -2,7 +2,7 @@ import type {
   TextColorCategory,
   TextColorConfig,
 } from "./types";
-import { tokenizeText } from "./tokenizer";
+import { isLatinDominant, tokenizeText } from "./tokenizer";
 import {
   buildWordMatcher,
   findWordMatches,
@@ -123,8 +123,17 @@ const colorBlock = (
   }
   if (!text.trim() || text.length > config.maxTextLength) return;
 
+  // 英文正文块（拉丁字母占比达阈值）停用 latin 类别：
+  // 嵌入外语词着色仅为 CJK 正文设计，否则英文书整本上色且引号内
+  // 对话不区分。latin 关闭后 resolve 回退机制自动让引号内字母
+  // 落到 quoted 类别、引号外正文不上色。用户已手动关闭 latin 时
+  // 跳过 O(n) 预扫描。
+  const effectiveEnabled =
+    categoryEnabled.latin !== false && isLatinDominant(text)
+      ? { ...categoryEnabled, latin: false }
+      : categoryEnabled;
   const runs = tokenizeText(text, {
-    enabled: categoryEnabled,
+    enabled: effectiveEnabled,
     crossLine: config.crossLine,
   });
   const wordMatches = findWordMatches(text, matcher);
