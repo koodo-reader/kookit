@@ -129,6 +129,16 @@ class PdfTextRender extends GeneralRender {
     });
   }
 
+  getPages() {
+    // external-engine 路径的章节是逐页虚拟出来的，text 桩对象没有 size，
+    // 走 GeneralRender 的字节数估算会把所有目录条目都算成第 1 页；
+    // 这里每章就是一页 PDF，页码直接取章节序号（与 PdfRender.getPages 同语义）
+    if (this.isScannedPDF === "yes" && this.ocrEngine === "external-engine") {
+      return this.chapterDocList.map((_item, index) => index + 1);
+    }
+    return super.getPages();
+  }
+
   // 优先处理当前章节
   async processCurrentChapter(index: number): Promise<string> {
     if (this.cache[index]) {

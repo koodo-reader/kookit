@@ -1380,10 +1380,10 @@ export const handleHighlightSearchNode = (
   if (!text.trim()) return;
 
   // Get block elements and find those containing the target text (case insensitive)
-  let nodeList = Array.from(
-    doc.body.querySelectorAll("span, p, div, h1, h2, h3, h4, h5, h6 ")
-  );
-  let nodes = nodeList.filter((node) => {
+  // 搜索端 getSearchResult 按 getBlockElement（含 pre/blockquote/li 等）匹配块级元素，
+  // 高亮端必须使用同一套元素集合；此前硬编码 span/p/div/h1-h6 会漏掉 <pre> 等块，
+  // 导致诗歌类内容能搜到却无法高亮
+  let nodes = getBlockElement(doc.body).filter((node) => {
     const content = (node as HTMLElement).textContent || "";
     return (
       content.trim() && content.toLowerCase().indexOf(text.toLowerCase()) > -1
