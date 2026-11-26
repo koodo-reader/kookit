@@ -1392,84 +1392,83 @@ export const handleHighlightSearchNode = (
 
   // Process all matching nodes for global replacement
   nodes.forEach((node) => {
-    // Function to process text nodes with global case-insensitive replacement
-    const processNode = (node) => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        const content = node.textContent || "";
-        let lowerContent = content.toLowerCase();
-        let lowerText = text.toLowerCase();
-        let processedContent = content;
-        let offset = 0;
-        let matches: Array<{
-          start: number;
-          end: number;
-          originalText: string;
-        }> = [];
-
-        // Find all matches in the content
-        let index = lowerContent.indexOf(lowerText);
-        while (index > -1) {
-          matches.push({
-            start: index,
-            end: index + text.length,
-            originalText: content.substring(index, index + text.length),
-          });
-          index = lowerContent.indexOf(lowerText, index + 1);
-        }
-
-        if (matches.length > 0) {
-          const fragment = doc.createDocumentFragment();
-          let lastEnd = 0;
-
-          // Process each match
-          matches.forEach((match) => {
-            // Add text before the match
-            if (match.start > lastEnd) {
-              fragment.appendChild(
-                doc.createTextNode(content.substring(lastEnd, match.start))
-              );
-            }
-
-            // Create highlight span for the match
-            const highlightSpan = doc.createElement("span");
-            highlightSpan.setAttribute("style", style);
-            highlightSpan.setAttribute("data-highlight", "true");
-            highlightSpan.setAttribute("class", "kookit-highlight-text");
-            highlightSpan.textContent = match.originalText;
-            fragment.appendChild(highlightSpan);
-
-            lastEnd = match.end;
-          });
-
-          // Add remaining text after the last match
-          if (lastEnd < content.length) {
-            fragment.appendChild(
-              doc.createTextNode(content.substring(lastEnd))
-            );
-          }
-
-          node.parentNode?.replaceChild(fragment, node);
-          return true;
-        }
-      }
-      return false;
-    };
-
-    // Process all child nodes recursively
-    const walkAndProcess = (node) => {
-      let hasReplaced = processNode(node);
-
-      if (!hasReplaced) {
-        // Process children if this node didn't contain the text
-        const childNodes = Array.from(node.childNodes);
-        for (const child of childNodes) {
-          walkAndProcess(child);
-        }
-      }
-    };
-
-    walkAndProcess(node);
+    wrapHighlightRangesAll(node, text, style, doc);
   });
+};
+
+// 搜索高亮：关键词可能被行内元素（斜体、换行、文本规则等）拆散到多个文本节点，
+// 搜索端 getSearchResult 按块级 textContent 命中，高亮端必须同样按整块文本
+// 定位全部命中区间，再逐节点拆分包裹，否则跨节点的关键词会搜得到却高亮不了
+const wrapHighlightRangesAll = (
+  root: Node,
+  text: string,
+  style: string,
+  doc: Document
+) => {
+  const textNodes: Text[] = [];
+  const offsets: number[] = [];
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  let content = "";
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text;
+    offsets.push(content.length);
+    textNodes.push(node);
+    content += node.textContent || "";
+  }
+
+  // 与搜索端一致：大小写不敏感，收集整块文本中的全部命中区间
+  const lowerContent = content.toLowerCase();
+  const lowerText = text.toLowerCase();
+  const matches: Array<{ start: number; end: number }> = [];
+  let index = lowerContent.indexOf(lowerText);
+  while (index > -1) {
+    matches.push({ start: index, end: index + text.length });
+    index = lowerContent.indexOf(lowerText, index + Math.max(1, text.length));
+  }
+  if (matches.length === 0) return;
+
+  // 每个文本节点只拆分一次，按落在自己区间内的命中片段依次包裹，
+  // 避免先替换的节点让后续偏移失效
+  for (let i = 0; i < textNodes.length; i++) {
+    const node = textNodes[i];
+    const nodeContent = node.textContent || "";
+    const nodeStart = offsets[i];
+    const nodeEnd = nodeStart + nodeContent.length;
+    const nodeMatches = matches.filter(
+      (match) => match.start < nodeEnd && match.end > nodeStart
+    );
+    if (nodeMatches.length === 0) continue;
+
+    const fragment = doc.createDocumentFragment();
+    let cursor = nodeStart;
+    nodeMatches.forEach((match) => {
+      const from = Math.max(match.start, nodeStart);
+      const to = Math.min(match.end, nodeEnd);
+      if (from > cursor) {
+        fragment.appendChild(
+          doc.createTextNode(
+            nodeContent.substring(cursor - nodeStart, from - nodeStart)
+          )
+        );
+      }
+      const highlightSpan = doc.createElement("span");
+      highlightSpan.setAttribute("style", style);
+      highlightSpan.setAttribute("data-highlight", "true");
+      highlightSpan.setAttribute("class", "kookit-highlight-text");
+      highlightSpan.textContent = nodeContent.substring(
+        from - nodeStart,
+        to - nodeStart
+      );
+      fragment.appendChild(highlightSpan);
+      cursor = to;
+    });
+    if (cursor < nodeEnd) {
+      fragment.appendChild(
+        doc.createTextNode(nodeContent.substring(cursor - nodeStart))
+      );
+    }
+    node.parentNode?.replaceChild(fragment, node);
+  }
 };
 // 文本规则（替换/删除/高亮）、连字符标记等会把一个段落拆成多个文本节点，
 // 因此按整块文本定位目标区间，再逐节点包裹，避免跨节点时找不到内容

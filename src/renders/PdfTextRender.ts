@@ -130,13 +130,26 @@ class PdfTextRender extends GeneralRender {
   }
 
   getPages() {
-    // external-engine 路径的章节是逐页虚拟出来的，text 桩对象没有 size，
-    // 走 GeneralRender 的字节数估算会把所有目录条目都算成第 1 页；
-    // 这里每章就是一页 PDF，页码直接取章节序号（与 PdfRender.getPages 同语义）
-    if (this.isScannedPDF === "yes" && this.ocrEngine === "external-engine") {
-      return this.chapterDocList.map((_item, index) => index + 1);
+    // PDFTEXT 的章节文档逐页对应 PDF（外置 OCR 的虚拟章节与解析器分页皆是），
+    // 页码直接取章节序号（与 PdfRender.getPages 同语义）；
+    // GeneralRender 的字节数估算基于合成 size，会把目录页码整段算错
+    return this.chapterDocList.map((_item, index) => index + 1);
+  }
+
+  // 目录页码同样不走 GeneralRender 的字节数估算：章节文档与 PDF 页一一对应，
+  // chapter.index 已由 GeneralParser 通过 resolveHrefIndex 解析为 0 基 PDF 页码，
+  // 直接加 1 即为真实页码（与 PdfRender 语义一致）
+  async computeChapterPageMap(): Promise<Record<string, number>> {
+    if (this.flattenChapters.length === 0) {
+      this.flatChapter(this.chapterList);
     }
-    return super.getPages();
+    const pageMap: Record<string, number> = {};
+    this.flattenChapters.forEach((chapter) => {
+      const docIndex = parseInt(chapter.index + "");
+      if (isNaN(docIndex)) return;
+      pageMap[chapter.href] = docIndex + 1;
+    });
+    return pageMap;
   }
 
   // 优先处理当前章节
