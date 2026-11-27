@@ -4,13 +4,17 @@ import {
   convertStyleNum,
   getActualOffsetLeft,
   getActualOffsetTop,
+  getContentOffsetLeft,
+  getContentOffsetTop,
   getLogicalHorizontalScroll,
   getScrollLeftForContentOffset,
   getScrollLeftForLogical,
   handleIframeHeight,
   handleOneChapterDoc,
   isVerticalLayout,
+  waitForFontsReady,
   progressInfo,
+  snapScrollOffsetToSpreadStart,
 } from "./layoutUtil";
 import Chapter from "../model/chapter";
 import Chinese from "../libs/zh-convert";
@@ -467,6 +471,15 @@ const convertBlobToDataURL = async (blobUrl) => {
     reader.readAsDataURL(blob);
   });
 };
+// 目录里的章节名和正文标题可能只差空白（例如「第 八 章　　往事不可追」
+// 和「第八章　往事不可追」），匹配章节时忽略空白差异
+const isSameChapterLabel = (label: string, title: string) => {
+  if (!label || !title) return false;
+  return (
+    label.trim() === title.trim() ||
+    label.replace(/\s/g, "") === title.replace(/\s/g, "")
+  );
+};
 export const handleRenderChapter = async (
   chapterDocIndex: number,
   chapterTitle: string,
@@ -483,16 +496,28 @@ export const handleRenderChapter = async (
   iframe.height = 0 + "px";
   doc.body.scrollTo(0, 0);
   if (
-    (chapterTitle && !chapterDocIndex) ||
-    (chapterDocList[chapterDocIndex] &&
-      chapterDocList[chapterDocIndex].label &&
-      chapterTitle &&
-      chapterTitle !== chapterDocList[chapterDocIndex].label &&
-      chapterHref.indexOf("#") === -1)
+    // 序号为 0 时只有标题和首章对不上才按标题重找，避免同名章节
+    // （例如不同分卷都叫“第一章”）被重定向到最后一处
+    (chapterTitle &&
+      !chapterDocIndex &&
+      (!chapterDocList[chapterDocIndex] ||
+        !chapterDocList[chapterDocIndex].label ||
+        !isSameChapterLabel(
+          chapterDocList[chapterDocIndex].label,
+          chapterTitle
+        ))) ||
+    (chapterTitle &&
+      (!chapterDocList[chapterDocIndex] ||
+        (chapterDocList[chapterDocIndex].label &&
+          !isSameChapterLabel(
+            chapterDocList[chapterDocIndex].label,
+            chapterTitle
+          ) &&
+          chapterHref.indexOf("#") === -1)))
   ) {
-    let tempChapterDocIndex = _.findLastIndex(chapterDocList, {
-      label: chapterTitle,
-    });
+    let tempChapterDocIndex = _.findLastIndex(chapterDocList, (chapter) =>
+      isSameChapterLabel(chapter.label, chapterTitle)
+    );
     if (tempChapterDocIndex !== -1) {
       chapterDocIndex = tempChapterDocIndex;
     }
@@ -585,6 +610,7 @@ export const handleRenderChapter = async (
   }
   await handleCssLink(doc);
   await handlePlainText(doc);
+  await waitForFontsReady(doc);
   if (!chapterTitle) {
     //取前面最近的章节，且存在的标题
     let tempChapterDocIndex = chapterDocIndex;
@@ -641,30 +667,22 @@ export const handleCssLink = async (doc) => {
   if (linkList.length === 0) {
     return;
   }
-  let styleSheetPromises: any = [];
-  for (let index = 0; index < linkList.length; index++) {
-    const link: any = linkList[index];
-    if (!link.href.endsWith("null")) {
-      styleSheetPromises.push(
-        new Promise((resolve, reject) => {
-          link.addEventListener("load", resolve);
-        })
-      );
-    }
-  }
-  try {
-    await Promise.race([
-      Promise.all(styleSheetPromises),
-      new Promise((resolve, reject) => {
-        setTimeout(() => {
-          // reject(new Error("Timeout"));
-          resolve("css load timeout");
-        }, 10);
-      }),
-    ]);
-  } catch (err) {
-    console.error(err);
-  }
+  // 样式表未加载完就测量段落偏移，会按旧列布局定位，导致进度偏出一页，
+  // 因此这里等 load/error 事件（已加载过的通过 link.sheet 直接跳过），
+  // 异常样式表最多等待 500ms，不阻塞章节渲染。
+  await Promise.all(
+    linkList.map((link: any) => {
+      if (!link.href || link.href.endsWith("null") || link.sheet) {
+        return Promise.resolve();
+      }
+      return new Promise((resolve) => {
+        const done = () => resolve("");
+        link.addEventListener("load", done, { once: true });
+        link.addEventListener("error", done, { once: true });
+        setTimeout(done, 500);
+      });
+    })
+  );
 };
 export const handlePlainText = async (doc) => {
   //给body中不被任何标签包裹的文本加上p标签
@@ -734,7 +752,7 @@ export const handleScrollPosition = async (
     targetNode = getCloestBlock(targetNodeList[0], element, readerMode);
     if (vertical) {
       top = targetNode
-        ? getActualOffsetTop(targetNode) -
+        ? getContentOffsetTop(targetNode) -
           convertStyleNum(
             targetNode.marginTop ||
               parseFloat(getComputedStyle(targetNode).marginTop)
@@ -746,7 +764,7 @@ export const handleScrollPosition = async (
       left = targetNode
         ? getScrollLeftForContentOffset(
             doc.body,
-            getActualOffsetLeft(targetNode) -
+            getContentOffsetLeft(targetNode) -
               convertStyleNum(
                 targetNode.marginLeft ||
                   parseFloat(getComputedStyle(targetNode).marginLeft)
@@ -768,7 +786,7 @@ export const handleScrollPosition = async (
     );
     if (vertical) {
       top = targetNode
-        ? getActualOffsetTop(targetNode) -
+        ? getContentOffsetTop(targetNode) -
           convertStyleNum(
             targetNode.marginTop ||
               parseFloat(getComputedStyle(targetNode).marginTop)
@@ -778,7 +796,7 @@ export const handleScrollPosition = async (
       left = targetNode
         ? getScrollLeftForContentOffset(
             doc.body,
-            getActualOffsetLeft(targetNode) -
+            getContentOffsetLeft(targetNode) -
               convertStyleNum(
                 targetNode.marginLeft ||
                   parseFloat(getComputedStyle(targetNode).marginLeft)
@@ -789,8 +807,10 @@ export const handleScrollPosition = async (
   }
   if (readerMode !== "scroll") {
     if (vertical) {
+      top = snapScrollOffsetToSpreadStart(element, readerMode, top);
       doc.body.scrollTo(0, top);
     } else {
+      left = snapScrollOffsetToSpreadStart(element, readerMode, left);
       doc.body.scrollTo(left, 0);
     }
   } else {
@@ -810,7 +830,7 @@ export const getCloestBlock = (
   if (vertical) {
     let gap = getSectionGap(element.clientHeight);
     let offsetTop =
-      getActualOffsetTop(targetNode) -
+      getContentOffsetTop(targetNode) -
       convertStyleNum(
         (targetNode as any).marginTop ||
           parseFloat(getComputedStyle(targetNode).marginTop)
@@ -830,7 +850,7 @@ export const getCloestBlock = (
   } else {
     let gap = getSectionGap(element.clientWidth);
     let offsetLeft =
-      getActualOffsetLeft(targetNode) -
+      getContentOffsetLeft(targetNode) -
       convertStyleNum(
         (targetNode as any).marginLeft ||
           parseFloat(getComputedStyle(targetNode).marginLeft)
@@ -865,8 +885,8 @@ export const handleRecord = async (
   tempLocation: any,
   doc: Document,
   targetNode: HTMLElement | null
-) => {
-  if (lock) return;
+): Promise<boolean> => {
+  if (lock) return false;
   let nodeList = getBlockElement(doc.body);
   let visibleNode = nodeList.filter(
     (s) =>
@@ -924,6 +944,7 @@ export const handleRecord = async (
   setTimeout(() => {
     lock = false;
   }, 100);
+  return true;
 };
 export const isCurrentNodeFarFromParrent = (
   targetNode: HTMLElement,
@@ -1359,10 +1380,10 @@ export const handleHighlightSearchNode = (
   if (!text.trim()) return;
 
   // Get block elements and find those containing the target text (case insensitive)
-  let nodeList = Array.from(
-    doc.body.querySelectorAll("span, p, div, h1, h2, h3, h4, h5, h6 ")
-  );
-  let nodes = nodeList.filter((node) => {
+  // 搜索端 getSearchResult 按 getBlockElement（含 pre/blockquote/li 等）匹配块级元素，
+  // 高亮端必须使用同一套元素集合；此前硬编码 span/p/div/h1-h6 会漏掉 <pre> 等块，
+  // 导致诗歌类内容能搜到却无法高亮
+  let nodes = getBlockElement(doc.body).filter((node) => {
     const content = (node as HTMLElement).textContent || "";
     return (
       content.trim() && content.toLowerCase().indexOf(text.toLowerCase()) > -1
@@ -1450,6 +1471,55 @@ export const handleHighlightSearchNode = (
     walkAndProcess(node);
   });
 };
+// 文本规则（替换/删除/高亮）、连字符标记等会把一个段落拆成多个文本节点，
+// 因此按整块文本定位目标区间，再逐节点包裹，避免跨节点时找不到内容
+const wrapHighlightRange = (
+  root: Node,
+  text: string,
+  style: string,
+  doc: Document
+) => {
+  const textNodes: Text[] = [];
+  const offsets: number[] = [];
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  let content = "";
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text;
+    offsets.push(content.length);
+    textNodes.push(node);
+    content += node.textContent || "";
+  }
+
+  const start = content.indexOf(text);
+  if (start < 0) return;
+  const end = start + text.length;
+
+  for (let i = 0; i < textNodes.length; i++) {
+    const node = textNodes[i];
+    const nodeContent = node.textContent || "";
+    const nodeStart = offsets[i];
+    const from = Math.max(start, nodeStart);
+    const to = Math.min(end, nodeStart + nodeContent.length);
+    if (from >= to) continue;
+
+    const before = nodeContent.substring(0, from - nodeStart);
+    const matched = nodeContent.substring(from - nodeStart, to - nodeStart);
+    const after = nodeContent.substring(to - nodeStart);
+
+    const highlightSpan = doc.createElement("span");
+    highlightSpan.setAttribute("style", style);
+    highlightSpan.setAttribute("data-highlight", "true");
+    highlightSpan.setAttribute("class", "kookit-highlight-text");
+    highlightSpan.textContent = matched;
+
+    const fragment = doc.createDocumentFragment();
+    if (before) fragment.appendChild(doc.createTextNode(before));
+    fragment.appendChild(highlightSpan);
+    if (after) fragment.appendChild(doc.createTextNode(after));
+
+    node.parentNode?.replaceChild(fragment, node);
+  }
+};
 export const handleHighlightAudioNode = (
   text: string,
   style: string,
@@ -1482,49 +1552,7 @@ export const handleHighlightAudioNode = (
 
   // For the first matching node, highlight the text
   if (nodes.length > 0) {
-    // Function to process text nodes
-    const processNode = (node) => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        const content = node.textContent || "";
-        const index = content.indexOf(text);
-
-        if (index > -1) {
-          // Split the text node and insert the highlight
-          const before = content.substring(0, index);
-          const after = content.substring(index + text.length);
-
-          // Create span with the specified style
-          const highlightSpan = doc.createElement("span");
-          highlightSpan.setAttribute("style", style);
-          highlightSpan.setAttribute("data-highlight", "true");
-          highlightSpan.textContent = text;
-          highlightSpan.setAttribute("class", "kookit-highlight-text");
-          // Replace the original text node with three new nodes
-          const fragment = doc.createDocumentFragment();
-          if (before) fragment.appendChild(doc.createTextNode(before));
-          fragment.appendChild(highlightSpan);
-          if (after) fragment.appendChild(doc.createTextNode(after));
-
-          node.parentNode?.replaceChild(fragment, node);
-          return true; // Text was found and highlighted
-        }
-      }
-      return false; // No match in this node
-    };
-
-    // Process all child nodes recursively until we find a match
-    const walkAndProcess = (node) => {
-      if (processNode(node)) return true;
-
-      // Process children if this node didn't contain the text
-      const childNodes = Array.from(node.childNodes);
-      for (const child of childNodes) {
-        if (walkAndProcess(child)) return true;
-      }
-      return false;
-    };
-
-    walkAndProcess(nodes[0]);
+    wrapHighlightRange(nodes[0], text, style, doc);
   }
 };
 export const getSearchResult = async (

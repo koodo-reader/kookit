@@ -129,6 +129,29 @@ class PdfTextRender extends GeneralRender {
     });
   }
 
+  getPages() {
+    // PDFTEXT 的章节文档逐页对应 PDF（外置 OCR 的虚拟章节与解析器分页皆是），
+    // 页码直接取章节序号（与 PdfRender.getPages 同语义）；
+    // GeneralRender 的字节数估算基于合成 size，会把目录页码整段算错
+    return this.chapterDocList.map((_item, index) => index + 1);
+  }
+
+  // 目录页码同样不走 GeneralRender 的字节数估算：章节文档与 PDF 页一一对应，
+  // chapter.index 已由 GeneralParser 通过 resolveHrefIndex 解析为 0 基 PDF 页码，
+  // 直接加 1 即为真实页码（与 PdfRender 语义一致）
+  async computeChapterPageMap(): Promise<Record<string, number>> {
+    if (this.flattenChapters.length === 0) {
+      this.flatChapter(this.chapterList);
+    }
+    const pageMap: Record<string, number> = {};
+    this.flattenChapters.forEach((chapter) => {
+      const docIndex = parseInt(chapter.index + "");
+      if (isNaN(docIndex)) return;
+      pageMap[chapter.href] = docIndex + 1;
+    });
+    return pageMap;
+  }
+
   // 优先处理当前章节
   async processCurrentChapter(index: number): Promise<string> {
     if (this.cache[index]) {

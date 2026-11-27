@@ -43,12 +43,54 @@ class TxtRender extends GeneralRender {
     }
   }
   async refreshContent() {
+    // 大文件分段解析出来的章节序号可能和整篇解析不一致，重建目录后要按标题
+    // 把当前位置映射回新目录，否则旧序号会指向别的章节，甚至超出目录范围，
+    // 表现为翻到章节末尾后无法进入下一章
+    const chapterDocIndex = parseInt(
+      this.tempLocation.chapterDocIndex || "",
+      10
+    );
+    const chapterTitle = (this.tempLocation.chapterTitle || "").trim();
     await this.parse({ refresh: true });
     let parser = new GeneralParser(this.book);
     this.chapterList = await parser.getChapter(this.book.toc);
     this.chapterDocList = await parser.getChapterDoc();
+    const findChapterIndex = (title: string) => {
+      let index = -1;
+      for (let i = 0; i < this.chapterDocList.length; i++) {
+        if ((this.chapterDocList[i].label || "").trim() === title) {
+          index = i;
+        }
+      }
+      return index;
+    };
+    const currentChapter = this.chapterDocList[chapterDocIndex];
+    if (
+      chapterTitle &&
+      (!currentChapter || (currentChapter.label || "").trim() !== chapterTitle)
+    ) {
+      let mappedIndex = findChapterIndex(chapterTitle);
+      if (mappedIndex === -1) {
+        // 旧版本可能把目录条目当成过章节标题，新目录里找不到时用
+        // 当前已渲染章节的标题兜底
+        const renderedTitle = (
+          this.getDocument()?.body.querySelector("h1")?.textContent || ""
+        ).trim();
+        if (renderedTitle) {
+          mappedIndex = findChapterIndex(renderedTitle);
+        }
+      }
+      if (mappedIndex > -1) {
+        this.tempLocation.chapterDocIndex = mappedIndex + "";
+        this.tempLocation.chapterHref = this.chapterDocList[mappedIndex].href;
+        this.tempLocation.chapterTitle = this.chapterDocList[mappedIndex].label;
+      }
+    }
     await this.record();
+    // 目录在 refreshContent 后会重建，按旧目录算出的页码映射必须一并失效
     this.chapterSizeCache = null;
+    this.chapterPageMapCache = null;
+    this.chapterPageMapPromise = null;
     return this.chapterList;
   }
   async preCache() {

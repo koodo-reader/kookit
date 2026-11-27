@@ -3,6 +3,7 @@ import { processDocumentBody } from "./bionicUtil";
 import { getSectionGap, getStylePxNumber, isElectron } from "./common";
 import { getBlockElement, isParentBlock } from "./common";
 import { applyTextRules } from "./textRuleUtil";
+import { applyTextColor } from "./textColor";
 declare var window: any;
 export const isVerticalLayout = (): boolean => {
   return window.textOrientation === "vertical";
@@ -10,6 +11,12 @@ export const isVerticalLayout = (): boolean => {
 // 从右往左阅读：仅在水平排版的单页/双页模式启用
 export const isRevertDirection = (): boolean => {
   return window.revertDirection === "yes" && !isVerticalLayout();
+};
+// 方向映射（点按区域、滑动方向、折页镜像）：竖排下同样跟随该设置。
+// 竖排的翻页是纵向的，不能套用 RTL 的横向滚动坐标换算，
+// 所以这类调用点要用本函数，而不是 isRevertDirection。
+export const isRevertInput = (): boolean => {
+  return window.revertDirection === "yes";
 };
 export const getMaxHorizontalScroll = (scroller: HTMLElement): number => {
   return Math.max(0, scroller.scrollWidth - scroller.clientWidth);
@@ -37,6 +44,29 @@ export const getScrollLeftForContentOffset = (
   const maxScroll = getMaxHorizontalScroll(scroller);
   const logical = Math.max(0, Math.min(contentOffset, maxScroll));
   return isRevertDirection() ? logical - maxScroll : logical;
+};
+// 双页模式下，阅读位置可能被记录为跨页右半页的段落起始偏移：当左半页整页都是
+// 上一段的续文时，首个可见块会落在右半页。若直接按该偏移定位，视口会从右半页
+// 开始，整屏内容比记录时左移一页，表现为重新打开书籍后进度落后一页。
+// 这里把落在右半页的滚动偏移回退到所在跨页的起点。
+// 入参是换算后的物理滚动量（RTL 下为负值），翻页位置恒为 spreadStep 的整数倍，
+// 右半页位置的余数恰好是 spreadStep 的一半，因此不受翻页方向影响。
+export const snapScrollOffsetToSpreadStart = (
+  element: HTMLElement,
+  readerMode: string,
+  scrollOffset: number
+): number => {
+  if (readerMode !== "double" || !element) return scrollOffset;
+  const vertical = isVerticalLayout();
+  const dimension = vertical ? element.clientHeight : element.clientWidth;
+  const gap = getSectionGap(dimension);
+  const spreadStep = dimension + gap;
+  if (spreadStep <= 0) return scrollOffset;
+  const columnStep = spreadStep / 2;
+  const remainder = ((scrollOffset % spreadStep) + spreadStep) % spreadStep;
+  return Math.abs(remainder - columnStep) < 10
+    ? scrollOffset - columnStep
+    : scrollOffset;
 };
 export const applyRevertDirectionStyle = (doc: Document) => {
   if (!isRevertDirection()) return;
@@ -76,6 +106,21 @@ export const getActualOffsetTop = (child: HTMLElement): number => {
     );
   }
   return 0;
+};
+// 内容节点相对滚动容器（body 内容区）的偏移。
+// getActualOffsetLeft/Top 只计算到最近的 offsetParent，表格单元格、定位包裹层里的
+// 节点会丢掉外层的分页列偏移，导致按文本定位时误判为第 0 页。
+export const getContentOffsetLeft = (child: HTMLElement): number => {
+  if (!child) return 0;
+  const childRect = child.getBoundingClientRect();
+  const bodyRect = child.ownerDocument?.body?.getBoundingClientRect();
+  return childRect.left - (bodyRect ? bodyRect.left : 0);
+};
+export const getContentOffsetTop = (child: HTMLElement): number => {
+  if (!child) return 0;
+  const childRect = child.getBoundingClientRect();
+  const bodyRect = child.ownerDocument?.body?.getBoundingClientRect();
+  return childRect.top - (bodyRect ? bodyRect.top : 0);
 };
 export const handleIframeHeight = async (
   element: HTMLElement,
@@ -508,9 +553,23 @@ export const transformText = async (doc: Document) => {
   if (window.textRules && window.textRules.length > 0) {
     applyTextRules(doc, window.textRules);
   }
+  // contentColor 始终存在；关闭时也要执行一次以清理旧着色
+  if (window.contentColor) {
+    applyTextColor(doc, window.contentColor);
+  }
 };
 export const handleTextStyle = async (doc: Document) => {
   await transformText(doc);
+};
+// 章节自带字体的加载会改变行高与列数；若在字体就绪前测量段落偏移，
+// 恢复阅读位置时会按旧布局定位，表现为进度比实际落后一页。
+export const waitForFontsReady = async (doc: Document) => {
+  const fonts: any = (doc as any).fonts;
+  if (!fonts || !fonts.ready) return;
+  await Promise.race([
+    fonts.ready,
+    new Promise((resolve) => setTimeout(resolve, 1000)),
+  ]);
 };
 export const getImageMeta = async (url) => {
   const img = new Image();

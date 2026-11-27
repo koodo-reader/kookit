@@ -109,10 +109,6 @@ export const txtToHtml = (
   if (lines.length === 1) {
     lines = text.split("\r");
   }
-  // 丢弃文件开头的纯空白行，避免空白内容脱离第一个章节标题单独成章
-  while (lines.length > 0 && lines[0].trim() === "") {
-    lines.shift();
-  }
 
   const htmlParts: string[] = []; // Use an array to store HTML parts
   let isRefresh = false;
@@ -126,11 +122,6 @@ export const txtToHtml = (
   if (noTitle) {
     //分章方式改成每500行分一章，且不进行标题识别
     let chapterIndex = 0;
-    if (lines.length === 0) {
-      // 纯空白行文件，避免生成空 HTML 导致 noTitle 兜底无限递归
-      htmlParts.push(`<h1 class="hide">Chapter 0</h1>`);
-      chapterIndex = 1;
-    }
     for (let i = 0; i < lines.length; i += 500) {
       const chapterLines = lines.slice(i, i + 500);
       htmlParts.push(`<h1 class="hide">Chapter ${chapterIndex}</h1>`); // Push chapter title to array
@@ -155,10 +146,44 @@ export const txtToHtml = (
       bookLocation.text = bookLocation.chapterTitle || "";
     }
     // --- Slicing and Title Identification Logic ---
-    let targetLineIndex = lines.findIndex((item) => {
-      // Optimization: cleanText called only once here if needed often
-      return cleanText(item) === cleanText(bookLocation.text);
-    });
+    // 阅读行可能并非全文唯一（如每章前重复的页眉/水印），取第一处匹配会把
+    // 切片带回书首。先定位保存章节的标题行：页眉在标题前几行，正文在标题
+    // 之后，都没匹配到时退回第一处匹配
+    const cleanedLocationText = cleanText(bookLocation.text);
+    const cleanedChapterTitle = cleanText(bookLocation.chapterTitle || "");
+    let titleLineIndex = -1;
+    if (cleanedChapterTitle) {
+      titleLineIndex = findLastIndex(lines, (item) => {
+        return item && cleanText(item) === cleanedChapterTitle;
+      });
+    }
+    let targetLineIndex = -1;
+    if (titleLineIndex > -1) {
+      for (let i = titleLineIndex; i >= Math.max(titleLineIndex - 4, 0); i--) {
+        if (cleanText(lines[i]) === cleanedLocationText) {
+          targetLineIndex = i;
+          break;
+        }
+      }
+      if (targetLineIndex === -1) {
+        for (let i = titleLineIndex + 1; i < lines.length; i++) {
+          if (cleanText(lines[i]) === cleanedLocationText) {
+            targetLineIndex = i;
+            break;
+          }
+        }
+      }
+    }
+    if (targetLineIndex === -1) {
+      targetLineIndex = lines.findIndex((item) => {
+        // Optimization: cleanText called only once here if needed often
+        return cleanText(item) === cleanedLocationText;
+      });
+    }
+    if (targetLineIndex === -1) {
+      // 阅读行已不存在（如文件被编辑过）时，以章节标题为中心切片
+      targetLineIndex = titleLineIndex;
+    }
     if (targetLineIndex === -1) {
       targetLineIndex = 0;
     }
@@ -181,8 +206,26 @@ export const txtToHtml = (
       titlesInSlice.map((title) => cleanText(title))
     );
 
-    let targetTitleIndex = findLastIndex(titlesInSlice, (item) => {
-      return cleanText(item) === cleanText(bookLocation.chapterTitle);
+    // 预扫描：按与整篇解析一致的规则算出切片内存活的章节标题
+    // （后面没有正文的标题会降级剔除，如书首目录条目），
+    // 占位章节数必须按存活标题计算，否则切片与整篇解析的章节序号错位
+    const chapterTitleList: string[] = [];
+    let hasContent = false;
+    for (const item of relevantLines) {
+      const cleanedItem = cleanText(item);
+      if (cleanedItem && cleanedTitlesSet.has(cleanedItem)) {
+        if (chapterTitleList.length > 0 && !hasContent) {
+          chapterTitleList.pop(); // 上一个标题只有标题没有正文，降级剔除
+        }
+        chapterTitleList.push(cleanedItem);
+        hasContent = false;
+      } else if (item.trim() !== "") {
+        hasContent = true;
+      }
+    }
+
+    let targetTitleIndex = findLastIndex(chapterTitleList, (item) => {
+      return item === cleanText(bookLocation.chapterTitle);
     });
     if (targetTitleIndex === -1) {
       targetTitleIndex = 0;
@@ -203,12 +246,24 @@ export const txtToHtml = (
     }
 
     // --- Main Loop for Relevant Lines ---
+    // 降级规则与上面的预扫描一致：被剔除的标题改写为正文段落
+    let lastTitleIndex = -1;
+    let hasContentSinceTitle = false;
     for (const item of relevantLines) {
       // Iterate over the sliced array
       const cleanedItem = cleanText(item); // Clean once per line
       // Use the Set for O(1) average lookup
       if (cleanedItem && cleanedTitlesSet.has(cleanedItem)) {
+        if (lastTitleIndex !== -1 && !hasContentSinceTitle) {
+          // 上一个标题只有标题没有正文，降级为正文段落，剔除出目录
+          htmlParts[lastTitleIndex] = `<p>${htmlParts[lastTitleIndex].slice(
+            4,
+            -5
+          )}</p>`;
+        }
+        lastTitleIndex = htmlParts.length;
         htmlParts.push(`<h1>${cleanedItem}</h1>`); // Push to array
+        hasContentSinceTitle = false;
       } else {
         if (item.trim() === "") {
           htmlParts.push(`<p class="hide">${item}</p>`); // Push line break for empty lines
@@ -216,6 +271,7 @@ export const txtToHtml = (
         }
         // Avoid cleaning again if not necessary, use original item for content
         htmlParts.push(`<p>${item}</p>`); // Push to array
+        hasContentSinceTitle = true;
       }
     }
   } else {

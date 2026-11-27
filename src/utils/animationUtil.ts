@@ -1,4 +1,4 @@
-import { isRevertDirection } from "./layoutUtil";
+import { isRevertInput } from "./layoutUtil";
 
 function createBookElement(sectionCount) {
   let tempDiv = document.getElementById("book");
@@ -59,7 +59,9 @@ function createBookElement(sectionCount) {
         margin: 0;
       }
     `;
+  document.getElementById("pageflip-style")?.remove();
   let style = document.createElement("style");
+  style.id = "pageflip-style";
   style.innerHTML = css;
   document.head.appendChild(style);
 }
@@ -87,7 +89,7 @@ export const addPageAnimation = (
   }
   flipAnimating = false;
 
-  const revertDirection = isRevertDirection();
+  const revertDirection = isRevertInput();
   createBookElement(Math.max(1, Math.floor(totalPage) + 1));
   var WINDOW_WIDTH = window.innerWidth;
   var WINDOW_HEIGHT = window.innerHeight;

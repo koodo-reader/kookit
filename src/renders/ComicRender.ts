@@ -41,11 +41,17 @@ class ComicRender extends GeneralRender {
   ) => Promise<{ entryPath: string; size: number; fileName: string }[]>;
   filePath: string;
   scrollComicInterval: any = null;
+  isStartFromEven: string = "no";
+  // 页数据放在 chapterDocList 里的格式（CB*、固定版式 EPUB/MOBI）才支持
+  // “从偶数页开始渲染”。PPTX/XPS/DjVu/OFD 沿用漫画的多 iframe 结构，但页数据
+  // 在自己的数组里（slides/pages），前置一页会让索引与页号错开，显式关闭
+  isStartFromEvenSupported: boolean = true;
   constructor(comicBuffer: ArrayBuffer, config: any) {
     super(config);
     this.isPaginated = true;
     this.comicBuffer = comicBuffer;
     this.readerMode = config.readerMode;
+    this.isStartFromEven = config.isStartFromEven || "no";
     this.format = config.format;
     this.chapterList = [];
     this.chapterDocList = [];
@@ -57,6 +63,28 @@ class ComicRender extends GeneralRender {
     this.getTarEntries = config.getTarEntries;
     this.getZipEntries = config.getZipEntries;
     this.filePath = config.filePath;
+  }
+  // 只有双页模式才有左右页配对，单页/滚动模式下与 PdfRender 一致地忽略该设置
+  get isStartFromEvenPage(): boolean {
+    return (
+      this.isStartFromEvenSupported &&
+      this.isStartFromEven === "yes" &&
+      this.readerMode === "double"
+    );
+  }
+  // 起始空白页固定占列表第一个位置
+  isBlankChapterDoc(chapterDocIndex: number): boolean {
+    return this.isStartFromEvenPage && chapterDocIndex === 0;
+  }
+  createBlankChapterDoc() {
+    return {
+      label: "",
+      href: "",
+      text: {
+        load: async () => "",
+        unload: async () => {},
+      },
+    } as any;
   }
   renderTo(element: HTMLElement) {
     return new Promise<void>(async (resolve, reject) => {
@@ -73,6 +101,14 @@ class ComicRender extends GeneralRender {
       let parser = new GeneralParser(this.book);
       this.chapterList = await parser.getChapter(this.book.toc);
       this.chapterDocList = await parser.getChapterDoc();
+      // 从偶数页开始渲染（与 PdfRender 一致）：双页模式下在列表最前面插入一页
+      // 空白页，第一屏即为「空白 + 第 1 页」，后续对页才是 [2,3]、[4,5]
+      if (this.isStartFromEvenPage) {
+        this.chapterDocList = [
+          this.createBlankChapterDoc(),
+          ...this.chapterDocList,
+        ];
+      }
       createIframe(element, this.isAllowScript);
       let doc: any = this.getDocument();
       if (!doc) return;
@@ -580,6 +616,9 @@ class ComicRender extends GeneralRender {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
       return;
     }
+    if (this.isBlankChapterDoc(chapterDocIndex)) {
+      return;
+    }
     let doc: any = this.getDocument();
     if (!doc) return;
     let subIframe: any = doc.getElementById("pdf-iframe-" + chapterDocIndex);
@@ -602,6 +641,9 @@ class ComicRender extends GeneralRender {
   }
   async handleUnloadComicChapter(chapterDocIndex: number) {
     if (chapterDocIndex >= this.chapterDocList.length || chapterDocIndex < 0) {
+      return;
+    }
+    if (this.isBlankChapterDoc(chapterDocIndex)) {
       return;
     }
     let subDoc = this.getSubDocument(chapterDocIndex);
@@ -630,14 +672,27 @@ class ComicRender extends GeneralRender {
   }
   async goToChapterIndex(targetChapterIndex: number) {
     if (this.chapterDocList.length > 0) {
+      // chapterList 的 index 来自 section（未移位），前置空白页后需 +1
+      const chapterDocIndex =
+        targetChapterIndex + (this.isStartFromEvenPage ? 1 : 0);
       await this.goToChapter(
-        targetChapterIndex,
-        this.chapterDocList[targetChapterIndex].href,
-        this.chapterDocList[targetChapterIndex].label
+        chapterDocIndex,
+        this.chapterDocList[chapterDocIndex].href,
+        this.chapterDocList[chapterDocIndex].label
       );
     }
   }
-  async goToChapter(chapterDocIndex, _chapterHref, _chapterTitle) {
+  async goToChapter(chapterDocIndex, chapterHref?, _chapterTitle?) {
+    // 前置空白页后 chapterList 的索引与 chapterDocList 不再一致，
+    // 带 href 时优先按 href 定位，避免目录/内链跳转差一页
+    if (chapterHref) {
+      const matchedIndex = this.chapterDocList.findIndex(
+        (item) => item.href && item.href === chapterHref
+      );
+      if (matchedIndex > -1) {
+        chapterDocIndex = matchedIndex;
+      }
+    }
     if (this.readerMode === "double" && chapterDocIndex % 2 == 1) {
       chapterDocIndex--;
     }

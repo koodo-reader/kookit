@@ -219,6 +219,7 @@ const silenceConsole = async <T>(fn: () => T | Promise<T>): Promise<T> => {
 // 所在文档的字体集解析，这样才能用上主文档里注册的内嵌字体（挂载后绘制会
 // 退化为 iframe 内的系统字体）
 class OfdRender extends ComicRender {
+  isStartFromEvenSupported = false;
   liteOfd: any = null;
   ofdDocument: any = null;
   private renderingPages: Map<number, Promise<void>> = new Map();

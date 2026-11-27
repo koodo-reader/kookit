@@ -1,6 +1,6 @@
 ﻿import rangy from "rangy/lib/rangy-core.js";
 import { createSelectionAutoTurn } from "./selectionAutoTurn";
-import { isRevertDirection } from "./layoutUtil";
+import { isRevertDirection, isRevertInput } from "./layoutUtil";
 
 import { getSectionGap, PAGE_TURN_DURATION } from "./common";
 declare var window: any;
@@ -103,10 +103,10 @@ export const slideAnimateTo = (
     snapLogical = currentPage * pageWidth;
   }
 
-  // Clamp to valid range. For the last page the body may not be an exact
-  // multiple of pageWidth, so if the remaining content after snapLogical is
-  // less than a full page we snap all the way to the end in one step.
-  if (snapLogical >= maxScroll || maxScroll - snapLogical < pageWidth + gap) {
+  // Clamp to valid range. 只有目标位置越过文档末端（或距末端不足 10px）时
+  // 才吸附到最大滚动位置；不能按“剩余不足一整页”判断，否则双页模式末屏
+  // 只占半屏时会把相邻页误判为末页而跳过。
+  if (snapLogical > maxScroll || maxScroll - snapLogical < 10) {
     snapLogical = maxScroll;
   }
   snapLogical = Math.max(0, snapLogical);
@@ -129,9 +129,7 @@ export const slideAnimateTo = (
   // iOS WKWebView 对滚动根（documentElement/body）做 transform 后，
   // 清除 transform 时容易留下空白页，移动端 RTL 统一改用原生滚动动画
   const useTransform =
-    render.isMobile !== "yes" &&
-    !revertDirection &&
-    body.scrollWidth <= SLIDE_TRANSFORM_THRESHOLD;
+    !revertDirection && body.scrollWidth <= SLIDE_TRANSFORM_THRESHOLD;
 
   if (!useTransform) {
     // 原生滚动方案：rAF 驱动 scrollLeft，滚动只绘制视口内容，
@@ -394,7 +392,7 @@ export const addAndroidTouchEvent = (
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
   let gap = getSectionGap(element.clientWidth);
   let pageWidth = element.clientWidth + gap;
-  const revertDirection = isRevertDirection();
+  const revertDirection = isRevertInput();
   const selectionAutoTurn = createSelectionAutoTurn({
     element,
     iframe,
@@ -956,7 +954,7 @@ export const addAppleTouchEvent = (
   let swipeThreshold = 30; // Minimum distance in pixels to be considered a swipe
   const timeThreshold = 500; // Maximum time in milliseconds to be considered a tap
   let gap = getSectionGap(element.clientWidth);
-  const revertDirection = isRevertDirection();
+  const revertDirection = isRevertInput();
   const selectionAutoTurn = createSelectionAutoTurn({
     element,
     iframe,

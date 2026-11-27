@@ -322,7 +322,8 @@ class BookHelper {
           })
         );
       });
-      const throttledPageChanged = throttle(async () => {
+
+      window.rendition.on("page-changed", async () => {
         let position = { ...window.rendition.getPosition() };
         let progress = { ...(await window.rendition.getProgress()) };
         window.ReactNativeWebView.postMessage(
@@ -332,10 +333,6 @@ class BookHelper {
             progress,
           })
         );
-      }, 3000);
-
-      window.rendition.on("page-changed", () => {
-        throttledPageChanged();
       });
       window.rendition.on("chapter-pages", () => {
         window.ReactNativeWebView.postMessage(

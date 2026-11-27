@@ -20,6 +20,7 @@ import {
   chunkData,
 } from "./iff";
 import { bzzDecode } from "./bzz";
+import { JB2DictData, decodeJB2Dict } from "./jb2";
 import { IW44Pixmap, decodeIW44 } from "./iw44";
 import {
   DjvuAnnotation,
@@ -244,6 +245,9 @@ export class DjvuFile {
   private pageCache: Map<number, DjvuPage> = new Map();
   private textCache: Map<number, DjvuTextLayer> = new Map();
   private annotationCache: Map<number, DjvuAnnotationSet> = new Map();
+  // JB2 共享符号字典（Djbz）按 chunk 偏移缓存：所有页共用同一个字典，
+  // 每页重新解码一遍在大书上是很可观的固定开销
+  private dictCache: Map<number, JB2DictData> = new Map();
   private thumbnailChunks: IffChunk[] | null = null;
 
   metadata: DjvuMetadata = {
@@ -279,6 +283,24 @@ export class DjvuFile {
   // 原始文件数据（页面解码器需要）
   getData(): Uint8Array {
     return this.data;
+  }
+
+  // 页面用到的 JB2 共享字典（Djbz）解码结果，未使用时返回 null
+  getSharedDict(page: DjvuPage): JB2DictData | null {
+    const djbz = [...page.chunks, ...page.includedChunks].find(
+      (chunk) => chunk.id === "Djbz"
+    );
+    if (!djbz) return null;
+    const cached = this.dictCache.get(djbz.dataStart);
+    if (cached) return cached;
+    try {
+      const dict = decodeJB2Dict(chunkData(this.data, djbz));
+      this.dictCache.set(djbz.dataStart, dict);
+      return dict;
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
   }
 
   private init() {

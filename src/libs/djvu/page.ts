@@ -297,17 +297,27 @@ export class DjvuPageDecoder {
     jpegForeground: null,
   };
 
-  constructor(page: DjvuPage, data: Uint8Array) {
+  constructor(
+    page: DjvuPage,
+    data: Uint8Array,
+    sharedDict?: JB2DictData | null
+  ) {
     this.page = page;
     this.data = data;
-    // 共享字典优先取页面自己的 Djbz，其次是 INCL 引入的共享文件
-    const all = [...page.chunks, ...page.includedChunks];
-    const djbz = all.find((c) => c.id === "Djbz");
-    if (djbz) {
-      try {
-        this.dict = decodeJB2Dict(chunkData(data, djbz));
-      } catch (error) {
-        console.error(error);
+    // 共享字典优先取页面自己的 Djbz，其次是 INCL 引入的共享文件。
+    // 宿主可以传入缓存好的解码结果：一本书的每一页用到的都是同一个
+    // Djbz 共享文件，按页重复解码在 iOS 上会成为最大的单页固定开销。
+    if (sharedDict !== undefined) {
+      this.dict = sharedDict;
+    } else {
+      const all = [...page.chunks, ...page.includedChunks];
+      const djbz = all.find((c) => c.id === "Djbz");
+      if (djbz) {
+        try {
+          this.dict = decodeJB2Dict(chunkData(data, djbz));
+        } catch (error) {
+          console.error(error);
+        }
       }
     }
     const sjbz = page.chunks.find((c) => c.id === "Sjbz");
@@ -349,13 +359,11 @@ export class DjvuPageDecoder {
       case "bg44": {
         if (!this.bgDecoder) this.bgDecoder = new IW44Decoder();
         this.bgDecoder.decodeChunk(chunkData(this.data, step.chunk));
-        this.state.background = this.bgDecoder.getPixmap();
         return "bg44";
       }
       case "fg44": {
         if (!this.fgDecoder) this.fgDecoder = new IW44Decoder();
         this.fgDecoder.decodeChunk(chunkData(this.data, step.chunk));
-        this.state.foreground = this.fgDecoder.getPixmap();
         return "fg44";
       }
       case "fgbz": {
@@ -374,8 +382,14 @@ export class DjvuPageDecoder {
     }
   }
 
-  // 合成页面为 RGBA（含旋转）
-  composeToRgba(): DjvuPageImage {
+  // 合成页面为 RGBA（含旋转）。scale < 1 时直接按输出分辨率采样各层，
+  // 不生成整页尺寸的中间缓冲（详见 composeScaled）
+  composeToRgba(scale = 1): DjvuPageImage {
+    // IW44 重建 pixmap（反小波）很贵，解码循环里每解一个 chunk 就重建一次
+    // 等于白做几次整图重建，这里只在真正合成时重建最近一层
+    if (this.bgDecoder) this.state.background = this.bgDecoder.getPixmap();
+    if (this.fgDecoder) this.state.foreground = this.fgDecoder.getPixmap();
+    if (scale > 0 && scale < 1) return this.composeScaled(scale);
     const width = this.page.info.width;
     const height = this.page.info.height;
     const rotation = this.page.info.rotation;
@@ -500,6 +514,207 @@ export class DjvuPageDecoder {
 
     // DjVu 的 rotation 计数定义在自下而上的坐标系中，转换到左上原点后方向相反
     const rotated = rotateRgba(rgba, width, height, (4 - rotation) & 3);
+    return {
+      width: rotated.width,
+      height: rotated.height,
+      rotation,
+      rgba: rotated.rgba,
+    };
+  }
+
+  // 按输出分辨率合成：输出像素直接采样各层（背景双线性、前景最近邻），
+  // 掩码先按原生像素一遍累加出每个输出格的覆盖度，再按覆盖比例与前景色混合，
+  // 缩小显示时笔画不会断。整个合成在未旋转坐标系里完成，最后交给 rotateRgba
+  // 统一旋转，和整页合成共用同一套旋转逻辑。
+  // 这样只分配输出尺寸的 RGBA，避免整页 4:4:4 的 RGBA/背景/前景/旋转缓冲
+  // 同时存在——一张 8MP 的扫描页在缩小显示时那几份缓冲合计上百 MB。
+  private composeScaled(scale: number): DjvuPageImage {
+    const width = this.page.info.width;
+    const height = this.page.info.height;
+    const rotation = this.page.info.rotation;
+    const outW = Math.max(1, Math.round(width * scale));
+    const outH = Math.max(1, Math.round(height * scale));
+    const rgba = new Uint8ClampedArray(outW * outH * 4);
+    // 输出像素 → 原生坐标的步长（采样按像素中心对齐）
+    const stepX = width / outW;
+    const stepY = height / outH;
+
+    // 背景（BG44/BGjp；缺省为白色）。缓冲行 0 为图像顶行
+    const background =
+      this.state.background ||
+      (this.state.jpegBackground && this.state.jpegBackground.width
+        ? this.state.jpegBackground
+        : null);
+    const bgRgb = background ? background.rgb : null;
+    const bgW = background ? background.width : 0;
+    const bgH = background ? background.height : 0;
+    const bgRatioX = bgW / width;
+    const bgRatioY = bgH / height;
+
+    // 前景（FG44/FGjp）：只接受 1..12 的整数缩小系数（三层模型约定），
+    // 行序自下而上，缩放块与页面下边缘对齐
+    const fgSource = this.state.foreground || this.state.jpegForeground;
+    let fgRgb: Uint8Array | null = null;
+    let fgW = 0;
+    let fgH = 0;
+    let fgRed = 0;
+    if (fgSource && fgSource.width && fgSource.height) {
+      const red = computeRed(width, height, fgSource.width, fgSource.height);
+      if (red >= 1 && red <= 12) {
+        fgRgb = fgSource.rgb;
+        fgW = fgSource.width;
+        fgH = fgSource.height;
+        fgRed = red;
+      }
+    }
+    const mask = this.state.mask;
+    const maskBits = mask ? mask.bits : null;
+    // 没有前景颜色层时：FGbz 按 blit 调色板着色，否则掩码为黑
+    const usePalette = !fgRgb && !!this.state.fgbz && !!this.jb2Image;
+
+    // 掩码覆盖度：按原生像素一遍累积（每个原生黑像素只做一次加法），
+    // 比按输出像素反复采样快得多，也是真正的面积平均，缩小后笔画不断
+    const cellArea = stepX * stepY;
+    let coverage: Uint16Array | null = null;
+    if (maskBits && !usePalette) {
+      coverage = new Uint16Array(outW * outH);
+      const colCell = new Int32Array(width);
+      for (let x = 0; x < width; x++) {
+        colCell[x] = Math.min(outW - 1, Math.floor(x / stepX));
+      }
+      const rowCell = new Int32Array(height);
+      for (let y = 0; y < height; y++) {
+        rowCell[y] = Math.min(outH - 1, Math.floor(y / stepY)) * outW;
+      }
+      for (let y = 0; y < height; y++) {
+        const rowBase = y * width;
+        const rowOffset = rowCell[y];
+        for (let x = 0; x < width; x++) {
+          if (!maskBits[rowBase + x]) continue;
+          coverage[rowOffset + colCell[x]]++;
+        }
+      }
+    }
+
+    for (let oy = 0; oy < outH; oy++) {
+      const ny = (oy + 0.5) * stepY - 0.5;
+      const outRow = oy * outW * 4;
+      for (let ox = 0; ox < outW; ox++) {
+        const nx = (ox + 0.5) * stepX - 0.5;
+        const o = outRow + ox * 4;
+
+        // 背景色：双线性采样
+        let r = 255;
+        let g = 255;
+        let b = 255;
+        if (bgRgb) {
+          const fx = Math.min(
+            bgW - 1,
+            Math.max(0, (nx + 0.5) * bgRatioX - 0.5)
+          );
+          const fy = Math.min(
+            bgH - 1,
+            Math.max(0, (ny + 0.5) * bgRatioY - 0.5)
+          );
+          const x0 = Math.floor(fx);
+          const y0 = Math.floor(fy);
+          const x1 = Math.min(x0 + 1, bgW - 1);
+          const y1 = Math.min(y0 + 1, bgH - 1);
+          const tx = fx - x0;
+          const ty = fy - y0;
+          const s00 = (y0 * bgW + x0) * 3;
+          const s10 = (y0 * bgW + x1) * 3;
+          const s01 = (y1 * bgW + x0) * 3;
+          const s11 = (y1 * bgW + x1) * 3;
+          const top0 = bgRgb[s00] + (bgRgb[s10] - bgRgb[s00]) * tx;
+          const top1 = bgRgb[s00 + 1] + (bgRgb[s10 + 1] - bgRgb[s00 + 1]) * tx;
+          const top2 = bgRgb[s00 + 2] + (bgRgb[s10 + 2] - bgRgb[s00 + 2]) * tx;
+          const bot0 = bgRgb[s01] + (bgRgb[s11] - bgRgb[s01]) * tx;
+          const bot1 = bgRgb[s01 + 1] + (bgRgb[s11 + 1] - bgRgb[s01 + 1]) * tx;
+          const bot2 = bgRgb[s01 + 2] + (bgRgb[s11 + 2] - bgRgb[s01 + 2]) * tx;
+          r = top0 + (bot0 - top0) * ty;
+          g = top1 + (bot1 - top1) * ty;
+          b = top2 + (bot2 - top2) * ty;
+        }
+
+        // 掩码覆盖度 + 前景色（取像素中心最近的像素，前景通常是纯色块）
+        if (coverage) {
+          const hits = coverage[oy * outW + ox];
+          if (hits > 0) {
+            const ratio = hits > cellArea ? 1 : hits / cellArea;
+            let fgColorR = 0;
+            let fgColorG = 0;
+            let fgColorB = 0;
+            if (fgRgb) {
+              const mx = Math.min(width - 1, Math.max(0, Math.round(nx)));
+              const my = Math.min(height - 1, Math.max(0, Math.round(ny)));
+              const fgX = Math.min(
+                fgW - 1,
+                Math.max(0, Math.floor(mx / fgRed))
+              );
+              const fgY =
+                fgH -
+                1 -
+                Math.min(
+                  fgH - 1,
+                  Math.max(0, Math.floor((height - 1 - my) / fgRed))
+                );
+              const s = (fgY * fgW + fgX) * 3;
+              fgColorR = fgRgb[s];
+              fgColorG = fgRgb[s + 1];
+              fgColorB = fgRgb[s + 2];
+            }
+            r += (fgColorR - r) * ratio;
+            g += (fgColorG - g) * ratio;
+            b += (fgColorB - b) * ratio;
+          }
+        }
+
+        rgba[o] = r;
+        rgba[o + 1] = g;
+        rgba[o + 2] = b;
+        rgba[o + 3] = 255;
+      }
+    }
+
+    // FGbz：逐 blit 写入调色板颜色（后绘制的 blit 覆盖先前的，与原生路径一致）
+    if (usePalette && maskBits && this.state.fgbz && this.jb2Image) {
+      const { palette, colorIndex } = this.state.fgbz;
+      const image = this.jb2Image;
+      const blitCount = Math.min(image.blits.length, colorIndex.length);
+      for (let b = 0; b < blitCount; b++) {
+        const blit = image.blits[b];
+        const shape = image.shapes[blit.shapeIndex];
+        if (!shape || !shape.bitmap) continue;
+        const c = colorIndex[b];
+        if (c < 0 || c * 3 + 2 >= palette.length) continue;
+        const cr = palette[c * 3];
+        const cg = palette[c * 3 + 1];
+        const cb = palette[c * 3 + 2];
+        const bm = shape.bitmap;
+        for (let y = 0; y < bm.rows; y++) {
+          const ny = height - 1 - (blit.bottom + y);
+          if (ny < 0 || ny >= height) continue;
+          const src = bm.rowOffset(y);
+          const maskRow = ny * width;
+          for (let x = 0; x < bm.columns; x++) {
+            if (!bm.data[src + x]) continue;
+            const nx = blit.left + x;
+            if (nx < 0 || nx >= width) continue;
+            if (!maskBits[maskRow + nx]) continue;
+            const ox = Math.min(outW - 1, Math.floor(nx / stepX));
+            const oy = Math.min(outH - 1, Math.floor(ny / stepY));
+            const o = (oy * outW + ox) * 4;
+            rgba[o] = cr;
+            rgba[o + 1] = cg;
+            rgba[o + 2] = cb;
+          }
+        }
+      }
+    }
+
+    // DjVu 的 rotation 计数定义在自下而上的坐标系中，转换到左上原点后方向相反
+    const rotated = rotateRgba(rgba, outW, outH, (4 - rotation) & 3);
     return {
       width: rotated.width,
       height: rotated.height,

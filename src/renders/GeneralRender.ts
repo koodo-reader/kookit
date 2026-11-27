@@ -5,6 +5,8 @@ import {
   convertStyleNum,
   getActualOffsetLeft,
   getActualOffsetTop,
+  getContentOffsetLeft,
+  getContentOffsetTop,
   getLogicalHorizontalScroll,
   getMaxHorizontalScroll,
   getScrollLeftForContentOffset,
@@ -13,6 +15,7 @@ import {
   handleOneChapterDoc,
   isVerticalLayout,
   progressInfo,
+  snapScrollOffsetToSpreadStart,
 } from "../utils/layoutUtil";
 import {
   getCloestBlock,
@@ -61,9 +64,37 @@ import {
   isParentBlock,
 } from "../utils/common";
 import SpeedReadingManager from "../utils/speedReadingUtil";
+import {
+  normalizeTextColorConfig,
+  type TextColorConfig,
+  type TextColorConfigInput,
+} from "../utils/textColor";
 import ReadingRulerManager from "../utils/readingRulerUtil";
 import ParagraphModeManager from "../utils/paragraphModeUtil";
 declare var window: any;
+// 目录锚点在章节文件中的字节位置，用于估算同一文件内多个目录条目的起始页码
+const getAnchorByteOffset = (html: string, href: string) => {
+  const fragment = (href || "").split("#")[1];
+  if (!fragment) return 0;
+  let id = fragment;
+  try {
+    id = decodeURIComponent(fragment);
+  } catch (error) {
+    id = fragment;
+  }
+  let position = -1;
+  for (const pattern of [
+    `id="${id}"`,
+    `id='${id}'`,
+    `name="${id}"`,
+    `name='${id}'`,
+  ]) {
+    position = html.indexOf(pattern);
+    if (position > -1) break;
+  }
+  if (position < 0) return 0;
+  return new TextEncoder().encode(html.slice(0, position)).length;
+};
 export interface TextRule {
   id: string;
   type: "replace" | "delete";
@@ -83,6 +114,7 @@ class GeneralRender extends EventEmitter {
   isIndent: string | undefined;
   bookLayout: string | undefined;
   textRules: TextRule[];
+  contentColor: TextColorConfig;
   codeHighlight: string | undefined;
   pageGap: string | undefined;
   isHyphenation: string | undefined;
@@ -108,6 +140,8 @@ class GeneralRender extends EventEmitter {
   isShowTotalPage: string = "no";
   chapterSizeCache: { sizes: number[]; pages: number[]; total: number } | null =
     null;
+  chapterPageMapCache: Record<string, number> | null = null;
+  chapterPageMapPromise: Promise<Record<string, number>> | null = null;
   estimatedSizePerPage: number | null = null;
   speedReadingSpeed: number = 300;
   revertDirection: string = "no";
@@ -153,6 +187,7 @@ class GeneralRender extends EventEmitter {
     bookLayout?: string;
     platform?: string;
     textRules?: TextRule[];
+    contentColor?: TextColorConfigInput;
     codeHighlight?: string;
     pageGap?: string;
   }) {
@@ -168,7 +203,9 @@ class GeneralRender extends EventEmitter {
     }
     this.readerMode = config.readerMode;
     window.readerMode = config.readerMode;
-    this.animation = config.animation || "none";
+    // overlay 动画由外部阅读器实现，kookit 内部按无动画渲染
+    this.animation =
+      config.animation === "overlay" ? "none" : config.animation || "none";
     this.format = config.format;
     this.isPaginated = isPaginatedFormat(config.format);
     this.convertChinese = config.convertChinese;
@@ -211,6 +248,11 @@ class GeneralRender extends EventEmitter {
     window.pageGap = this.pageGap;
     this.textRules = config.textRules || [];
     window.textRules = this.textRules;
+    this.contentColor = normalizeTextColorConfig(
+      config.contentColor,
+      this.isDarkMode === "yes"
+    );
+    window.contentColor = this.contentColor;
 
     //手机版环境已经有严格的安全限制，无需额外限制，PDF中无法执行代码，强行开启则无法渲染图书
     this.isAllowScript =
@@ -350,7 +392,7 @@ class GeneralRender extends EventEmitter {
       let left = targetNode
         ? getScrollLeftForContentOffset(
             doc.body,
-            getActualOffsetLeft(targetNode) -
+            getContentOffsetLeft(targetNode) -
               convertStyleNum(
                 targetNode.marginLeft ||
                   parseFloat(getComputedStyle(targetNode).marginLeft)
@@ -358,7 +400,7 @@ class GeneralRender extends EventEmitter {
           )
         : 0;
       let top = targetNode
-        ? getActualOffsetTop(targetNode) -
+        ? getContentOffsetTop(targetNode) -
           convertStyleNum(
             targetNode.marginTop ||
               parseFloat(getComputedStyle(targetNode).marginTop)
@@ -722,7 +764,7 @@ class GeneralRender extends EventEmitter {
     let left = targetNode
       ? getScrollLeftForContentOffset(
           doc.body,
-          getActualOffsetLeft(targetNode) -
+          getContentOffsetLeft(targetNode) -
             convertStyleNum(
               targetNode.marginLeft ||
                 parseFloat(getComputedStyle(targetNode).marginLeft)
@@ -730,7 +772,7 @@ class GeneralRender extends EventEmitter {
         )
       : 0;
     let top = targetNode
-      ? getActualOffsetTop(targetNode) -
+      ? getContentOffsetTop(targetNode) -
         convertStyleNum(
           targetNode.marginTop ||
             parseFloat(getComputedStyle(targetNode).marginTop)
@@ -738,8 +780,18 @@ class GeneralRender extends EventEmitter {
       : 0;
     if (this.readerMode !== "scroll") {
       if (this.isVertical()) {
+        top = snapScrollOffsetToSpreadStart(
+          this.element,
+          this.readerMode,
+          top
+        );
         doc.body.scrollTo(0, top);
       } else {
+        left = snapScrollOffsetToSpreadStart(
+          this.element,
+          this.readerMode,
+          left
+        );
         doc.body.scrollTo(left, 0);
       }
     } else {
@@ -799,8 +851,8 @@ class GeneralRender extends EventEmitter {
   locateParagraph(el: HTMLElement) {
     let doc = this.getDocument();
     if (!doc || !doc.body || !el) return;
-    let left = getActualOffsetLeft(el);
-    let top = getActualOffsetTop(el);
+    let left = getContentOffsetLeft(el);
+    let top = getContentOffsetTop(el);
     if (this.readerMode !== "scroll") {
       // 页宽/页高计算与 handleScrollPage 保持一致，并对齐到页网格
       if (this.isVertical()) {
@@ -878,6 +930,9 @@ class GeneralRender extends EventEmitter {
         }
       }
       this.trigger("rendered");
+      // 章节交界：按新章节的页数重建仿真翻页动画，
+      // 否则 flips 数组仍是旧章节的长度，翻几页后动画静默失效
+      this.addPageAnimation();
     } else if (this.readerMode === "scroll") {
       // scroll readerMode under normal condition
       this.element.scrollBy({
@@ -947,6 +1002,8 @@ class GeneralRender extends EventEmitter {
         iframe
       );
       this.trigger("rendered");
+      // 章节交界：按新章节的页数重建仿真翻页动画
+      this.addPageAnimation();
       return;
     } else if (this.readerMode === "scroll") {
       // scroll readerMode under normal condition
@@ -1020,6 +1077,8 @@ class GeneralRender extends EventEmitter {
     );
     await this.record();
     this.trigger("rendered");
+    // 章节跳转后重建仿真翻页动画（与 next/prev 的章节交界分支同理）
+    this.addPageAnimation();
   }
   async nextChapter() {
     let doc = this.getDocument();
@@ -1037,6 +1096,8 @@ class GeneralRender extends EventEmitter {
     );
     await this.record();
     this.trigger("rendered");
+    // 章节跳转后重建仿真翻页动画（与 next/prev 的章节交界分支同理）
+    this.addPageAnimation();
   }
   async visibleText() {
     let doc = this.getDocument();
@@ -1408,10 +1469,90 @@ class GeneralRender extends EventEmitter {
     }
     return [];
   }
+  // 每个目录条目在整本书中的起始页码
+  async getChapterPageMap(): Promise<Record<string, number>> {
+    if (this.chapterPageMapCache) return this.chapterPageMapCache;
+    // 分页格式每一页都是独立的章节文件，直接使用 getPages() 的结果
+    if (isPaginatedFormat(this.format)) return {};
+    if (!this.chapterPageMapPromise) {
+      this.chapterPageMapPromise = this.computeChapterPageMap().then(
+        (pageMap) => {
+          this.chapterPageMapPromise = null;
+          if (Object.keys(pageMap).length > 0) {
+            this.chapterPageMapCache = pageMap;
+          }
+          return pageMap;
+        },
+        () => {
+          this.chapterPageMapPromise = null;
+          return {};
+        }
+      );
+    }
+    return this.chapterPageMapPromise;
+  }
+  async computeChapterPageMap(): Promise<Record<string, number>> {
+    const { pages } = this.getChapterSizes();
+    const sizePerPage = this.getEstimatedSizePerPage();
+    if (!pages.length || sizePerPage <= 1) return {};
+    if (this.flattenChapters.length === 0) {
+      this.flatChapter(this.chapterList);
+    }
+    const pageScale = this.readerMode === "double" ? 2 : 1;
+    const chapterDocMap = new Map<number, Chapter[]>();
+    this.flattenChapters.forEach((chapter) => {
+      const chapterDocIndex = parseInt(chapter.index + "");
+      if (isNaN(chapterDocIndex)) return;
+      const chapters = chapterDocMap.get(chapterDocIndex) || [];
+      chapters.push(chapter);
+      chapterDocMap.set(chapterDocIndex, chapters);
+    });
+    const pageMap: Record<string, number> = {};
+    for (const [chapterDocIndex, chapters] of chapterDocMap) {
+      const startPage = pages[chapterDocIndex] || 1;
+      // 同一文件内有多个目录条目时，按锚点位置估算章节在文件内的页码偏移
+      const hasAnchor =
+        chapters.length > 1 &&
+        chapters.some((chapter) => (chapter.href || "").includes("#"));
+      const chapterText = hasAnchor
+        ? await this.getChapterDocText(chapterDocIndex)
+        : "";
+      chapters.forEach((chapter) => {
+        const offset = chapterText
+          ? getAnchorByteOffset(chapterText, chapter.href)
+          : 0;
+        pageMap[chapter.href] =
+          startPage + Math.floor(offset / sizePerPage) * pageScale;
+      });
+    }
+    return pageMap;
+  }
+  async getChapterDocText(chapterDocIndex: number) {
+    const text = this.chapterDocList[chapterDocIndex]?.text;
+    if (!text) return "";
+    if (typeof text === "string") return text;
+    try {
+      return await handleOneChapterDoc(text, true);
+    } catch (error) {
+      return "";
+    }
+  }
   async record() {
     let doc = this.getDocument();
     if (!doc) return;
-    await handleRecord(
+    const recorded = await this.recordPosition(doc);
+    if (!recorded) {
+      // handleRecord 有 100ms 节流，快速翻页时最后一次位置会被丢弃，
+      // 保存的进度就会比实际落后 1~2 页；等节流窗口结束后补录一次
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      doc = this.getDocument();
+      if (!doc) return;
+      await this.recordPosition(doc);
+    }
+    this.trigger("page-changed");
+  }
+  private async recordPosition(doc: Document) {
+    return await handleRecord(
       this.element,
       this.readerMode,
       this.flatChapter(this.chapterList),
@@ -1420,7 +1561,6 @@ class GeneralRender extends EventEmitter {
       doc,
       null
     );
-    this.trigger("page-changed");
   }
   getPosition() {
     return this.tempLocation;

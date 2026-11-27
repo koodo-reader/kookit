@@ -8,6 +8,7 @@ import type { Presentation } from "@web-ppt/core";
 // 中文文本走系统字体 fallback；.ppt（CFB）由同一解析器按魔数识别。
 // 分页/懒加载/卸载机制沿用漫画的多 iframe 结构。
 class PptxRender extends ComicRender {
+  isStartFromEvenSupported = false;
   presentation: Presentation | null = null;
   password: string = "";
 
