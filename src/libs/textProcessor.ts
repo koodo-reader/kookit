@@ -111,7 +111,6 @@ export const txtToHtml = (
   }
 
   const htmlParts: string[] = []; // Use an array to store HTML parts
-  let prependHtml = ""; // 补齐章节序号的占位章节，需拼接在切片内容之前
   let isRefresh = false;
   let noTitle = false;
   if (bookLocation && bookLocation.refresh) {
@@ -173,13 +172,51 @@ export const txtToHtml = (
       titlesInSlice.map((title) => cleanText(title))
     );
 
-    // --- Main Loop for Relevant Lines ---
-    // 标题降级规则必须与整篇解析一致：后面没有正文的标题（如书首目录条目）
-    // 降级为正文段落，否则分段解析与整篇解析的章节序号会错位
+    // 预扫描：按与整篇解析一致的规则算出切片内存活的章节标题
+    // （后面没有正文的标题会降级剔除，如书首目录条目），
+    // 占位章节数必须按存活标题计算，否则切片与整篇解析的章节序号错位
     const chapterTitleList: string[] = [];
+    let hasContent = false;
+    for (const item of relevantLines) {
+      const cleanedItem = cleanText(item);
+      if (cleanedItem && cleanedTitlesSet.has(cleanedItem)) {
+        if (chapterTitleList.length > 0 && !hasContent) {
+          chapterTitleList.pop(); // 上一个标题只有标题没有正文，降级剔除
+        }
+        chapterTitleList.push(cleanedItem);
+        hasContent = false;
+      } else if (item.trim() !== "") {
+        hasContent = true;
+      }
+    }
+
+    let targetTitleIndex = findLastIndex(chapterTitleList, (item) => {
+      return item === cleanText(bookLocation.chapterTitle);
+    });
+    if (targetTitleIndex === -1) {
+      targetTitleIndex = 0;
+    }
+
+    // --- Prepending Logic (if needed) ---
+    // This part seems related to chapter indexing, ensure it uses the correct indices based on the slice
+    if (targetTitleIndex < parseInt(bookLocation.chapterDocIndex || "0") - 1) {
+      let prependLength =
+        parseInt(bookLocation.chapterDocIndex || "0") - targetTitleIndex;
+      if (prependLength > 0) {
+        for (let i = 0; i < prependLength; i++) {
+          // Push to array instead of concatenating
+          htmlParts.push(`<h1>Prepend ${i}</h1>`);
+          htmlParts.push(`<p>Text ${i}</p>`);
+        }
+      }
+    }
+
+    // --- Main Loop for Relevant Lines ---
+    // 降级规则与上面的预扫描一致：被剔除的标题改写为正文段落
     let lastTitleIndex = -1;
     let hasContentSinceTitle = false;
     for (const item of relevantLines) {
+      // Iterate over the sliced array
       const cleanedItem = cleanText(item); // Clean once per line
       // Use the Set for O(1) average lookup
       if (cleanedItem && cleanedTitlesSet.has(cleanedItem)) {
@@ -189,40 +226,18 @@ export const txtToHtml = (
             4,
             -5
           )}</p>`;
-          chapterTitleList.pop();
         }
         lastTitleIndex = htmlParts.length;
         htmlParts.push(`<h1>${cleanedItem}</h1>`); // Push to array
-        chapterTitleList.push(cleanedItem);
         hasContentSinceTitle = false;
-      } else if (item.trim() === "") {
-        htmlParts.push(`<p class="hide">${item}</p>`); // Push line break for empty lines
       } else {
+        if (item.trim() === "") {
+          htmlParts.push(`<p class="hide">${item}</p>`); // Push line break for empty lines
+          continue; // Skip further processing for empty lines
+        }
         // Avoid cleaning again if not necessary, use original item for content
         htmlParts.push(`<p>${item}</p>`); // Push to array
         hasContentSinceTitle = true;
-      }
-    }
-
-    // --- Prepending Logic (if needed) ---
-    // 占位章节把切片内的章节序号对齐到整篇解析的序号，
-    // 切片开头的正文会并入最后一个占位章节
-    let targetTitleIndex = findLastIndex(chapterTitleList, (item) => {
-      return item === cleanText(bookLocation.chapterTitle);
-    });
-    if (targetTitleIndex === -1) {
-      targetTitleIndex = 0;
-    }
-    if (targetTitleIndex < parseInt(bookLocation.chapterDocIndex || "0") - 1) {
-      let prependLength =
-        parseInt(bookLocation.chapterDocIndex || "0") - targetTitleIndex;
-      if (prependLength > 0) {
-        const prependParts: string[] = [];
-        for (let i = 0; i < prependLength; i++) {
-          prependParts.push(`<h1>Prepend ${i}</h1>`);
-          prependParts.push(`<p>Text ${i}</p>`);
-        }
-        prependHtml = prependParts.join("");
       }
     }
   } else {
@@ -260,7 +275,7 @@ export const txtToHtml = (
   }
 
   // Join the array at the end
-  const finalHtml = prependHtml + htmlParts.join("");
+  const finalHtml = htmlParts.join("");
 
   if (finalHtml && finalHtml.includes("<h1")) {
     return finalHtml;
