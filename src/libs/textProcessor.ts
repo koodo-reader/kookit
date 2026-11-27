@@ -146,10 +146,44 @@ export const txtToHtml = (
       bookLocation.text = bookLocation.chapterTitle || "";
     }
     // --- Slicing and Title Identification Logic ---
-    let targetLineIndex = lines.findIndex((item) => {
-      // Optimization: cleanText called only once here if needed often
-      return cleanText(item) === cleanText(bookLocation.text);
-    });
+    // 阅读行可能并非全文唯一（如每章前重复的页眉/水印），取第一处匹配会把
+    // 切片带回书首。先定位保存章节的标题行：页眉在标题前几行，正文在标题
+    // 之后，都没匹配到时退回第一处匹配
+    const cleanedLocationText = cleanText(bookLocation.text);
+    const cleanedChapterTitle = cleanText(bookLocation.chapterTitle || "");
+    let titleLineIndex = -1;
+    if (cleanedChapterTitle) {
+      titleLineIndex = findLastIndex(lines, (item) => {
+        return item && cleanText(item) === cleanedChapterTitle;
+      });
+    }
+    let targetLineIndex = -1;
+    if (titleLineIndex > -1) {
+      for (let i = titleLineIndex; i >= Math.max(titleLineIndex - 4, 0); i--) {
+        if (cleanText(lines[i]) === cleanedLocationText) {
+          targetLineIndex = i;
+          break;
+        }
+      }
+      if (targetLineIndex === -1) {
+        for (let i = titleLineIndex + 1; i < lines.length; i++) {
+          if (cleanText(lines[i]) === cleanedLocationText) {
+            targetLineIndex = i;
+            break;
+          }
+        }
+      }
+    }
+    if (targetLineIndex === -1) {
+      targetLineIndex = lines.findIndex((item) => {
+        // Optimization: cleanText called only once here if needed often
+        return cleanText(item) === cleanedLocationText;
+      });
+    }
+    if (targetLineIndex === -1) {
+      // 阅读行已不存在（如文件被编辑过）时，以章节标题为中心切片
+      targetLineIndex = titleLineIndex;
+    }
     if (targetLineIndex === -1) {
       targetLineIndex = 0;
     }
